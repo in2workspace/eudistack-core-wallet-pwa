@@ -165,6 +165,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
           }),
 
           finalize(() => {
+            console.log("Finished processing QR code. Hiding loader.");
             this.loader.removeLoadingProcess();
           }),
 

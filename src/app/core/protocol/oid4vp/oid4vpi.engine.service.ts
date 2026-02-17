@@ -139,6 +139,8 @@ private async postAuthorizationResponse(
     headers = headers.set('Authorization', `Bearer ${authorizationToken}`);
   }
 
+  console.log("Posting authorization response to URL: ", redirectUri);
+
   const resp = await firstValueFrom(
     this.http.post(redirectUri, body.toString(), {
       headers,
