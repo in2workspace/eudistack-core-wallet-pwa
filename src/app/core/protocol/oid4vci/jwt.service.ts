@@ -44,4 +44,16 @@ public base64UrlDecodeToBytes(b64url: string): Uint8Array {
 
     return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
   }
+
+  base64EncodeUtf8(input: string): string {
+    const bytes = new TextEncoder().encode(input);
+    let binary = '';
+    const chunkSize = 0x8000;
+
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+
+    return btoa(binary); // Standard Base64 with + / and =
+  }
 }

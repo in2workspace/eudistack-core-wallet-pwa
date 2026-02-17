@@ -54,7 +54,7 @@ export class Oid4vpiEngineService {
       iat: issueTime,
       exp: issueTime + (3 * 60),
       vp: verifiablPresentation,
-      nonce: credentialPayload.vc.id
+      nonce: selectorResponse.nonce
     }
 
     const publicKey = cnf.jwk;
@@ -76,10 +76,12 @@ export class Oid4vpiEngineService {
     const presentationSubmissionJson = this.buildPresentationSubmissionJson(verifiablPresentation, [selectedVC]);
     console.log("Presentation Submission JSON: ", presentationSubmissionJson);
 
+    const vpTokenForVerifier = this.jwtService.base64EncodeUtf8(signedVpJwt);
+
     const verifierResponse = await this.postAuthorizationResponse(
       selectorResponse.redirectUri,
       selectorResponse.state,
-      signedVpJwt,
+      vpTokenForVerifier,
       presentationSubmissionJson,
       /* authorizationToken? */ undefined
     );
