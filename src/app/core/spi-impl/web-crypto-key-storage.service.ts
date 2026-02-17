@@ -5,7 +5,7 @@ interface StoredKeyRecord {
   keyId: string;
   algorithm: RawKeyAlgorithm;
   publicKeyJwk: JsonWebKey;
-  privateKey: CryptoKey; // Objeto opaco, no exportable
+  privateKey: CryptoKey; // Opaque object, non-exportable
   publicKey: CryptoKey;
   kid: string; // JWK thumbprint (RFC 7638)
   createdAt: string;
@@ -36,6 +36,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
   async generateKeyPair(algorithm: RawKeyAlgorithm, keyId: string): Promise<PublicKeyInfo> {
     const params = this.getAlgorithmParams(algorithm);
+    console.log("Generating key pair with params:", params);
 
     // Generate NON-EXTRACTABLE key pair (critical).
     // We assume it is a key pair because currently only ECDSA is supported (with symmetric algorithms only one is returned).
@@ -44,6 +45,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
       false, // extractable = false
       params.usages
     );
+    console.log("Key pair generated:", keyPair);
 
 
     const publicKeyJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
@@ -91,6 +93,24 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
   return new Uint8Array(signature);
 }
+
+  public async isCnfBoundToPublicKey(unparsedCnf: unknown, publicKeyJwk: JsonWebKey): Promise<boolean> {
+    console.log("Validating if cnf matches public key:" + unparsedCnf + "" + publicKeyJwk);
+    const cnf = unparsedCnf as any;
+    if (!cnf) return false;
+
+    const proofThumbprint = await this.computeJwkThumbprint(publicKeyJwk);
+    console.log("proofThumbprint: " + proofThumbprint);
+
+    if (cnf.jwk) {
+      const cnfThumbprint = await this.computeJwkThumbprint(cnf.jwk as JsonWebKey);
+      console.log("CNF thumprint: " + cnfThumbprint);
+      return cnfThumbprint === proofThumbprint;
+    }
+
+    return false;
+  }
+
 
   async hasKey(keyId: string): Promise<boolean> {
     const record = await this.getKeyRecord(keyId);

@@ -16,11 +16,13 @@ export interface CredentialResponseWithStatusCode {
 }
 
 export interface CredentialResponse {
-  // model this to your real response
-  credential?: unknown;
+  // todo
+  credentials?: { credential: string }[];
   transaction_id?: string;
   c_nonce?: string;
-  c_nonce_expires_in?: number; } export interface DeferredCredentialRequest { transaction_id: string; } 
+  c_nonce_expires_in?: number; 
+}
+  
   
   export interface CredentialRequest {
     format: string;

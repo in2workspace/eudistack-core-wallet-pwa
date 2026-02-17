@@ -4,6 +4,10 @@ export abstract class KeyStorageProvider {
   abstract hasKey(keyId: string): Promise<boolean>;
   abstract deleteKey(keyId: string): Promise<void>;
   abstract listKeys(): Promise<KeyInfo[]>;
+  abstract isCnfBoundToPublicKey(
+    cnf: unknown,
+    publicKeyJwk: JsonWebKey
+  ): Promise<boolean>;
 
   // Backup opcional (Enterprise)
   abstract exportKey?(keyId: string): Promise<JsonWebKey>;
