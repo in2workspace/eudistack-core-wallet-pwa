@@ -42,7 +42,9 @@ export class PreAuthorizedTokenService {
     code = await this.openPromptAndGetCode();
   }
 
+  this.loader.addLoadingProcess();
   const raw = await this.getAccessToken(tokenURL, credentialOffer, code);
+  this.loader.removeLoadingProcess();
   return this.parseTokenResponse(raw);
 }
 
@@ -132,14 +134,9 @@ export class PreAuthorizedTokenService {
     
     return new Promise<string>(async (resolve, reject) => {
 
-      const loadingTimeOutSendHandler = () => {
-        this.loader.addLoadingProcess();
-      };
-
       const cleanup = () => {
         if (interval != null  || interval !== undefined) window.clearInterval(interval);
         if (this.loadingTimeout != null || this.loadingTimeout !== undefined) clearTimeout(this.loadingTimeout);
-        this.loader.removeLoadingProcess();
       };
 
       const alertOptions: AlertOptions = {
@@ -176,8 +173,6 @@ export class PreAuthorizedTokenService {
                 reject(new Error('PIN is empty'));
                 return false;
               }
-
-              this.loadingTimeout = setTimeout(loadingTimeOutSendHandler, 1000);
 
               resolve(pin);
               return true;

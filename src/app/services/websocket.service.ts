@@ -15,8 +15,6 @@ import { isNotificationRequest, Power, CredentialPreview } from '../interfaces/w
 export class WebsocketService {
   private notificationSocket?: WebSocket;
 
-  private loadingTimeout: any;
-
   private readonly alertController = inject(AlertController);
   private readonly authenticationService = inject(AuthenticationService);
   public readonly loader = inject(LoaderService);
@@ -26,6 +24,8 @@ export class WebsocketService {
   private async routeMessage(data: any): Promise<void> {
     if (isNotificationRequest(data)) {
       await this.handleNotificationDecisionRequest(data);
+    } else {
+      console.warn('Received unknown WebSocket message:', data);
     }
   }
 
@@ -58,7 +58,6 @@ export class WebsocketService {
       };
 
       ws.onclose = () => {
-        clearTimeout(this.loadingTimeout);
         this.loader.removeLoadingProcess();
         console.log(`WebSocket connection closed: ${path}`);
       };

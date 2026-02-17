@@ -141,82 +141,55 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   }
 
   public qrCodeEmit(qrCode: string): void {
-    //todo consider removing
-    let executeContentSucessCallback: (arg: any) => Observable<any>;
     const isCredentialOffer = qrCode.includes('credential_offer_uri');
     //todo don't accept qrs that are not to login or get VC
     if(isCredentialOffer){
+      //CROSS-DEVICE VC OFFER
       //show VCs list
       this.closeScannerViewAndScanner();
-      // CROSS-DEVICE CREDENTIAL OFFER FLOW
-      executeContentSucessCallback = () => {   
-        return this.handleActivationSuccess();
-      }
+      console.info('Requesting Credential Offer via cross-device flow.');
+      this.credentialActivationFlow();
     }else{
       // LOGIN / VERIFIABLE PRESENTATION
       // hide scanner but don't show VCs list
       this.closeScanner();
       this.loader.addLoadingProcess();
-      executeContentSucessCallback = (executionResponse: JSON) => {
-        return from(this.router.navigate(['/tabs/vc-selector/'], {
-          queryParams: {
-            executionResponse: JSON.stringify(executionResponse),
-          },
-        })).pipe(
-          tap(() => { this.loader.removeLoadingProcess() })
-        );
+
+      this.walletService.executeContent(qrCode).pipe(
+          switchMap((executionResponse) => {
+            return from(
+              this.router.navigate(['/tabs/vc-selector/'], {
+                queryParams: { executionResponse: JSON.stringify(executionResponse) },
+              })
+            );
+          }),
+
+          finalize(() => {
+            this.loader.removeLoadingProcess();
+          }),
+
+          catchError((error: ExtendedHttpErrorResponse) => {
+            this.websocket.closeNotificationConnection();
+            this.handleContentExecutionError(error);
+            return of(null);
+          })
+        )
+        .subscribe();
       }
-    }
-    const socketsToConnect: Promise<void>[] = [];
-    if (isCredentialOffer) socketsToConnect.push(this.websocket.connectNotificationSocket());
-
-    //todo refactor to avoid the double conditional
-    from(Promise.all(socketsToConnect))
-      .pipe(
-        switchMap(() => {
-          this.loader.addLoadingProcess();
-          if(isCredentialOffer){
-            console.log("Is credential offer: executing oid4vci flow.");
-            return this.oid4vciEngineService.executeOid4vciFlow(qrCode);
-          }
-          return this.walletService.executeContent(qrCode);
-        }),
-        switchMap((executionResponse) => {
-          if (isCredentialOffer) {
-            return this.handleActivationSuccess();
-          }
-
-          return from(
-            this.router.navigate(['/tabs/vc-selector/'], {
-              queryParams: { executionResponse: JSON.stringify(executionResponse) },
-            })
-          );
-        }),
-
-        finalize(() => {
-          this.loader.removeLoadingProcess();
-        }),
-
-        catchError((error: ExtendedHttpErrorResponse) => {
-          this.websocket.closeNotificationConnection();
-          this.handleContentExecutionError(error);
-          return of(null);
-        })
-      )
-      .subscribe();
   }
 
   public sameDeviceVcActivationFlow(): void {
+    console.info('Requesting Credential Offer via same-device flow.')
+    this.credentialActivationFlow();
+  }
+
+  private credentialActivationFlow(): void{
     const socketsToConnect: Promise<void>[] = [
       this.websocket.connectNotificationSocket(),
     ];
 
     from(Promise.all(socketsToConnect))
       .pipe(
-        tap(() => {
-          console.info('Requesting Credential Offer via same-device flow.');
-        }),
-
         switchMap(() =>
           // this.walletService.requestOpenidCredentialOffer(this.credentialOfferUri)
          this.oid4vciEngineService.executeOid4vciFlow(this.credentialOfferUri)
@@ -224,14 +197,10 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
 
         switchMap(() => this.handleActivationSuccess()),
 
-        switchMap(() =>
-          from(this.router.navigate(['/tabs/credentials']))
-        ),
-
         catchError((err: ExtendedHttpErrorResponse) => {
           console.error(err);
           this.websocket.closeNotificationConnection();
-          this.handleContentExecutionError(err);
+          this.handleContentExecutionError(err); //todo review (adding camera log?)
           return of(null);
         })
       )
@@ -239,12 +208,13 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   }
 
   
-  private handleActivationSuccess(): Observable<VerifiableCredential[]> {
+  private handleActivationSuccess(): Observable<boolean> {
     console.log("Handling successful credential activation...");
     this.loader.addLoadingProcess();
 
     return this.loadCredentials()
       .pipe(
+        switchMap(() => from(this.router.navigate(['/tabs/credentials']))),
         tap(() => {
           this.loader.removeLoadingProcess();
         })

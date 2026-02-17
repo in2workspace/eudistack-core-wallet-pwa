@@ -17,6 +17,7 @@ import { SERVER_PATH } from 'src/app/constants/api.constants';
 import { options } from 'src/app/services/wallet.service';
 import { tap, firstValueFrom } from 'rxjs';
 import { JwtService } from './jwt.service';
+import { LoaderService } from 'src/app/services/loader.service';
 
 interface TempPostCredentialRequestBoyd{
   credentialResponseWithStatus: CredentialResponseWithStatusCode;
@@ -51,12 +52,15 @@ export class Oid4vciEngineService {
   private readonly http = inject(HttpClient);
   private readonly jwtService =inject(JwtService);
   private readonly keyStorageProvider = inject(WebCryptoKeyStorageProvider);
+  private readonly loader = inject(LoaderService);
   private readonly preAuthorizedTokenService = inject(PreAuthorizedTokenService);
   private readonly proofBuilderService = inject(ProofBuilderService);
 
   public async executeOid4vciFlow(credentialOfferUri: string): Promise<void> {
     
     // GET DATA FOR THE CREDENTIAL REQUEST
+    this.loader.addLoadingProcess();
+
     const credentialOffer = await this.credentialOfferService.getCredentialOfferFromCredentialOfferUri(credentialOfferUri);
     console.log("Credential Offer:", credentialOffer);
     
@@ -69,9 +73,11 @@ export class Oid4vciEngineService {
     const token = this.authService.getToken();
     console.log("Token:", token);
     
+    this.loader.removeLoadingProcess();
     const tokenResponse: TokenResponse = await this.preAuthorizedTokenService.getPreAuthorizedToken(credentialOffer, authorisationServerMetadata);
     console.log("tokenResponse:", tokenResponse);
     
+    this.loader.addLoadingProcess();
     const cfg = this.resolveCredentialConfigurationContext(credentialOffer, credentialIssuerMetadata);
     console.log("Credential Configuration Context:", cfg);
 
@@ -132,7 +138,7 @@ export class Oid4vciEngineService {
 
     
     const tokenObtainedAt = Math.floor(Date.now() / 1000);
-    return this.postCredentialResponseWithStatus({
+    await this.postCredentialResponseWithStatus({
       credentialResponseWithStatus: credentialResponseWithStatusCode,
       tokenResponse,
       issuerMetadata: credentialIssuerMetadata,
@@ -140,6 +146,10 @@ export class Oid4vciEngineService {
       tokenObtainedAt,
       format
     });
+
+    // Don't remove loadinProcess, it will be handled by the notification flow (currently websocket)
+    // this.loader.removeLoadingProcess();
+    return;
 
   }
 
