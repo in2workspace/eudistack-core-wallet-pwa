@@ -226,7 +226,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
    * Computes JWK thumbprint according to RFC 7638.
    * For EC keys: required members are crv, kty, x, y (lexicographic order).
    */
-  private async computeJwkThumbprint(jwk: JsonWebKey): Promise<string> {
+  public async computeJwkThumbprint(jwk: JsonWebKey): Promise<string> {
     const crv = jwk.crv;
     const kty = jwk.kty;
     const x = jwk.x;
