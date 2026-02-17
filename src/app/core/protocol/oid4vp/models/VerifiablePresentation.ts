@@ -4,7 +4,6 @@ export interface VerifiablePresentation {
   type: string[];
   holder: string;
   verifiableCredential: string[];
-  aud: string;
 }
 
 export type DescriptorMap = {

@@ -41,7 +41,7 @@ export class Oid4vpiEngineService {
     const credentialSubjectId = credentialPayload.vc.credentialSubject.id;
     console.log("Credential subject ID: ", credentialSubjectId);
 
-    const verifiablPresentation = this.createVerifiablePresentation(selectedVC, cnf, aud);
+    const verifiablPresentation = this.createVerifiablePresentation(selectedVC, cnf);
     console.log("Unsigned Verifiable Presentation: ", verifiablPresentation);
 
     const issueTime = Math.floor(Date.now() / 1000);
@@ -50,6 +50,7 @@ export class Oid4vpiEngineService {
       id: verifiablPresentation.id,
       iss: credentialSubjectId,
       sub: credentialSubjectId,
+      aud: aud,
       nbf: issueTime,
       iat: issueTime,
       exp: issueTime + (3 * 60),
@@ -211,15 +212,13 @@ private appendNested(existing: DescriptorMap | null, next: DescriptorMap): Descr
 }
 
 
-  private createVerifiablePresentation(credential: any, cnf: any, aud: string): VerifiablePresentation{
-    //todo only add aud if not null
+  private createVerifiablePresentation(credential: any, cnf: any): VerifiablePresentation{
     return {
       id: uuidv4(),
       holder: cnf,
       '@context': ["https://www.w3.org/2018/credentials/v1"],
       type: ["VerifiablePresentation"],
       verifiableCredential: [credential],
-      aud: aud
     }
   }
   
