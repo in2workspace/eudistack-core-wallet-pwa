@@ -1,13 +1,16 @@
 import { inject, Injectable } from '@angular/core';
 import { VCReply } from 'src/app/interfaces/verifiable-credential-reply';
-import { VerifiablePresentation } from './models/VerifiablePresentation';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { DescriptorMap, PresentationSubmission, VerifiablePresentation } from './models/VerifiablePresentation';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import { WebCryptoKeyStorageProvider } from '../../spi-impl/web-crypto-key-storage.service';
 import { firstValueFrom } from 'rxjs';
 import { JwtService } from '../oid4vci/jwt.service';
 import { v4 as uuidv4 } from "uuid";
 import { SERVER_PATH } from 'src/app/constants/api.constants';
+
+    const CUSTOMER_PRESENTATION_DEFINITION = "CustomerPresentationDefinition";
+    const CUSTOMER_PRESENTATION_SUBMISSION = "CustomerPresentationSubmission";
 
 
 @Injectable({
@@ -34,7 +37,9 @@ export class Oid4vpiEngineService {
 
     const cnf = credentialPayload.cnf;
     console.log("Credential cnf: ", cnf);
+
     const credentialSubjectId = credentialPayload.vc.credentialSubject.id;
+    console.log("Credential subject ID: ", credentialSubjectId);
 
     const verifiablPresentation = this.createVerifiablePresentation(selectedVC, cnf, aud);
     console.log("Unsigned Verifiable Presentation: ", verifiablPresentation);
@@ -67,9 +72,115 @@ export class Oid4vpiEngineService {
 
     const signedVpJwt = await this.signVpAsJwt(vpJwtPayload, keyId, thumbprint);
     console.log("Signed VP JWT: ", signedVpJwt);
-    //todo
-    //send signedVpJwt to Verifier
-    
+
+    const presentationSubmissionJson = this.buildPresentationSubmissionJson(verifiablPresentation, [selectedVC]);
+    console.log("Presentation Submission JSON: ", presentationSubmissionJson);
+
+    const verifierResponse = await this.postAuthorizationResponse(
+      selectorResponse.redirectUri,
+      selectorResponse.state,
+      signedVpJwt,
+      presentationSubmissionJson,
+      /* authorizationToken? */ undefined
+    );
+
+    console.log('Verifier response:', verifierResponse);
+  }
+
+  private buildDescriptorMapping(vp: VerifiablePresentation, vcJwts: string[]): DescriptorMap {
+  if (!vcJwts.length) {
+    throw new Error('No verifiable credentials provided');
+  }
+
+  const vcMaps: DescriptorMap[] = vcJwts.map((vcJwt, i) => ({
+    format: 'jwt_vc',
+    path: `$.verifiableCredential[${i}]`,
+    id: this.getVcIdFromJwt(vcJwt),
+    path_nested: null
+  }));
+
+  let chained: DescriptorMap = vcMaps[0];
+  for (let i = 1; i < vcMaps.length; i++) {
+    chained = {
+      ...chained,
+      path_nested: this.appendNested(chained.path_nested ?? null, vcMaps[i])
+    };
+  }
+
+  return {
+    format: 'jwt_vp',
+    path: '$',
+    id: vp.id,
+    path_nested: chained
+  };
+}
+
+private async postAuthorizationResponse(
+  redirectUri: string,
+  state: string,
+  vpJwt: string,
+  presentationSubmissionJson: string,
+  authorizationToken?: string
+): Promise<string> {
+
+  let body = new HttpParams()
+    .set('state', state)
+    .set('vp_token', vpJwt)
+    .set('presentation_submission', presentationSubmissionJson);
+
+  // Headers
+  let headers = new HttpHeaders({
+    'Content-Type': 'application/x-www-form-urlencoded'
+  });
+
+  // Only set Authorization if the verifier really requires it.
+  // In browsers this usually triggers CORS preflight.
+  if (authorizationToken) {
+    headers = headers.set('Authorization', `Bearer ${authorizationToken}`);
+  }
+
+  const resp = await firstValueFrom(
+    this.http.post(redirectUri, body.toString(), {
+      headers,
+      responseType: 'text',
+      observe: 'response'
+    })
+  );
+
+  // If verifier returns a redirect Location, browsers may hide it due to CORS.
+  // Still return body; caller can inspect resp.headers if available.
+  return resp.body ?? '';
+}
+
+private buildPresentationSubmissionJson(vp: VerifiablePresentation, vcJwts: string[]): string {
+  const rootMap = this.buildDescriptorMapping(vp, vcJwts);
+
+  const submission: PresentationSubmission = {
+    id: CUSTOMER_PRESENTATION_SUBMISSION,
+    definition_id: CUSTOMER_PRESENTATION_DEFINITION,
+    descriptor_map: [rootMap]
+  };
+
+  return JSON.stringify(submission);
+}
+
+private appendNested(existing: DescriptorMap | null, next: DescriptorMap): DescriptorMap {
+  if (!existing) return next;
+  return {
+    ...existing,
+    path_nested: this.appendNested(existing.path_nested ?? null, next)
+  };
+}
+
+  private getVcIdFromJwt(vcJwt: string): string {
+    const payload = this.jwtService.parseJwtPayload(vcJwt) as any;
+    const vc = payload?.vc;
+
+    if (!vc?.id) {
+      throw new Error('VC JWT payload does not contain vc.id');
+    }
+
+    return vc.id;
   }
 
   private async signVpAsJwt(vpJwtPayload: {}, keyId: string, kid: string): Promise<string> {
@@ -86,7 +197,7 @@ export class Oid4vpiEngineService {
     const signingBytes = new TextEncoder().encode(signingInput);
 
     const signature = await this.keyStorageProvider.sign(keyId, signingBytes);
-    
+
     if (signature.length !== 64) {
       throw new Error(`Unexpected signature length: ${signature.length} (expected 64 for ES256).`);
     }
