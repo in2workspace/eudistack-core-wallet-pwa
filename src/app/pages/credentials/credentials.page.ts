@@ -16,7 +16,7 @@ import { CameraLogsService } from 'src/app/services/camera-logs.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { ToastServiceHandler } from 'src/app/services/toast.service';
-import { catchError, finalize, forkJoin, from, Observable, of, switchMap, tap } from 'rxjs';
+import { catchError, finalize, forkJoin, from, Observable, of, switchMap, takeUntil, tap } from 'rxjs';
 import { ExtendedHttpErrorResponse } from 'src/app/interfaces/errors';
 import { LoaderService } from 'src/app/services/loader.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/helpers/get-credential-type.helpers';
@@ -80,7 +80,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     .subscribe();
 
     if (this.credentialOfferUri) {
-      this.sameDeviceVcActivationFlow();
+      this.sameDeviceVcActivationFlow(this.credentialOfferUri);
     }
   }
 
@@ -148,7 +148,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       //show VCs list
       this.closeScannerViewAndScanner();
       console.info('Requesting Credential Offer via cross-device flow.');
-      this.credentialActivationFlow();
+      this.credentialActivationFlow(qrCode);
     }else{
       // LOGIN / VERIFIABLE PRESENTATION
       // hide scanner but don't show VCs list
@@ -178,12 +178,12 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       }
   }
 
-  public sameDeviceVcActivationFlow(): void {
+  public sameDeviceVcActivationFlow(credentialOfferUri: string): void {
     console.info('Requesting Credential Offer via same-device flow.')
-    this.credentialActivationFlow();
+    this.credentialActivationFlow(credentialOfferUri);
   }
 
-  private credentialActivationFlow(): void{
+  private credentialActivationFlow(credentialOfferUri: string): void{
     const socketsToConnect: Promise<void>[] = [
       this.websocket.connectNotificationSocket(),
     ];
@@ -192,7 +192,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       .pipe(
         switchMap(() =>
           // this.walletService.requestOpenidCredentialOffer(this.credentialOfferUri)
-         this.oid4vciEngineService.executeOid4vciFlow(this.credentialOfferUri)
+         this.oid4vciEngineService.executeOid4vciFlow(credentialOfferUri)
         ),
 
         switchMap(() => this.handleActivationSuccess()),
@@ -204,6 +204,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
           return of(null);
         })
       )
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe();
   }
 
