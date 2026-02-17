@@ -40,6 +40,7 @@ type ProofJwtContext = {
   thumbprint: string;
 };
 
+//todo in this class and all class invoked by this one, show popup when error happens and handle it
 @Injectable({ providedIn: 'root' })
 export class Oid4vciEngineService {
   private readonly authorisationServerMetadataService = inject(AuthorisationServerMetadataService);
