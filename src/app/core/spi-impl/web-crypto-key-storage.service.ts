@@ -345,11 +345,17 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 /** Base64url encoding without external dependencies. */
 function base64UrlEncode(bytes: Uint8Array): string {
   const b64 = bytesToBase64(bytes);
-  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+
+  let out = b64.split('+').join('-').split('/').join('_');
+
+  while (out.endsWith('=')) {
+    out = out.slice(0, -1);
+  }
+
+  return out;
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
-  // English-only comments by convention.
   let binary = '';
   const chunkSize = 0x8000;
 

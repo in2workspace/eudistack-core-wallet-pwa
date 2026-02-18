@@ -42,7 +42,13 @@ export class JwtService {
       binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
     }
 
-    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    let out = btoa(binary).split('+').join('-').split('/').join('_');
+
+    while (out.endsWith('=')) {
+      out = out.slice(0, -1);
+    }
+
+    return out;
   }
 
   public base64EncodeUtf8(input: string): string {
