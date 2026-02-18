@@ -8,6 +8,6 @@ export interface FinalizeIssuancePayload{
   tokenResponse: TokenResponse;
   issuerMetadata: CredentialIssuerMetadata;
   authorisationServerMetadata: AuthorisationServerMetadata;
-  tokenObtainedAt: number; //Unix timestamp in seconds
+  tokenObtainedAt: number; // Unix timestamp in seconds
   format: string;
 }
