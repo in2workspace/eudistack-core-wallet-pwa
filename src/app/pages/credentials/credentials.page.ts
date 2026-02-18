@@ -153,35 +153,39 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       // LOGIN / VERIFIABLE PRESENTATION
       // hide scanner but don't show VCs list
       this.closeScanner();
-      this.loader.addLoadingProcess();
-
-      this.walletService.executeContent(qrCode).pipe(
-          switchMap((executionResponse) => {
-            return from(
-              this.router.navigate(['/tabs/vc-selector/'], {
-                queryParams: { executionResponse: JSON.stringify(executionResponse) },
-              })
-            );
-          }),
-
-          finalize(() => {
-            console.log("Finished processing QR code. Hiding loader.");
-            this.loader.removeLoadingProcess();
-          }),
-
-          catchError((error: ExtendedHttpErrorResponse) => {
-            this.websocket.closeNotificationConnection();
-            this.handleContentExecutionError(error);
-            return of(null);
-          })
-        )
-        .subscribe();
+      console.info('Processing QR code for verifiable presentation or login.');
+      this.verifiablePresentationFlow(qrCode);
       }
   }
 
-  public sameDeviceVcActivationFlow(credentialOfferUri: string): void {
+  private sameDeviceVcActivationFlow(credentialOfferUri: string): void {
     console.info('Requesting Credential Offer via same-device flow.')
     this.credentialActivationFlow(credentialOfferUri);
+  }
+
+  private verifiablePresentationFlow(qrCode: string): void{
+    this.loader.addLoadingProcess();
+
+    this.walletService.executeContent(qrCode).pipe(
+        switchMap((executionResponse) => {
+          return from(
+            this.router.navigate(['/tabs/vc-selector/'], {
+              queryParams: { executionResponse: JSON.stringify(executionResponse) },
+            })
+          );
+        }),
+
+        finalize(() => {
+          console.log("Finished processing QR code. Hiding loader.");
+          this.loader.removeLoadingProcess();
+        }),
+
+        catchError((error: ExtendedHttpErrorResponse) => {
+          this.handleContentExecutionError(error);
+          return of(null);
+        })
+      )
+      .subscribe();
   }
 
   private credentialActivationFlow(credentialOfferUri: string): void{
