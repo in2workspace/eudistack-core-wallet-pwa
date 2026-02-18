@@ -146,9 +146,7 @@ export class Oid4vciEngineService {
       tokenObtainedAt,
       format
     });
-
-    // Don't remove loadinProcess, it will be handled by the notification flow (currently websocket)
-    // this.loader.removeLoadingProcess();
+    
     return;
 
   }
@@ -156,7 +154,7 @@ export class Oid4vciEngineService {
 
   private postCredentialResponseWithStatus(credResponse: TempPostCredentialRequestBoyd): Promise<void> {
       return firstValueFrom(this.http.post<void>(
-          environment.server_url + SERVER_PATH.REQUEST_CREDENTIAL,
+          environment.server_url + SERVER_PATH.CREDENTIAL_RESPONSE,
           { ...credResponse },
           options
         ).pipe(tap(() => console.log("Posted credential response with status to server"))));
