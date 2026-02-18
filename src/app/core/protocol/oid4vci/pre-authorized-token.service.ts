@@ -9,7 +9,6 @@ import { PRE_AUTH_CODE_GRANT_TYPE } from 'src/app/constants/credential-offer.con
 import { AlertController, AlertOptions } from '@ionic/angular';
 import { LoaderService } from 'src/app/services/loader.service';
 import { TranslateService } from '@ngx-translate/core';
-import { ToastServiceHandler } from 'src/app/services/toast.service';
 
 //todo
 const TIMEOUT_DURATION_S = 55;
@@ -116,27 +115,40 @@ export class PreAuthorizedTokenService {
   }
 
   // todo review error cases (timeout, user cancellation, incorrect PIN)
-  private async openPromptAndGetCode(): Promise<string> {  
-    console.log("Opening prompt to get code.");  
-  
+  private async openPromptAndGetCode(): Promise<string> {
+    console.log('Opening prompt to get code.');
+
     const description = this.translate.instant('confirmation.description');
-    //todo review if it comes from Issuer
-    // const counter = data.timeout || 60;
     const counter = TIMEOUT_DURATION_S;
 
-    let interval: number;
+    let interval: number | undefined;
 
     const cancel = this.translate.instant('confirmation.cancel');
     const send = this.translate.instant('confirmation.send');
     const header = this.translate.instant('confirmation.pin');
 
     const message = this.translate.instant('confirmation.messageHtml', { description, counter });
-    
-    return new Promise<string>(async (resolve, reject) => {
+
+    return new Promise<string>((resolve, reject) => {
+      let settled = false;
 
       const cleanup = () => {
-        if (interval != null  || interval !== undefined) window.clearInterval(interval);
-        if (this.loadingTimeout != null || this.loadingTimeout !== undefined) clearTimeout(this.loadingTimeout);
+        if (interval != null) window.clearInterval(interval);
+        if (this.loadingTimeout != null) clearTimeout(this.loadingTimeout);
+      };
+
+      const safeResolve = (pin: string) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(pin);
+      };
+
+      const safeReject = (err: Error) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(err);
       };
 
       const alertOptions: AlertOptions = {
@@ -158,23 +170,21 @@ export class PreAuthorizedTokenService {
             text: cancel,
             role: 'cancel',
             handler: () => {
-              cleanup();
-              reject(new Error('User cancelled PIN entry'));
+              safeReject(new Error('User cancelled PIN entry'));
               return true;
             },
           },
           {
             text: send,
             handler: (alertData: { pin?: string }) => {
-              cleanup();
               const pin = String(alertData?.pin ?? '').trim();
 
               if (!pin) {
-                reject(new Error('PIN is empty'));
+                safeReject(new Error('PIN is empty'));
                 return false;
               }
 
-              resolve(pin);
+              safeResolve(pin);
               return true;
             },
           },
@@ -182,20 +192,25 @@ export class PreAuthorizedTokenService {
         backdropDismiss: false,
       };
 
-      const alert = await this.alertController.create(alertOptions);
+      this.alertController
+        .create(alertOptions)
+        .then((alert) => {
+          alert.onDidDismiss().then(() => {
+            // If user already resolved/rejected via buttons, do nothing.
+            if (settled) return;
+            safeReject(new Error('PIN request timed out'));
+          });
 
+          interval = this.startCountdown(alert, description, counter);
 
-      alert.onDidDismiss().then(() => {
-        if (interval != null) window.clearInterval(interval);
-        if (this.loadingTimeout != null) clearTimeout(this.loadingTimeout);
+          return alert.present();
+        })
+        .catch((err) => {
+          safeReject(err instanceof Error ? err : new Error(String(err)));
+        });
+    });
+  }
 
-        reject(new Error('PIN request timed out'));
-      });
-
-      interval = this.startCountdown(alert, description, counter);
-      await alert.present();
-  });
-}
 
   //todo move to shared file to avoid duplication with WebsocketService
     private startCountdown(
