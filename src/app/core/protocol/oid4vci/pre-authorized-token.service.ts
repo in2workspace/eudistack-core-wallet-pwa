@@ -45,13 +45,14 @@ export class PreAuthorizedTokenService {
   this.loader.addLoadingProcess();
   const raw = await this.getAccessToken(tokenURL, credentialOffer, code);
   this.loader.removeLoadingProcess();
+  
   return this.parseTokenResponse(raw);
 }
 
   private async getAccessToken(
     tokenURL: string,
     credentialOffer: CredentialOffer,
-    pin: string | null
+    code: string | null
   ): Promise<string> {
     const formData = new Map<string, string>();
     formData.set('grant_type', PRE_AUTH_CODE_GRANT_TYPE);
@@ -62,13 +63,12 @@ export class PreAuthorizedTokenService {
 
     if (
       credentialOffer?.grant?.preAuthorizedCodeGrant?.userPinRequired &&
-      pin != null &&
-      pin.length > 0
+      code != null &&
+      code.length > 0
     ) {
-      formData.set('user_pin', pin);
-    } else if (credentialOffer?.grant?.preAuthorizedCodeGrant?.txCode != null) {
-      // In the Java version, tx_code is sent with the provided "pin" value in this branch.
-      formData.set('tx_code', pin ?? '');
+      formData.set('user_pin', code);
+    } else if (credentialOffer?.grant?.preAuthorizedCodeGrant?.txCode != null && code && code.length > 0) {
+      formData.set('tx_code', code);
     }
 
     const body = this.toXWwwFormUrlEncoded(formData);

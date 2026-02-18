@@ -45,11 +45,6 @@ export class CredentialService {
     });
   }
 
-  // todo: call nonce_endpoint when supported
-  public getNonceValue(): string | null {
-    return null;
-  }
-
   private buildCredentialRequest(params: {
     jwtProof: string | null;
     format: string;

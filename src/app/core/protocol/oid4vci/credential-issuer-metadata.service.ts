@@ -40,11 +40,6 @@ export class CredentialIssuerMetadataService {
     }
   }
 
-  /**
-   * Mirrors the deprecated backend logic:
-   * - If JSON has "credential_token", return a version with authorizationServer hardcoded
-   * - Else return deserialized object as-is
-   */
   private parseCredentialIssuerMetadataResponse(responseText: string): CredentialIssuerMetadata {
     let root: any;
 
@@ -73,14 +68,12 @@ export class CredentialIssuerMetadataService {
 
   /**
    * Map/normalize from wire JSON to DTO.
-   * If your backend returns snake_case, add mappings here.
    */
   private mapCredentialIssuerMetadata(root: any): CredentialIssuerMetadata {
     //todo review
     if (!root || typeof root !== 'object') return {} as CredentialIssuerMetadata;
 
     return {
-      // Common OID4VCI fields are often snake_case; keep both when unsure.
       credentialIssuer: root.credential_issuer ?? root.credentialIssuer,
       credentialEndpoint: root.credential_endpoint ?? root.credentialEndpoint,
       deferredCredentialEndpoint: root.deferred_credential_endpoint ?? root.deferredCredentialEndpoint,

@@ -38,9 +38,9 @@ export class Oid4vciEngineService {
 
   public async executeOid4vciFlow(credentialOfferUri: string): Promise<void> {
     
-    // GET DATA FOR THE CREDENTIAL REQUEST
     this.loader.addLoadingProcess();
 
+    // GET DATA FOR THE CREDENTIAL REQUEST
     const credentialOffer = await this.credentialOfferService.getCredentialOfferFromCredentialOfferUri(credentialOfferUri);
     console.log("Credential Offer:", credentialOffer);
     
@@ -54,6 +54,7 @@ export class Oid4vciEngineService {
     console.log("Token:", token);
     
     this.loader.removeLoadingProcess();
+
     const tokenResponse = await this.preAuthorizedTokenService.getPreAuthorizedToken(credentialOffer, authorisationServerMetadata);
     console.log("tokenResponse:", tokenResponse);
     
@@ -98,7 +99,7 @@ export class Oid4vciEngineService {
     }
 
     // SEND THE CREDENTIAL RESPONSE TO THE API TO CALL THE NOTIFICATION ENDPOINT, SAVE THE CREDENTIAL AND HANDLE DEFERRED METADATA
-    //todo the "post-credential" logic that is currently done by the API will be moved to the client
+    // todo the "post-credential" logic that is currently done by the API will be moved to the client
 
     // Parse status code to match API expectations
     // todo consider refactoring the API

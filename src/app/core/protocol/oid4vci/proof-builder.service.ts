@@ -8,7 +8,7 @@ import { ProofJwtHeaderAndPayload } from '../../models/ProofJwt';
   providedIn: 'root'
 })
 export class ProofBuilderService {
-  //todo consider changing name to buildJwtProofPayload
+  //todo
   public buildHeaderAndPayload(nonce: string, issuer: string, publicKeyJwk: JsonWebKey): ProofJwtHeaderAndPayload {
     const nowSeconds = Math.floor(Date.now() / 1000);
     const expSeconds = nowSeconds + 10 * 24 * 60 * 60;
