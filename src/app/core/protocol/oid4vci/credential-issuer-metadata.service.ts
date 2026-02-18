@@ -2,8 +2,8 @@ import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CONTENT_TYPE, CONTENT_TYPE_APPLICATION_JSON } from 'src/app/constants/content-type.constants';
-import { CredentialOffer } from '../../models/CredentialOffer';
-import { CredentialIssuerMetadata } from '../../models/CredentialIssuerMetadata';
+import { CredentialOffer } from '../../models/dto/CredentialOffer';
+import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { environment } from 'src/environments/environment';
 
 

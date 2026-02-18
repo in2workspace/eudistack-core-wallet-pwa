@@ -1,10 +1,10 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { CredentialOffer } from '../../models/CredentialOffer';
-import { TokenResponse } from '../../models/TokenResponse';
+import { CredentialOffer } from '../../models/dto/CredentialOffer';
+import { TokenResponse } from '../../models/dto/TokenResponse';
 import { CONTENT_TYPE, CONTENT_TYPE_URL_ENCODED_FORM } from 'src/app/constants/content-type.constants';
-import { AuthorisationServerMetadata } from '../../models/AuthorisationServerMetadata';
+import { AuthorisationServerMetadata } from '../../models/dto/AuthorisationServerMetadata';
 import { PRE_AUTH_CODE_GRANT_TYPE } from 'src/app/constants/credential-offer.constants';
 import { AlertController, AlertOptions } from '@ionic/angular';
 import { LoaderService } from 'src/app/services/loader.service';

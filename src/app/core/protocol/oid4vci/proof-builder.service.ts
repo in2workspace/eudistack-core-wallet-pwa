@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { JWT_PROOF_CLAIM } from 'src/app/constants/jwt-proof.constants';
-import { JwtProofHeaderAndPayload } from '../../models/JwtProof';
+import { JWT_PROOF_CLAIM } from 'src/app/constants/jwt.constants';
+import { ProofJwtHeaderAndPayload } from '../../models/ProofJwt';
 
 
 
@@ -9,7 +9,7 @@ import { JwtProofHeaderAndPayload } from '../../models/JwtProof';
 })
 export class ProofBuilderService {
   //todo consider changing name to buildJwtProofPayload
-  public buildHeaderAndPayload(nonce: string, issuer: string, publicKeyJwk: JsonWebKey): JwtProofHeaderAndPayload {
+  public buildHeaderAndPayload(nonce: string, issuer: string, publicKeyJwk: JsonWebKey): ProofJwtHeaderAndPayload {
     const nowSeconds = Math.floor(Date.now() / 1000);
     const expSeconds = nowSeconds + 10 * 24 * 60 * 60;
 

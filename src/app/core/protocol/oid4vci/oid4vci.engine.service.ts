@@ -1,16 +1,13 @@
-import { AuthorisationServerMetadata } from '../../models/AuthorisationServerMetadata';
-import { CredentialResponseWithStatusCode, CredentialService } from './credential.service';
 import { inject, Injectable } from '@angular/core';
 import { CredentialOfferService } from './credential-offer.service';
 import { CredentialIssuerMetadataService } from './credential-issuer-metadata.service';
 import { AuthorisationServerMetadataService } from './authorisation-server-metadata.service';
 import { AuthenticationService } from 'src/app/services/authentication.service';
 import { PreAuthorizedTokenService } from './pre-authorized-token.service';
-import { CredentialIssuerMetadata, CredentialsConfigurationsSuppported } from '../../models/CredentialIssuerMetadata';
-import { CredentialOffer } from '../../models/CredentialOffer';
+import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
+import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { ProofBuilderService } from './proof-builder.service';
 import { WebCryptoKeyStorageProvider } from '../../spi-impl/web-crypto-key-storage.service';
-import { TokenResponse } from '../../models/TokenResponse';
 import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import { SERVER_PATH } from 'src/app/constants/api.constants';
@@ -18,28 +15,11 @@ import { options } from 'src/app/services/wallet.service';
 import { tap, firstValueFrom } from 'rxjs';
 import { JwtService } from './jwt.service';
 import { LoaderService } from 'src/app/services/loader.service';
-
-interface TempPostCredentialRequestBoyd{
-  credentialResponseWithStatus: CredentialResponseWithStatusCode;
-  tokenResponse: TokenResponse;
-  issuerMetadata: CredentialIssuerMetadata;
-  authorisationServerMetadata: AuthorisationServerMetadata;
-  tokenObtainedAt: number; //Unix timestamp in seconds
-  format: string;
-}
-
-interface CredentialConfigurationContext {
-  credentialConfigurationId: string;
-  configuration: CredentialsConfigurationsSuppported;
-  format: string;
-  isCryptographicBindingSupported: boolean;
-}
-
-type ProofJwtContext = {
-  jwt: string;
-  publicKeyJwk: JsonWebKey;
-  thumbprint: string;
-};
+import { CredentialService } from './credential.service';
+import { CredentialResponseWithStatus, CredentialResponseWithStatusCode } from '../../models/CredentialResponseWithStatus';
+import { CredentialConfigurationContext } from '../../models/CredentialConfigurationContext';
+import { FinalizeIssuancePayload } from '../../models/FinalizeIssuancePayload';
+import { ProofJwtContext } from '../../models/ProofJwt';
 
 //todo in this class and all class invoked by this one, show popup when error happens and handle it
 @Injectable({ providedIn: 'root' })
@@ -74,7 +54,7 @@ export class Oid4vciEngineService {
     console.log("Token:", token);
     
     this.loader.removeLoadingProcess();
-    const tokenResponse: TokenResponse = await this.preAuthorizedTokenService.getPreAuthorizedToken(credentialOffer, authorisationServerMetadata);
+    const tokenResponse = await this.preAuthorizedTokenService.getPreAuthorizedToken(credentialOffer, authorisationServerMetadata);
     console.log("tokenResponse:", tokenResponse);
     
     this.loader.addLoadingProcess();
@@ -112,18 +92,7 @@ export class Oid4vciEngineService {
 
     // VALIDATE CNF FROM THE API RESPONSE
     if (jwtProof && proofPublicJwk) {
-      console.log("Validating cnf with proof public JWK:", proofPublicJwk);
-      const credentialJwt = credentialResponseWithStatus.credentialResponse.credentials?.[0].credential;
-      if (!credentialJwt || typeof credentialJwt !== 'string') throw Error("Credential JWT is null or has an invalid type.");
-      const payload = this.jwtService.parseJwtPayload(credentialJwt) as any;
-      const cnf = payload?.cnf;
-      const isCnfValid = await this.keyStorageProvider.isCnfBoundToPublicKey(cnf, proofPublicJwk);
-
-      if(!isCnfValid){
-        throw new Error("The cnf of the credential doesn't match the stored public key.");
-      }
-
-      console.log("Cnf was validated.");
+      await this.validateCredentialCnf(credentialResponseWithStatus, jwtProof, proofPublicJwk);
     }else{
       console.warn("Skipping cnf validation since no proof JWT was generated.");
     }
@@ -131,14 +100,15 @@ export class Oid4vciEngineService {
     // SEND THE CREDENTIAL RESPONSE TO THE API TO CALL THE NOTIFICATION ENDPOINT, SAVE THE CREDENTIAL AND HANDLE DEFERRED METADATA
     //todo the "post-credential" logic that is currently done by the API will be moved to the client
 
-    //parse status code to match API expectations
+    // Parse status code to match API expectations
+    // todo consider refactoring the API
     const credentialResponseWithStatusCode: CredentialResponseWithStatusCode = {
       statusCode: credentialResponseWithStatus.status, ...credentialResponseWithStatus
     }
-
     
     const tokenObtainedAt = Math.floor(Date.now() / 1000);
-    await this.postCredentialResponseWithStatus({
+
+    await this.sendCredentialToFinalizeCredentialIssuance({
       credentialResponseWithStatus: credentialResponseWithStatusCode,
       tokenResponse,
       issuerMetadata: credentialIssuerMetadata,
@@ -146,13 +116,40 @@ export class Oid4vciEngineService {
       tokenObtainedAt,
       format
     });
-    
+
     return;
 
   }
 
+  private async validateCredentialCnf(
+    credentialResponseWithStatus: CredentialResponseWithStatus,
+    jwtProof: string | null,
+    proofPublicJwk: JsonWebKey | null
+  ): Promise<void> {
+    if (!jwtProof || !proofPublicJwk) {
+      console.warn("Skipping cnf validation since no proof JWT was generated.");
+      return;
+    }
 
-  private postCredentialResponseWithStatus(credResponse: TempPostCredentialRequestBoyd): Promise<void> {
+    console.log("Validating cnf with proof public JWK:", proofPublicJwk);
+
+    const credentialJwt = credentialResponseWithStatus.credentialResponse.credentials?.[0].credential;
+    if (!credentialJwt || typeof credentialJwt !== 'string') {
+      throw new Error("Credential JWT is null or has an invalid type.");
+    }
+
+    const payload = this.jwtService.parseJwtPayload(credentialJwt) as any;
+    const cnf = payload?.cnf;
+
+    const isCnfValid = await this.keyStorageProvider.isCnfBoundToPublicKey(cnf, proofPublicJwk);
+    if (!isCnfValid) {
+      throw new Error("The cnf of the credential doesn't match the stored public key.");
+    }
+
+    console.log("Cnf was validated.");
+  }
+
+  private sendCredentialToFinalizeCredentialIssuance(credResponse: FinalizeIssuancePayload): Promise<void> {
       return firstValueFrom(this.http.post<void>(
           environment.server_url + SERVER_PATH.CREDENTIAL_RESPONSE,
           { ...credResponse },

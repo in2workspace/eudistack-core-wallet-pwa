@@ -2,8 +2,8 @@ import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CONTENT_TYPE, CONTENT_TYPE_APPLICATION_JSON } from 'src/app/constants/content-type.constants';
-import { CredentialIssuerMetadata } from '../../models/CredentialIssuerMetadata';
-import { AuthorisationServerMetadata } from '../../models/AuthorisationServerMetadata';
+import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
+import { AuthorisationServerMetadata } from '../../models/dto/AuthorisationServerMetadata';
 
 @Injectable({ providedIn: 'root' })
 export class AuthorisationServerMetadataService {

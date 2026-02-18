@@ -1,34 +1,14 @@
 import { CONTENT_TYPE_APPLICATION_JSON } from 'src/app/constants/content-type.constants';
 import { inject, Injectable } from '@angular/core';
-import { TokenResponse } from '../../models/TokenResponse';
-import { CredentialIssuerMetadata } from '../../models/CredentialIssuerMetadata';
+import { TokenResponse } from '../../models/dto/TokenResponse';
+import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { firstValueFrom, tap } from 'rxjs';
+import { CredentialResponseWithStatus } from '../../models/CredentialResponseWithStatus';
+import { CredentialRequest } from '../../models/CredentialRequest';
+import { CredentialResponse } from '../../models/dto/CredentialResponse';
+import { JWT_VC_JSON } from 'src/app/constants/jwt.constants';
 
-export interface CredentialResponseWithStatus {
-  credentialResponse: CredentialResponse;
-  status: number;
-}
-
-export interface CredentialResponseWithStatusCode {
-  credentialResponse: CredentialResponse;
-  statusCode: number;
-}
-
-export interface CredentialResponse {
-  // todo
-  credentials?: { credential: string }[];
-  transaction_id?: string;
-  c_nonce?: string;
-  c_nonce_expires_in?: number; 
-}
-  
-  
-  export interface CredentialRequest {
-    format: string;
-    credential_configuration_id: string;
-    proof?: { proof_type: string; jwt: string; }; 
-  } 
   
 @Injectable({ providedIn: 'root' })
 export class CredentialService {
@@ -78,9 +58,6 @@ export class CredentialService {
     if (!params.credentialConfigurationId) {
       throw new Error('Credentials configurations ids not provided');
     }
-
-    // todo make constant
-    const JWT_VC_JSON = 'jwt_vc_json';
 
     if (params.format !== JWT_VC_JSON) {
       throw new Error(`Format not supported: ${params.format}`);

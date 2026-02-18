@@ -95,7 +95,11 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 }
 
   public async isCnfBoundToPublicKey(unparsedCnf: unknown, publicKeyJwk: JsonWebKey): Promise<boolean> {
-    console.log("Validating if cnf matches public key:" + unparsedCnf + "" + publicKeyJwk);
+    console.log("Validating if cnf matches public key. Unparsed cnf:");
+    console.log(unparsedCnf);
+    console.log("Public key JWK:");
+    console.log(publicKeyJwk);
+    
     const cnf = unparsedCnf as any;
     if (!cnf) return false;
 
