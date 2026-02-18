@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AlertController, IonicModule } from '@ionic/angular';
 import { QRCodeModule } from 'angularx-qrcode';
+import { WalletService } from 'src/app/services/wallet.service';
 import { ActivatedRoute, Params, Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { VcViewComponent } from '../../components/vc-view/vc-view.component';
@@ -13,7 +14,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LoaderService } from 'src/app/services/loader.service';
 import { ToastServiceHandler } from 'src/app/services/toast.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/helpers/get-credential-type.helpers';
-import { Oid4vpiEngineService } from 'src/app/core/protocol/oid4vp/oid4vpi.engine.service';
 
 // todo: show only VCs with powers to login
 // todo: if user has only one VC, use this directly
@@ -56,7 +56,7 @@ export class VcSelectorPage {
   private readonly router = inject(Router);
   private readonly toastService = inject(ToastServiceHandler);
   private readonly translate = inject(TranslateService);
-  private readonly oid4vpiEngineService = inject(Oid4vpiEngineService);
+  private readonly walletService = inject(WalletService);
 
 
   public constructor() {
@@ -141,26 +141,31 @@ export class VcSelectorPage {
       this.selCredList.push(cred);
       this._VCReply.selectedVcList = this.selCredList;
       this.loader.addLoadingProcess();
-      try {
-        await this.oid4vpiEngineService.buildVerifiablePresentationWithSelectedVCs(this._VCReply);
-
-        this.router.navigate(['/tabs/home']);
-        this.okMessage();
-      } catch (err) {
-        this.handleError(err);
-      } finally {
-        this.loader.removeLoadingProcess();
-        this.selCredList = [];
-      }
+      //todo implement VP flow
+      this.walletService.executeVC(this._VCReply)
+      .subscribe({
+        next: () => {
+          this.loader.removeLoadingProcess();
+          this.router.navigate(['/tabs/home']);
+          this.okMessage();
+        },
+        error: err => {
+          this.loader.removeLoadingProcess();
+          this.handleError(err);
+        },
+        complete: () => {
+          this.selCredList = [];
+        },
+      });
     }
   }
 
-  private async handleError(err: any) {
-    console.error(err);
-    await this.errorMessage(err.status);
-    this.router.navigate(['/tabs/home']);
-    this.selCredList = [];
-  }
+private async handleError(err: any) {
+  console.error(err);
+  await this.errorMessage(err.status);
+  this.router.navigate(['/tabs/home']);
+  this.selCredList = [];
+}
 
 
   public async errorMessage(statusCode: number) {
