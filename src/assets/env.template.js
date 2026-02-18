@@ -14,4 +14,5 @@
   window["env"]["logo_path"]= "${LOGO_PATH}";
   window["env"]["favicon_path"]= "${FAVICON_PATH}";
   window["env"]["default_lang"] =  "${DEFAULT_LANG}";
+  window["env"]["browser_signature_enabled"] = "${BROWSER_SIGNATURE_ENABLED}";
 })(this);

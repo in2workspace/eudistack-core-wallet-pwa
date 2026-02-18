@@ -14,6 +14,7 @@ interface Window {
       logo_path?: string;
       favicon_path?: string;
       default_lang: string;
+      browser_signature_enabled: string;
     };
   }
   
