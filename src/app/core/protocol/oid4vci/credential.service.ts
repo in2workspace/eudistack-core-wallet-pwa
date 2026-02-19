@@ -1,19 +1,19 @@
-import { CONTENT_TYPE_APPLICATION_JSON } from 'src/app/constants/content-type.constants';
 import { inject, Injectable } from '@angular/core';
 import { TokenResponse } from '../../models/dto/TokenResponse';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
-import { HttpClient, HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
-import { firstValueFrom, tap } from 'rxjs';
+import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { CredentialResponseWithStatus } from '../../models/CredentialResponseWithStatus';
 import { CredentialRequest } from '../../models/CredentialRequest';
 import { CredentialResponse } from '../../models/dto/CredentialResponse';
 import { JWT_VC_JSON } from 'src/app/constants/jwt.constants';
+import { WalletService } from 'src/app/services/wallet.service';
 
   
 @Injectable({ providedIn: 'root' })
 export class CredentialService {
   
-  private readonly http = inject(HttpClient);
+  private readonly walletService = inject(WalletService);
 
   public async getCredential(params: {
     jwtProof: string | null;
@@ -79,20 +79,12 @@ export class CredentialService {
     body: unknown;
   }): Promise<CredentialResponseWithStatus> {
     console.log("Posting credential request with params:", params);
-    //todo maybe reusable
-    const headers = new HttpHeaders({
-      Authorization: `Bearer ${params.accessToken}`,
-      CONTENT_TYPE: CONTENT_TYPE_APPLICATION_JSON,
-    });
 
     let response: HttpResponse<CredentialResponse>;
 
     try {
       response = await firstValueFrom(
-        this.http.post<CredentialResponse>(params.endpoint, params.body, {
-          headers,
-          observe: 'response',
-        }).pipe(tap(resp=> console.log("Received credential response:", resp)))
+        this.walletService.postFromUrlAndObserveResponse(params.endpoint, params.body as {})
       );
     } catch (e) {
       if (e instanceof HttpErrorResponse) {

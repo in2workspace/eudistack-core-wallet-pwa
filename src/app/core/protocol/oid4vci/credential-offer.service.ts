@@ -1,14 +1,14 @@
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { firstValueFrom, from } from 'rxjs';
-import { CONTENT_TYPE, CONTENT_TYPE_APPLICATION_JSON } from 'src/app/constants/content-type.constants';
+import { firstValueFrom } from 'rxjs';
 import { CredentialOffer, CredentialOfferCredential, CredentialOfferGrant } from '../../models/dto/CredentialOffer';
 import { PRE_AUTH_CODE_GRANT_TYPE } from 'src/app/constants/credential-offer.constants';
+import { WalletService } from 'src/app/services/wallet.service';
 
 @Injectable({ providedIn: 'root' })
 export class CredentialOfferService {
  
-  private readonly http = inject(HttpClient);
+  private readonly walletService = inject(WalletService);
 
   async getCredentialOfferFromCredentialOfferUri(
     credentialOfferUri: string
@@ -36,11 +36,9 @@ export class CredentialOfferService {
     }
   }
 
-    private async getCredentialOffer(credentialOfferUri: string): Promise<string> {
-    const headers = new HttpHeaders({ [CONTENT_TYPE]: CONTENT_TYPE_APPLICATION_JSON });
-
+  private async getCredentialOffer(credentialOfferUri: string): Promise<string> {
     try {
-      return firstValueFrom(this.http.get(credentialOfferUri, { headers, responseType: 'text' }));
+      return firstValueFrom(this.walletService.getTextFromUrl(credentialOfferUri));
     } catch (e) {
       console.error('Error fetching credential offer:', e);
       // todo handle error
@@ -48,7 +46,7 @@ export class CredentialOfferService {
     }
   }
 
-    private parseAndNormalizeCredentialOffer(responseText: string): CredentialOffer {
+  private parseAndNormalizeCredentialOffer(responseText: string): CredentialOffer {
     const root = this.parseJsonOrThrow(responseText);
     const normalizedRoot = this.normalizeCredentialsShape(root);
     return this.mapCredentialOffer(normalizedRoot);

@@ -1,14 +1,14 @@
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { CONTENT_TYPE, CONTENT_TYPE_APPLICATION_JSON } from 'src/app/constants/content-type.constants';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { AuthorisationServerMetadata } from '../../models/dto/AuthorisationServerMetadata';
+import { WalletService } from 'src/app/services/wallet.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthorisationServerMetadataService {
 
-  private readonly http = inject(HttpClient);
+  private readonly walletService = inject(WalletService);
 
   async getAuthorizationServerMetadataFromCredentialIssuerMetadata(
     credentialIssuerMetadata: CredentialIssuerMetadata
@@ -34,14 +34,10 @@ export class AuthorisationServerMetadataService {
       throw new Error('Missing required field: authorizationServer/credentialIssuer');
     }
 
-    const headers = new HttpHeaders({
-      [CONTENT_TYPE]: CONTENT_TYPE_APPLICATION_JSON,
-    });
-
     const url = `${authServer}/.well-known/openid-configuration`;
 
     try {
-      return await firstValueFrom(this.http.get(url, { headers, responseType: 'text' }));
+      return await firstValueFrom(this.walletService.getTextFromUrl(url));
     } catch (e) {
       throw e as HttpErrorResponse;
     }

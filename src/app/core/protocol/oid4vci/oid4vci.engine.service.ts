@@ -8,11 +8,8 @@ import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetad
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { ProofBuilderService } from './proof-builder.service';
 import { WebCryptoKeyStorageProvider } from '../../spi-impl/web-crypto-key-storage.service';
-import { HttpClient } from '@angular/common/http';
-import { environment } from 'src/environments/environment';
-import { SERVER_PATH } from 'src/app/constants/api.constants';
-import { options } from 'src/app/services/wallet.service';
-import { tap, firstValueFrom } from 'rxjs';
+import { WalletService } from 'src/app/services/wallet.service';
+import { firstValueFrom } from 'rxjs';
 import { JwtService } from './jwt.service';
 import { LoaderService } from 'src/app/services/loader.service';
 import { CredentialService } from './credential.service';
@@ -29,12 +26,12 @@ export class Oid4vciEngineService {
   private readonly credentialIssuerMetadataService = inject(CredentialIssuerMetadataService);
   private readonly credentialOfferService = inject(CredentialOfferService);
   private readonly credentialService = inject(CredentialService);
-  private readonly http = inject(HttpClient);
-  private readonly jwtService =inject(JwtService);
+  private readonly jwtService = inject(JwtService);
   private readonly keyStorageProvider = inject(WebCryptoKeyStorageProvider);
   private readonly loader = inject(LoaderService);
   private readonly preAuthorizedTokenService = inject(PreAuthorizedTokenService);
   private readonly proofBuilderService = inject(ProofBuilderService);
+  private readonly walletService = inject(WalletService);
 
   public async executeOid4vciFlow(credentialOfferUri: string): Promise<void> {
     
@@ -151,11 +148,7 @@ export class Oid4vciEngineService {
   }
 
   private sendCredentialToFinalizeCredentialIssuance(credResponse: FinalizeIssuancePayload): Promise<void> {
-      return firstValueFrom(this.http.post<void>(
-          environment.server_url + SERVER_PATH.CREDENTIAL_RESPONSE,
-          { ...credResponse },
-          options
-        ).pipe(tap(() => console.log("Posted credential response with status to server"))));
+      return firstValueFrom(this.walletService.finalizeCredentialIssuance(credResponse));
   }
 
   private resolveCredentialConfigurationContext(

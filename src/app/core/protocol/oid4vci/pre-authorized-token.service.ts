@@ -1,14 +1,14 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { TokenResponse } from '../../models/dto/TokenResponse';
-import { CONTENT_TYPE, CONTENT_TYPE_URL_ENCODED_FORM } from 'src/app/constants/content-type.constants';
 import { AuthorisationServerMetadata } from '../../models/dto/AuthorisationServerMetadata';
 import { PRE_AUTH_CODE_GRANT_TYPE } from 'src/app/constants/credential-offer.constants';
 import { AlertController, AlertOptions } from '@ionic/angular';
 import { LoaderService } from 'src/app/services/loader.service';
 import { TranslateService } from '@ngx-translate/core';
+import { WalletService } from 'src/app/services/wallet.service';
 
 //todo
 const TIMEOUT_DURATION_S = 55;
@@ -16,7 +16,7 @@ const TIMEOUT_DURATION_S = 55;
 
 @Injectable({ providedIn: 'root' })
 export class PreAuthorizedTokenService {
-  private readonly http = inject(HttpClient);
+  private readonly walletService = inject(WalletService);
   private readonly alertController = inject(AlertController);
   private readonly loader = inject(LoaderService);
   private readonly translate = inject(TranslateService);
@@ -42,6 +42,7 @@ export class PreAuthorizedTokenService {
   }
 
   this.loader.addLoadingProcess();
+  //todo add error handler to communicat pin error or pin expired
   const raw = await this.getAccessToken(tokenURL, credentialOffer, code);
   this.loader.removeLoadingProcess();
   
@@ -73,11 +74,9 @@ export class PreAuthorizedTokenService {
     const body = this.toXWwwFormUrlEncoded(formData);
 
     try {
+      //todo if error, show error popup to say PIN is incorrect
       return await firstValueFrom(
-        this.http.post(tokenURL, body, {
-          headers: new HttpHeaders({ [CONTENT_TYPE]: CONTENT_TYPE_URL_ENCODED_FORM }),
-          responseType: 'text'
-        })
+        this.walletService.postFromUrlForTextResponse(tokenURL, body)
       );
     } catch (e: unknown) {
       const err = e as HttpErrorResponse;
@@ -198,6 +197,7 @@ export class PreAuthorizedTokenService {
           alert.onDidDismiss().then(() => {
             // If user already resolved/rejected via buttons, do nothing.
             if (settled) return;
+            //todo show error popup
             safeReject(new Error('PIN request timed out'));
           });
 

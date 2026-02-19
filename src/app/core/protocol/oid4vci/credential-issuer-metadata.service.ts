@@ -1,17 +1,17 @@
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { CONTENT_TYPE, CONTENT_TYPE_APPLICATION_JSON } from 'src/app/constants/content-type.constants';
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { environment } from 'src/environments/environment';
+import { WalletService } from 'src/app/services/wallet.service';
 
 
 
 @Injectable({ providedIn: 'root' })
 export class CredentialIssuerMetadataService {
 
-  private readonly http = inject(HttpClient);
+  private readonly walletService = inject(WalletService);
 
   async getCredentialIssuerMetadataFromCredentialOffer(
     credentialOffer: CredentialOffer
@@ -27,14 +27,9 @@ export class CredentialIssuerMetadataService {
   }
 
   private async getCredentialIssuerMetadata(credentialIssuerURL: string): Promise<string> {
-    const headers = new HttpHeaders({
-      [CONTENT_TYPE]: CONTENT_TYPE_APPLICATION_JSON,
-    });
 
     try {
-      return await firstValueFrom(
-        this.http.get(credentialIssuerURL, { headers, responseType: 'text' })
-      );
+      return await firstValueFrom(this.walletService.getTextFromUrl(credentialIssuerURL));
     } catch (e) {
       throw e as HttpErrorResponse;
     }
