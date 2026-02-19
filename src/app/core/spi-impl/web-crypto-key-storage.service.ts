@@ -1,20 +1,6 @@
 import { Injectable } from '@angular/core';
-import { KeyInfo, KeyStorageProvider, PublicKeyInfo, RawKeyAlgorithm } from '../spi/key-storage.provider.service';
-
-interface StoredKeyRecord {
-  keyId: string;
-  algorithm: RawKeyAlgorithm;
-  publicKeyJwk: JsonWebKey;
-  privateKey: CryptoKey; // Opaque object, non-exportable
-  publicKey: CryptoKey;
-  kid: string; // JWK thumbprint (RFC 7638)
-  createdAt: string;
-}
-
-interface AlgorithmParams {
-  algorithm: EcKeyGenParams;   // For generateKey() with ECDSA
-  usages: KeyUsage[];          // ['sign','verify']
-}
+import { KeyStorageProvider } from '../spi/key-storage.provider.service';
+import { StoredKeyRecord, RawKeyAlgorithm, PublicKeyInfo, KeyInfo, AlgorithmParams } from '../models/StoredKeyRecord';
 
 //todo review browser compatibility - storing of crypto keys in IndexedDB especially
 @Injectable({ providedIn: 'root' })
