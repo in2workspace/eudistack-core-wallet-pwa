@@ -28,4 +28,4 @@ export interface AlgorithmParams {
   usages: KeyUsage[];          // ['sign','verify']
 }
 
-export type RawKeyAlgorithm = 'ES256';
+export type RawKeyAlgorithm = 'ES256'; // For now we only support ES256

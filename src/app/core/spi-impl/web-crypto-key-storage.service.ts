@@ -7,26 +7,111 @@ import { StoredKeyRecord, RawKeyAlgorithm, PublicKeyInfo, KeyInfo, AlgorithmPara
 export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
   private readonly DB_NAME = 'wallet-key-storage';
   private readonly STORE_NAME = 'keys';
-  private readonly DB_VERSION = 1; //todo
+  private readonly DB_VERSION = 1;
+
+  public browserIsCompatible: boolean | null = null;
+  private compatPromise: Promise<void> | null = null;
 
   constructor() {
-    //todo review
-    if (!globalThis.crypto?.subtle) {
-      throw new Error('Web Crypto API (crypto.subtle) is not available in this environment.');
+    const subtle = globalThis.crypto?.subtle;
+    if (!subtle) {
+      throw new Error(
+        'Web Crypto API (crypto.subtle) is not available. Ensure you are using a modern browser and HTTPS.'
+      );
     }
+
     if (!globalThis.indexedDB) {
       throw new Error('IndexedDB is not available in this environment.');
     }
+
     super();
   }
 
+  //todo consier executing in initialization
+  public checkBrowserCompatibility(): Promise<void> {
+    if (this.browserIsCompatible === true) return Promise.resolve();
+    if (this.browserIsCompatible === false) {
+      return Promise.reject(
+        new Error(
+          'This browser is not compatible: it cannot reliably store WebCrypto CryptoKey objects in IndexedDB.'
+        )
+      );
+    }
+
+    if (!this.compatPromise) {
+      this.compatPromise = this.runCompatibilityCheckOnce();
+    }
+    return this.compatPromise;
+  }
+
+  private async runCompatibilityCheckOnce(): Promise<void> {
+    const ok = await this.selfTestCryptoKeyStorage();
+    this.browserIsCompatible = ok;
+
+    if (!ok) {
+      console.error('CryptoKey/IndexedDB compatibility test failed:', ok);
+
+      throw new Error(
+        'Your browser supports Web Crypto and IndexedDB, but it cannot reliably persist CryptoKey objects. ' +
+        "Try a different browser/profile, exit private mode, or delete 'wallet-key-storage' in DevTools and reload."
+      );
+    }
+  }
+
+  private async selfTestCryptoKeyStorage(): Promise<boolean> {
+    const testKeyId = `__compat_test__${globalThis.crypto.randomUUID?.() ?? String(Date.now())}`;
+    let saved = false;
+
+    try {
+      const params = this.getAlgorithmParams('ES256');
+      const keyPair = await globalThis.crypto.subtle.generateKey(params.algorithm, false, params.usages);
+
+      const publicKeyJwk = await globalThis.crypto.subtle.exportKey('jwk', keyPair.publicKey);
+
+      const record: StoredKeyRecord = {
+        keyId: testKeyId,
+        algorithm: 'ES256',
+        publicKeyJwk,
+        privateKey: keyPair.privateKey,
+        publicKey: keyPair.publicKey,
+        kid: 'compat-test',
+        createdAt: new Date().toISOString(),
+      };
+
+      await this.saveKeyRecord(record);
+      saved = true;
+
+      const loaded = await this.getKeyRecord(testKeyId);
+      if (!loaded?.privateKey || !loaded?.publicKey) return false;
+
+      const data = new TextEncoder().encode('compat');
+      const sig = await globalThis.crypto.subtle.sign(this.getSignatureParams('ES256'), loaded.privateKey, data);
+
+      const ok = await globalThis.crypto.subtle.verify(this.getSignatureParams('ES256'), loaded.publicKey, sig, data);
+
+      return ok === true;
+    } catch {
+      return false;
+    } finally {
+      if (saved) {
+        try {
+          await this.deleteKey(testKeyId);
+        } catch {
+          console.warn('Failed to delete compatibility test record from IndexedDB.');
+        }
+      }
+    }
+  }
+
   async generateKeyPair(algorithm: RawKeyAlgorithm, keyId: string): Promise<PublicKeyInfo> {
+    await this.checkBrowserCompatibility();
+
     const params = this.getAlgorithmParams(algorithm);
     console.log("Generating key pair with params:", params);
 
     // Generate NON-EXTRACTABLE key pair (critical).
     // We assume it is a key pair because currently only ECDSA is supported (with symmetric algorithms only one is returned).
-    const keyPair = await crypto.subtle.generateKey(
+    const keyPair = await globalThis.crypto.subtle.generateKey(
       params.algorithm,
       false, // extractable = false
       params.usages
@@ -34,7 +119,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
     console.log("Key pair generated:", keyPair);
 
 
-    const publicKeyJwk = await crypto.subtle.exportKey('jwk', keyPair.publicKey);
+    const publicKeyJwk = await globalThis.crypto.subtle.exportKey('jwk', keyPair.publicKey);
 
     // Compute kid as JWK thumbprint (RFC 7638).
     const kid = await this.computeJwkThumbprint(publicKeyJwk);
@@ -63,22 +148,24 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
   }
 
   async sign(keyId: string, data: Uint8Array): Promise<Uint8Array> {
-  const record = await this.getKeyRecord(keyId);
-  if (!record) throw new Error(`Key not found: ${keyId}`);
+    await this.checkBrowserCompatibility();
 
-  const params = this.getSignatureParams(record.algorithm);
+    const record = await this.getKeyRecord(keyId);
+    if (!record) throw new Error(`Key not found: ${keyId}`);
 
-  // Copy into a fresh ArrayBuffer to satisfy BufferSource typings.
-  const dataForCrypto = new Uint8Array(data);
+    const params = this.getSignatureParams(record.algorithm);
 
-  const signature = await globalThis.crypto.subtle.sign(
-    params,
-    record.privateKey,
-    dataForCrypto
-  );
+    // Copy into a fresh ArrayBuffer to satisfy BufferSource typings.
+    const dataForCrypto = new Uint8Array(data);
 
-  return new Uint8Array(signature);
-}
+    const signature = await globalThis.crypto.subtle.sign(
+      params,
+      record.privateKey,
+      dataForCrypto
+    );
+
+    return new Uint8Array(signature);
+  }
 
   public async isCnfBoundToPublicKey(unparsedCnf: unknown, publicKeyJwk: JsonWebKey): Promise<boolean> {
     console.log("Validating if cnf matches public key. Unparsed cnf:");
@@ -143,7 +230,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
     // This will throw if the private key is non-extractable (expected for this provider).
     try {
-      return await crypto.subtle.exportKey('jwk', record.privateKey);
+      return await globalThis.crypto.subtle.exportKey('jwk', record.privateKey);
     } catch (e) {
       throw new Error(
         'Private key export is not allowed (non-extractable key). Use an Enterprise flow that generates extractable keys + encrypted backup.'
@@ -156,7 +243,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
     const params = this.getAlgorithmParams(algorithm);
 
     // Import private key as NON-EXTRACTABLE.
-    const privateKey = await crypto.subtle.importKey(
+    const privateKey = await globalThis.crypto.subtle.importKey(
       'jwk',
       jwk,
       params.algorithm,
@@ -168,7 +255,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
     const publicKeyJwk: JsonWebKey = { ...jwk };
     delete (publicKeyJwk as any).d;
 
-    const publicKey = await crypto.subtle.importKey(
+    const publicKey = await globalThis.crypto.subtle.importKey(
       'jwk',
       publicKeyJwk,
       params.algorithm,
@@ -233,7 +320,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
       y: y,
     });
 
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(thumbprintInput));
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(thumbprintInput));
     return base64UrlEncode(new Uint8Array(digest));
   }
 
@@ -249,33 +336,27 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
   }
 
   private async openDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
 
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
 
-    request.onupgradeneeded = () => {
-      const db = request.result;
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        const transaction = request.transaction;
+        if (!transaction) throw new Error('IndexedDB upgrade transaction not available.');
 
-      // Create store if missing (fresh install)
-      let store: IDBObjectStore;
-      if (!db.objectStoreNames.contains(this.STORE_NAME)) {
-        store = db.createObjectStore(this.STORE_NAME, { keyPath: 'keyId' });
-      } else {
-        // Existing DB upgrade
-        const tx = request.transaction;
-        if (!tx) throw new Error('IndexedDB upgrade transaction not available.');
-        store = tx.objectStore(this.STORE_NAME);
-      }
+        const store = db.objectStoreNames.contains(this.STORE_NAME)
+          ? transaction.objectStore(this.STORE_NAME)
+          : db.createObjectStore(this.STORE_NAME, { keyPath: 'keyId' });
 
-      // Create index if missing (upgrade from v1 -> v2)
-      if (!store.indexNames.contains('kid')) {
-        store.createIndex('kid', 'kid', { unique: true });
-      }
-    };
-  });
-}
+        if (!store.indexNames.contains('kid')) {
+          store.createIndex('kid', 'kid', { unique: true });
+        }
+      };
+    });
+  }
   private async getKeyRecord(keyId: string): Promise<StoredKeyRecord | null> {
     const db = await this.openDatabase();
     const tx = db.transaction(this.STORE_NAME, 'readonly');
@@ -317,8 +398,16 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
     const db = await this.openDatabase();
     const tx = db.transaction(this.STORE_NAME, 'readonly');
     const store = tx.objectStore(this.STORE_NAME);
-    const idx = store.index('kid');
 
+    if (!store.indexNames.contains('kid')) {
+      await this.awaitTx(tx);
+      db.close();
+      throw new Error(
+        "IndexedDB schema is missing the 'kid' index. Delete the 'wallet-key-storage' database in DevTools and reload."
+      );
+    }
+
+    const idx = store.index('kid');
     const record = (await this.wrapRequest(idx.get(kid))) as StoredKeyRecord | undefined;
 
     await this.awaitTx(tx);
@@ -343,7 +432,7 @@ function base64UrlEncode(bytes: Uint8Array): string {
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
-  const chunkSize = 0x8000;
+  const chunkSize = 0x2000; //todo review
 
   for (let i = 0; i < bytes.length; i += chunkSize) {
     const chunk = bytes.subarray(i, i + chunkSize);
