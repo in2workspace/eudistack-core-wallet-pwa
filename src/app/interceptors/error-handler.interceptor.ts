@@ -25,6 +25,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
     next: HttpHandler
   ): Observable<HttpEvent<unknown>> {
     //todo refactor this handler (conditional structure)
+    //todo review handlers after oid4vci changes
     return next.handle(request)
     .pipe(
       catchError((errorResp: HttpErrorResponse) => {
@@ -63,9 +64,13 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         //same-device credential offer request
         if(pathname.endsWith(
           SERVER_PATH.REQUEST_CREDENTIAL) 
-          && (errStatus === 408 || errStatus === 504)
         ){
-          errMessage = "PIN expired"
+          if(errMessage.startsWith('Incorrect PIN')){
+            //simply don't change the message, the one from backend is ok
+          }else if(errorResp.status === 504 || errorResp.status === 408){
+            //504 for nginx Gateway timeout, 408 for backend
+            errMessage = "PIN expired"
+          }
         } 
         //cross-device 
         else if (pathname.endsWith(SERVER_PATH.EXECUTE_CONTENT)){
