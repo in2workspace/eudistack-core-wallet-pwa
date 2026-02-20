@@ -1,4 +1,4 @@
-import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CredentialOffer, CredentialOfferCredential, CredentialOfferGrant } from '../../models/dto/CredentialOffer';
@@ -84,7 +84,7 @@ export class CredentialOfferService {
         ? root.credentials.map((c: any): CredentialOfferCredential => this.mapCredential(c))
         : undefined,
       credentialConfigurationsIds: root?.credential_configuration_ids
-        ? Array.from(root.credential_configuration_ids).map((x: any) => String(x))
+        ? Array.from(root.credential_configuration_ids).map(String)
         : [],
       grant: this.mapGrant(root?.grants),
     };
@@ -93,7 +93,7 @@ export class CredentialOfferService {
   private mapCredential(c: any): CredentialOfferCredential {
     return {
       format: c?.format,
-      types: Array.isArray(c?.types) ? c.types.map((t: any) => String(t)) : undefined,
+      types: Array.isArray(c?.types) ? c.types.map(String) : undefined,
       trustFramework: c?.trust_framework
         ? {
             name: c.trust_framework?.name,

@@ -76,7 +76,6 @@ export class CredentialIssuerMetadataService {
       authorizationServer: root.authorization_server ?? root.authorizationServer,
       credentialToken: root.credential_token ?? root.credentialToken,
 
-      // Preserve unknown fields (similar to @JsonIgnoreProperties(ignoreUnknown = true))
       ...root,
     };
   }
