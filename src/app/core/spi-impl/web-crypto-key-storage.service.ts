@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { KeyStorageProvider } from '../spi/key-storage.provider.service';
 import { StoredKeyRecord, RawKeyAlgorithm, PublicKeyInfo, KeyInfo, AlgorithmParams } from '../models/StoredKeyRecord';
 
+type BrowserKeyStorageMode = 'full' | 'public-only';
+
 //todo review browser compatibility - storing of crypto keys in IndexedDB especially
 @Injectable({ providedIn: 'root' })
 export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
@@ -9,8 +11,9 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
   private readonly STORE_NAME = 'keys';
   private readonly DB_VERSION = 1;
 
-  public browserIsCompatible: boolean | null = null;
+  public storageMode: BrowserKeyStorageMode | null = null;
   private compatPromise: Promise<void> | null = null;
+  private keyCache = new Map<string, { privateKey: CryptoKey; publicKey: CryptoKey }>();
 
   constructor() {
     const subtle = globalThis.crypto?.subtle;
@@ -29,14 +32,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
   //todo consier executing in initialization
   public checkBrowserCompatibility(): Promise<void> {
-    if (this.browserIsCompatible === true) return Promise.resolve();
-    if (this.browserIsCompatible === false) {
-      return Promise.reject(
-        new Error(
-          'This browser is not compatible: it cannot reliably store WebCrypto CryptoKey objects in IndexedDB.'
-        )
-      );
-    }
+    if (this.storageMode !== null) return Promise.resolve();
 
     if (!this.compatPromise) {
       this.compatPromise = this.runCompatibilityCheckOnce();
@@ -45,20 +41,15 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
   }
 
   private async runCompatibilityCheckOnce(): Promise<void> {
-    const ok = await this.selfTestCryptoKeyStorage();
-    this.browserIsCompatible = ok;
+    this.storageMode = await this.selfTestStorageMode();
 
-    if (!ok) {
-      console.error('CryptoKey/IndexedDB compatibility test failed:', ok);
-
-      throw new Error(
-        'Your browser supports Web Crypto and IndexedDB, but it cannot reliably persist CryptoKey objects. ' +
-        "Try a different browser/profile, exit private mode, or delete 'wallet-key-storage' in DevTools and reload."
+    if (this.storageMode === 'public-only') {
+      console.warn(
+        'CryptoKey cannot be persisted in IndexedDB in this browser. Falling back to public-key-only persistence.'
       );
     }
   }
-
-  private async selfTestCryptoKeyStorage(): Promise<boolean> {
+  private async selfTestStorageMode(): Promise<BrowserKeyStorageMode> {
     const testKeyId = `__compat_test__${globalThis.crypto.randomUUID?.() ?? String(Date.now())}`;
     let saved = false;
 
@@ -78,26 +69,35 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
         createdAt: new Date().toISOString(),
       };
 
-      await this.saveKeyRecord(record);
+      // Force "full" mode for the test write.
+      // If IndexedDB can't clone CryptoKey, this will throw.
+      await this.saveKeyRecordInternal(record, 'full');
       saved = true;
 
       const loaded = await this.getKeyRecord(testKeyId);
-      if (!loaded?.privateKey || !loaded?.publicKey) return false;
+      if (!loaded?.privateKey || !loaded?.publicKey) return 'public-only';
 
+      // Validate that recovered keys are usable.
       const data = new TextEncoder().encode('compat');
       const sig = await globalThis.crypto.subtle.sign(this.getSignatureParams('ES256'), loaded.privateKey, data);
 
-      const ok = await globalThis.crypto.subtle.verify(this.getSignatureParams('ES256'), loaded.publicKey, sig, data);
+      const ok = await globalThis.crypto.subtle.verify(
+        this.getSignatureParams('ES256'),
+        loaded.publicKey,
+        sig,
+        data
+      );
 
-      return ok === true;
-    } catch {
-      return false;
+      return ok ? 'full' : 'public-only';
+    } catch (e) {
+      console.warn('CryptoKey/IndexedDB full persistence test failed:', e);
+      return 'public-only';
     } finally {
       if (saved) {
         try {
           await this.deleteKey(testKeyId);
         } catch {
-          console.warn('Failed to delete compatibility test record from IndexedDB.');
+          // Ignore cleanup failures.
         }
       }
     }
@@ -117,6 +117,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
       params.usages
     );
     console.log("Key pair generated:", keyPair);
+    this.keyCache.set(keyId, { privateKey: keyPair.privateKey, publicKey: keyPair.publicKey });
 
 
     const publicKeyJwk = await globalThis.crypto.subtle.exportKey('jwk', keyPair.publicKey);
@@ -155,15 +156,23 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
     const params = this.getSignatureParams(record.algorithm);
 
-    // Copy into a fresh ArrayBuffer to satisfy BufferSource typings.
-    const dataForCrypto = new Uint8Array(data);
+    let privateKey: CryptoKey | undefined;
 
-    const signature = await globalThis.crypto.subtle.sign(
-      params,
-      record.privateKey,
-      dataForCrypto
-    );
+    if (this.storageMode === 'full') {
+      privateKey = record.privateKey;
+    } else {
+      privateKey = this.keyCache.get(keyId)?.privateKey;
+    }
 
+    if (!privateKey) {
+      throw new Error(
+        'Private key is not available in this browser session. ' +
+        'This browser cannot persist CryptoKey in IndexedDB (public-key-only mode). ' +
+        'Regenerate or re-import the key in this session, and avoid reloading the page.'
+      );
+    }
+
+    const signature = await globalThis.crypto.subtle.sign(params, privateKey, new Uint8Array(data));
     return new Uint8Array(signature);
   }
 
@@ -201,6 +210,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
     await this.wrapRequest(store.delete(keyId));
     await this.awaitTx(tx);
+    this.keyCache.delete(keyId);
     db.close();
   }
 
@@ -262,6 +272,8 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
       true, // public key can be extractable
       ['verify']
     );
+
+    this.keyCache.set(keyId, { privateKey, publicKey });
 
     const kid = await this.computeJwkThumbprint(publicKeyJwk);
 
@@ -370,14 +382,31 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
   }
 
   private async saveKeyRecord(record: StoredKeyRecord): Promise<void> {
-    const db = await this.openDatabase();
-    const tx = db.transaction(this.STORE_NAME, 'readwrite');
-    const store = tx.objectStore(this.STORE_NAME);
+  await this.checkBrowserCompatibility();
+  await this.saveKeyRecordInternal(record, this.storageMode ?? 'public-only');
+}
 
-    await this.wrapRequest(store.put(record));
-    await this.awaitTx(tx);
-    db.close();
-  }
+private async saveKeyRecordInternal(record: StoredKeyRecord, mode: BrowserKeyStorageMode): Promise<void> {
+  // English-only comments by convention.
+  const db = await this.openDatabase();
+  const tx = db.transaction(this.STORE_NAME, 'readwrite');
+  const store = tx.objectStore(this.STORE_NAME);
+
+  const toPersist: any =
+    mode === 'public-only'
+      ? {
+          keyId: record.keyId,
+          algorithm: record.algorithm,
+          publicKeyJwk: record.publicKeyJwk,
+          kid: record.kid,
+          createdAt: record.createdAt,
+        }
+      : record;
+
+  await this.wrapRequest(store.put(toPersist));
+  await this.awaitTx(tx);
+  db.close();
+}
 
   private wrapRequest<T>(req: IDBRequest<T>): Promise<T> {
     return new Promise((resolve, reject) => {
