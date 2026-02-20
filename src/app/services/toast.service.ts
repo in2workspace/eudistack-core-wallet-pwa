@@ -1,17 +1,14 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { map, Observable } from 'rxjs';
-import { AlertController, ToastController } from '@ionic/angular';
+import { map, Observable, take } from 'rxjs';
+import { AlertController } from '@ionic/angular';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ToastServiceHandler {
-  public constructor(
-    private readonly translate: TranslateService,
-    private readonly alertController: AlertController,
-    private readonly toastController: ToastController
-  ) {}
+  private readonly translate = inject(TranslateService);
+  private readonly alertController = inject(AlertController);
 
   //todo use title instead of message
  public showErrorAlert(message: string): Observable<unknown> {
@@ -57,6 +54,7 @@ export class ToastServiceHandler {
 
   public showErrorAlertByTranslateLabel(message: string){
     return this.translate.get(message).pipe(
+      take(1),
       map(async (translatedMessage) => {
         const alert = await this.alertController.create({
           message: `
