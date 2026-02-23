@@ -23,8 +23,6 @@ export class PreAuthorizedTokenService {
   private readonly loader = inject(LoaderService);
   private readonly translate = inject(TranslateService);
 
-  private loadingTimeout: any;
-
   async getPreAuthorizedToken(
     credentialOffer: CredentialOffer,
     authorisationServerMetadata: AuthorisationServerMetadata
@@ -135,8 +133,7 @@ export class PreAuthorizedTokenService {
       let settled = false;
 
       const cleanup = () => {
-        if (interval != null) window.clearInterval(interval);
-        if (this.loadingTimeout != null) clearTimeout(this.loadingTimeout);
+        if (interval != null) globalThis.clearInterval(interval);
       };
 
       const safeResolve = (pin: string) => {
@@ -238,7 +235,7 @@ export class PreAuthorizedTokenService {
   ): number {
     let counter = initialCounter;
   
-    const interval = window.setInterval(() => {
+    const interval = globalThis.setInterval(() => {
 
       if (counter > 0) {
         counter--;
@@ -248,7 +245,7 @@ export class PreAuthorizedTokenService {
     });
         alert.message = message;
       } else {
-        window.clearInterval(interval);
+        globalThis.clearInterval(interval);
         alert.dismiss();
       }
     }, 1000);

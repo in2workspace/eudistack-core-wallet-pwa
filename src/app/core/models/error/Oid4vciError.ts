@@ -12,6 +12,6 @@ export class Oid4vciError extends AppError {
     opts?: { userMessage?: string; code?: Oid4vciErrorCode; cause?: unknown }
   ) {
     super(message, opts);
-    this.code = (opts?.code ?? 'unknown') as Oid4vciErrorCode;
+    this.code = opts?.code ?? 'unknown';
   }
 }

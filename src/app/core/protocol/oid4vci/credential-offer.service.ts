@@ -1,11 +1,10 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CredentialOffer, CredentialOfferCredential, CredentialOfferGrant } from '../../models/dto/CredentialOffer';
 import { PRE_AUTH_CODE_GRANT_TYPE } from 'src/app/constants/credential-offer.constants';
 import { WalletService } from 'src/app/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { httpErrorMessage, retryUserMessage, wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
+import { retryUserMessage, wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
 
 @Injectable({ providedIn: 'root' })
 export class CredentialOfferService {
@@ -154,20 +153,20 @@ export class CredentialOfferService {
   }
 
   private getUserPinRequired(value: unknown): boolean {
-  if (typeof value === 'boolean') {
-    return value;
-  }
+    if (typeof value === 'boolean') {
+      return value;
+    }
 
-  if (value !== undefined) {
+    if (value === undefined) {
+      console.warn("Missing user_pin_required in credential offer. Falling back to false.");
+      return false;
+    }
+
     console.warn(
       `Invalid user_pin_required value in credential offer. Expected boolean, got: ${typeof value}. Falling back to false.`
     );
-  } else {
-    console.warn(`Missing user_pin_required in credential offer. Falling back to false.`);
+    return false;
   }
-
-  return false;
-}
 
   private asNumber(value: unknown): number | undefined {
     return typeof value === 'number' ? value : undefined;

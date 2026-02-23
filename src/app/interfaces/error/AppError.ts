@@ -19,9 +19,9 @@ export class AppError extends Error {
   }
 }
 
-export function throwAppError(baseMessage: string, userBaseMessage?: string, cause?: unknown): never {
+export function throwAppError(baseMessage: string, opts?: { userBaseMessage?: string, cause?: unknown }): never {
   throw new AppError(baseMessage, {
-    cause,
-    userMessage: retryUserMessage(userBaseMessage ?? baseMessage),
+    cause: opts?.cause,
+    userMessage: retryUserMessage(opts?.userBaseMessage ?? baseMessage),
   });
 }

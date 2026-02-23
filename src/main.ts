@@ -21,8 +21,6 @@ import { HttpErrorInterceptor } from './app/interceptors/error-handler.intercept
 import { IAM_PARAMS, IAM_POST_LOGIN_ROUTE, IAM_POST_LOGOUT_URI, IAM_REDIRECT_URI } from './app/constants/iam.constants';
 import { disableTouchScrollOnPaths } from './app/helpers/disable-touch-scroll-on-paths';
 import { httpTranslateLoader } from './app/helpers/http-translate-loader';
-import { WebCryptoKeyStorageProvider } from './app/core/spi-impl/web-crypto-key-storage.service';
-import { KeyStorageProvider } from './app/core/spi/key-storage.provider.service';
 
 
 disableTouchScrollOnPaths(

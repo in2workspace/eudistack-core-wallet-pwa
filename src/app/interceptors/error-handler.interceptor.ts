@@ -84,7 +84,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         ){
           if(errMessage.startsWith('Incorrect PIN')){
             //simply don't change the message, the one from backend is ok
-          }else if(errorResp.status === 504 || errorResp.status === 408){
+          }else if(errStatus === 504 || errStatus === 408){
             //504 for nginx Gateway timeout, 408 for backend
             errMessage = "PIN expired"
           }

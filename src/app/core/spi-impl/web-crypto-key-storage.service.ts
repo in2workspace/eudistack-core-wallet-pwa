@@ -16,7 +16,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
   public storageMode: BrowserKeyStorageMode | null = null;
   private compatibilityCheckPromise: Promise<BrowserKeyStorageMode> | null = null;
-  private keyCache = new Map<string, { privateKey?: CryptoKey; publicKey?: CryptoKey }>();
+  private readonly keyCache = new Map<string, { privateKey?: CryptoKey; publicKey?: CryptoKey }>();
 
   constructor() {
     super();
@@ -27,17 +27,16 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
       return Promise.resolve(this.storageMode);
     }
 
-    if (this.compatibilityCheckPromise === null) {
-      this.compatibilityCheckPromise = this.checkCompatibilityInternal().catch((e) => {
-        this.compatibilityCheckPromise = null;
-        if (e instanceof AppError) throw e;
+    this.compatibilityCheckPromise ??= this.checkCompatibilityInternal().catch((e) => {
+      this.compatibilityCheckPromise = null;
 
-        throw new AppError('Browser compatibility check failed', {
-          cause: e,
-          userMessage: 'Unable to check browser compatibility. Please try again.',
-        });
+      if (e instanceof AppError) throw e;
+
+      throw new AppError('Browser compatibility check failed', {
+        cause: e,
+        userMessage: 'Unable to check browser compatibility. Please try again.',
       });
-    }
+    });
 
     return this.compatibilityCheckPromise;
   }
@@ -65,24 +64,19 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
     const hasSubtle = this.checkWebCrypto();
     const hasIndexedDb = this.checkIndexedDB();
 
-    if (!hasSecureContext || !hasSubtle || !hasIndexedDb) {
-      console.error('[WebCryptoKeyStorageProvider] Unavailable environment:', {
-        hasSecureContext,
-        hasSubtle,
-        hasIndexedDb,
-      });
-      let errorMsg;
-      if(!hasSecureContext){
-        errorMsg = "This feature requires HTTPS (a secure context). Please open the app over HTTPS and try again."
-      }else{
-        errorMsg = "Your browser does not support the required security features (WebCrypto / IndexedDB).";
-      }
-
-      this.storageMode = 'unavailable';
-      return false;
+    const isAvailable = hasSecureContext && hasSubtle && hasIndexedDb;
+    if (isAvailable) {
+      return true;
     }
 
-    return true;
+    console.error('[WebCryptoKeyStorageProvider] Unavailable environment:', {
+      hasSecureContext,
+      hasSubtle,
+      hasIndexedDb,
+    });
+
+    this.storageMode = 'unavailable';
+    return false;
   }
 
   private async runCompatibilityCheckOnce(): Promise<BrowserKeyStorageMode> {
@@ -236,7 +230,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
     if (!privateKey) {
       throwAppError('Private key is not available in this browser session. ' + 'Regenerate or re-import the key in this session, and avoid reloading the page.',
-        "The private key is not available in this browser session. Re-import or regenerate the key, and avoid reloading the page.");
+        { userBaseMessage: "The private key is not available in this browser session. Re-import or regenerate the key, and avoid reloading the page." });
     }
 
     const signature = await globalThis.crypto.subtle.sign(params, privateKey, new Uint8Array(data));
@@ -324,7 +318,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
     try {
       return await globalThis.crypto.subtle.exportKey('jwk', privateKey);
     } catch (e) {
-      throwAppError("This private key is non-extractable and cannot be exported.");
+      throwAppError("This private key is non-extractable and cannot be exported.", { cause: e});
     }
   }
 
@@ -385,12 +379,11 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
   }
 
   private getSignatureParams(algorithm: RawKeyAlgorithm): EcdsaParams {
-    switch (algorithm) {
-      case 'ES256':
-        return { name: 'ECDSA', hash: 'SHA-256' };
-      default:
-        throw new Error(`Unsupported algorithm: ${algorithm}`);
+    if (algorithm === 'ES256') {
+      return { name: 'ECDSA', hash: 'SHA-256' };
     }
+
+    throw new Error(`Unsupported algorithm: ${algorithm}`);
   }
 
   /**
@@ -437,7 +430,15 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
 
-      request.onerror = () => reject(request.error);
+      request.onerror = () => {
+        const cause = request.error ?? new Error('IndexedDB open request failed.');
+        reject(
+          new AppError('Could not open IndexedDB database', {
+            cause,
+            userMessage: 'Unable to open secure storage. Please try again.',
+          })
+        );
+      };
       request.onblocked = () => {
         reject(
           new AppError('IndexedDB upgrade blocked by another tab', {
@@ -525,7 +526,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
         await this.awaitTx(tx);
       } catch (e) {
           if (this.isQuotaExceededError(e)) {
-            throwAppError('Browser storage quota exceeded', 'Your browser storage is full. Free up space and try again.', e);
+            throwAppError('Browser storage quota exceeded', { userBaseMessage: 'Your browser storage is full. Free up space and try again.', cause: e });
           }
           throw new AppError('Browser storage operation failed', {
             cause: e,
@@ -601,14 +602,14 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
     if (mode === 'unavailable') {
 
-      throwAppError(fallbackMessage, fallbackuserMessage);
+      throwAppError(fallbackMessage, { userBaseMessage: fallbackuserMessage });
     }
 
     return mode;
   }
 
   private checkIndexedDB(): boolean {
-    return typeof globalThis.indexedDB !== 'undefined' && !!globalThis.indexedDB;
+    return !!globalThis.indexedDB;
   }
 
   private checkWebCrypto(): boolean {

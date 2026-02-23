@@ -29,7 +29,7 @@ export class JwtService {
 
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
+      bytes[i] = binary.codePointAt(i) ?? 0;
     }
     return bytes;
   }
@@ -39,7 +39,7 @@ export class JwtService {
     const chunkSize = 0x8000;
 
     for (let i = 0; i < bytes.length; i += chunkSize) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      binary += String.fromCodePoint(...bytes.subarray(i, i + chunkSize));
     }
 
     let out = btoa(binary).split('+').join('-').split('/').join('_');
@@ -57,7 +57,7 @@ export class JwtService {
     const chunkSize = 0x8000;
 
     for (let i = 0; i < bytes.length; i += chunkSize) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      binary += String.fromCodePoint(...bytes.subarray(i, i + chunkSize));
     }
 
     return btoa(binary); // Standard Base64 with + / and =

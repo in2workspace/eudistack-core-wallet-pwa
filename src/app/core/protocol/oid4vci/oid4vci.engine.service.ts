@@ -160,13 +160,12 @@ export class Oid4vciEngineService {
     }
 
     if (mode === 'public-only') {
-      this.toastServiceHandler.showErrorAlert("Your browser does not support secure key storage. You won't be able to use your credentials; the credentials you add during this session will be unusable after leaving or reloading the page").pipe(
+      this.toastServiceHandler.showErrorAlert("Your browser does not support secure key storage. You won't be able to use your credentials, and the credentials you add during this session will be unusable after leaving or reloading the page").pipe(
         take(1)
       ).subscribe();
       this.hasWarnedKeyStorageMode = true;
     }
 
-    return;
   }
 
   private errorToToastMessage(e: unknown): string | null {
