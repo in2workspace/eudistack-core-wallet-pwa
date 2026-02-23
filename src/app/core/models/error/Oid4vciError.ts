@@ -2,7 +2,7 @@
 import { AppError } from "src/app/interfaces/error/AppError";
 
 
-export type Oid4vciErrorCode = 'unknown' | 'user_cancelled';
+export type Oid4vciErrorCode = 'unknown' | 'user_cancelled' | 'empty_pin';
 
 export class Oid4vciError extends AppError {
   public override readonly code: Oid4vciErrorCode;

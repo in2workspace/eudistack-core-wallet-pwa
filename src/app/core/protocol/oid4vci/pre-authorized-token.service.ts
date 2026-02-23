@@ -186,7 +186,8 @@ export class PreAuthorizedTokenService {
               if (!pin) {
                 safeReject(
                   new Oid4vciError('PIN is empty', {
-                    userMessage: 'PIN is required.',
+                    code: 'empty_pin',
+                    userMessage: 'PIN is required. Refresh the offer and try again.',
                   })
                 );
                 return false;
