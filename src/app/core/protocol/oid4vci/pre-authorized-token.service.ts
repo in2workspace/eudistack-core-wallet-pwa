@@ -1,5 +1,4 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { TokenResponse } from '../../models/dto/TokenResponse';
@@ -10,11 +9,11 @@ import { LoaderService } from 'src/app/services/loader.service';
 import { TranslateService } from '@ngx-translate/core';
 import { WalletService } from 'src/app/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { retryUserMessage, wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
+import { wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
+import { HttpErrorResponse } from '@angular/common/http';
 
 //todo
 const TIMEOUT_DURATION_S = 55;
-
 
 @Injectable({ providedIn: 'root' })
 export class PreAuthorizedTokenService {
@@ -27,22 +26,22 @@ export class PreAuthorizedTokenService {
     credentialOffer: CredentialOffer,
     authorisationServerMetadata: AuthorisationServerMetadata
   ): Promise<TokenResponse> {
-  const tokenURL = authorisationServerMetadata.tokenEndpoint;
-  if (!tokenURL) {
-      const msg = 'Token endpoint URL is missing in authorisation server metadata';
-      throw new Oid4vciError(msg, { userMessage: retryUserMessage('Invalid authorization server metadata') });
-  }
+    const tokenURL = authorisationServerMetadata.tokenEndpoint;
+    if (!tokenURL) {
+      throw new Oid4vciError('Token endpoint URL is missing in authorisation server metadata', {
+        translationKey: 'errors.invalid-auth-server-metadata',
+      });
+    }
 
-  let code: string | null = null;
+    const preAuth = credentialOffer?.grant?.preAuthorizedCodeGrant;
+    const needsCode = !!preAuth?.userPinRequired || preAuth?.txCode != null;
 
-  const preAuth = credentialOffer?.grant?.preAuthorizedCodeGrant;
-  const needsCode = !!preAuth?.userPinRequired || preAuth?.txCode != null;
+    let code: string | null = null;
+    if (needsCode) {
+      code = await this.openPromptAndGetCode();
+    }
 
-  if (needsCode) {
-    code = await this.openPromptAndGetCode();
-  }
-
-  this.loader.addLoadingProcess();
+    this.loader.addLoadingProcess();
 
     try {
       const raw = await this.getAccessToken(tokenURL, credentialOffer, code);
@@ -50,7 +49,7 @@ export class PreAuthorizedTokenService {
     } finally {
       this.loader.removeLoadingProcess();
     }
-}
+  }
 
   private async getAccessToken(
     tokenURL: string,
@@ -59,40 +58,29 @@ export class PreAuthorizedTokenService {
   ): Promise<string> {
     const formData = new Map<string, string>();
     formData.set('grant_type', PRE_AUTH_CODE_GRANT_TYPE);
-    formData.set(
-      'pre-authorized_code',
-      credentialOffer?.grant?.preAuthorizedCodeGrant?.preAuthorizedCode ?? ''
-    );
+    formData.set('pre-authorized_code', credentialOffer?.grant?.preAuthorizedCodeGrant?.preAuthorizedCode ?? '');
 
-    if (
-      credentialOffer?.grant?.preAuthorizedCodeGrant?.userPinRequired &&
-      code != null &&
-      code.length > 0
-    ) {
+    if (credentialOffer?.grant?.preAuthorizedCodeGrant?.userPinRequired && code != null && code.length > 0) {
       formData.set('user_pin', code);
     } else if (credentialOffer?.grant?.preAuthorizedCodeGrant?.txCode != null && code && code.length > 0) {
       formData.set('tx_code', code);
     }
-    console.log('Form data:', formData);
+
     const body = this.toXWwwFormUrlEncoded(formData);
-    console.log(body);
 
     try {
-      return await firstValueFrom(
-        this.walletService.postFromUrlForTextResponse(tokenURL, body)
-      );
+      return await firstValueFrom(this.walletService.postFromUrlForTextResponse(tokenURL, body));
     } catch (e: unknown) {
-      if (e instanceof Oid4vciError) throw e;
-      if (e instanceof HttpErrorResponse) {
-        // todo consider changing the text "Incorrect PIN." In the toast service this sets a specific error message label
-        const userMsg = (e.status >= 400 && e.status < 600) ? 'Incorrect PIN. Try again.' : retryUserMessage('There was a problem processing the request');
-        wrapOid4vciHttpError(e, 'Could not get access token', { userMessage: userMsg });
-      }
+        if (e instanceof HttpErrorResponse) {
+          wrapOid4vciHttpError(e, 'Could not get access token', {
+            translationKey: 'errors.cannot-get-access-token',
+          });
+        }
 
-      throw new Oid4vciError('Could not get access token', {
-        cause: e,
-        userMessage: retryUserMessage('Could not get access token'),
-      });
+        throw new Oid4vciError('Could not get access token (unexpected error type)', {
+          cause: e,
+          translationKey: 'errors.cannot-get-access-token',
+        });
     }
   }
 
@@ -100,10 +88,9 @@ export class PreAuthorizedTokenService {
     try {
       return JSON.parse(response) as TokenResponse;
     } catch (e: unknown) {
-      const msg = 'Invalid token response';
-      throw new Oid4vciError(`${msg} (malformed JSON)`, {
+      throw new Oid4vciError('Invalid token response (malformed JSON)', {
         cause: e,
-        userMessage: retryUserMessage(msg),
+        translationKey: 'errors.invalid-token-response',
       });
     }
   }
@@ -118,8 +105,6 @@ export class PreAuthorizedTokenService {
 
   // todo review error cases (timeout, user cancellation, incorrect PIN)
   private async openPromptAndGetCode(): Promise<string> {
-    console.log('Opening prompt to get code.');
-
     const description = this.translate.instant('confirmation.description');
     const counter = TIMEOUT_DURATION_S;
 
@@ -171,7 +156,7 @@ export class PreAuthorizedTokenService {
             text: cancel,
             role: 'cancel',
             handler: () => {
-                safeReject(
+              safeReject(
                 new Oid4vciError('User cancelled PIN entry', {
                   code: 'user_cancelled',
                 })
@@ -183,7 +168,6 @@ export class PreAuthorizedTokenService {
             text: send,
             handler: (alertData: { pin?: string }) => {
               const pin = String(alertData?.pin ?? '').trim();
-
               safeResolve(pin);
               return true;
             },
@@ -199,7 +183,7 @@ export class PreAuthorizedTokenService {
             if (settled) return;
             safeReject(
               new Oid4vciError('PIN request timed out', {
-                userMessage: retryUserMessage('PIN request timed out'),
+                translationKey: 'errors.pin-timeout',
               })
             );
           });
@@ -212,37 +196,31 @@ export class PreAuthorizedTokenService {
           safeReject(
             new Oid4vciError('Could not open PIN prompt', {
               cause: err,
-              userMessage: retryUserMessage('Could not open PIN prompt'),
+              translationKey: 'errors.cannot-open-pin-prompt',
             })
           );
         });
     });
   }
 
-
   //todo move to shared file to avoid duplication with WebsocketService
-  private startCountdown(
-    alert: any,
-    description: string,
-    initialCounter: number
-  ): number {
+  private startCountdown(alert: any, description: string, initialCounter: number): number {
     let counter = initialCounter;
-  
-    const interval = globalThis.setInterval(() => {
 
+    const interval = globalThis.setInterval(() => {
       if (counter > 0) {
         counter--;
         const message = this.translate.instant('confirmation.messageHtml', {
-        description,
-        counter,
-    });
+          description,
+          counter,
+        });
         alert.message = message;
       } else {
         globalThis.clearInterval(interval);
         alert.dismiss();
       }
     }, 1000);
-  
+
     return interval;
   }
 }

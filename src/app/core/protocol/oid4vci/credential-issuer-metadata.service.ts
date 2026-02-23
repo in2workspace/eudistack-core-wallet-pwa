@@ -5,7 +5,7 @@ import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetad
 import { environment } from 'src/environments/environment';
 import { WalletService } from 'src/app/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { retryUserMessage, wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
+import { wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
 
 
 
@@ -15,20 +15,27 @@ export class CredentialIssuerMetadataService {
   private readonly walletService = inject(WalletService);
 
   async getCredentialIssuerMetadataFromCredentialOffer(
-    credentialOffer: CredentialOffer
+  credentialOffer: CredentialOffer
   ): Promise<CredentialIssuerMetadata> {
-    const credentialIssuerURL = `${credentialOffer.credentialIssuer}/.well-known/openid-credential-issuer`;
+    const issuer = credentialOffer?.credentialIssuer;
+
+    if (!issuer || issuer.trim().length === 0) {
+      throw new Oid4vciError('Missing credentialIssuer in credential offer', {
+        translationKey: 'errors.invalid-credentialOffer',
+      });
+    }
+
+    const credentialIssuerURL = `${issuer}/.well-known/openid-credential-issuer`;
 
     try {
       const responseText = await this.getCredentialIssuerMetadata(credentialIssuerURL);
       return this.parseCredentialIssuerMetadataResponse(responseText);
-    } catch (e) {
+    } catch (e: unknown) {
       if (e instanceof Oid4vciError) throw e;
 
-      const errorMsg = 'Could not process issuer metadata';
-      throw new Oid4vciError(errorMsg, {
+      throw new Oid4vciError('Could not process issuer metadata', {
         cause: e,
-        userMessage: retryUserMessage(errorMsg),
+        translationKey: 'errors.default',
       });
     }
   }
@@ -37,10 +44,9 @@ export class CredentialIssuerMetadataService {
     try {
       return await firstValueFrom(this.walletService.getTextFromUrl(credentialIssuerURL));
     } catch (e: unknown) {
-        const errorMsg = 'Could not download issuer metadata';
-        wrapOid4vciHttpError(e, errorMsg, {
-        userMessage: retryUserMessage(errorMsg),
-      });
+        wrapOid4vciHttpError(e, 'Could not download issuer metadata', {
+          translationKey: 'errors.cannot-download-issuerMetadata',
+        });
     }
   }
 
@@ -68,10 +74,9 @@ export class CredentialIssuerMetadataService {
     try {
       return JSON.parse(responseText);
     } catch (e: unknown) {
-      const baseMessage = 'Invalid issuer metadata';
-      throw new Oid4vciError(`${baseMessage} (malformed JSON)`, {
+      throw new Oid4vciError('Invalid issuer metadata (malformed JSON)', {
         cause: e,
-        userMessage: retryUserMessage(baseMessage),
+        translationKey: 'errors.invalid-issuerMetadata',
       });
     }
   }
@@ -81,9 +86,8 @@ export class CredentialIssuerMetadataService {
    */
   private mapCredentialIssuerMetadata(root: any): CredentialIssuerMetadata {
     if (!root || typeof root !== 'object') {
-      const baseMessage = 'Invalid issuer metadata';
-      throw new Oid4vciError(`${baseMessage} (not an object)`, {
-        userMessage: retryUserMessage(baseMessage),
+      throw new Oid4vciError('Invalid issuer metadata (not an object)', {
+        translationKey: 'errors.invalid-issuerMetadata',
       });
     }
 

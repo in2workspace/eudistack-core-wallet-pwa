@@ -4,7 +4,7 @@ import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetad
 import { AuthorisationServerMetadata } from '../../models/dto/AuthorisationServerMetadata';
 import { WalletService } from 'src/app/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { retryUserMessage, wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
+import { wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
 
 @Injectable({ providedIn: 'root' })
 export class AuthorisationServerMetadataService {
@@ -20,10 +20,9 @@ export class AuthorisationServerMetadataService {
     } catch (e: unknown) {
       if (e instanceof Oid4vciError) throw e;
 
-      const errorMsg = 'Could not process authorization server metadata';
-      throw new Oid4vciError(errorMsg, {
+      throw new Oid4vciError('Could not process authorization server metadata', {
         cause: e,
-        userMessage: retryUserMessage(errorMsg),
+        translationKey: 'errors.invalid-issuerMetadata',
       });
     }
   }
@@ -35,10 +34,9 @@ export class AuthorisationServerMetadataService {
       credentialIssuerMetadata.authorizationServer ?? credentialIssuerMetadata.credentialIssuer;
 
     if (!authServer || authServer.trim().length === 0) {
-      const errorMsg = 'Missing required field: authorizationServer/credentialIssuer';
-      throw new Oid4vciError(errorMsg, {
-        userMessage: retryUserMessage('Invalid issuer configuration'),
-      });
+        throw new Oid4vciError('Missing required field: authorizationServer/credentialIssuer', {
+          translationKey: 'errors.invalid-issuerMetadata',
+        });
     }
 
     const url = `${authServer}/.well-known/openid-configuration`;
@@ -46,9 +44,8 @@ export class AuthorisationServerMetadataService {
     try {
       return await firstValueFrom(this.walletService.getTextFromUrl(url));
     } catch (e: unknown) {
-      const errorMsg = 'Could not download authorization server metadata';
-      wrapOid4vciHttpError(e, errorMsg, {
-        userMessage: retryUserMessage(errorMsg),
+      wrapOid4vciHttpError(e, 'Could not download authorization server metadata', {
+        translationKey: 'errors.cannot-download-auth-server-metadata',
       });
     }
   }
@@ -65,10 +62,9 @@ export class AuthorisationServerMetadataService {
         ...root,
       };
     } catch (e: any) {
-      const baseMessage = 'Invalid authorization server metadata';
-      throw new Oid4vciError(`${baseMessage} (malformed JSON)`, {
+       throw new Oid4vciError('Invalid authorization server metadata (malformed JSON)', {
         cause: e,
-        userMessage: retryUserMessage(baseMessage),
+        translationKey: 'errors.invalid-issuerMetadata',
       });
     }
   }

@@ -19,8 +19,8 @@ import { CredentialConfigurationContext } from '../../models/CredentialConfigura
 import { FinalizeIssuancePayload } from '../../models/FinalizeIssuancePayload';
 import { ProofJwtContext } from '../../models/ProofJwt';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { retryUserMessage } from 'src/app/helpers/http-error-message';
 import { AppError } from 'src/app/interfaces/error/AppError';
+import { JwtParseError } from '../../models/error/JwtParseError';
 
 //todo in this class and all class invoked by this one, show popup when error happens and handle it
 @Injectable({ providedIn: 'root' })
@@ -136,11 +136,11 @@ export class Oid4vciEngineService {
       } else {
         console.error('[Oid4vciEngine] Flow failed:', e);
       }
-      const msg = this.errorToToastMessage(e);
+      const msg = this.errorToTranslationKey(e);
       if (msg) {
-        this.toastServiceHandler.showErrorAlert(msg).subscribe();
+        this.toastServiceHandler.showErrorAlertByTranslateLabel(msg).subscribe();
       }
-      // If you don't want the caller to see errors, you can omit the throw.
+ 
       throw e;
     }finally{
       this.loader.removeLoadingProcess();
@@ -153,14 +153,14 @@ export class Oid4vciEngineService {
     if(this.hasWarnedKeyStorageMode) return;
 
     if (mode === 'unavailable') {
-      this.toastServiceHandler.showErrorAlert("Your browser does not support secure key storage. You wont't be able to activate nor send credentials").pipe(
+      this.toastServiceHandler.showErrorAlertByTranslateLabel("errors.key-storage-unavailable").pipe(
         take(1)
       ).subscribe();
       this.hasWarnedKeyStorageMode = true;
     }
 
     if (mode === 'public-only') {
-      this.toastServiceHandler.showErrorAlert("Your browser does not support secure key storage. You won't be able to use your credentials, and the credentials you add during this session will be unusable after leaving or reloading the page").pipe(
+      this.toastServiceHandler.showErrorAlertByTranslateLabel("errors.key-storage-public-only").pipe(
         take(1)
       ).subscribe();
       this.hasWarnedKeyStorageMode = true;
@@ -168,14 +168,13 @@ export class Oid4vciEngineService {
 
   }
 
-  private errorToToastMessage(e: unknown): string | null {
-    if (e instanceof AppError) {
-      if (e.code === 'user_cancelled') return null;
-      return e.userMessage || e.message || 'Unexpected error';
-    }
-    if (e instanceof Error) return e.message || 'Unexpected error';
-    return 'Unexpected error';
+  private errorToTranslationKey(e: unknown): string | null {
+  if (e instanceof AppError) {
+    if (e.code === 'user_cancelled') return null;
+    return e.translationKey ?? 'errors.default';
   }
+  return 'errors.default';
+}
 
   private async validateCredentialCnf(
     credentialResponseWithStatus: CredentialResponseWithStatus,
@@ -191,24 +190,36 @@ export class Oid4vciEngineService {
 
     const credentialJwt = credentialResponseWithStatus.credentialResponse.credentials?.[0].credential;
     if (!credentialJwt || typeof credentialJwt !== 'string') {
-      throw new Oid4vciError("Credential cnf validation failed", {
-        userMessage: retryUserMessage("Credential validation failed"),
+      throw new Oid4vciError('Credential cnf validation failed (missing credential JWT)', {
+        translationKey: 'errors.credential-validation-failed',
       });
     }
 
-    const payload = this.jwtService.parseJwtPayload(credentialJwt) as any;
+    let payload: any;
+    try {
+      payload = this.jwtService.parseJwtPayload(credentialJwt) as any;
+    } catch (e: unknown) {
+      if (e instanceof JwtParseError) {
+        throw new Oid4vciError('Credential JWT payload could not be parsed', {
+          cause: e,
+          translationKey: 'errors.invalid-jwt',
+        });
+      }
+      throw e;
+    }
     const cnf = payload?.cnf;
 
     const isCnfValid = await this.keyStorageProvider.isCnfBoundToPublicKey(cnf, proofPublicJwk);
     if (!isCnfValid) {
-      throw new Error("The cnf of the credential doesn't match the stored public key.");
+        throw new Oid4vciError("Credential cnf validation failed (cnf mismatch)", {
+          translationKey: 'errors.credential-validation-failed',
+        });
     }
 
     console.log("Cnf was validated.");
   }
 
   private sendCredentialToFinalizeCredentialIssuance(credResponse: FinalizeIssuancePayload): Promise<void> {
-    //todo await?
       return firstValueFrom(this.walletService.finalizeCredentialIssuance(credResponse));
   }
 
@@ -218,10 +229,9 @@ export class Oid4vciEngineService {
   ): CredentialConfigurationContext {
     const ids = credentialOffer.credentialConfigurationsIds;
     if (!ids || ids.length === 0) {
-      const baseMsg = 'Invalid credential offer';
-      throw new Oid4vciError(`${baseMsg} (missing credentialConfigurationIds)`, {
-      userMessage: retryUserMessage(baseMsg),
-    });
+        throw new Oid4vciError('Invalid credential offer (missing credentialConfigurationIds)', {
+          translationKey: 'errors.invalid-credentialOffer',
+        });
     }
 
     // todo handle multiple credential configurations
@@ -229,26 +239,23 @@ export class Oid4vciEngineService {
 
     const configs = credentialIssuerMetadata.credential_configurations_supported;
     if (!configs) {
-      const baseMsg = 'Invalid issuer metadata';
-      throw new Oid4vciError(`${baseMsg} (missing credential_configurations_supported)`, {
-      userMessage: retryUserMessage(baseMsg),
-    });
+        throw new Oid4vciError('Invalid issuer metadata (missing credential_configurations_supported)', {
+          translationKey: 'errors.invalid-issuerMetadata',
+        });
     }
 
     const configuration = configs[credentialConfigurationId];
     if (!configuration) {
-      const baseMsg = 'Invalid issuer metadata';
-      throw new Oid4vciError(`${baseMsg} (unknown configuration id: ${credentialConfigurationId})`, {
-      userMessage: retryUserMessage(baseMsg),
-    });
+        throw new Oid4vciError(`Invalid issuer metadata (unknown configuration id: ${credentialConfigurationId})`, {
+          translationKey: 'errors.invalid-issuerMetadata',
+        });
     }
 
     const format = configuration.format;
     if (!format) {
-      const baseMsg = 'Invalid issuer metadata';
-      throw new Oid4vciError(`${baseMsg} (missing format for configuration id: ${credentialConfigurationId})`, {
-      userMessage: retryUserMessage(baseMsg),
-    });
+        throw new Oid4vciError(`Invalid issuer metadata (missing format for configuration id: ${credentialConfigurationId})`, {
+          translationKey: 'errors.invalid-issuerMetadata',
+        });
     }
 
     const methods = configuration.cryptographic_binding_methods_supported;

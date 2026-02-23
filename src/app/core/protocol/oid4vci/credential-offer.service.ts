@@ -4,7 +4,7 @@ import { CredentialOffer, CredentialOfferCredential, CredentialOfferGrant } from
 import { PRE_AUTH_CODE_GRANT_TYPE } from 'src/app/constants/credential-offer.constants';
 import { WalletService } from 'src/app/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { retryUserMessage, wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
+import { wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
 
 @Injectable({ providedIn: 'root' })
 export class CredentialOfferService {
@@ -24,11 +24,10 @@ export class CredentialOfferService {
       return offer;
     } catch (e: unknown) {
       if (e instanceof Oid4vciError) throw e;
-      const errorMsg = 'Could not process the credential offer';
 
-      throw new Oid4vciError(errorMsg, {
+      throw new Oid4vciError('Could not process the credential offer', {
         cause: e,
-        userMessage: retryUserMessage(errorMsg)
+        translationKey: 'errors.default',
       });
     }
   }
@@ -49,9 +48,10 @@ export class CredentialOfferService {
     try {
       return await firstValueFrom(this.walletService.getTextFromUrl(credentialOfferUri));
     } catch (e: unknown) {
-      const errorMessage = 'Could not download the credential offer';
       console.error('Error fetching credential offer:', e);
-      wrapOid4vciHttpError(e, errorMessage, { userMessage: retryUserMessage(errorMessage) });
+      wrapOid4vciHttpError(e, 'Could not download the credential offer', {
+        translationKey: 'errors.cannot-download-credentialOffer',
+      });
     }
   }
 
@@ -65,10 +65,9 @@ export class CredentialOfferService {
     try {
       return JSON.parse(responseText);
     } catch(e: unknown) {
-      const baseMessage = 'Invalid credential offer';
-        throw new Oid4vciError(baseMessage + '(malformed JSON)', {
+      throw new Oid4vciError('Invalid credential offer (malformed JSON)', {
         cause: e,
-        userMessage: baseMessage
+        translationKey: 'errors.invalid-credentialOffer',
       });
     }
   }
@@ -173,18 +172,28 @@ export class CredentialOfferService {
   }
 
   private validateCredentialOffer(credentialOffer: CredentialOffer): void {
-    const userErrorMessage = retryUserMessage("Invalid credential offer");
     if (!credentialOffer) {
-      throw new Oid4vciError(`Credential Offer is null`, { userMessage: userErrorMessage });
+      throw new Oid4vciError('Credential offer is null', {
+        translationKey: 'errors.invalid-credentialOffer',
+      });
     }
+
     if (!credentialOffer.credentialIssuer || credentialOffer.credentialIssuer.trim().length === 0) {
-      throw new Oid4vciError(`Missing required field: credentialIssuer`, { userMessage: userErrorMessage });
+      throw new Oid4vciError('Missing required field: credentialIssuer', {
+        translationKey: 'errors.invalid-credentialOffer',
+      });
     }
+
     if (!credentialOffer.credentialConfigurationsIds || credentialOffer.credentialConfigurationsIds.length === 0) {
-      throw new Oid4vciError(`Missing required field: credentialConfigurationIds`, { userMessage: userErrorMessage });
+      throw new Oid4vciError('Missing required field: credentialConfigurationIds', {
+        translationKey: 'errors.invalid-credentialOffer',
+      });
     }
+
     if (!credentialOffer.grant) {
-      throw new Oid4vciError(`Missing required field: grants`, { userMessage: userErrorMessage });
+      throw new Oid4vciError('Missing required field: grants', {
+        translationKey: 'errors.invalid-credentialOffer',
+      });
     }
   }
 }

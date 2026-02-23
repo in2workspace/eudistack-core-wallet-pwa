@@ -9,7 +9,12 @@ export class Oid4vciError extends AppError {
 
   constructor(
     message: string,
-    opts?: { userMessage?: string; code?: Oid4vciErrorCode; cause?: unknown }
+    opts?: {
+      code?: Oid4vciErrorCode;
+      cause?: unknown;
+      translationKey?: string;
+      translationParams?: Record<string, unknown>;
+    }
   ) {
     super(message, opts);
     this.code = opts?.code ?? 'unknown';

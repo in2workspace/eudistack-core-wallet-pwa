@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { JwtParseError } from '../../models/error/JwtParseError';
 
 @Injectable({
   providedIn: 'root'
@@ -8,7 +9,7 @@ export class JwtService {
   public parseJwtPayload(jwt: string): unknown {
     const parts = jwt.split('.');
     if (parts.length < 2) {
-      throw new Error('Invalid JWT format (missing payload).');
+      throw new JwtParseError('Invalid JWT format (missing payload).');
     }
 
     const payloadB64Url = parts[1];
@@ -17,8 +18,8 @@ export class JwtService {
 
     try {
       return JSON.parse(payloadJson);
-    } catch {
-      throw new Error('JWT payload is not valid JSON.');
+    } catch (e: unknown) {
+      throw new JwtParseError('JWT payload is not valid JSON.', e);
     }
   }
 
