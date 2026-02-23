@@ -73,8 +73,9 @@ export class PreAuthorizedTokenService {
     } else if (credentialOffer?.grant?.preAuthorizedCodeGrant?.txCode != null && code && code.length > 0) {
       formData.set('tx_code', code);
     }
-
+    console.log('Form data:', formData);
     const body = this.toXWwwFormUrlEncoded(formData);
+    console.log(body);
 
     try {
       return await firstValueFrom(
@@ -83,7 +84,7 @@ export class PreAuthorizedTokenService {
     } catch (e: unknown) {
       if (e instanceof Oid4vciError) throw e;
       if (e instanceof HttpErrorResponse) {
-        const userMsg = (e.status >= 400 && e.status < 600) ? 'Incorrect PIN. Try again.' : retryUserMessage('Could not get access token');
+        const userMsg = (e.status >= 400 && e.status < 600) ? 'Incorrect PIN. Try again.' : retryUserMessage('There was a problem processing the request');
         wrapOid4vciHttpError(e, 'Could not get access token', { userMessage: userMsg });
       }
 
