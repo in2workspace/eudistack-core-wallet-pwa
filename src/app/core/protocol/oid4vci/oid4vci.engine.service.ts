@@ -39,18 +39,21 @@ export class Oid4vciEngineService {
   private readonly walletService = inject(WalletService);
 
   private hasWarnedKeyStorageMode = false;
-  private readonly initPromise: Promise<void>;
+  private initPromise: Promise<void> | null = null;
 
-   constructor() {
-    this.initPromise = this.checkBrowserCompatibilityWithKeyStorage();
+
+
+  public init(): Promise<void> {
+    if (!this.initPromise) {
+      this.initPromise = this.checkBrowserCompatibilityWithKeyStorage();
+    }
+    return this.initPromise;
   }
 
   public async executeOid4vciFlow(credentialOfferUri: string): Promise<void> {
-    //todo translate error messages
-    await this.initPromise;
+    await this.init();
     
     try{
-      //todo review loader, maybe not necessary at this level
       this.loader.addLoadingProcess();
 
       // GET DATA FOR THE CREDENTIAL REQUEST
@@ -149,8 +152,8 @@ export class Oid4vciEngineService {
   }
 
   private async checkBrowserCompatibilityWithKeyStorage(): Promise<void> {
-    const mode = await this.keyStorageProvider.checkBrowserCompatibility();
     if(this.hasWarnedKeyStorageMode) return;
+    const mode = await this.keyStorageProvider.checkBrowserCompatibility();
 
     if (mode === 'unavailable') {
       this.toastServiceHandler.showErrorAlertByTranslateLabel("errors.key-storage-unavailable").pipe(
