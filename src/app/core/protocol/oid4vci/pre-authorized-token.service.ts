@@ -183,16 +183,6 @@ export class PreAuthorizedTokenService {
             handler: (alertData: { pin?: string }) => {
               const pin = String(alertData?.pin ?? '').trim();
 
-              if (!pin) {
-                safeReject(
-                  new Oid4vciError('PIN is empty', {
-                    code: 'empty_pin',
-                    userMessage: 'PIN is required. Refresh the offer and try again.',
-                  })
-                );
-                return false;
-              }
-
               safeResolve(pin);
               return true;
             },
