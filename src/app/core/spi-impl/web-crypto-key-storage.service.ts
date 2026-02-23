@@ -1,54 +1,122 @@
 import { Injectable } from '@angular/core';
 import { KeyStorageProvider } from '../spi/key-storage.provider.service';
-import { StoredKeyRecord, RawKeyAlgorithm, PublicKeyInfo, KeyInfo, AlgorithmParams } from '../models/StoredKeyRecord';
+import { RawKeyAlgorithm, PublicKeyInfo, KeyInfo, AlgorithmParams, StoredFullKeyRecord, StoredAnyKeyRecord, isFullRecord } from '../models/StoredKeyRecord';
+import { AppError, throwAppError } from 'src/app/interfaces/error/AppError';
 
-type BrowserKeyStorageMode = 'full' | 'public-only';
+type AvailableBrowserKeyStorageMode = 'full' | 'public-only';
+type BrowserKeyStorageMode =  AvailableBrowserKeyStorageMode | 'unavailable';
 
 //todo review browser compatibility - storing of crypto keys in IndexedDB especially
 @Injectable({ providedIn: 'root' })
 export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
+
   private readonly DB_NAME = 'wallet-key-storage';
   private readonly STORE_NAME = 'keys';
   private readonly DB_VERSION = 1;
 
   public storageMode: BrowserKeyStorageMode | null = null;
-  private compatPromise: Promise<void> | null = null;
-  private keyCache = new Map<string, { privateKey: CryptoKey; publicKey: CryptoKey }>();
+  private compatibilityCheckPromise: Promise<BrowserKeyStorageMode> | null = null;
+  private keyCache = new Map<string, { privateKey?: CryptoKey; publicKey?: CryptoKey }>();
 
   constructor() {
-    const subtle = globalThis.crypto?.subtle;
-    if (!subtle) {
-      throw new Error(
-        'Web Crypto API (crypto.subtle) is not available. Ensure you are using a modern browser and HTTPS.'
-      );
-    }
-
-    if (!globalThis.indexedDB) {
-      throw new Error('IndexedDB is not available in this environment.');
-    }
-
     super();
   }
 
-  //todo consier executing in initialization
-  public checkBrowserCompatibility(): Promise<void> {
-    if (this.storageMode !== null) return Promise.resolve();
-
-    if (!this.compatPromise) {
-      this.compatPromise = this.runCompatibilityCheckOnce();
+  public checkBrowserCompatibility(): Promise<BrowserKeyStorageMode> {
+    if (this.storageMode !== null) {
+      return Promise.resolve(this.storageMode);
     }
-    return this.compatPromise;
+
+    if (this.compatibilityCheckPromise === null) {
+      this.compatibilityCheckPromise = this.checkCompatibilityInternal().catch((e) => {
+        this.compatibilityCheckPromise = null;
+        if (e instanceof AppError) throw e;
+
+        throw new AppError('Browser compatibility check failed', {
+          cause: e,
+          userMessage: 'Unable to check browser compatibility. Please try again.',
+        });
+      });
+    }
+
+    return this.compatibilityCheckPromise;
   }
 
-  private async runCompatibilityCheckOnce(): Promise<void> {
-    this.storageMode = await this.selfTestStorageMode();
+  private async checkCompatibilityInternal(): Promise<BrowserKeyStorageMode> {
+    //todo if crypto is available but not IDB, set 'memory-only' mode
+    if (!this.checkCryptoAndIndexedDBAvailability()) {
+      this.storageMode = 'unavailable';
+      return 'unavailable';
+    }
 
-    if (this.storageMode === 'public-only') {
-      console.warn(
-        'CryptoKey cannot be persisted in IndexedDB in this browser. Falling back to public-key-only persistence.'
-      );
+    const idbOk = await this.testIndexedDBUsable();
+    if (!idbOk) {
+      this.storageMode = 'unavailable';
+      return 'unavailable';
+    }
+
+    const mode = await this.runCompatibilityCheckOnce();
+    this.storageMode = mode;
+    return mode;
+  }
+
+  private checkCryptoAndIndexedDBAvailability(): boolean {
+    const hasSecureContext = this.checkSecureContext();
+    const hasSubtle = this.checkWebCrypto();
+    const hasIndexedDb = this.checkIndexedDB();
+
+    if (!hasSecureContext || !hasSubtle || !hasIndexedDb) {
+      console.error('[WebCryptoKeyStorageProvider] Unavailable environment:', {
+        hasSecureContext,
+        hasSubtle,
+        hasIndexedDb,
+      });
+      let errorMsg;
+      if(!hasSecureContext){
+        errorMsg = "This feature requires HTTPS (a secure context). Please open the app over HTTPS and try again."
+      }else{
+        errorMsg = "Your browser does not support the required security features (WebCrypto / IndexedDB).";
+      }
+
+      this.storageMode = 'unavailable';
+      return false;
+    }
+
+    return true;
+  }
+
+  private async runCompatibilityCheckOnce(): Promise<BrowserKeyStorageMode> {
+    return await this.selfTestStorageMode();
+  }
+
+  private async testIndexedDBUsable(): Promise<boolean> {
+    if (!this.checkIndexedDB()){
+     console.warn("IndexedDB is not accessible. Check browser settings (private mode, storage permissions) and try again");
+      return false;
+    }
+
+    let db: IDBDatabase | null = null;
+
+    try {
+      db = await this.openDatabase();
+
+      const tx = db.transaction(this.STORE_NAME, 'readonly');
+      tx.objectStore(this.STORE_NAME).get('__idb_smoke__');
+      await this.awaitTx(tx);
+
+      return true;
+    } catch (e) {
+      console.error('[WebCryptoKeyStorageProvider] IndexedDB smoke test failed:', e);
+      return false;
+    } finally {
+      try {
+        db?.close();
+      } catch {
+        // Ignore close failures.
+      }
     }
   }
+
   private async selfTestStorageMode(): Promise<BrowserKeyStorageMode> {
     const testKeyId = `__compat_test__${globalThis.crypto.randomUUID?.() ?? String(Date.now())}`;
     let saved = false;
@@ -59,7 +127,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
       const publicKeyJwk = await globalThis.crypto.subtle.exportKey('jwk', keyPair.publicKey);
 
-      const record: StoredKeyRecord = {
+      const record: StoredFullKeyRecord = {
         keyId: testKeyId,
         algorithm: 'ES256',
         publicKeyJwk,
@@ -74,16 +142,16 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
       await this.saveKeyRecordInternal(record, 'full');
       saved = true;
 
-      const loaded = await this.getKeyRecord(testKeyId);
-      if (!loaded?.privateKey || !loaded?.publicKey) return 'public-only';
+      const loadedKeyRecord = await this.getKeyRecord(testKeyId);
+      if (!loadedKeyRecord || !isFullRecord(loadedKeyRecord)) return 'public-only';
 
       // Validate that recovered keys are usable.
       const data = new TextEncoder().encode('compat');
-      const sig = await globalThis.crypto.subtle.sign(this.getSignatureParams('ES256'), loaded.privateKey, data);
+      const sig = await globalThis.crypto.subtle.sign(this.getSignatureParams('ES256'), loadedKeyRecord.privateKey, data);
 
       const ok = await globalThis.crypto.subtle.verify(
         this.getSignatureParams('ES256'),
-        loaded.publicKey,
+        loadedKeyRecord.publicKey,
         sig,
         data
       );
@@ -104,7 +172,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
   }
 
   async generateKeyPair(algorithm: RawKeyAlgorithm, keyId: string): Promise<PublicKeyInfo> {
-    await this.checkBrowserCompatibility();
+    await this.requireAvailableMode();
 
     const params = this.getAlgorithmParams(algorithm);
     console.log("Generating key pair with params:", params);
@@ -127,7 +195,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
     const createdAt = new Date().toISOString();
 
-    const record: StoredKeyRecord = {
+    const record: StoredFullKeyRecord  = {
       keyId,
       algorithm,
       publicKeyJwk,
@@ -149,27 +217,26 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
   }
 
   async sign(keyId: string, data: Uint8Array): Promise<Uint8Array> {
-    await this.checkBrowserCompatibility();
+    await this.requireAvailableMode();
 
     const record = await this.getKeyRecord(keyId);
-    if (!record) throw new Error(`Key not found: ${keyId}`);
+    if (!record){
+      throwAppError("Couldn't find the signing for this credential. Use the same device and browser where you activated it. If you cleared your browser data, the key may be gone and you may need to request a new credential.");
+    }
 
     const params = this.getSignatureParams(record.algorithm);
 
-    let privateKey: CryptoKey | undefined;
+    const cachedPrivateKey = this.keyCache.get(keyId)?.privateKey;
 
-    if (this.storageMode === 'full') {
+    let privateKey: CryptoKey | undefined = cachedPrivateKey;
+
+    if (!privateKey && this.storageMode === 'full' && isFullRecord(record)) {
       privateKey = record.privateKey;
-    } else {
-      privateKey = this.keyCache.get(keyId)?.privateKey;
     }
 
     if (!privateKey) {
-      throw new Error(
-        'Private key is not available in this browser session. ' +
-        'This browser cannot persist CryptoKey in IndexedDB (public-key-only mode). ' +
-        'Regenerate or re-import the key in this session, and avoid reloading the page.'
-      );
+      throwAppError('Private key is not available in this browser session. ' + 'Regenerate or re-import the key in this session, and avoid reloading the page.',
+        "The private key is not available in this browser session. Re-import or regenerate the key, and avoid reloading the page.");
     }
 
     const signature = await globalThis.crypto.subtle.sign(params, privateKey, new Uint8Array(data));
@@ -205,50 +272,65 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
   async deleteKey(keyId: string): Promise<void> {
     const db = await this.openDatabase();
-    const tx = db.transaction(this.STORE_NAME, 'readwrite');
-    const store = tx.objectStore(this.STORE_NAME);
+    try {
+      const tx = db.transaction(this.STORE_NAME, 'readwrite');
+      const store = tx.objectStore(this.STORE_NAME);
 
-    await this.wrapRequest(store.delete(keyId));
-    await this.awaitTx(tx);
-    this.keyCache.delete(keyId);
-    db.close();
+      await this.wrapRequest(store.delete(keyId));
+      await this.awaitTx(tx);
+      this.keyCache.delete(keyId);
+    } finally {
+      try { db.close(); } catch {}
+    }
   }
 
   async listKeys(): Promise<KeyInfo[]> {
     const db = await this.openDatabase();
-    const tx = db.transaction(this.STORE_NAME, 'readonly');
-    const store = tx.objectStore(this.STORE_NAME);
+    try{
+      const tx = db.transaction(this.STORE_NAME, 'readonly');
+      const store = tx.objectStore(this.STORE_NAME);
+  
+      const records = await this.wrapRequest(store.getAll()) as StoredAnyKeyRecord[];
+      await this.awaitTx(tx);
+      return records.map((r) => ({
+        keyId: r.keyId,
+        algorithm: r.algorithm,
+        createdAt: r.createdAt,
+      }));
+    }finally{
+      db.close();
+    }
 
-    const records = await this.wrapRequest(store.getAll()) as StoredKeyRecord[];
-    await this.awaitTx(tx);
-    db.close();
-
-    return records.map((r) => ({
-      keyId: r.keyId,
-      algorithm: r.algorithm,
-      createdAt: r.createdAt,
-    }));
   }
 
   // --- Optional backup methods (Enterprise) ---
 
   async exportKey(keyId: string): Promise<JsonWebKey> {
+    await this.requireAvailableMode();
+
     const record = await this.getKeyRecord(keyId);
     if (!record) {
       throw new Error(`Key not found: ${keyId}`);
     }
 
-    // This will throw if the private key is non-extractable (expected for this provider).
+      const privateKey = isFullRecord(record)
+      ? record.privateKey
+      : this.keyCache.get(keyId)?.privateKey;
+
+       if (!privateKey) {
+        throw new Error('Private key is not available in this browser session.');
+      }
+
     try {
-      return await globalThis.crypto.subtle.exportKey('jwk', record.privateKey);
+      return await globalThis.crypto.subtle.exportKey('jwk', privateKey);
     } catch (e) {
-      throw new Error(
-        'Private key export is not allowed (non-extractable key). Use an Enterprise flow that generates extractable keys + encrypted backup.'
-      );
+      throwAppError("This private key is non-extractable and cannot be exported.");
     }
   }
 
   async importKey(keyId: string, jwk: JsonWebKey): Promise<void> {
+    await this.requireAvailableMode();
+    
     const algorithm = this.jwkToAlgorithm(jwk);
     const params = this.getAlgorithmParams(algorithm);
 
@@ -316,6 +398,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
    * For EC keys: required members are crv, kty, x, y (lexicographic order).
    */
   public async computeJwkThumbprint(jwk: JsonWebKey): Promise<string> {
+
     const crv = jwk.crv;
     const kty = jwk.kty;
     const x = jwk.x;
@@ -347,12 +430,35 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
     throw new Error(`Unsupported curve: ${crv ?? 'unknown'}`);
   }
 
-  private async openDatabase(): Promise<IDBDatabase> {
+  private async openDatabase(): Promise<IDBDatabase> {    
+    if (!this.checkIndexedDB()) {
+      throw new Error('IndexedDB is unavailable in this environment.');
+    }
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
 
       request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
+      request.onblocked = () => {
+        reject(
+          new AppError('IndexedDB upgrade blocked by another tab', {
+            userMessage:
+              'Another tab is blocking a storage upgrade. Close other tabs of this app and try again.',
+          })
+        );
+      };
+      request.onsuccess = () => {
+        const db = request.result;
+
+        db.onversionchange = () => {
+          try {
+            db.close();
+          } catch {
+            // Ignore close failures.
+          }
+        };
+
+        resolve(db);
+      };
 
       request.onupgradeneeded = () => {
         const db = request.result;
@@ -369,44 +475,66 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
       };
     });
   }
-  private async getKeyRecord(keyId: string): Promise<StoredKeyRecord | null> {
+  private async getKeyRecord(keyId: string): Promise<StoredAnyKeyRecord | null> {
     const db = await this.openDatabase();
-    const tx = db.transaction(this.STORE_NAME, 'readonly');
-    const store = tx.objectStore(this.STORE_NAME);
 
-    const record = (await this.wrapRequest(store.get(keyId))) as StoredKeyRecord | undefined;
-    await this.awaitTx(tx);
-    db.close();
+    try {
+      const tx = db.transaction(this.STORE_NAME, 'readonly');
+      const store = tx.objectStore(this.STORE_NAME);
 
-    return record ?? null;
+      const record = (await this.wrapRequest(store.get(keyId))) as StoredAnyKeyRecord | undefined;
+
+      await this.awaitTx(tx);
+
+      if (record && isFullRecord(record) && !this.keyCache.has(keyId)) {
+        this.keyCache.set(keyId, { privateKey: record.privateKey, publicKey: record.publicKey });
+      }
+
+      return record ?? null;
+    } finally {
+      try {
+        db.close();
+      } catch {
+        // Ignore close failures.
+      }
+    }
   }
 
-  private async saveKeyRecord(record: StoredKeyRecord): Promise<void> {
-  await this.checkBrowserCompatibility();
-  await this.saveKeyRecordInternal(record, this.storageMode ?? 'public-only');
-}
+  private async saveKeyRecord(record: StoredAnyKeyRecord): Promise<void> {
+    const mode = await this.requireAvailableMode();
+    await this.saveKeyRecordInternal(record, mode);
+  }
 
-private async saveKeyRecordInternal(record: StoredKeyRecord, mode: BrowserKeyStorageMode): Promise<void> {
-  // English-only comments by convention.
-  const db = await this.openDatabase();
-  const tx = db.transaction(this.STORE_NAME, 'readwrite');
-  const store = tx.objectStore(this.STORE_NAME);
+  private async saveKeyRecordInternal(record: StoredAnyKeyRecord, mode: AvailableBrowserKeyStorageMode): Promise<void> {
+    const db = await this.openDatabase();
+    const tx = db.transaction(this.STORE_NAME, 'readwrite');
+    const store = tx.objectStore(this.STORE_NAME);
 
-  const toPersist: any =
-    mode === 'public-only'
-      ? {
-          keyId: record.keyId,
-          algorithm: record.algorithm,
-          publicKeyJwk: record.publicKeyJwk,
-          kid: record.kid,
-          createdAt: record.createdAt,
-        }
-      : record;
+    const toPersist: StoredAnyKeyRecord = mode === 'public-only'
+        ? {
+            keyId: record.keyId,
+            algorithm: record.algorithm,
+            publicKeyJwk: record.publicKeyJwk,
+            kid: record.kid,
+            createdAt: record.createdAt,
+          }
+        : record;
 
-  await this.wrapRequest(store.put(toPersist));
-  await this.awaitTx(tx);
-  db.close();
-}
+      try {
+        await this.wrapRequest(store.put(toPersist));
+        await this.awaitTx(tx);
+      } catch (e) {
+          if (this.isQuotaExceededError(e)) {
+            throwAppError('Browser storage quota exceeded', 'Your browser storage is full. Free up space and try again.', e);
+          }
+          throw new AppError('Browser storage operation failed', {
+            cause: e,
+            userMessage: 'A browser storage operation failed. Please try again.',
+          });
+      } finally {
+        db.close();
+      }
+  }
 
   private wrapRequest<T>(req: IDBRequest<T>): Promise<T> {
     return new Promise((resolve, reject) => {
@@ -416,33 +544,107 @@ private async saveKeyRecordInternal(record: StoredKeyRecord, mode: BrowserKeySto
   }
 
   private awaitTx(tx: IDBTransaction): Promise<void> {
+    const browserErrorMessage = 'A browser storage operation failed. Please try again.';
     return new Promise((resolve, reject) => {
       tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error ?? new Error('IndexedDB transaction aborted'));
+      tx.onerror = () => { 
+        reject( 
+          new AppError('IndexedDB transaction failed', {
+          cause: tx.error,
+          userMessage: browserErrorMessage,
+        })
+        );
+      }
+      tx.onabort = () => {
+        reject(
+          new AppError('IndexedDB transaction aborted', {
+          cause: tx.error,
+          userMessage: browserErrorMessage,
+        })
+        ); }
     });
   }
 
   async resolveKeyIdByKid(kid: string): Promise<string | null> {
     const db = await this.openDatabase();
-    const tx = db.transaction(this.STORE_NAME, 'readonly');
-    const store = tx.objectStore(this.STORE_NAME);
 
-    if (!store.indexNames.contains('kid')) {
+    try {
+      const tx = db.transaction(this.STORE_NAME, 'readonly');
+      const store = tx.objectStore(this.STORE_NAME);
+
+      if (!store.indexNames.contains('kid')) {
+        throwAppError("The browser storage schema is missing the 'kid' index. Delete the 'wallet-key-storage' database in DevTools and reload.");
+      }
+
+      const idx = store.index('kid');
+      const record = (await this.wrapRequest(idx.get(kid))) as StoredAnyKeyRecord | undefined;
+
       await this.awaitTx(tx);
-      db.close();
-      throw new Error(
-        "IndexedDB schema is missing the 'kid' index. Delete the 'wallet-key-storage' database in DevTools and reload."
-      );
+
+      return record?.keyId ?? null;
+    } finally {
+      try {
+        db.close();
+      } catch {
+        // Ignore close failures.
+      }
+    }
+  }
+
+  private async requireAvailableMode(
+    errorMessage?: string,
+    userMessage?: string
+  ): Promise<AvailableBrowserKeyStorageMode> {
+    const mode = await this.checkBrowserCompatibility();
+    const fallbackMessage = errorMessage ?? "Key storage is not available.";
+    const fallbackuserMessage = userMessage ?? "Key storage is not available. You won't be able to activate nor use credentials."
+
+    if (mode === 'unavailable') {
+
+      throwAppError(fallbackMessage, fallbackuserMessage);
     }
 
-    const idx = store.index('kid');
-    const record = (await this.wrapRequest(idx.get(kid))) as StoredKeyRecord | undefined;
+    return mode;
+  }
 
-    await this.awaitTx(tx);
-    db.close();
+  private checkIndexedDB(): boolean {
+    return typeof globalThis.indexedDB !== 'undefined' && !!globalThis.indexedDB;
+  }
 
-    return record?.keyId ?? null;
+  private checkWebCrypto(): boolean {
+    return !!globalThis.crypto?.subtle;
+  }
+
+  private checkSecureContext(): boolean {
+    const isc = (globalThis as any).isSecureContext;
+    if (typeof isc === 'boolean') return isc;
+
+    // Fallback for older/embedded browsers
+    if (typeof location === 'undefined') return false;
+
+    const protocolOk = location.protocol === 'https:';
+    const host = location.hostname;
+
+    const localhostOk =
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '::1' ||
+      host === '[::1]';
+
+    return protocolOk || localhostOk;
+  }
+
+  private isQuotaExceededError(e: unknown): boolean {
+    const anyErr = e as any;
+    const name = String(anyErr?.name ?? '');
+    const message = String(anyErr?.message ?? '');
+
+    return (
+      name === 'QuotaExceededError' ||
+      name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+      /quota/i.test(name) ||
+      /quota/i.test(message)
+    );
   }
 }
 

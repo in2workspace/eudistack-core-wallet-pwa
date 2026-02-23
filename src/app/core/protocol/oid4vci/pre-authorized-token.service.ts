@@ -9,6 +9,8 @@ import { AlertController, AlertOptions } from '@ionic/angular';
 import { LoaderService } from 'src/app/services/loader.service';
 import { TranslateService } from '@ngx-translate/core';
 import { WalletService } from 'src/app/services/wallet.service';
+import { Oid4vciError } from '../../models/error/Oid4vciError';
+import { retryUserMessage, wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
 
 //todo
 const TIMEOUT_DURATION_S = 55;
@@ -29,7 +31,8 @@ export class PreAuthorizedTokenService {
   ): Promise<TokenResponse> {
   const tokenURL = authorisationServerMetadata.tokenEndpoint;
   if (!tokenURL) {
-    throw new Error('Token endpoint URL is missing in authorisation server metadata');
+      const msg = 'Token endpoint URL is missing in authorisation server metadata';
+      throw new Oid4vciError(msg, { userMessage: retryUserMessage('Invalid authorization server metadata') });
   }
 
   let code: string | null = null;
@@ -42,11 +45,13 @@ export class PreAuthorizedTokenService {
   }
 
   this.loader.addLoadingProcess();
-  //todo add error handler to communicat pin error or pin expired
-  const raw = await this.getAccessToken(tokenURL, credentialOffer, code);
-  this.loader.removeLoadingProcess();
-  
-  return this.parseTokenResponse(raw);
+
+    try {
+      const raw = await this.getAccessToken(tokenURL, credentialOffer, code);
+      return this.parseTokenResponse(raw);
+    } finally {
+      this.loader.removeLoadingProcess();
+    }
 }
 
   private async getAccessToken(
@@ -74,18 +79,20 @@ export class PreAuthorizedTokenService {
     const body = this.toXWwwFormUrlEncoded(formData);
 
     try {
-      //todo if error, show error popup to say PIN is incorrect
       return await firstValueFrom(
         this.walletService.postFromUrlForTextResponse(tokenURL, body)
       );
     } catch (e: unknown) {
-      const err = e as HttpErrorResponse;
-      const status = err.status ?? 0;
-
-      if (status >= 400 && status < 600) {
-        throw new Error(`Incorrect PIN, the next error occurs: ${this.httpErrorToString(err)}`);
+      if (e instanceof Oid4vciError) throw e;
+      if (e instanceof HttpErrorResponse) {
+        const userMsg = (e.status >= 400 && e.status < 600) ? 'Incorrect PIN. Try again.' : retryUserMessage('Could not get access token');
+        wrapOid4vciHttpError(e, 'Could not get access token', { userMessage: userMsg });
       }
-      throw e;
+
+      throw new Oid4vciError('Could not get access token', {
+        cause: e,
+        userMessage: retryUserMessage('Could not get access token'),
+      });
     }
   }
 
@@ -93,7 +100,11 @@ export class PreAuthorizedTokenService {
     try {
       return JSON.parse(response) as TokenResponse;
     } catch (e: unknown) {
-      throw new Error(`Error parsing token response: ${String(e)}`);
+      const msg = 'Invalid token response';
+      throw new Oid4vciError(`${msg} (malformed JSON)`, {
+        cause: e,
+        userMessage: retryUserMessage(msg),
+      });
     }
   }
 
@@ -103,14 +114,6 @@ export class PreAuthorizedTokenService {
       parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
     }
     return parts.join('&');
-  }
-
-  private httpErrorToString(err: HttpErrorResponse): string {
-    const base = `status=${err.status} statusText=${err.statusText}`;
-    if (typeof err.error === 'string' && err.error.length > 0) {
-      return `${base} body=${err.error}`;
-    }
-    return base;
   }
 
   // todo review error cases (timeout, user cancellation, incorrect PIN)
@@ -143,7 +146,7 @@ export class PreAuthorizedTokenService {
         resolve(pin);
       };
 
-      const safeReject = (err: Error) => {
+      const safeReject = (err: unknown) => {
         if (settled) return;
         settled = true;
         cleanup();
@@ -169,7 +172,11 @@ export class PreAuthorizedTokenService {
             text: cancel,
             role: 'cancel',
             handler: () => {
-              safeReject(new Error('User cancelled PIN entry'));
+                safeReject(
+                new Oid4vciError('User cancelled PIN entry', {
+                  code: 'user_cancelled',
+                })
+              );
               return true;
             },
           },
@@ -179,7 +186,11 @@ export class PreAuthorizedTokenService {
               const pin = String(alertData?.pin ?? '').trim();
 
               if (!pin) {
-                safeReject(new Error('PIN is empty'));
+                safeReject(
+                  new Oid4vciError('PIN is empty', {
+                    userMessage: 'PIN is required.',
+                  })
+                );
                 return false;
               }
 
@@ -195,10 +206,12 @@ export class PreAuthorizedTokenService {
         .create(alertOptions)
         .then((alert) => {
           alert.onDidDismiss().then(() => {
-            // If user already resolved/rejected via buttons, do nothing.
             if (settled) return;
-            //todo show error popup
-            safeReject(new Error('PIN request timed out'));
+            safeReject(
+              new Oid4vciError('PIN request timed out', {
+                userMessage: retryUserMessage('PIN request timed out'),
+              })
+            );
           });
 
           interval = this.startCountdown(alert, description, counter);
@@ -206,14 +219,19 @@ export class PreAuthorizedTokenService {
           return alert.present();
         })
         .catch((err) => {
-          safeReject(err instanceof Error ? err : new Error(String(err)));
+          safeReject(
+            new Oid4vciError('Could not open PIN prompt', {
+              cause: err,
+              userMessage: retryUserMessage('Could not open PIN prompt'),
+            })
+          );
         });
     });
   }
 
 
   //todo move to shared file to avoid duplication with WebsocketService
-    private startCountdown(
+  private startCountdown(
     alert: any,
     description: string,
     initialCounter: number

@@ -4,23 +4,28 @@ import { firstValueFrom } from 'rxjs';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { AuthorisationServerMetadata } from '../../models/dto/AuthorisationServerMetadata';
 import { WalletService } from 'src/app/services/wallet.service';
+import { Oid4vciError } from '../../models/error/Oid4vciError';
+import { retryUserMessage, wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
 
 @Injectable({ providedIn: 'root' })
 export class AuthorisationServerMetadataService {
 
   private readonly walletService = inject(WalletService);
 
-  async getAuthorizationServerMetadataFromCredentialIssuerMetadata(
+  public async getAuthorizationServerMetadataFromCredentialIssuerMetadata(
     credentialIssuerMetadata: CredentialIssuerMetadata
   ): Promise<AuthorisationServerMetadata> {
     try {
       const responseText = await this.getAuthorizationServerMetadata(credentialIssuerMetadata);
       return this.parseAuthorisationServerMetadataResponse(responseText);
-    } catch (e: any) {
-      const reason = typeof e?.message === 'string' ? e.message : String(e);
-      throw new Error(
-        `Error while processing Authorisation Server Metadata Response from the Auth Server. Reason: ${reason}`
-      );
+    } catch (e: unknown) {
+      if (e instanceof Oid4vciError) throw e;
+
+      const errorMsg = 'Could not process authorization server metadata';
+      throw new Oid4vciError(errorMsg, {
+        cause: e,
+        userMessage: retryUserMessage(errorMsg),
+      });
     }
   }
 
@@ -31,15 +36,21 @@ export class AuthorisationServerMetadataService {
       credentialIssuerMetadata.authorizationServer ?? credentialIssuerMetadata.credentialIssuer;
 
     if (!authServer || authServer.trim().length === 0) {
-      throw new Error('Missing required field: authorizationServer/credentialIssuer');
+      const errorMsg = 'Missing required field: authorizationServer/credentialIssuer';
+      throw new Oid4vciError(errorMsg, {
+        userMessage: retryUserMessage('Invalid issuer configuration'),
+      });
     }
 
     const url = `${authServer}/.well-known/openid-configuration`;
 
     try {
       return await firstValueFrom(this.walletService.getTextFromUrl(url));
-    } catch (e) {
-      throw e as HttpErrorResponse;
+    } catch (e: unknown) {
+      const errorMsg = 'Could not download authorization server metadata';
+      wrapOid4vciHttpError(e, errorMsg, {
+        userMessage: retryUserMessage(errorMsg),
+      });
     }
   }
 
@@ -47,7 +58,6 @@ export class AuthorisationServerMetadataService {
     try {
       const root = JSON.parse(responseText);
 
-      // Keep it permissive like @JsonIgnoreProperties(ignoreUnknown = true)
       return {
         issuer: root?.issuer,
         tokenEndpoint: root?.token_endpoint ?? root?.tokenEndpoint,
@@ -56,8 +66,11 @@ export class AuthorisationServerMetadataService {
         ...root,
       };
     } catch (e: any) {
-      const reason = typeof e?.message === 'string' ? e.message : String(e);
-      throw new Error(`Error while deserializing Credential Issuer Metadata. Reason: ${reason}`);
+      const baseMessage = 'Invalid authorization server metadata';
+      throw new Oid4vciError(`${baseMessage} (malformed JSON)`, {
+        cause: e,
+        userMessage: retryUserMessage(baseMessage),
+      });
     }
   }
 }

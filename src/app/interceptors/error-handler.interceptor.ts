@@ -31,16 +31,32 @@ export class HttpErrorInterceptor implements HttpInterceptor {
       catchError((errorResp: HttpErrorResponse) => {
         //Normalize URL to ensure request params are not included in the conditionals below
         const urlObj = new URL(request.url);
+        const href = urlObj.href;
+        const isOwnBackend = href.startsWith(environment.server_url);
+        const isIam = href.startsWith(environment.iam_url);
         const pathname = urlObj.pathname;
 
         let errMessage = errorResp.error?.message || errorResp.message || 'Unknown Http error';
         const errStatus = errorResp.status ?? errorResp.error?.status;
+
+        if (!isOwnBackend && !isIam) {
+          // Do not toast for 3rd party endpoints (issuers, well-known, etc.)
+          this.logHandledSilentlyErrorMsg(errMessage);
+          return throwError(() => errorResp);
+        }
+
+
         //DONT'T SHOW POPUP CASES
         // get credentials endpoint
         if ( 
           //todo review this handler
           pathname.endsWith(SERVER_PATH.CREDENTIALS) && errMessage?.startsWith('The credentials list is empty')
         ) {
+          this.logHandledSilentlyErrorMsg(errMessage);
+          return throwError(() => errorResp);
+        }
+        // OID4VCI finalize endpoint
+        if(urlObj.href.endsWith(SERVER_PATH.CREDENTIAL_RESPONSE)){
           this.logHandledSilentlyErrorMsg(errMessage);
           return throwError(() => errorResp);
         }
@@ -62,6 +78,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         }
         //SHOW POPUP CASES
         //same-device credential offer request
+        //todo keep this only while we keep the old activation flow
         if(pathname.endsWith(
           SERVER_PATH.REQUEST_CREDENTIAL) 
         ){
@@ -76,11 +93,6 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         else if (pathname.endsWith(SERVER_PATH.EXECUTE_CONTENT)){
           if(errMessage.startsWith('The credentials list is empty')  || errMessage.startsWith('No credentials found for')){
             errMessage = "There are no credentials available to login";
-          }else if(errMessage.startsWith('Incorrect PIN')){
-            //simply don't change the message, the one from backend is ok
-          }else if(errorResp.status === 504 || errorResp.status === 408){
-            //504 for nginx Gateway timeout, 408 for backend
-            errMessage = "PIN expired"
           }
           else if(!errMessage.startsWith('The received QR content cannot be processed'))
           {

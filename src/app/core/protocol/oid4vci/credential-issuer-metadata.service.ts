@@ -5,6 +5,8 @@ import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { environment } from 'src/environments/environment';
 import { WalletService } from 'src/app/services/wallet.service';
+import { Oid4vciError } from '../../models/error/Oid4vciError';
+import { retryUserMessage, wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
 
 
 
@@ -22,51 +24,69 @@ export class CredentialIssuerMetadataService {
       const responseText = await this.getCredentialIssuerMetadata(credentialIssuerURL);
       return this.parseCredentialIssuerMetadataResponse(responseText);
     } catch (e) {
-      throw new Error('Error while processing Credential Issuer Metadata from the Issuer');
+      if (e instanceof Oid4vciError) throw e;
+
+      const errorMsg = 'Could not process issuer metadata';
+      throw new Oid4vciError(errorMsg, {
+        cause: e,
+        userMessage: retryUserMessage(errorMsg),
+      });
     }
   }
 
   private async getCredentialIssuerMetadata(credentialIssuerURL: string): Promise<string> {
-
     try {
       return await firstValueFrom(this.walletService.getTextFromUrl(credentialIssuerURL));
-    } catch (e) {
-      throw e as HttpErrorResponse;
+    } catch (e: unknown) {
+        const errorMsg = 'Could not download issuer metadata';
+        wrapOid4vciHttpError(e, errorMsg, {
+        userMessage: retryUserMessage(errorMsg),
+      });
     }
   }
 
   private parseCredentialIssuerMetadataResponse(responseText: string): CredentialIssuerMetadata {
-    let root: any;
-
-    try {
-      root = JSON.parse(responseText);
-    } catch (e) {
-      throw new Error('Error while deserializing Credential Issuer Metadata: invalid JSON');
-    }
-
-    if (root && typeof root === 'object' && 'credential_token' in root) {
-      const original = this.mapCredentialIssuerMetadata(root);
+    let root = this.parseJsonOrThrow(responseText);
+    const mapped = this.mapCredentialIssuerMetadata(root);
+    
+    if (root && typeof root === 'object' && !Array.isArray(root) && 'credential_token' in root) {
 
       return {
-        credentialIssuer: original.credentialIssuer,
-        credentialEndpoint: original.credentialEndpoint,
-        credentialsSupported: original.credentialsSupported,
-        deferredCredentialEndpoint: original.deferredCredentialEndpoint,
+        credentialIssuer: mapped.credentialIssuer,
+        credentialEndpoint: mapped.credentialEndpoint,
+        credentialsSupported: mapped.credentialsSupported,
+        deferredCredentialEndpoint: mapped.deferredCredentialEndpoint,
         authorizationServer: environment.iam_url,
-        credentialToken: original.credentialToken,
-        credential_configurations_supported: original.credential_configurations_supported,
+        credentialToken: mapped.credentialToken,
+        credential_configurations_supported: mapped.credential_configurations_supported,
       };
     }
 
-    return this.mapCredentialIssuerMetadata(root);
+    return this.mapCredentialIssuerMetadata(mapped);
+  }
+
+  private parseJsonOrThrow(responseText: string): any {
+    try {
+      return JSON.parse(responseText);
+    } catch (e: unknown) {
+      const baseMessage = 'Invalid issuer metadata';
+      throw new Oid4vciError(`${baseMessage} (malformed JSON)`, {
+        cause: e,
+        userMessage: retryUserMessage(baseMessage),
+      });
+    }
   }
 
   /**
    * Map/normalize from wire JSON to DTO.
    */
   private mapCredentialIssuerMetadata(root: any): CredentialIssuerMetadata {
-    //todo review
-    if (!root || typeof root !== 'object') return {} as CredentialIssuerMetadata;
+    if (!root || typeof root !== 'object') {
+      const baseMessage = 'Invalid issuer metadata';
+      throw new Oid4vciError(`${baseMessage} (not an object)`, {
+        userMessage: retryUserMessage(baseMessage),
+      });
+    }
 
     return {
       credentialIssuer: root.credential_issuer ?? root.credentialIssuer,

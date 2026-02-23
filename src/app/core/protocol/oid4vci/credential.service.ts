@@ -8,6 +8,8 @@ import { CredentialRequest } from '../../models/CredentialRequest';
 import { CredentialResponse } from '../../models/dto/CredentialResponse';
 import { JWT_VC_JSON } from 'src/app/constants/jwt.constants';
 import { WalletService } from 'src/app/services/wallet.service';
+import { Oid4vciError } from '../../models/error/Oid4vciError';
+import { retryUserMessage, wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
 
   
 @Injectable({ providedIn: 'root' })
@@ -35,7 +37,10 @@ export class CredentialService {
     const endpoint = params.credentialIssuerMetadata.credentialEndpoint;
 
     if(accessToken === undefined || endpoint === undefined){
-      throw new Error('Missing access token or credential endpoint');
+      const baseMsg = 'Missing access token (' + accessToken + ') or credential endpoint (' + endpoint + ')';
+      throw new Oid4vciError(baseMsg, {
+        userMessage: retryUserMessage('Could not request the credential'),
+      });
     }
 
     return await this.postCredentialRequest({
@@ -51,11 +56,17 @@ export class CredentialService {
     credentialConfigurationId: string;
   }): CredentialRequest {
     if (!params.credentialConfigurationId) {
-      throw new Error('Credentials configurations ids not provided');
+            const baseMsg = 'Credential configuration id not provided';
+      throw new Oid4vciError(baseMsg, {
+        userMessage: retryUserMessage('Invalid credential configuration'),
+      });
     }
 
     if (params.format !== JWT_VC_JSON) {
-      throw new Error(`Format not supported: ${params.format}`);
+        const baseMsg = `Format not supported: ${params.format}`;
+        throw new Oid4vciError(baseMsg, {
+        userMessage: retryUserMessage('Unsupported credential format'),
+      });
     }
 
     const request: CredentialRequest = {
@@ -87,19 +98,34 @@ export class CredentialService {
         this.walletService.postFromUrlAndObserveResponse(params.endpoint, params.body as {})
       );
     } catch (e) {
+      const baseMsg = 'Credential request failed';
+      const userMsg = retryUserMessage('Could not request the credential');
+
+      if (e instanceof Oid4vciError) throw e;
+
       if (e instanceof HttpErrorResponse) {
-        throw new Error(`Credential request failed (${e.status}): ${this.safeErrBody(e.error)}`);
+        wrapOid4vciHttpError(e, baseMsg, { userMessage: userMsg });
       }
-      throw e;
+      throw new Oid4vciError(baseMsg, {
+        cause: e,
+        userMessage: retryUserMessage(userMsg),
+      });
     }
 
     const status = response.status;
 
     if (status !== 200 && status !== 202) {
-      throw new Error(`Unexpected HTTP status: ${status}`);
+      const baseMsg = `Unexpected HTTP status: ${status}`;
+      throw new Oid4vciError(baseMsg, {
+        userMessage: retryUserMessage('Could not request the credential'),
+      });
     }
+
     if (!response.body) {
-      throw new Error('Empty credential response body');
+      const baseMsg = 'Empty credential response body';
+      throw new Oid4vciError(baseMsg, {
+        userMessage: retryUserMessage('Could not request the credential'),
+      });
     }
 
     return {
@@ -108,13 +134,4 @@ export class CredentialService {
     };
   }
 
-  //todo reusable
-  private safeErrBody(err: unknown): string {
-    try {
-      if (typeof err === 'string') return err;
-      return JSON.stringify(err);
-    } catch {
-      return 'unknown error';
-    }
-  }
 }

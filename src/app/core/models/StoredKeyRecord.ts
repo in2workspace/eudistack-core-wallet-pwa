@@ -1,13 +1,21 @@
-export interface StoredKeyRecord {
+export type StoredPublicKeyRecord = {
   keyId: string;
   algorithm: RawKeyAlgorithm;
   publicKeyJwk: JsonWebKey;
-  privateKey: CryptoKey; // Opaque object, non-exportable
-  publicKey: CryptoKey;
-  kid: string; // JWK thumbprint (RFC 7638)
+  kid: string;
   createdAt: string;
-}
+};
 
+export type StoredFullKeyRecord = StoredPublicKeyRecord & {
+  privateKey: CryptoKey;
+  publicKey: CryptoKey;
+};
+
+export type StoredAnyKeyRecord = StoredPublicKeyRecord | StoredFullKeyRecord;
+
+export function isFullRecord(r: StoredAnyKeyRecord): r is StoredFullKeyRecord {
+  return !!(r as any).privateKey && !!(r as any).publicKey;
+}
 
 export interface PublicKeyInfo {
   keyId: string;

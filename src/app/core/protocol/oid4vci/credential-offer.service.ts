@@ -4,24 +4,34 @@ import { firstValueFrom } from 'rxjs';
 import { CredentialOffer, CredentialOfferCredential, CredentialOfferGrant } from '../../models/dto/CredentialOffer';
 import { PRE_AUTH_CODE_GRANT_TYPE } from 'src/app/constants/credential-offer.constants';
 import { WalletService } from 'src/app/services/wallet.service';
+import { Oid4vciError } from '../../models/error/Oid4vciError';
+import { httpErrorMessage, retryUserMessage, wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
 
 @Injectable({ providedIn: 'root' })
 export class CredentialOfferService {
  
   private readonly walletService = inject(WalletService);
 
-  async getCredentialOfferFromCredentialOfferUri(
-    credentialOfferUri: string
-  ): Promise<CredentialOffer> {
-    const parsedUri = this.parseCredentialOfferUri(credentialOfferUri);
+    async getCredentialOfferFromCredentialOfferUri(credentialOfferUri: string): Promise<CredentialOffer> {
+    try {
+      const parsedUri = this.parseCredentialOfferUri(credentialOfferUri);
 
-    const responseText = await this.getCredentialOffer(parsedUri);
+      const responseText = await this.getCredentialOffer(parsedUri);
 
-    const offer = this.parseAndNormalizeCredentialOffer(responseText);
+      const offer = this.parseAndNormalizeCredentialOffer(responseText);
 
-    this.validateCredentialOffer(offer);
+      this.validateCredentialOffer(offer);
 
-    return offer;
+      return offer;
+    } catch (e: unknown) {
+      if (e instanceof Oid4vciError) throw e;
+      const errorMsg = 'Could not process the credential offer';
+
+      throw new Oid4vciError(errorMsg, {
+        cause: e,
+        userMessage: retryUserMessage(errorMsg)
+      });
+    }
   }
 
   private parseCredentialOfferUri(credentialOfferUri: string): string {
@@ -38,11 +48,11 @@ export class CredentialOfferService {
 
   private async getCredentialOffer(credentialOfferUri: string): Promise<string> {
     try {
-      return firstValueFrom(this.walletService.getTextFromUrl(credentialOfferUri));
-    } catch (e) {
+      return await firstValueFrom(this.walletService.getTextFromUrl(credentialOfferUri));
+    } catch (e: unknown) {
+      const errorMessage = 'Could not download the credential offer';
       console.error('Error fetching credential offer:', e);
-      // todo handle error
-      throw e as HttpErrorResponse;
+      wrapOid4vciHttpError(e, errorMessage, { userMessage: retryUserMessage(errorMessage) });
     }
   }
 
@@ -55,8 +65,12 @@ export class CredentialOfferService {
   private parseJsonOrThrow(responseText: string): any {
     try {
       return JSON.parse(responseText);
-    } catch {
-      throw new Error('Error while deserializing Credential Offer: invalid JSON');
+    } catch(e: unknown) {
+      const baseMessage = 'Invalid credential offer';
+        throw new Oid4vciError(baseMessage + '(malformed JSON)', {
+        cause: e,
+        userMessage: baseMessage
+      });
     }
   }
 
@@ -160,18 +174,18 @@ export class CredentialOfferService {
   }
 
   private validateCredentialOffer(credentialOffer: CredentialOffer): void {
-    //todo handle errors
+    const userErrorMessage = retryUserMessage("Invalid credential offer");
     if (!credentialOffer) {
-      throw new Error(`Credential Offer is null`);
+      throw new Oid4vciError(`Credential Offer is null`, { userMessage: userErrorMessage });
     }
     if (!credentialOffer.credentialIssuer || credentialOffer.credentialIssuer.trim().length === 0) {
-      throw new Error(`Missing required field: credentialIssuer`);
+      throw new Oid4vciError(`Missing required field: credentialIssuer`, { userMessage: userErrorMessage });
     }
     if (!credentialOffer.credentialConfigurationsIds || credentialOffer.credentialConfigurationsIds.length === 0) {
-      throw new Error(`Missing required field: credentialConfigurationIds`);
+      throw new Oid4vciError(`Missing required field: credentialConfigurationIds`, { userMessage: userErrorMessage });
     }
     if (!credentialOffer.grant) {
-      throw new Error(`Missing required field: grants`);
+      throw new Oid4vciError(`Missing required field: grants`, { userMessage: userErrorMessage });
     }
   }
 }
