@@ -95,7 +95,7 @@ export class CredentialService {
 
     try {
       response = await firstValueFrom(
-        this.walletService.postFromUrlAndObserveResponse(params.endpoint, params.body as {})
+        this.walletService.postFromUrlAndObserveResponse(params.endpoint, params.body as {}, params.accessToken)
       );
     } catch (e) {
       const baseMsg = 'Credential request failed';

@@ -127,8 +127,12 @@ export class WalletService {
             })
   }
 
-  public postFromUrlAndObserveResponse(url: string, body: {}): Observable<HttpResponse<CredentialResponse>>{
-    return this.http.post<{}>(url, body, { headers: contentTypeApplicationJsonHeader, observe: 'response'});
+  public postFromUrlAndObserveResponse(url: string, body: {}, accessToken: string): Observable<HttpResponse<CredentialResponse>>{
+    const headers = {
+      ...contentTypeApplicationJsonHeader,
+      Authorization: `Bearer ${accessToken}`,
+    };
+    return this.http.post<{}>(url, body, { headers, observe: 'response'});
   }
 
 }
