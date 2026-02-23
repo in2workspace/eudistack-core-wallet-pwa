@@ -678,11 +678,11 @@ function base64UrlEncode(bytes: Uint8Array): string {
 
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
-  const chunkSize = 0x2000; //todo review
+  const chunkSize = 0x2000;
 
   for (let i = 0; i < bytes.length; i += chunkSize) {
     const chunk = bytes.subarray(i, i + chunkSize);
-    binary += String.fromCharCode(...chunk);
+    binary += String.fromCodePoint(...chunk);
   }
 
   return btoa(binary);
