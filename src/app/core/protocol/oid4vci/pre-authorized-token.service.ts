@@ -84,6 +84,7 @@ export class PreAuthorizedTokenService {
     } catch (e: unknown) {
       if (e instanceof Oid4vciError) throw e;
       if (e instanceof HttpErrorResponse) {
+        // todo consider changing the text "Incorrect PIN." In the toast service this sets a specific error message label
         const userMsg = (e.status >= 400 && e.status < 600) ? 'Incorrect PIN. Try again.' : retryUserMessage('There was a problem processing the request');
         wrapOid4vciHttpError(e, 'Could not get access token', { userMessage: userMsg });
       }
