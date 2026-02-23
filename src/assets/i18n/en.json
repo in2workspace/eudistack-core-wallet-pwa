@@ -214,11 +214,11 @@
         "invalid-public-jwk": "The public key information is invalid.",
         "unsupported-key-type": "This key type isn’t supported.",
         "unsupported-curve": "This key curve isn’t supported.",
-        "errors.invalid-auth-server-metadata": "The authorization server information is invalid.",
-        "errors.cannot-get-access-token": "We couldn’t sign you in to the issuer. Please try again.",
-        "errors.invalid-token-response": "We received an invalid response from the issuer.",
-        "errors.pin-timeout": "Time ran out to enter the PIN. Please try again.",
-        "errors.cannot-open-pin-prompt": "We couldn’t open the PIN screen. Please try again.",
+        "invalid-auth-server-metadata": "The authorization server information is invalid.",
+        "cannot-get-access-token": "We couldn’t sign you in to the issuer. Please try again.",
+        "invalid-token-response": "We received an invalid response from the issuer.",
+        "pin-timeout": "Time ran out to enter the PIN. Please try again.",
+        "ecannot-open-pin-prompt": "We couldn’t open the PIN screen. Please try again.",
 
 
         "failed-qr-process": "We couldn't process the QR code.<br>It might be invalid or already used. Please refresh it. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
