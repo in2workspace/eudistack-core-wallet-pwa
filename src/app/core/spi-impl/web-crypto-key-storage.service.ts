@@ -367,15 +367,14 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
   // --- Private helpers ---
 
   private getAlgorithmParams(algorithm: RawKeyAlgorithm): AlgorithmParams {
-    switch (algorithm) {
-      case 'ES256':
-        return {
-          algorithm: { name: 'ECDSA', namedCurve: 'P-256' },
-          usages: ['sign', 'verify'],
-        };
-      default:
-        throw new Error(`Unsupported algorithm: ${algorithm}`);
+    if (algorithm === 'ES256') {
+      return {
+        algorithm: { name: 'ECDSA', namedCurve: 'P-256' },
+        usages: ['sign', 'verify'],
+      };
     }
+
+    throw new Error(`Unsupported algorithm: ${algorithm}`);
   }
 
   private getSignatureParams(algorithm: RawKeyAlgorithm): EcdsaParams {
@@ -537,12 +536,27 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
       }
   }
 
-  private wrapRequest<T>(req: IDBRequest<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
+private wrapRequest<T>(req: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result);
+
+    req.onerror = () => {
+      const raw: unknown = req.error;
+
+      if (raw instanceof Error) {
+        reject(raw);
+        return;
+      }
+
+      if (typeof raw === 'string') {
+        reject(new Error(raw));
+        return;
+      }
+
+      reject(new Error('IndexedDB request failed'));
+    };
+  });
+}
 
   private awaitTx(tx: IDBTransaction): Promise<void> {
     const browserErrorMessage = 'A browser storage operation failed. Please try again.';
