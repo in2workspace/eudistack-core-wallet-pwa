@@ -1,3 +1,4 @@
+import { CONTENT_TYPE } from './../constants/content-type.constants';
 
 import { HttpClient, HttpHeaders, HttpParams, HttpResponse} from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
@@ -8,7 +9,7 @@ import { VCReply } from '../interfaces/verifiable-credential-reply';
 import { SERVER_PATH } from '../constants/api.constants';
 import { FinalizeIssuancePayload } from '../core/models/FinalizeIssuancePayload';
 import { CredentialResponse } from '../core/models/dto/CredentialResponse';
-import { CONTENT_TYPE_APPLICATION_JSON, RESPONSE_TYPE, TEXT } from '../constants/content-type.constants';
+import { CONTENT_TYPE_APPLICATION_JSON, CONTENT_TYPE_URL_ENCODED_FORM, RESPONSE_TYPE, TEXT } from '../constants/content-type.constants';
 
 const contentTypeApplicationJsonHeader = new HttpHeaders({
   CONTENT_TYPE: CONTENT_TYPE_APPLICATION_JSON,
@@ -121,7 +122,7 @@ export class WalletService {
 
   public postFromUrlForTextResponse(url: string, body: {}): Observable<string>{
     return this.http.post(url, body, {
-              headers: contentTypeApplicationJsonHeader,
+              headers: { [CONTENT_TYPE]: CONTENT_TYPE_URL_ENCODED_FORM },
               responseType: TEXT
             })
   }
