@@ -16,7 +16,7 @@ import { environment } from 'src/environments/environment';
 export class HttpErrorInterceptor implements HttpInterceptor {
   private readonly toastServiceHandler = inject(ToastServiceHandler);
 
-  private logHandledSilentlyErrorMsg(errMsg: string){
+  private logHandledSilentlyErrorMsg(errMsg: string) {
     console.error('Handled silently:', errMsg);
   }
 
@@ -25,18 +25,18 @@ export class HttpErrorInterceptor implements HttpInterceptor {
     next: HttpHandler
   ): Observable<HttpEvent<unknown>> {
     //todo refactor this handler (conditional structure)
-    //todo review handlers after oid4vci changes
-    return next.handle(request)
-    .pipe(
+    
+    return next.handle(request).pipe(
       catchError((errorResp: HttpErrorResponse) => {
-        //Normalize URL to ensure request params are not included in the conditionals below
+        // Normalize URL to ensure request params are not included in the conditionals below
         const urlObj = new URL(request.url);
         const href = urlObj.href;
         const isOwnBackend = href.startsWith(environment.server_url);
         const isIam = href.startsWith(environment.iam_url);
         const pathname = urlObj.pathname;
 
-        let errMessage = errorResp.error?.message || errorResp.message || 'Unknown Http error';
+        let errMessage =
+          errorResp.error?.message || errorResp.message || 'Unknown Http error';
         const errStatus = errorResp.status ?? errorResp.error?.status;
 
         if (!isOwnBackend && !isIam) {
@@ -45,65 +45,54 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           return throwError(() => errorResp);
         }
 
+        // DON'T SHOW POPUP CASES
+        const shouldHandleSilently =
+          // get credentials endpoint
+          (pathname.endsWith(SERVER_PATH.CREDENTIALS) &&
+            errMessage?.startsWith('The credentials list is empty')) ||
+          // OID4VCI finalize endpoint
+          urlObj.href.endsWith(SERVER_PATH.CREDENTIAL_RESPONSE) ||
+          // presentation endpoint (login with VC)
+          pathname.endsWith(SERVER_PATH.VERIFIABLE_PRESENTATION) ||
+          // REQUEST SIGNATURE endpoint
+          pathname.endsWith(SERVER_PATH.CREDENTIALS_SIGNED_BY_ID) ||
+          // IAM endpoint
+          urlObj.href.startsWith(environment.iam_url);
 
-        //DONT'T SHOW POPUP CASES
-        // get credentials endpoint
-        if ( 
-          //todo review this handler
-          pathname.endsWith(SERVER_PATH.CREDENTIALS) && errMessage?.startsWith('The credentials list is empty')
-        ) {
+        if (shouldHandleSilently) {
           this.logHandledSilentlyErrorMsg(errMessage);
           return throwError(() => errorResp);
         }
-        // OID4VCI finalize endpoint
-        if(urlObj.href.endsWith(SERVER_PATH.CREDENTIAL_RESPONSE)){
-          this.logHandledSilentlyErrorMsg(errMessage);
-          return throwError(() => errorResp);
-        }
-        // presentation endpoint (login with VC)
-        if(pathname.endsWith(SERVER_PATH.VERIFIABLE_PRESENTATION))
-        {
-          this.logHandledSilentlyErrorMsg(errMessage);
-          return throwError(() => errorResp);
-        } 
-        // REQUEST SIGNATURE endpoint
-        if(pathname.endsWith(SERVER_PATH.CREDENTIALS_SIGNED_BY_ID)){
-          this.logHandledSilentlyErrorMsg(errMessage);
-          return throwError(() => errorResp);    
-        }
-        // IAM endpoint
-        if(urlObj.href.startsWith(environment.iam_url)) {
-          this.logHandledSilentlyErrorMsg(errMessage);
-          return throwError(() => errorResp);
-        }
-        //SHOW POPUP CASES
-        //same-device credential offer request
-        //todo keep this only while we keep the old activation flow
-        if(pathname.endsWith(
-          SERVER_PATH.REQUEST_CREDENTIAL) 
-        ){
-          if(errMessage.startsWith('Incorrect PIN')){
-            //simply don't change the message, the one from backend is ok
-          }else if(errStatus === 504 || errStatus === 408){
-            //504 for nginx Gateway timeout, 408 for backend
-            errMessage = "PIN expired"
-          }
-        } 
-        //cross-device 
-        else if (pathname.endsWith(SERVER_PATH.EXECUTE_CONTENT)){
-          if(errMessage.startsWith('The credentials list is empty')  || errMessage.startsWith('No credentials found for')){
-            errMessage = "There are no credentials available to login";
-          }
-          else if(!errMessage.startsWith('The received QR content cannot be processed'))
-          {
-            errMessage = 'There was a problem processing the QR. It might be invalid or already have been used';
+
+        // SHOW POPUP CASES
+        // same-device credential offer request
+        // todo keep this only while we keep the old activation flow
+        if (pathname.endsWith(SERVER_PATH.REQUEST_CREDENTIAL)) {
+          if (errMessage.startsWith('Incorrect PIN')) {
+            // simply don't change the message, the one from backend is ok
+          } else if (errStatus === 504 || errStatus === 408) {
+            // 504 for nginx Gateway timeout, 408 for backend
+            errMessage = 'PIN expired';
           }
         }
-        this.toastServiceHandler
-          .showErrorAlert(errMessage)
-          .subscribe(); //TODO unsubscribe?
+        // cross-device
+        else if (pathname.endsWith(SERVER_PATH.EXECUTE_CONTENT)) {
+          if (
+            errMessage.startsWith('The credentials list is empty') ||
+            errMessage.startsWith('No credentials found for')
+          ) {
+            errMessage = 'There are no credentials available to login';
+          } else if (
+            !errMessage.startsWith('The received QR content cannot be processed')
+          ) {
+            errMessage =
+              'There was a problem processing the QR. It might be invalid or already have been used';
+          }
+        }
+
+        this.toastServiceHandler.showErrorAlert(errMessage).subscribe(); // TODO unsubscribe?
         console.error('Error occurred:', errorResp);
-        
+
         return throwError(() => errorResp);
       })
     );
