@@ -23,6 +23,8 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
   }
 
   public checkBrowserCompatibility(): Promise<BrowserKeyStorageMode> {
+    console.log("Checking browser compatibility for WebCryptoKeyStorageProvider. Current storageMode:", this.storageMode);
+    
     if (this.storageMode !== null) {
       return Promise.resolve(this.storageMode);
     }
@@ -45,12 +47,14 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
     //todo if crypto is available but not IDB, set 'memory-only' mode
     if (!this.checkCryptoAndIndexedDBAvailability()) {
       this.storageMode = 'unavailable';
+      console.warn('Web Crypto API or IndexedDB is not available. Key storage functionality will be unavailable.');
       return 'unavailable';
     }
 
     const idbOk = await this.testIndexedDBUsable();
     if (!idbOk) {
       this.storageMode = 'unavailable';
+      console.warn('Web Crypto API or IndexedDB is not available. Key storage functionality will be unavailable.');
       return 'unavailable';
     }
 
@@ -149,8 +153,9 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
         sig,
         data
       );
-
-      return ok ? 'full' : 'public-only';
+      const result = ok ? 'full' : 'public-only';
+      console.log('Self-test signature verification result:', result);
+      return result;
     } catch (e) {
       console.warn('CryptoKey/IndexedDB full persistence test failed:', e);
       return 'public-only';
