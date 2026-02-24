@@ -57,25 +57,19 @@ export class Oid4vciEngineService {
 
       // GET DATA FOR THE CREDENTIAL REQUEST
       const credentialOffer = await this.credentialOfferService.getCredentialOfferFromCredentialOfferUri(credentialOfferUri);
-      console.log("Credential Offer:", credentialOffer);
       
       const credentialIssuerMetadata = await this.credentialIssuerMetadataService.getCredentialIssuerMetadataFromCredentialOffer(credentialOffer);
-      console.log("Credential Issuer Metadata:", credentialIssuerMetadata);
       
       const authorisationServerMetadata = await this.authorisationServerMetadataService.getAuthorizationServerMetadataFromCredentialIssuerMetadata(credentialIssuerMetadata);
-      console.log("Authorisation Server Metadata:", authorisationServerMetadata);
 
       const token = this.authService.getToken();
-      console.log("Token:", token);
       
       this.loader.removeLoadingProcess();
 
       const tokenResponse = await this.preAuthorizedTokenService.getPreAuthorizedToken(credentialOffer, authorisationServerMetadata);
-      console.log("tokenResponse:", tokenResponse);
       
       this.loader.addLoadingProcess();
       const cfg = this.resolveCredentialConfigurationContext(credentialOffer, credentialIssuerMetadata);
-      console.log("Credential Configuration Context:", cfg);
 
       const nonce = this.getNonce();
       
@@ -90,8 +84,6 @@ export class Oid4vciEngineService {
         jwtProof = proofContext.jwt;
         proofPublicJwk = proofContext.publicKeyJwk;
       }
-      console.log("JWT Proof:", jwtProof);
-      console.log("Proof Public JWK:", proofPublicJwk);
       
       const format = cfg.format;
       const credentialConfigurationId = cfg.credentialConfigurationId;
@@ -104,7 +96,6 @@ export class Oid4vciEngineService {
         format,
         credentialConfigurationId
       });
-      console.log("Credential response: ", credentialResponseWithStatus);
 
       // VALIDATE CNF FROM THE API RESPONSE
       if (jwtProof && proofPublicJwk) {
@@ -187,8 +178,6 @@ export class Oid4vciEngineService {
       return;
     }
 
-    console.log("Validating cnf with proof public JWK:", proofPublicJwk);
-
     const credentialJwt = credentialResponseWithStatus.credentialResponse.credentials?.[0].credential;
     if (!credentialJwt || typeof credentialJwt !== 'string') {
       throw new Oid4vciError('Credential cnf validation failed (missing credential JWT)', {
@@ -217,7 +206,6 @@ export class Oid4vciEngineService {
         });
     }
 
-    console.log("Cnf was validated.");
   }
 
   private sendCredentialToFinalizeCredentialIssuance(credResponse: FinalizeIssuancePayload): Promise<void> {
@@ -271,9 +259,7 @@ export class Oid4vciEngineService {
   }
 
   private async buildProofJwt(params: { nonce: string; credentialIssuer: string; }): Promise<ProofJwtContext> {
-    console.log("Building proof JWT with params:", params);
     const keyInfo = await this.keyStorageProvider.generateKeyPair('ES256', crypto.randomUUID());
-    console.log("Generated key info:", keyInfo);
 
     const publicKeyJwk = keyInfo.publicKeyJwk;
 
@@ -282,13 +268,9 @@ export class Oid4vciEngineService {
       params.credentialIssuer,
       publicKeyJwk
     );
-    console.log("Header and Payload for JWT:", headerAndPayload);
-
     const signingInput = this.buildSigningInput(headerAndPayload);
-    console.log("Signing input for JWT:", signingInput);
 
     const signature = await this.keyStorageProvider.sign(keyInfo.keyId, new TextEncoder().encode(signingInput));
-    console.log("Signature from key storage provider:", signature);
 
     return { 
       jwt: `${signingInput}.${this.jwtService.base64UrlEncode(signature)}`, 

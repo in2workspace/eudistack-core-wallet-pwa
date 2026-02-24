@@ -162,7 +162,6 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
         data
       );
       const result = ok ? 'full' : 'public-only';
-      console.log('Self-test signature verification result:', result);
       return result;
     } catch (e) {
       console.warn('CryptoKey/IndexedDB full persistence test failed:', e);
@@ -182,7 +181,6 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
     await this.requireAvailableMode();
 
     const params = this.getAlgorithmParams(algorithm);
-    console.log('Generating key pair with params:', params);
 
     // Generate NON-EXTRACTABLE key pair (critical).
     // We assume it is a key pair because currently only ECDSA is supported (with symmetric algorithms only one is returned).
@@ -191,7 +189,6 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
       false, // extractable = false
       params.usages
     );
-    console.log('Key pair generated:', keyPair);
     this.keyCache.set(keyId, { privateKey: keyPair.privateKey, publicKey: keyPair.publicKey });
 
     const publicKeyJwk = await globalThis.crypto.subtle.exportKey('jwk', keyPair.publicKey);
@@ -252,20 +249,14 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
   }
 
   public async isCnfBoundToPublicKey(unparsedCnf: unknown, publicKeyJwk: JsonWebKey): Promise<boolean> {
-    console.log('Validating if cnf matches public key. Unparsed cnf:');
-    console.log(unparsedCnf);
-    console.log('Public key JWK:');
-    console.log(publicKeyJwk);
 
     const cnf = unparsedCnf as any;
     if (!cnf) return false;
 
     const proofThumbprint = await this.computeJwkThumbprint(publicKeyJwk);
-    console.log('proofThumbprint: ' + proofThumbprint);
 
     if (cnf.jwk) {
       const cnfThumbprint = await this.computeJwkThumbprint(cnf.jwk as JsonWebKey);
-      console.log('CNF thumprint: ' + cnfThumbprint);
       return cnfThumbprint === proofThumbprint;
     }
 
