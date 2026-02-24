@@ -219,7 +219,11 @@
         "invalid-token-response": "We received an invalid response from the issuer.",
         "pin-timeout": "Time ran out to enter the PIN. Please try again.",
         "cannot-open-pin-prompt": "We couldn’t open the PIN screen. Please try again.",
-
+        "network-error": "A network error occurred. Please check your connection and try again.",
+        "invalid-request": "The request was invalid. Please try again.",
+        "not-authorized": "You are not authorized to perform this action. Please check your credentials and try again.",
+        "resource-not-found": "The requested resource was not found. Please try again.",
+        "server-error": "The server encountered an error. Please try again later.",
 
         "failed-qr-process": "We couldn't process the QR code.<br>It might be invalid or already used. Please refresh it. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
         "invalid-qr":"The presented QR code is not valid",

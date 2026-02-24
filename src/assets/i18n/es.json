@@ -220,6 +220,12 @@
         "invalid-token-response": "Hemos recibido una respuesta no válida del emisor.",
         "pin-timeout": "Se ha agotado el tiempo para introducir el PIN. Inténtalo de nuevo.",
         "cannot-open-pin-prompt": "No hemos podido abrir la pantalla del PIN. Inténtalo de nuevo.",
+        "network-error": "Se ha producido un error de red. Comprueba tu conexión y vuelve a intentarlo.",
+        "invalid-request": "La solicitud no es válida. Vuelve a intentarlo.",
+        "not-authorized": "No estás autorizado para realizar esta acción. Comprueba tus credenciales y vuelve a intentarlo.",
+        "resource-not-found": "No se ha encontrado el recurso solicitado. Vuelve a intentarlo.",
+        "server-error": "El servidor ha encontrado un error. Vuelve a intentarlo más tarde.",
+       
         "failed-qr-process": "Ha habido un error al procesar QR. Puede que sea inválido o que ya haya sido usado antes. Refrésquelo, por favor. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>",
         "invalid-qr":"El QR presentado es inválido",
         "no-credentials-available": "No hay ninguna credencial disponible para el login",
