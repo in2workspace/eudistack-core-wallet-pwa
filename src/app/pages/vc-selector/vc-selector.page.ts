@@ -157,52 +157,8 @@ export class VcSelectorPage {
 
   private async handleError(err: any) {
     console.error(err);
-    await this.errorMessage(err.status);
     this.router.navigate(['/tabs/home']);
     this.selCredList = [];
-  }
-
-
-  public async errorMessage(statusCode: number) {
-    let messageText = '';
-
-    if (statusCode >= 500) {
-      // Handle server errors (50x)
-      messageText = 'vc-selector.server-error-message';
-    } else if (statusCode === 401) {
-      // Handle unauthorized errors (401)
-      messageText = 'vc-selector.unauthorized-message';
-    } else if (statusCode === 403) {
-      // Handle client errors (403x)
-      messageText = 'vc-selector.credential-revoke-message';
-    } else if (statusCode >= 400) {
-      // Handle client errors (40x)
-      messageText = 'vc-selector.bad-request-error-message';
-    } else {
-      // Handle other types of errors
-      messageText = 'vc-selector.generic-error-message';
-    }
-    const translatedMessage = this.translate.instant(messageText);
-
-    const alert = await this.alertController.create({
-      message: `
-        <div style="display: flex; align-items: center; gap: 50px;">
-          <ion-icon name="alert-circle-outline"></ion-icon>
-          <span>${translatedMessage}</span>
-        </div>
-      `,
-      buttons: [
-        {
-          text: this.translate.instant('vc-selector.close'),
-          role: 'ok',
-          cssClass: 'centered-button',
-        },
-      ],
-      cssClass: 'custom-alert-error',
-    });
-
-    await alert.present();
-    await alert.onDidDismiss();
   }
 
   public async okMessage() {

@@ -8,6 +8,11 @@ import { JwtService } from '../oid4vci/jwt.service';
 import { v4 as uuidv4 } from "uuid";
 import { SERVER_PATH } from 'src/app/constants/api.constants';
 import { DescriptorMap, PresentationSubmission, VerifiablePresentation } from '../../models/VerifiablePresentation';
+import { ToastServiceHandler } from 'src/app/services/toast.service';
+import { LoaderService } from 'src/app/services/loader.service';
+import { AppError } from 'src/app/interfaces/error/AppError';
+import { Oid4vpError } from '../../models/error/Oid4vpError';
+import { wrapOid4vpHttpError } from 'src/app/helpers/http-error-message';
 
     const CUSTOMER_PRESENTATION_DEFINITION = "CustomerPresentationDefinition";
     const CUSTOMER_PRESENTATION_SUBMISSION = "CustomerPresentationSubmission";
@@ -21,78 +26,120 @@ export class Oid4vpEngineService {
   private readonly http = inject(HttpClient);
   private readonly jwtService = inject(JwtService);
   private readonly keyStorageProvider = inject(WebCryptoKeyStorageProvider);
+  private readonly loader = inject(LoaderService);
+  private readonly toastServiceHandler = inject(ToastServiceHandler);
 
   //todo move here the logic to get the credentials to select (from vc selector page)
 
-  public async buildVerifiablePresentationWithSelectedVCs(selectorResponse: VCReply){
-    const aud = this.generateAudience();
-    console.log("Audience: ", aud);
+  public async buildVerifiablePresentationWithSelectedVCs(selectorResponse: VCReply): Promise<void> {
+    try {
+        this.loader.addLoadingProcess();
 
-    const selectedVCs = await this.getVerifiableCredentials(selectorResponse);
-    const selectedVC = selectedVCs[0]; //todo for now we take the first one
-    console.log("Selected VC: ", selectedVC);
+        const aud = this.generateAudience();
 
-    const credentialPayload = this.jwtService.parseJwtPayload(selectedVC) as any;
-    console.log("Credential payload: ", credentialPayload);
+        const selectedVCs = await this.getVerifiableCredentials(selectorResponse);
+        const selectedVC = selectedVCs[0]; // todo: handle multiple
 
-    const cnf = credentialPayload.cnf;
-    console.log("Credential cnf: ", cnf);
+        if (!selectedVC) {
+        throw new Oid4vpError('No VC available for presentation', {
+            translationKey: 'errors.no-credentials-available',
+        });
+        }
 
-    const credentialSubjectId = credentialPayload.vc.credentialSubject.id;
-    console.log("Credential subject ID: ", credentialSubjectId);
+        let credentialPayload: any;
+        try {
+        credentialPayload = this.jwtService.parseJwtPayload(selectedVC) as any;
+        } catch (e: unknown) {
+        // If you also have a JwtParseError here, you can mirror the OID4VCI logic.
+        throw new Oid4vpError('Selected credential JWT payload could not be parsed', {
+            cause: e,
+            translationKey: 'errors.invalid-jwt',
+        });
+        }
 
-    const verifiablPresentation = this.createVerifiablePresentation(selectedVC, cnf);
-    console.log("Unsigned Verifiable Presentation: ", verifiablPresentation);
+        const cnf = credentialPayload?.cnf;
+        if (!cnf?.jwk) {
+        throw new Oid4vpError('Missing cnf.jwk in selected credential', {
+            translationKey: 'errors.credential-validation-failed',
+        });
+        }
 
-    const issueTime = Math.floor(Date.now() / 1000);
+        const credentialSubjectId = credentialPayload?.vc?.credentialSubject?.id;
+        if (!credentialSubjectId) {
+        throw new Oid4vpError('Missing vc.credentialSubject.id in selected credential', {
+            translationKey: 'errors.credential-validation-failed',
+        });
+        }
 
-    const vpJwtPayload = {
-      id: verifiablPresentation.id,
-      iss: credentialSubjectId,
-      sub: credentialSubjectId,
-      aud: aud,
-      nbf: issueTime,
-      iat: issueTime,
-      exp: issueTime + (3 * 60),
-      vp: verifiablPresentation,
-      nonce: selectorResponse.nonce
+        const verifiablePresentation = this.createVerifiablePresentation(selectedVC, cnf);
+
+        const issueTime = Math.floor(Date.now() / 1000);
+        const vpJwtPayload = {
+        id: verifiablePresentation.id,
+        iss: credentialSubjectId,
+        sub: credentialSubjectId,
+        aud,
+        nbf: issueTime,
+        iat: issueTime,
+        exp: issueTime + (3 * 60),
+        vp: verifiablePresentation,
+        nonce: selectorResponse.nonce,
+        };
+
+        const publicKey = cnf.jwk;
+        const thumbprint = await this.keyStorageProvider.computeJwkThumbprint(publicKey);
+        const keyId = await this.keyStorageProvider.resolveKeyIdByKid(thumbprint);
+
+        if (!keyId) {
+        throw new Oid4vpError(`No local key found for kid=${thumbprint}`, {
+            translationKey: 'errors.key-not-found',
+        });
+        }
+
+        const signedVpJwt = await this.signVpAsJwt(vpJwtPayload, keyId, thumbprint);
+
+        const presentationSubmissionJson = this.buildPresentationSubmissionJson(verifiablePresentation, [selectedVC]);
+
+        const verifierResponse = await this.postAuthorizationResponse(
+            selectorResponse.redirectUri,
+            selectorResponse.state,
+            signedVpJwt,
+            presentationSubmissionJson,
+            undefined
+        );
+
+        console.log('Verifier response:', verifierResponse);
+    } catch (e: unknown) {
+        if (e instanceof AppError) {
+            console.error('[Oid4vpEngine] Flow failed:', { message: e.message, code: e.code, cause: e.cause });
+        } else {
+            console.error('[Oid4vpEngine] Flow failed:', e);
+        }
+
+        const msg = this.errorToTranslationKey(e);
+        if (msg) {
+            this.toastServiceHandler.showErrorAlertByTranslateLabel(msg).subscribe();
+        }
+
+        throw e;
+    } finally {
+        this.loader.removeLoadingProcess();
+    }
     }
 
-    const publicKey = cnf.jwk;
-    console.log("Public key from cnf: ", publicKey);
-
-    const thumbprint = await this.keyStorageProvider.computeJwkThumbprint(publicKey);
-    console.log("Computed thumbprint: ", thumbprint);
-
-    const keyId = await this.keyStorageProvider.resolveKeyIdByKid(thumbprint);
-    console.log("Resolved key ID: ", keyId);
-
-    if (!keyId) {
-      throw new Error(`No local key found for kid=${thumbprint}`);
+  private errorToTranslationKey(e: unknown): string | null {
+    if (e instanceof AppError) {
+        if (e.code === 'user_cancelled') return null;
+        return e.translationKey ?? 'errors.default';
     }
-
-    const signedVpJwt = await this.signVpAsJwt(vpJwtPayload, keyId, thumbprint);
-    console.log("Signed VP JWT: ", signedVpJwt);
-
-    const presentationSubmissionJson = this.buildPresentationSubmissionJson(verifiablPresentation, [selectedVC]);
-    console.log("Presentation Submission JSON: ", presentationSubmissionJson);
-
-    const vpTokenForVerifier = this.jwtService.base64EncodeUtf8(signedVpJwt);
-
-    const verifierResponse = await this.postAuthorizationResponse(
-      selectorResponse.redirectUri,
-      selectorResponse.state,
-      vpTokenForVerifier,
-      presentationSubmissionJson,
-      /* authorizationToken? */ undefined
-    );
-
-    console.log('Verifier response:', verifierResponse);
-  }
+    return 'errors.default';
+    }
 
   private buildDescriptorMapping(vp: VerifiablePresentation, vcJwts: string[]): DescriptorMap {
   if (!vcJwts.length) {
-    throw new Error('No verifiable credentials provided');
+    throw new Oid4vpError('No verifiable credentials provided to build descriptor map', {
+      translationKey: 'errors.no-credentials-available',
+    });
   }
 
   const vcMaps: DescriptorMap[] = vcJwts.map((vcJwt, i) => ({
@@ -125,36 +172,33 @@ private async postAuthorizationResponse(
   presentationSubmissionJson: string,
   authorizationToken?: string
 ): Promise<string> {
-
-  let body = new HttpParams()
+  const body = new HttpParams()
     .set('state', state)
     .set('vp_token', vpJwt)
     .set('presentation_submission', presentationSubmissionJson);
 
-  // Headers
   let headers = new HttpHeaders({
-    'Content-Type': 'application/x-www-form-urlencoded'
+    'Content-Type': 'application/x-www-form-urlencoded',
   });
 
-  // Only set Authorization if the verifier really requires it.
-  // In browsers this usually triggers CORS preflight.
   if (authorizationToken) {
     headers = headers.set('Authorization', `Bearer ${authorizationToken}`);
   }
 
-  console.log("Posting authorization response to URL: ", redirectUri);
-
-  const resp = await firstValueFrom(
-    this.http.post(redirectUri, body.toString(), {
-      headers,
-      responseType: 'text',
-      observe: 'response'
-    })
-  );
-
-  // If verifier returns a redirect Location, browsers may hide it due to CORS.
-  // Still return body; caller can inspect resp.headers if available.
-  return resp.body ?? '';
+  try {
+    const resp = await firstValueFrom(
+      this.http.post(redirectUri, body.toString(), {
+        headers,
+        responseType: 'text',
+        observe: 'response',
+      })
+    );
+    return resp.body ?? '';
+  } catch (e: unknown) {
+    wrapOid4vpHttpError(e, 'Failed to post authorization response to verifier', {
+      translationKey: 'errors.verifier-post-failed',
+    });
+  }
 }
 
 private buildPresentationSubmissionJson(vp: VerifiablePresentation, vcJwts: string[]): string {
@@ -178,15 +222,25 @@ private appendNested(existing: DescriptorMap | null, next: DescriptorMap): Descr
 }
 
   private getVcIdFromJwt(vcJwt: string): string {
-    const payload = this.jwtService.parseJwtPayload(vcJwt) as any;
-    const vc = payload?.vc;
+    let payload: any;
+    try {
+        payload = this.jwtService.parseJwtPayload(vcJwt) as any;
+    } catch (e: unknown) {
+        throw new Oid4vpError('VC JWT payload could not be parsed', {
+        cause: e,
+        translationKey: 'errors.invalid-jwt',
+        });
+    }
 
+    const vc = payload?.vc;
     if (!vc?.id) {
-      throw new Error('VC JWT payload does not contain vc.id');
+        throw new Oid4vpError('VC JWT payload does not contain vc.id', {
+        translationKey: 'errors.credential-validation-failed',
+        });
     }
 
     return vc.id;
-  }
+    }
 
   private async signVpAsJwt(vpJwtPayload: {}, keyId: string, kid: string): Promise<string> {
     const header = {
@@ -204,8 +258,10 @@ private appendNested(existing: DescriptorMap | null, next: DescriptorMap): Descr
     const signature = await this.keyStorageProvider.sign(keyId, signingBytes);
 
     if (signature.length !== 64) {
-      throw new Error(`Unexpected signature length: ${signature.length} (expected 64 for ES256).`);
-    }
+        throw new Oid4vpError(`Unexpected signature length: ${signature.length}`, {
+            translationKey: 'errors.browser-storage-operation-failed',
+        });
+        }
 
     const encodedSignature = this.jwtService.base64UrlEncode(signature);
     return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
@@ -223,21 +279,26 @@ private appendNested(existing: DescriptorMap | null, next: DescriptorMap): Descr
   }
   
   //todo
-  private getVerifiableCredentials(vcReply: VCReply): Promise<string[]>{
-    return firstValueFrom(
-      this.http.post<string[]>(
-            environment.server_url +
-            SERVER_PATH.VERIFIABLE_PRESENTATION,
+  private async getVerifiableCredentials(vcReply: VCReply): Promise<string[]> {
+    try {
+        return await firstValueFrom(
+        this.http.post<string[]>(
+            environment.server_url + SERVER_PATH.VERIFIABLE_PRESENTATION,
             vcReply,
             {
-              headers: new HttpHeaders({
+            headers: new HttpHeaders({
                 'Content-Type': 'application/json',
-                'Allow-Control-Allow-Origin': '*',
-              }),
+            }),
             }
-          )
-    );
-  }
+        )
+        );
+    } catch (e: unknown) {
+        wrapOid4vpHttpError(e, 'Failed to obtain verifiable credentials for VP', {
+        translationKey: 'errors.loading-VCs',
+        });
+    }
+    }
+
   //todo review this
   private generateAudience(){
     return "https://self-issued.me/v2";

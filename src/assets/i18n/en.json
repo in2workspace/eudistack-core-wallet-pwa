@@ -218,8 +218,10 @@
         "cannot-get-access-token": "We couldn’t sign you in to the issuer. Please try again.",
         "invalid-token-response": "We received an invalid response from the issuer.",
         "pin-timeout": "Time ran out to enter the PIN. Please try again.",
-        "ecannot-open-pin-prompt": "We couldn’t open the PIN screen. Please try again.",
+        "cannot-open-pin-prompt": "We couldn’t open the PIN screen. Please try again.",
 
+        "verifier-post-failed": "We couldn’t send the login response. Please try again.",
+        "signature-failed": "We couldn’t sign the presentation. Please try again.",
 
         "failed-qr-process": "We couldn't process the QR code.<br>It might be invalid or already used. Please refresh it. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
         "invalid-qr":"The presented QR code is not valid",

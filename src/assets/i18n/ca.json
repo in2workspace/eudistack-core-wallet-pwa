@@ -221,6 +221,8 @@
         "invalid-token-response": "Hem rebut una resposta no vàlida de l’emissor.",
         "pin-timeout": "S’ha acabat el temps per introduir el PIN. Torna-ho a provar.",
         "cannot-open-pin-prompt": "No hem pogut obrir la pantalla del PIN. Torna-ho a provar.",
+        "verifier-post-failed": "No hem pogut enviar la resposta d’inici de sessió. Torna-ho a provar.",
+        "signature-failed": "No hem pogut signar la presentació. Torna-ho a provar.",
         "failed-qr-process": "Hi ha hagut un problema en processar el QR. Pot ser que sigui invàlid o que ja hagi estat utilitzat abans. Refresqueu-lo. Si el problema persisteix, contacteu <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>",
         "invalid-qr":"El QR presentat és invàlid",
         "no-credentials-available": "No hi ha cap credencial disponible per al login",
