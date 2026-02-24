@@ -224,7 +224,8 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       catchError((error: ExtendedHttpErrorResponse) => {
         this.handleContentExecutionError(error);
         return of(null);
-      })
+      }),
+      takeUntilDestroyed(this.destroyRef)
     )
     .subscribe();
   }
