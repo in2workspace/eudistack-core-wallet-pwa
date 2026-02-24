@@ -36,9 +36,11 @@ export class Oid4vpEngineService {
         this.loader.addLoadingProcess();
 
         const aud = this.generateAudience();
+        console.log('Generated audience for VP:', aud);
 
         const selectedVCs = await this.getVerifiableCredentials(selectorResponse);
         const selectedVC = selectedVCs[0]; // todo: handle multiple
+        console.log('Selected VC JWT:', selectedVC);
 
         if (!selectedVC) {
         throw new Oid4vpError('No VC available for presentation', {
@@ -58,20 +60,24 @@ export class Oid4vpEngineService {
         }
 
         const cnf = credentialPayload?.cnf;
+        console.log('Extracted cnf from credential payload:', cnf);
         if (!cnf?.jwk) {
-        throw new Oid4vpError('Missing cnf.jwk in selected credential', {
-            translationKey: 'errors.credential-validation-failed',
-        });
+          throw new Oid4vpError('Missing cnf.jwk in selected credential', {
+              translationKey: 'errors.credential-validation-failed',
+          });
         }
+        console.log('Extracted JWK from cnf:', cnf.jwk);
 
         const credentialSubjectId = credentialPayload?.vc?.credentialSubject?.id;
         if (!credentialSubjectId) {
-        throw new Oid4vpError('Missing vc.credentialSubject.id in selected credential', {
-            translationKey: 'errors.credential-validation-failed',
-        });
+          throw new Oid4vpError('Missing vc.credentialSubject.id in selected credential', {
+              translationKey: 'errors.credential-validation-failed',
+          });
         }
+        console.log('Extracted credentialSubjectId from credential payload:', credentialSubjectId);
 
         const verifiablePresentation = this.createVerifiablePresentation(selectedVC, cnf);
+        console.log('Created verifiable presentation:', verifiablePresentation);
 
         const issueTime = Math.floor(Date.now() / 1000);
         const vpJwtPayload = {
@@ -85,6 +91,7 @@ export class Oid4vpEngineService {
         vp: verifiablePresentation,
         nonce: selectorResponse.nonce,
         };
+        console.log("Constructed VP JWT payload:", vpJwtPayload);
 
         const publicKey = cnf.jwk;
         const thumbprint = await this.keyStorageProvider.computeJwkThumbprint(publicKey);
@@ -95,8 +102,8 @@ export class Oid4vpEngineService {
             translationKey: 'errors.key-not-found',
         });
         }
-
         const signedVpJwt = await this.signVpAsJwt(vpJwtPayload, keyId, thumbprint);
+        console.log('Signed VP JWT:', signedVpJwt);
 
         const presentationSubmissionJson = this.buildPresentationSubmissionJson(verifiablePresentation, [selectedVC]);
 
@@ -176,6 +183,7 @@ private async postAuthorizationResponse(
     .set('state', state)
     .set('vp_token', vpJwt)
     .set('presentation_submission', presentationSubmissionJson);
+  console.log('Constructed authorization response body:', body.toString());
 
   let headers = new HttpHeaders({
     'Content-Type': 'application/x-www-form-urlencoded',
