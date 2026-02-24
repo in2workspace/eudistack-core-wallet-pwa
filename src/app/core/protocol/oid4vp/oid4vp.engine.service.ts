@@ -32,58 +32,66 @@ export class Oid4vpEngineService {
   //todo move here the logic to get the credentials to select (from vc selector page)
 
   public async buildVerifiablePresentationWithSelectedVCs(selectorResponse: VCReply): Promise<void> {
+    console.log('Starting VP flow with selector response:', selectorResponse);
     try {
         this.loader.addLoadingProcess();
 
         const aud = this.generateAudience();
+        console.log('Generated audience for VP:', aud);
 
         const selectedVCs = await this.getVerifiableCredentials(selectorResponse);
+        console.log('Obtained verifiable credentials for presentation:', selectedVCs);
         const selectedVC = selectedVCs[0]; // todo: handle multiple
+        console.log('Selected VC for presentation:', selectedVC);
 
         if (!selectedVC) {
-        throw new Oid4vpError('No VC available for presentation', {
-            translationKey: 'errors.no-credentials-available',
-        });
+          throw new Oid4vpError('No VC available for presentation', {
+              translationKey: 'errors.no-credentials-available',
+          });
         }
 
         let credentialPayload: any;
         try {
         credentialPayload = this.jwtService.parseJwtPayload(selectedVC) as any;
+        console.log('Parsed JWT payload for selected VC:', credentialPayload);
         } catch (e: unknown) {
-        // If you also have a JwtParseError here, you can mirror the OID4VCI logic.
-        throw new Oid4vpError('Selected credential JWT payload could not be parsed', {
-            cause: e,
-            translationKey: 'errors.invalid-jwt',
-        });
+          // If you also have a JwtParseError here, you can mirror the OID4VCI logic.
+          throw new Oid4vpError('Selected credential JWT payload could not be parsed', {
+              cause: e,
+              translationKey: 'errors.invalid-jwt',
+          });
         }
 
         const cnf = credentialPayload?.cnf;
+        console.log("Extracted cnf from VC payload:", cnf);
         if (!cnf?.jwk) {
-        throw new Oid4vpError('Missing cnf.jwk in selected credential', {
-            translationKey: 'errors.credential-validation-failed',
-        });
+          throw new Oid4vpError('Missing cnf.jwk in selected credential', {
+              translationKey: 'errors.credential-validation-failed',
+          });
         }
 
         const credentialSubjectId = credentialPayload?.vc?.credentialSubject?.id;
+        console.log("Extracted credentialSubjectId from VC payload:", credentialSubjectId);
         if (!credentialSubjectId) {
-        throw new Oid4vpError('Missing vc.credentialSubject.id in selected credential', {
-            translationKey: 'errors.credential-validation-failed',
-        });
+          throw new Oid4vpError('Missing vc.credentialSubject.id in selected credential', {
+              translationKey: 'errors.credential-validation-failed',
+          });
         }
 
         const verifiablePresentation = this.createVerifiablePresentation(selectedVC, cnf);
+        console.log('Created verifiable presentation object:', verifiablePresentation);
 
         const issueTime = Math.floor(Date.now() / 1000);
         const vpJwtPayload = {
-        id: verifiablePresentation.id,
-        iss: credentialSubjectId,
-        sub: credentialSubjectId,
-        aud,
-        nbf: issueTime,
-        iat: issueTime,
-        exp: issueTime + (3 * 60),
-        vp: verifiablePresentation,
-        nonce: selectorResponse.nonce,
+          id: verifiablePresentation.id,
+          iss: credentialSubjectId,
+          sub: credentialSubjectId,
+          aud,
+          nbf: issueTime,
+          iat: issueTime,
+          exp: issueTime + (3 * 60),
+          vp: verifiablePresentation,
+          nonce: selectorResponse.nonce,
         };
 
         const publicKey = cnf.jwk;
@@ -95,11 +103,13 @@ export class Oid4vpEngineService {
             translationKey: 'errors.key-not-found',
         });
         }
-
+        console.log('Resolved key ID for signing VP JWT:', keyId);
         const signedVpJwt = await this.signVpAsJwt(vpJwtPayload, keyId, thumbprint);
+        console.log('Signed VP JWT:', signedVpJwt);
 
         const presentationSubmissionJson = this.buildPresentationSubmissionJson(verifiablePresentation, [selectedVC]);
 
+        console.log('Created presentation submission JSON:', presentationSubmissionJson);
         const verifierResponse = await this.postAuthorizationResponse(
             selectorResponse.redirectUri,
             selectorResponse.state,
