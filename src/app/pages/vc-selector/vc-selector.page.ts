@@ -141,9 +141,7 @@ export class VcSelectorPage {
       this.selCredList.push(cred);
       this._VCReply.selectedVcList = this.selCredList;
       this.loader.addLoadingProcess();
-
-      this.walletService.executeVC(this._VCReply)
-      .subscribe({
+      this.walletService.executeVC(this._VCReply).subscribe({
         next: () => {
           this.loader.removeLoadingProcess();
           this.router.navigate(['/tabs/home']);
