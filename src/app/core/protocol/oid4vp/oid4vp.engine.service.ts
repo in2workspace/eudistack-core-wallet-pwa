@@ -34,10 +34,9 @@ export class Oid4vpEngineService {
   public async buildVerifiablePresentationWithSelectedVCs(selectorResponse: VCReply): Promise<void> {
     try {
         this.loader.addLoadingProcess();
+        console.log('Received selector response:', selectorResponse);
 
-        const aud = this.generateAudience();
-        console.log('Generated audience for VP:', aud);
-
+        
         const selectedVCs = await this.getVerifiableCredentials(selectorResponse);
         const selectedVC = selectedVCs[0]; // todo: handle multiple
         console.log('Selected VC JWT:', selectedVC);
@@ -79,7 +78,11 @@ export class Oid4vpEngineService {
         const verifiablePresentation = this.createVerifiablePresentation(selectedVC, cnf);
         console.log('Created verifiable presentation:', verifiablePresentation);
 
+        const aud = this.generateAudience();
+        console.log('Generated audience for VP:', aud);
+        
         const issueTime = Math.floor(Date.now() / 1000);
+
         const vpJwtPayload = {
         id: verifiablePresentation.id,
         iss: credentialSubjectId,
