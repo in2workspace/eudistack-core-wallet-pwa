@@ -105,12 +105,14 @@ export class Oid4vpEngineService {
         const signedVpJwt = await this.signVpAsJwt(vpJwtPayload, keyId, thumbprint);
         console.log('Signed VP JWT:', signedVpJwt);
 
+        const compactVpToken = btoa(signedVpJwt);
+
         const presentationSubmissionJson = this.buildPresentationSubmissionJson(verifiablePresentation, [selectedVC]);
 
         const verifierResponse = await this.postAuthorizationResponse(
             selectorResponse.redirectUri,
             selectorResponse.state,
-            signedVpJwt,
+            compactVpToken,
             presentationSubmissionJson,
             undefined
         );
