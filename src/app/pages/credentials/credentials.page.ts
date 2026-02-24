@@ -1,13 +1,13 @@
 import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AlertController, IonicModule, ViewWillLeave } from '@ionic/angular';
+import { IonicModule, ViewWillLeave } from '@ionic/angular';
 import { StorageService } from 'src/app/services/storage.service';
 import { BarcodeScannerComponent } from 'src/app/components/barcode-scanner/barcode-scanner.component';
 import { QRCodeModule } from 'angularx-qrcode';
 import { WalletService } from 'src/app/services/wallet.service';
 import { VcViewComponent } from '../../components/vc-view/vc-view.component';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { WebsocketService } from 'src/app/services/websocket.service';
 import { VerifiableCredential } from 'src/app/interfaces/verifiable-credential';
@@ -20,7 +20,9 @@ import { catchError, finalize, forkJoin, from, Observable, of, switchMap, tap } 
 import { ExtendedHttpErrorResponse } from 'src/app/interfaces/errors';
 import { LoaderService } from 'src/app/services/loader.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/helpers/get-credential-type.helpers';
-
+import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engine.service';
+import { environment } from 'src/environments/environment';
+//todo restore tests
 
 // TODO separate scan in another component/ page
 
@@ -50,19 +52,19 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   public credentialOfferUri = '';
 
 
-  private readonly alertController = inject(AlertController);
   private readonly cameraLogsService = inject(CameraLogsService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
   private readonly loader = inject(LoaderService);
+  private readonly oid4vciEngineService = inject(Oid4vciEngineService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toastServiceHandler = inject(ToastServiceHandler);
-  private readonly translate = inject(TranslateService);
   private readonly walletService = inject(WalletService);
   private readonly websocket = inject(WebsocketService);
 
   public constructor(){
+    //todo move to ngOnInit to avoid using credentialOfferUri
     this.route.queryParams
       .pipe(takeUntilDestroyed())
       .subscribe((params) => {
@@ -79,7 +81,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     .subscribe();
 
     if (this.credentialOfferUri) {
-      this.sameDeviceVcActivationFlow();
+      this.sameDeviceVcActivationFlow(this.credentialOfferUri);
     }
   }
 
@@ -140,108 +142,102 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   }
 
   public qrCodeEmit(qrCode: string): void {
-    let executeContentSucessCallback: (arg: any) => Observable<any>;
     const isCredentialOffer = qrCode.includes('credential_offer_uri');
     //todo don't accept qrs that are not to login or get VC
     if(isCredentialOffer){
+      //CROSS-DEVICE VC OFFER
       //show VCs list
       this.closeScannerViewAndScanner();
-      // CROSS-DEVICE CREDENTIAL OFFER FLOW
-      executeContentSucessCallback = () => {   
-        return this.handleActivationSuccess();
-      }
+      console.info('Requesting Credential Offer via cross-device flow.');
+      this.credentialActivationFlow(qrCode);
     }else{
-      // LOGIN / VERIFIABLE PRESENTATION
+      // VERIFIABLE PRESENTATION
       // hide scanner but don't show VCs list
       this.closeScanner();
-      this.loader.addLoadingProcess();
-      executeContentSucessCallback = (executionResponse: JSON) => {
-        return from(this.router.navigate(['/tabs/vc-selector/'], {
-          queryParams: {
-            executionResponse: JSON.stringify(executionResponse),
-          },
-        })).pipe(
-          tap(() => { this.loader.removeLoadingProcess() })
-        );
+      console.info('Processing QR code for verifiable presentation.');
+      this.verifiablePresentationFlow(qrCode);
       }
-    }
-    const socketsToConnect: Promise<void>[] = [this.websocket.connectPinSocket()];
-    if (isCredentialOffer) socketsToConnect.push(this.websocket.connectNotificationSocket());
+  }
+
+  private sameDeviceVcActivationFlow(credentialOfferUri: string): void {
+    console.info('Requesting Credential Offer via same-device flow.')
+    this.credentialActivationFlow(credentialOfferUri);
+  }
+
+  private credentialActivationFlow(credentialOfferUri: string): void{
+    const socketsToConnect: Promise<void>[] = [
+      this.websocket.connectNotificationSocket(),
+    ];
+
+     const needsLegacyPin = !environment.browser_signature_enabled;
+      if (needsLegacyPin) {
+        socketsToConnect.push(this.websocket.connectPinSocket());
+      }
 
     from(Promise.all(socketsToConnect))
       .pipe(
         switchMap(() => {
-          this.loader.addLoadingProcess();
-          return this.walletService.executeContent(qrCode);
-        }),
-        switchMap((executionResponse) => {
-          if (isCredentialOffer) {
-            return this.handleActivationSuccess();
-          }
-
-          return from(
-            this.router.navigate(['/tabs/vc-selector/'], {
-              queryParams: { executionResponse: JSON.stringify(executionResponse) },
-            })
-          );
-        }),
-
-        finalize(() => {
-          this.loader.removeLoadingProcess();
-          this.websocket.closePinConnection();
-        }),
-
-        catchError((error: ExtendedHttpErrorResponse) => {
-          this.websocket.closeNotificationConnection();
-          this.handleContentExecutionError(error);
-          return of(null);
-        })
-      )
-      .subscribe();
-  }
-
-  public sameDeviceVcActivationFlow(): void {
-    const socketsToConnect: Promise<void>[] = [
-      this.websocket.connectPinSocket(),
-      this.websocket.connectNotificationSocket(),
-    ];
-
-    from(Promise.all(socketsToConnect))
-      .pipe(
-        tap(() => {
-          console.info('Requesting Credential Offer via same-device flow.');
-        }),
-
-        switchMap(() =>
-          this.walletService.requestOpenidCredentialOffer(this.credentialOfferUri)
-        ),
+          if(environment.browser_signature_enabled){
+            console.log("Browser signature enabled. Starting OID4VCI flow with browser signature.");
+            return this.oid4vciEngineService.executeOid4vciFlow(credentialOfferUri)
+        }else{
+          console.log("Browser signature disabled. Starting OID4VCI flow without browser signature.");
+          return this.walletService.requestOpenidCredentialOffer(credentialOfferUri)
+        }}),
 
         switchMap(() => this.handleActivationSuccess()),
 
-        switchMap(() =>
-          from(this.router.navigate(['/tabs/credentials']))
-        ),
-
-        finalize(() => {
-          this.websocket.closePinConnection();
-        }),
+              finalize(() => {
+                if (needsLegacyPin) {
+                  this.websocket.closePinConnection();
+                }
+              }),
 
         catchError((err: ExtendedHttpErrorResponse) => {
           console.error(err);
           this.websocket.closeNotificationConnection();
-          this.handleContentExecutionError(err);
+          this.handleContentExecutionError(err); //todo review (adding camera log?)
           return of(null);
         })
       )
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe();
   }
 
+  private verifiablePresentationFlow(qrCode: string): void{
+    this.loader.addLoadingProcess();
+
+    this.walletService.executeContent(qrCode).pipe(
+      switchMap((executionResponse) => {
+        return from(
+          this.router.navigate(['/tabs/vc-selector/'], {
+            queryParams: { executionResponse: JSON.stringify(executionResponse) },
+          })
+        );
+      }),
+
+      finalize(() => {
+        console.log("Finished processing QR code. Hiding loader.");
+        this.loader.removeLoadingProcess();
+      }),
+
+      catchError((error: ExtendedHttpErrorResponse) => {
+        this.handleContentExecutionError(error);
+        return of(null);
+      }),
+      takeUntilDestroyed(this.destroyRef)
+    )
+    .subscribe();
+  }
+
   
-  private handleActivationSuccess(): Observable<VerifiableCredential[]> {
+  private handleActivationSuccess(): Observable<boolean> {
+    console.log("Handling successful credential activation...");
     this.loader.addLoadingProcess();
 
     return this.loadCredentials()
       .pipe(
+        switchMap(() => from(this.router.navigate(['/tabs/credentials']))),
         tap(() => {
           this.loader.removeLoadingProcess();
         })
@@ -249,7 +245,6 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   }
 
   
-
   private loadCredentials(): Observable<VerifiableCredential[]> {
     // todo this conditional should be removed when scanner is moved to another page
     const isScannerOpen = this.isScannerOpen();
@@ -258,6 +253,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     }
 
     const normalizer = new VerifiableCredentialSubjectDataNormalizer();
+
     return this.walletService.getAllVCs().pipe(
       takeUntilDestroyed(this.destroyRef),
       tap((credentialListResponse: VerifiableCredential[]) => {
@@ -339,6 +335,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     });
   }
 
+  //todo review this (it is storing camera logs, but is used after API calls)
   private handleContentExecutionError(errorResponse: ExtendedHttpErrorResponse): void{
     const httpErr = errorResponse?.error;
     const message = httpErr?.message || errorResponse?.message || 'No error message';
@@ -352,10 +349,10 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     setTimeout(()=>{
       this.router.navigate(['/tabs/home'])
     }, 1000);
-}
+  }
 
-private isScannerOpen(): boolean{
-  return this.showScanner === true && this.showScannerView === true;
-}
+  private isScannerOpen(): boolean{
+    return this.showScanner === true && this.showScannerView === true;
+  }
 
 }

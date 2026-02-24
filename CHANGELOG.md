@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.15](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.0.15)
+### Added
+- Enable optional OID4VCI flow which generates signature Web Crypto API and stores it in the browser (dev-mode).
+
 ## [2.0.10](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.0.10)
 ### Changed
 - Make the selected tab bar button color depend on the secondary custom color.

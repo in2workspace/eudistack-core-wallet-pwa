@@ -21,6 +21,9 @@ export const environment = {
       // App favicon. Points to "assets/icons/" (REQUIRED)
       favicon_path: window["env"]["favicon_path"]
     },
-    default_lang: window["env"]["default_lang"] || "en" // OPTIONAL with fallback
-  }
+    default_lang: window["env"]["default_lang"] || "en", // OPTIONAL with fallback
+  },
+  // This should only be set to true in dev mode.
+  // Setting this to true will activate browser signature for OID4VCI flow, but the OID4VP flow will still work without it.
+  browser_signature_enabled: window["env"]["browser_signature_enabled"] || false //todo set fallback as false
 };

@@ -1,0 +1,1 @@
+export const PRE_AUTH_CODE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:pre-authorized_code';

@@ -12,6 +12,7 @@ import { LoaderService } from './services/loader.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { LanguageService } from './services/language.service';
 import { ColorService } from './services/color-service.service';
+import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.service';
 
 @Component({
   selector: 'app-root',
@@ -31,7 +32,8 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly document = inject(DOCUMENT);
   private readonly languageService = inject(LanguageService);
   private readonly loader = inject(LoaderService);
-  private readonly router = inject(Router)
+  private readonly oid4vciEngine = inject(Oid4vciEngineService);
+  private readonly router = inject(Router);
 
   public userName = this.authenticationService.getName$();
   public routerEvents$ = this.router.events;
@@ -59,11 +61,18 @@ export class AppComponent implements OnInit, OnDestroy {
     this.setFavicon();
     this.languageService.setLanguages();
     this.alertIncompatibleDevice();
+    if(environment.browser_signature_enabled){
+      this.initOid4vciEngine();
+    }
   }
 
   public ngOnDestroy(){
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private initOid4vciEngine(): void {
+    this.oid4vciEngine.init().catch(console.error);
   }
 
 

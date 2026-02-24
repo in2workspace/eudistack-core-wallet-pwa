@@ -1,6 +1,6 @@
 {
   "name": "altia-eudistack-wallet-core-ui",
-  "version": "2.0.14",
+  "version": "2.1.0",
   "author": "Ionic Framework",
   "homepage": "https://ionicframework.com/",
   "scripts": {
@@ -42,7 +42,7 @@
     "ngx-indexed-db": "^19.0.0",
     "rxjs": "~7.8.1",
     "tslib": "^2.7.0",
-    "uuid": "^11.0.5",
+    "uuid": "^11.1.0",
     "wallet-ui": "file:",
     "zone.js": "~0.14.10"
   },
@@ -60,7 +60,7 @@
     "@babel/plugin-proposal-decorators": "^7.24.7",
     "@capacitor/cli": "6.1.2",
     "@ionic/angular-toolkit": "^12.1.1",
-    "@types/jest": "^29.5.13",
+    "@types/jest": "^29.5.14",
     "@types/node": "^22.5.3",
     "@typescript-eslint/eslint-plugin": "8.4.0",
     "@typescript-eslint/parser": "8.4.0",
