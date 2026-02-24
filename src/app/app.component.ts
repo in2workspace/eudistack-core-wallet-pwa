@@ -62,7 +62,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.languageService.setLanguages();
     this.alertIncompatibleDevice();
     if(environment.browser_signature_enabled){
-      void this.initOid4vciEngine();
+      this.initOid4vciEngine();
     }
   }
 

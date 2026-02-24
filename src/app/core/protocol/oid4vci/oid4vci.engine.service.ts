@@ -3,7 +3,6 @@ import { inject, Injectable } from '@angular/core';
 import { CredentialOfferService } from './credential-offer.service';
 import { CredentialIssuerMetadataService } from './credential-issuer-metadata.service';
 import { AuthorisationServerMetadataService } from './authorisation-server-metadata.service';
-import { AuthenticationService } from 'src/app/services/authentication.service';
 import { PreAuthorizedTokenService } from './pre-authorized-token.service';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
@@ -25,7 +24,6 @@ import { JwtParseError } from '../../models/error/JwtParseError';
 @Injectable({ providedIn: 'root' })
 export class Oid4vciEngineService {
   private readonly authorisationServerMetadataService = inject(AuthorisationServerMetadataService);
-  private readonly authService = inject(AuthenticationService);
   private readonly credentialIssuerMetadataService = inject(CredentialIssuerMetadataService);
   private readonly credentialOfferService = inject(CredentialOfferService);
   private readonly credentialService = inject(CredentialService);
@@ -43,9 +41,7 @@ export class Oid4vciEngineService {
 
 
   public init(): Promise<void> {
-    if (!this.initPromise) {
-      this.initPromise = this.checkBrowserCompatibilityWithKeyStorage();
-    }
+    this.initPromise ??= this.checkBrowserCompatibilityWithKeyStorage();
     return this.initPromise;
   }
 
@@ -61,8 +57,6 @@ export class Oid4vciEngineService {
       const credentialIssuerMetadata = await this.credentialIssuerMetadataService.getCredentialIssuerMetadataFromCredentialOffer(credentialOffer);
       
       const authorisationServerMetadata = await this.authorisationServerMetadataService.getAuthorizationServerMetadataFromCredentialIssuerMetadata(credentialIssuerMetadata);
-
-      const token = this.authService.getToken();
       
       this.loader.removeLoadingProcess();
 

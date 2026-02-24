@@ -202,7 +202,6 @@ export class PreAuthorizedTokenService {
     });
   }
 
-  //todo move to shared file to avoid duplication with WebsocketService
   private startCountdown(alert: any, description: string, initialCounter: number): number {
     let counter = initialCounter;
 
