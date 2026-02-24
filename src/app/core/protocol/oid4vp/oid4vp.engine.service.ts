@@ -70,12 +70,13 @@ export class Oid4vpEngineService {
           this.walletService.executeVC(selectorResponse).subscribe({
             next: () => {
               console.log("[VC-Selector] Credentials sent successfully. Navigating back to home page...");
-              this.loader.removeLoadingProcess();
+              this.loader.removeLoadingProcess(); //todo
             },
             error: err => {
               console.error("[VC-Selector] Error sending credentials:");
             }
           });
+          return;
         }
         console.log('Extracted JWK from cnf:', cnf.jwk);
 

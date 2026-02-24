@@ -6,6 +6,9 @@ import { of, throwError } from 'rxjs';
 import { VcSelectorPage } from './vc-selector.page';
 import { WalletService } from 'src/app/services/wallet.service';
 import { VerifiableCredential, CredentialStatus, Issuer, CredentialSubject, Mandate, Mandatee, Mandator, Power, LifeCycleStatus } from 'src/app/interfaces/verifiable-credential';
+import { Oid4vpEngineService } from 'src/app/core/protocol/oid4vp/oid4vp.engine.service';
+import { LoaderService } from 'src/app/services/loader.service';
+import { ToastServiceHandler } from 'src/app/services/toast.service';
 
 describe('VcSelectorPage', () => {
   let component: VcSelectorPage;
@@ -105,6 +108,10 @@ describe('VcSelectorPage', () => {
     executionResponse: JSON.stringify(mockExecutionResponse)
   };
 
+    let mockOid4vpEngineService: jest.Mocked<Oid4vpEngineService>;
+  let mockLoader: jest.Mocked<LoaderService>;
+  let mockToast: jest.Mocked<ToastServiceHandler>;
+
   beforeEach(async () => {
     // Create mocks with Jest
     mockRouter = {
@@ -134,6 +141,19 @@ describe('VcSelectorPage', () => {
       queryParams: of(mockQueryParams)
     };
 
+      mockOid4vpEngineService = {
+      buildVerifiablePresentationWithSelectedVCs: jest.fn().mockResolvedValue(undefined),
+    } as any;
+
+    mockLoader = {
+      addLoadingProcess: jest.fn(),
+      removeLoadingProcess: jest.fn(),
+    } as any;
+
+    mockToast = {
+      showErrorAlertByTranslateLabel: jest.fn(),
+    } as any;
+
     // Setup default return values
     mockTranslateService.instant.mockReturnValue('Translated text');
     mockAlert.onDidDismiss.mockResolvedValue({ role: 'ok' });
@@ -147,7 +167,10 @@ describe('VcSelectorPage', () => {
         { provide: WalletService, useValue: mockWalletService },
         { provide: ActivatedRoute, useValue: mockActivatedRoute },
         { provide: TranslateService, useValue: mockTranslateService },
-        { provide: AlertController, useValue: mockAlertController }
+        { provide: AlertController, useValue: mockAlertController },
+        { provide: Oid4vpEngineService, useValue: mockOid4vpEngineService },
+        { provide: LoaderService, useValue: mockLoader },
+        { provide: ToastServiceHandler, useValue: mockToast }
       ]
     }).compileComponents();
 
