@@ -3,11 +3,10 @@
 # Triggered on pushes to the main branch
 name: Deploy to AWS Amplify
 on:
-  workflow_dispatch:
-  #push:
-  #  branches:
-  #    - main
-  #    - release/**
+  push:
+    branches:
+      - main
+      - release/**
 
 # Required permissions for the workflow
 permissions:
