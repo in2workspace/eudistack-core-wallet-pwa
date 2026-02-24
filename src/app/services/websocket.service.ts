@@ -3,17 +3,19 @@ import { AuthenticationService } from './authentication.service';
 import { AlertController, AlertOptions } from '@ionic/angular';
 import { environment } from 'src/environments/environment';
 import { TranslateService } from '@ngx-translate/core';
-import { WEBSOCKET_NOTIFICATION_PATH } from '../constants/api.constants';
+import { WEBSOCKET_NOTIFICATION_PATH, WEBSOCKET_PIN_PATH } from '../constants/api.constants';
 import { LoaderService } from './loader.service';
 import { ToastServiceHandler } from './toast.service';
-import { isNotificationRequest, Power, CredentialPreview } from '../interfaces/websocket-data';
+import { isPinRequest, isNotificationRequest, Power, CredentialPreview } from '../interfaces/websocket-data';
 
-//todo restore test
 @Injectable({
   providedIn: 'root',
 })
 export class WebsocketService {
+  private pinSocket?: WebSocket;
   private notificationSocket?: WebSocket;
+
+  private loadingTimeout: any;
 
   private readonly alertController = inject(AlertController);
   private readonly authenticationService = inject(AuthenticationService);
@@ -22,10 +24,12 @@ export class WebsocketService {
   private readonly toastServiceHandler = inject(ToastServiceHandler);
 
   private async routeMessage(data: any): Promise<void> {
+    if (isPinRequest(data)) {
+      await this.handlePinRequest(data);
+      return;
+    }
     if (isNotificationRequest(data)) {
       await this.handleNotificationDecisionRequest(data);
-    } else {
-      console.warn('Received unknown WebSocket message:', data);
     }
   }
 
@@ -58,19 +62,33 @@ export class WebsocketService {
       };
 
       ws.onclose = () => {
+        clearTimeout(this.loadingTimeout);
         this.loader.removeLoadingProcess();
         console.log(`WebSocket connection closed: ${path}`);
       };
     });
   }
 
+  public connectPinSocket(): Promise<void> {
+    return this.connectSocket(WEBSOCKET_PIN_PATH, (ws) => (this.pinSocket = ws));
+  }
+
   public connectNotificationSocket(): Promise<void> {
     return this.connectSocket(WEBSOCKET_NOTIFICATION_PATH, (ws) => (this.notificationSocket = ws));
+  }
+  
+  public closePinConnection(): void {
+    this.safeClose(this.pinSocket);
+    this.pinSocket = undefined;
   }
 
   public closeNotificationConnection(): void {
     this.safeClose(this.notificationSocket);
     this.notificationSocket = undefined;
+  }
+  
+  public sendPinMessage(message: string): void {
+    this.sendMessage(this.pinSocket, message);
   }
 
   public sendNotificationMessage(message: string): void {
@@ -122,6 +140,59 @@ export class WebsocketService {
     }, 1000);
   
     return interval;
+  }
+
+  private async handlePinRequest(data: any): Promise<void> {    
+
+    const description = this.translate.instant('confirmation.description');
+    const counter = data.timeout || 60;
+
+    let interval: any;
+
+    const cancel = this.translate.instant('confirmation.cancel');
+    const send = this.translate.instant('confirmation.send');
+    const header = this.translate.instant('confirmation.pin');
+
+    const message = this.translate.instant('confirmation.messageHtml', { description, counter });
+
+    const cancelHandler = () => {
+      clearInterval(interval);
+    };
+
+    const loadingTimeOutSendHandler = () => {
+      this.loader.addLoadingProcess();
+    };
+
+    const sendHandler = (alertData: any) => {
+      clearInterval(interval);
+      this.loadingTimeout = setTimeout(loadingTimeOutSendHandler, 1000);
+      this.sendPinMessage(JSON.stringify({ pin: alertData.pin }));
+    };
+
+    const alertOptions: AlertOptions = {
+      header,
+      message,
+      inputs: [
+        {
+          name: 'pin',
+          type: 'text',
+          placeholder: 'PIN',
+          attributes: {
+            inputmode: 'numeric',
+            pattern: '[0-9]*',
+          },
+        },
+      ],
+      buttons: [
+        { text: cancel, role: 'cancel', handler: cancelHandler },
+        { text: send, handler: sendHandler },
+      ],
+      backdropDismiss: false,
+    };
+
+    const alert = await this.alertController.create(alertOptions);
+    interval = this.startCountdown(alert, description, counter);
+    await alert.present();
   }
 
   private async handleNotificationDecisionRequest(data: any): Promise<void> {

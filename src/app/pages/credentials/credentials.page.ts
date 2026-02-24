@@ -169,6 +169,11 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       this.websocket.connectNotificationSocket(),
     ];
 
+     const needsLegacyPin = !environment.browser_signature_enabled;
+      if (needsLegacyPin) {
+        socketsToConnect.push(this.websocket.connectPinSocket());
+      }
+
     from(Promise.all(socketsToConnect))
       .pipe(
         switchMap(() => {
@@ -181,6 +186,12 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         }}),
 
         switchMap(() => this.handleActivationSuccess()),
+
+              finalize(() => {
+                if (needsLegacyPin) {
+                  this.websocket.closePinConnection();
+                }
+              }),
 
         catchError((err: ExtendedHttpErrorResponse) => {
           console.error(err);
