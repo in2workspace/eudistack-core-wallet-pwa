@@ -253,7 +253,7 @@ export class Oid4vciEngineService {
   }
 
   private async buildProofJwt(params: { nonce: string; credentialIssuer: string; }): Promise<ProofJwtContext> {
-    const keyInfo = await this.keyStorageProvider.generateKeyPair('ES256', crypto.randomUUID());
+    const keyInfo = await this.keyStorageProvider.generateKeyPair('ES256', globalThis.crypto.randomUUID());
 
     const publicKeyJwk = keyInfo.publicKeyJwk;
 
