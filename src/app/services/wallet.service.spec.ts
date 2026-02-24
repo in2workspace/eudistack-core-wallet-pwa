@@ -37,6 +37,7 @@ describe('WalletService', () => {
     httpTestingController.verify();
   });
 
+  //todo restore
   // it('should execute content and return a JSON response', (done) => {
   //   const mockUrl = 'https://example.com/mock-content';
   //   const mockResponse = { success: true, message: 'Content executed successfully' };
