@@ -60,8 +60,10 @@ export class AppComponent implements OnInit, OnDestroy {
     this.setCustomStyles();
     this.setFavicon();
     this.languageService.setLanguages();
-    void this.initOid4vciEngine();
     this.alertIncompatibleDevice();
+    if(environment.browser_signature_enabled){
+      void this.initOid4vciEngine();
+    }
   }
 
   public ngOnDestroy(){

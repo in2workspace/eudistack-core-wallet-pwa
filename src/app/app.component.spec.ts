@@ -11,6 +11,7 @@ import { environment } from '../environments/environment';
 import { LoaderService } from './services/loader.service';
 import { MenuComponent } from './components/menu/menu.component';
 import { LanguageService } from './services/language.service';
+import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.service';
 
 describe('AppComponent', () => {
   let component: AppComponent;
@@ -22,6 +23,7 @@ describe('AppComponent', () => {
   let storageServiceMock: jest.Mocked<StorageService>;
   let routerEventsSubject: Subject<Event>;
   let languageService: jest.Mocked<any>;
+  let oid4vciEngineMock: { init: jest.Mock };
 
   const activatedRouteMock: Partial<ActivatedRoute> = {
     snapshot: {
@@ -108,6 +110,10 @@ describe('AppComponent', () => {
       remove: jest.fn(),
     } as unknown as jest.Mocked<StorageService>;
 
+    oid4vciEngineMock = {
+      init: jest.fn().mockResolvedValue(undefined),
+    };
+
     await TestBed.configureTestingModule({
       imports: [
         AppComponent,
@@ -123,7 +129,8 @@ describe('AppComponent', () => {
         { provide: StorageService, useValue: storageServiceMock },
         { provide: ActivatedRoute, useValue: activatedRouteMock },
         { provide: NavController, useValue: navControllerMock },
-        { provide: LanguageService, useValue: languageService }
+        { provide: LanguageService, useValue: languageService },
+        { provide: Oid4vciEngineService, useValue: oid4vciEngineMock }
       ],
     })
       .overrideComponent(AppComponent, {
