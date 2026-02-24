@@ -12,7 +12,7 @@ import { CredentialResponse } from '../core/models/dto/CredentialResponse';
 import { CONTENT_TYPE_APPLICATION_JSON, CONTENT_TYPE_URL_ENCODED_FORM, RESPONSE_TYPE, TEXT } from '../constants/content-type.constants';
 
 const contentTypeApplicationJsonHeader = new HttpHeaders({
-  CONTENT_TYPE: CONTENT_TYPE_APPLICATION_JSON,
+  [CONTENT_TYPE]: CONTENT_TYPE_APPLICATION_JSON,
 });
 
 export const options = {
