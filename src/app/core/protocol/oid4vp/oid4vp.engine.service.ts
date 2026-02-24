@@ -67,6 +67,7 @@ export class Oid4vpEngineService {
           // throw new Oid4vpError('Missing cnf.jwk in selected credential', {
           //     translationKey: 'errors.credential-validation-failed',
           // });
+          console.log("No cnf.jwk found in credential payload. Assuming no proof of possession required, sending credential directly to Wallet API to process sign it...");
           this.walletService.executeVC(selectorResponse).subscribe({
             next: () => {
               console.log("[VC-Selector] Credentials sent successfully. Navigating back to home page...");
