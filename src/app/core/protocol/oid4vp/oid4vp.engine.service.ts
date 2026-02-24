@@ -13,6 +13,7 @@ import { LoaderService } from 'src/app/services/loader.service';
 import { AppError } from 'src/app/interfaces/error/AppError';
 import { Oid4vpError } from '../../models/error/Oid4vpError';
 import { wrapOid4vpHttpError } from 'src/app/helpers/http-error-message';
+import { WalletService } from 'src/app/services/wallet.service';
 
     const CUSTOMER_PRESENTATION_DEFINITION = "CustomerPresentationDefinition";
     const CUSTOMER_PRESENTATION_SUBMISSION = "CustomerPresentationSubmission";
@@ -28,6 +29,7 @@ export class Oid4vpEngineService {
   private readonly keyStorageProvider = inject(WebCryptoKeyStorageProvider);
   private readonly loader = inject(LoaderService);
   private readonly toastServiceHandler = inject(ToastServiceHandler);
+  private readonly walletService = inject(WalletService);
 
   //todo move here the logic to get the credentials to select (from vc selector page)
 
@@ -51,18 +53,28 @@ export class Oid4vpEngineService {
         try {
         credentialPayload = this.jwtService.parseJwtPayload(selectedVC) as any;
         } catch (e: unknown) {
-        // If you also have a JwtParseError here, you can mirror the OID4VCI logic.
-        throw new Oid4vpError('Selected credential JWT payload could not be parsed', {
-            cause: e,
-            translationKey: 'errors.invalid-jwt',
-        });
+          // If you also have a JwtParseError here, you can mirror the OID4VCI logic.
+          throw new Oid4vpError('Selected credential JWT payload could not be parsed', {
+              cause: e,
+              translationKey: 'errors.invalid-jwt',
+          });
         }
+        console.log('Parsed credential payload:', credentialPayload);
 
         const cnf = credentialPayload?.cnf;
         console.log('Extracted cnf from credential payload:', cnf);
         if (!cnf?.jwk) {
-          throw new Oid4vpError('Missing cnf.jwk in selected credential', {
-              translationKey: 'errors.credential-validation-failed',
+          // throw new Oid4vpError('Missing cnf.jwk in selected credential', {
+          //     translationKey: 'errors.credential-validation-failed',
+          // });
+          this.walletService.executeVC(selectorResponse).subscribe({
+            next: () => {
+              console.log("[VC-Selector] Credentials sent successfully. Navigating back to home page...");
+              this.loader.removeLoadingProcess();
+            },
+            error: err => {
+              console.error("[VC-Selector] Error sending credentials:");
+            }
           });
         }
         console.log('Extracted JWK from cnf:', cnf.jwk);
@@ -80,7 +92,7 @@ export class Oid4vpEngineService {
 
         const aud = this.generateAudience();
         console.log('Generated audience for VP:', aud);
-        
+
         const issueTime = Math.floor(Date.now() / 1000);
 
         const vpJwtPayload = {
