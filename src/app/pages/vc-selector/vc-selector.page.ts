@@ -141,13 +141,16 @@ export class VcSelectorPage {
       this.selCredList.push(cred);
       this._VCReply.selectedVcList = this.selCredList;
       this.loader.addLoadingProcess();
+      console.log("[VC-Selector] Sending selected credentials to the WCA...");
       this.walletService.executeVC(this._VCReply).subscribe({
         next: () => {
+          console.log("[VC-Selector] Credentials sent successfully. Navigating back to home page...");
           this.loader.removeLoadingProcess();
           this.router.navigate(['/tabs/home']);
           this.okMessage();
         },
         error: err => {
+          console.error("[VC-Selector] Error sending credentials:");
           this.loader.removeLoadingProcess();
           this.handleError(err);
         },
