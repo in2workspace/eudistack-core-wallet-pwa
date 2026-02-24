@@ -25,5 +25,5 @@ export const environment = {
   },
   // This should only be set to true in dev mode.
   // Setting this to true will activate browser signature for OID4VCI flow, but the OID4VP flow will still work without it.
-  browser_signature_enabled: window["env"]["browser_signature_enabled"] === window["env"]["browser_signature_enabled"] || false //todo set fallback as false
+  browser_signature_enabled: window["env"]["browser_signature_enabled"] || false //todo set fallback as false
 };
