@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   deploy:
-    if: false # TODO: restore the workflow when it's ready for use
+    if: true # TODO: restore the workflow when it's ready for use
     name: Deploy to AWS Amplify
     runs-on: ubuntu-latest
     environment: stg
