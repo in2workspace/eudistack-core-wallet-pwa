@@ -224,6 +224,8 @@
         "not-authorized": "You are not authorized to perform this action. Please check your credentials and try again.",
         "resource-not-found": "The requested resource was not found. Please try again.",
         "server-error": "The server encountered an error. Please try again later.",
+        "verifier-post-failed": "We couldn’t send the login response. Please try again.",
+        "signature-failed": "We couldn’t sign the presentation. Please try again.",
 
         "failed-qr-process": "We couldn't process the QR code.<br>It might be invalid or already used. Please refresh it. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
         "invalid-qr":"The presented QR code is not valid",

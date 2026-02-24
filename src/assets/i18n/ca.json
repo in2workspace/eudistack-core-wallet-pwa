@@ -226,6 +226,9 @@
         "not-authorized": "No tens autorització per fer aquesta acció. Comprova les credencials i torna-ho a provar.",
         "resource-not-found": "No s'ha trobat el recurs sol·licitat. Torna-ho a provar.",
         "server-error": "El servidor ha trobat un error. Torna-ho a provar més tard.",
+
+        "verifier-post-failed": "No hem pogut enviar la resposta de login. Torna-ho a provar.",
+        "signature-failed": "No hem pogut signar la presentació. Torna-ho a provar.",
         
         "failed-qr-process": "Hi ha hagut un problema en processar el QR. Pot ser que sigui invàlid o que ja hagi estat utilitzat abans. Refresqueu-lo. Si el problema persisteix, contacteu <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>",
         "invalid-qr":"El QR presentat és invàlid",
