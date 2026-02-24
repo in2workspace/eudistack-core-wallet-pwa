@@ -141,7 +141,7 @@ export class VcSelectorPage {
       this.selCredList.push(cred);
       this._VCReply.selectedVcList = this.selCredList;
       this.loader.addLoadingProcess();
-      //todo implement VP flow
+
       this.walletService.executeVC(this._VCReply)
       .subscribe({
         next: () => {

@@ -12,7 +12,7 @@ import { Oid4vciError } from '../../models/error/Oid4vciError';
 import { wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
 import { HttpErrorResponse } from '@angular/common/http';
 
-//todo
+
 const TIMEOUT_DURATION_S = 55;
 
 @Injectable({ providedIn: 'root' })
@@ -103,7 +103,6 @@ export class PreAuthorizedTokenService {
     return parts.join('&');
   }
 
-  // todo review error cases (timeout, user cancellation, incorrect PIN)
   private async openPromptAndGetCode(): Promise<string> {
     const description = this.translate.instant('confirmation.description');
     const counter = TIMEOUT_DURATION_S;

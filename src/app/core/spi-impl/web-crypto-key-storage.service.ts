@@ -14,7 +14,6 @@ import { AppError } from 'src/app/interfaces/error/AppError';
 type AvailableBrowserKeyStorageMode = 'full' | 'public-only';
 type BrowserKeyStorageMode = AvailableBrowserKeyStorageMode | 'unavailable';
 
-//todo review browser compatibility - storing of crypto keys in IndexedDB especially
 @Injectable({ providedIn: 'root' })
 export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
   private readonly DB_NAME = 'wallet-key-storage';

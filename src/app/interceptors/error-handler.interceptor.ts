@@ -90,7 +90,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           }
         }
 
-        this.toastServiceHandler.showErrorAlert(errMessage).subscribe(); // TODO unsubscribe?
+        this.toastServiceHandler.showErrorAlert(errMessage).subscribe();
         console.error('Error occurred:', errorResp);
 
         return throwError(() => errorResp);

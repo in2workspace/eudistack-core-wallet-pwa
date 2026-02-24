@@ -22,7 +22,6 @@ import { Oid4vciError } from '../../models/error/Oid4vciError';
 import { AppError } from 'src/app/interfaces/error/AppError';
 import { JwtParseError } from '../../models/error/JwtParseError';
 
-//todo in this class and all class invoked by this one, show popup when error happens and handle it
 @Injectable({ providedIn: 'root' })
 export class Oid4vciEngineService {
   private readonly authorisationServerMetadataService = inject(AuthorisationServerMetadataService);
@@ -118,7 +117,6 @@ export class Oid4vciEngineService {
       // todo the "post-credential" logic that is currently done by the API will be moved to the client
 
       // Parse status code to match API expectations
-      // todo consider refactoring the API
       const credentialResponseWithStatusCode: CredentialResponseWithStatusCode = {
         statusCode: credentialResponseWithStatus.status, ...credentialResponseWithStatus
       }
@@ -286,7 +284,6 @@ export class Oid4vciEngineService {
     );
     console.log("Header and Payload for JWT:", headerAndPayload);
 
-    //todo potser tindria més sentit fer que retorni directament tipus compatible amb Uint8Array<ArrayBufferLike> per a sign()
     const signingInput = this.buildSigningInput(headerAndPayload);
     console.log("Signing input for JWT:", signingInput);
 
@@ -307,7 +304,7 @@ export class Oid4vciEngineService {
     return `${headerB64}.${payloadB64}`;
   }
 
-  // todo use nonce endpoint when it is supported
+  // todo call nonce endpoint when it is supported
   private getNonce(): string {
     console.warn("Using '' as nonce, since nonce endpoint is not implemented yet.");
     return '';
