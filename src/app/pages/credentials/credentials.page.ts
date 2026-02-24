@@ -16,7 +16,7 @@ import { CameraLogsService } from 'src/app/services/camera-logs.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { ToastServiceHandler } from 'src/app/services/toast.service';
-import { catchError, finalize, forkJoin, from, Observable, of, switchMap, takeUntil, tap } from 'rxjs';
+import { catchError, finalize, forkJoin, from, Observable, of, switchMap, tap } from 'rxjs';
 import { ExtendedHttpErrorResponse } from 'src/app/interfaces/errors';
 import { LoaderService } from 'src/app/services/loader.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/helpers/get-credential-type.helpers';
