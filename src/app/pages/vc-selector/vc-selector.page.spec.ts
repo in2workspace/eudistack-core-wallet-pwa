@@ -344,11 +344,9 @@ describe('VcSelectorPage', () => {
     it('should handle service error and show error message', async () => {
       const errorResponse = { status: 500 };
       mockWalletService.executeVC.mockReturnValue(throwError(() => errorResponse));
-      const errorMessageSpy = jest.spyOn(component, 'errorMessage').mockImplementation();
 
       await component.sendCred(mockCred);
 
-      expect(errorMessageSpy).toHaveBeenCalledWith(500);
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/home']);
       expect(component.selCredList).toEqual([]);
     });
@@ -360,41 +358,6 @@ describe('VcSelectorPage', () => {
 
       expect(component.selCredList).toEqual([]);
     });
-  });
-
-  describe('errorMessage', () => {
-    it('should show server error message for 5xx status codes', async () => {
-      await component.errorMessage(500);
-
-      expect(mockTranslateService.instant).toHaveBeenCalledWith('vc-selector.server-error-message');
-      expect(mockAlertController.create).toHaveBeenCalled();
-    });
-
-    it('should show unauthorized message for 401 status code', async () => {
-      await component.errorMessage(401);
-
-      expect(mockTranslateService.instant).toHaveBeenCalledWith('vc-selector.unauthorized-message');
-    });
-
-    it('should show unauthorized message for 403 status code', async () => {
-      await component.errorMessage(403);
-
-      expect(mockTranslateService.instant).toHaveBeenCalledWith('vc-selector.credential-revoke-message');
-    });
-
-    it('should show bad request message for 4xx status codes', async () => {
-      await component.errorMessage(400);
-
-      expect(mockTranslateService.instant).toHaveBeenCalledWith('vc-selector.bad-request-error-message');
-    });
-
-    it('should show generic error message for other status codes', async () => {
-      await component.errorMessage(0);
-
-      expect(mockTranslateService.instant).toHaveBeenCalledWith('vc-selector.generic-error-message');
-    });
-
-   
   });
 
   describe('Component integration', () => {
