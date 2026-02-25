@@ -171,7 +171,7 @@ export class Oid4vciEngineService {
 
     let payload: any;
     try {
-      payload = this.jwtService.parseJwtPayload(credentialJwt) as any;
+      payload = this.jwtService.parseJwtPayload(credentialJwt);
     } catch (e: unknown) {
       if (e instanceof JwtParseError) {
         throw new Oid4vciError('Credential JWT payload could not be parsed', {

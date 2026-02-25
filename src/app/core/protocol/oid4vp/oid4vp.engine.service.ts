@@ -50,7 +50,7 @@ export class Oid4vpEngineService {
 
         let credentialPayload: any;
         try {
-          credentialPayload = this.parseJwtPayloadOrThrow(selectedVC, 'Selected credential JWT payload could not be parsed') as any;
+          credentialPayload = this.parseJwtPayloadOrThrow(selectedVC, 'Selected credential JWT payload could not be parsed');
         } catch (e: unknown) {
           // If you also have a JwtParseError here, you can mirror the OID4VCI logic.
           throw new Oid4vpError('Selected credential JWT payload could not be parsed', {
