@@ -207,9 +207,9 @@
         "secure-storage-blocked-by-another-tab": "Otra pestaña está usando el almacenamiento seguro. Cierra las otras pestañas de esta app y vuelve a intentarlo.",
         "browser-storage-full": "El almacenamiento del navegador está lleno. Libera espacio y vuelve a intentarlo.",
         "browser-storage-operation-failed": "Ha fallado el almacenamiento seguro. Inténtalo de nuevo.",
-        "signing-key-not-found": "No hemos encontrado la clave necesaria para usar esta credencial en este dispositivo.",
-        "private-key-not-available": "La clave necesaria para usar esta credencial no está disponible en esta sesión. Evita recargar la app y vuelve a intentarlo.",
-        "key-not-found": "No hemos encontrado esa clave.",
+        "signing-key-not-found": "No hemos podido encontrar la clave para esta credencial en este navegador. Asegúrate de estar usando el mismo navegador y dispositivo donde añadiste la credencial, y vuelve a intentarlo.",
+        "private-key-not-available": "No hemos podido encontrar la clave para esta credencial en este navegador. Asegúrate de estar usando el mismo navegador y dispositivo donde añadiste la credencial, y vuelve a intentarlo.",
+        "key-not-found": "No hemos podido encontrar la clave para esta credencial en este navegador. Asegúrate de estar usando el mismo navegador y dispositivo donde añadiste la credencial, y vuelve a intentarlo.",
         "private-key-non-extractable": "Esta clave no se puede exportar desde el dispositivo.",
         "unsupported-algorithm": "Esta función de seguridad no es compatible con este dispositivo.",
         "invalid-public-jwk": "La información de la clave pública no es válida.",
@@ -225,6 +225,9 @@
         "not-authorized": "No estás autorizado para realizar esta acción. Comprueba tus credenciales y vuelve a intentarlo.",
         "resource-not-found": "No se ha encontrado el recurso solicitado. Vuelve a intentarlo.",
         "server-error": "El servidor ha encontrado un error. Vuelve a intentarlo más tarde.",
+
+        "verifier-post-failed": "No hemos podido enviar la respuesta de login. Inténtalo de nuevo.",
+        "signature-failed": "No hemos podido firmar la presentación. Inténtalo de nuevo.",
        
         "failed-qr-process": "Ha habido un error al procesar QR. Puede que sea inválido o que ya haya sido usado antes. Refrésquelo, por favor. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>",
         "invalid-qr":"El QR presentado es inválido",

@@ -1,4 +1,4 @@
-import { ToastServiceHandler } from 'src/app/services/toast.service';
+import { ToastServiceHandler } from './../../../services/toast.service';
 import { inject, Injectable } from '@angular/core';
 import { CredentialOfferService } from './credential-offer.service';
 import { CredentialIssuerMetadataService } from './credential-issuer-metadata.service';
@@ -20,6 +20,7 @@ import { ProofJwtContext } from '../../models/ProofJwt';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
 import { AppError } from 'src/app/interfaces/error/AppError';
 import { JwtParseError } from '../../models/error/JwtParseError';
+import { LoaderHandledFlowService } from 'src/app/services/loader-handled-flow.service';
 
 @Injectable({ providedIn: 'root' })
 export class Oid4vciEngineService {
@@ -30,6 +31,7 @@ export class Oid4vciEngineService {
   private readonly jwtService = inject(JwtService);
   private readonly keyStorageProvider = inject(WebCryptoKeyStorageProvider);
   private readonly loader = inject(LoaderService);
+  private readonly loaderHandledFlowService = inject(LoaderHandledFlowService);
   private readonly preAuthorizedTokenService = inject(PreAuthorizedTokenService);
   private readonly proofBuilderService = inject(ProofBuilderService);
   private readonly toastServiceHandler = inject(ToastServiceHandler);
@@ -48,8 +50,10 @@ export class Oid4vciEngineService {
   public async executeOid4vciFlow(credentialOfferUri: string): Promise<void> {
     await this.init();
     
-    try{
-      this.loader.addLoadingProcess();
+    return this.loaderHandledFlowService.run({
+    logPrefix: '[Oid4vciEngine]',
+    errorToTranslationKey: (e) => this.errorToTranslationKey(e),
+    fn: async () => {
 
       // GET DATA FOR THE CREDENTIAL REQUEST
       const credentialOffer = await this.credentialOfferService.getCredentialOfferFromCredentialOfferUri(credentialOfferUri);
@@ -116,21 +120,7 @@ export class Oid4vciEngineService {
         tokenObtainedAt,
         format
       });
-    }catch(e: unknown){
-      if (e instanceof AppError) {
-        console.error('[Oid4vciEngine] Flow failed:', { message: e.message, code: e.code, cause: e.cause });
-      } else {
-        console.error('[Oid4vciEngine] Flow failed:', e);
-      }
-      const msg = this.errorToTranslationKey(e);
-      if (msg) {
-        this.toastServiceHandler.showErrorAlertByTranslateLabel(msg).subscribe();
-      }
- 
-      throw e;
-    }finally{
-      this.loader.removeLoadingProcess();
-    }
+    }});
 
   }
 
@@ -181,7 +171,7 @@ export class Oid4vciEngineService {
 
     let payload: any;
     try {
-      payload = this.jwtService.parseJwtPayload(credentialJwt) as any;
+      payload = this.jwtService.parseJwtPayload(credentialJwt);
     } catch (e: unknown) {
       if (e instanceof JwtParseError) {
         throw new Oid4vciError('Credential JWT payload could not be parsed', {

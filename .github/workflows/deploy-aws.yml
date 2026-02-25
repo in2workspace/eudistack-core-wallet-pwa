@@ -54,6 +54,7 @@ jobs:
         env:
           IAM_EXTERNAL_URL: ${{ vars.IAM_EXTERNAL_URL }}
           ASSETS_BASE_URL: ${{ vars.ASSETS_BASE_URL }}
+          DEFAULT_LANG: ${{ vars.DEFAULT_LANG }}
           LOGO_PATH: ${{ vars.LOGO_PATH }}
           FAVICON_PATH: ${{ vars.FAVICON_PATH }}
           PRIMARY: ${{ vars.PRIMARY }}

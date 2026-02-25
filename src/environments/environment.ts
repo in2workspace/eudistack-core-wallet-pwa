@@ -18,8 +18,5 @@ export const environment = {
       favicon_path:"icons/altia-favicon.ico",
     },
     default_lang: "en",
-  },
-  // This should only be set to true in dev mode.
-  // Setting this to true will activate browser signature for OID4VCI flow, but the OID4VP flow will still work without it.
-  browser_signature_enabled: false
+  }
 };

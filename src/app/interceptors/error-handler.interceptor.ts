@@ -53,7 +53,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           // OID4VCI finalize endpoint
           urlObj.href.endsWith(SERVER_PATH.CREDENTIAL_RESPONSE) ||
           // presentation endpoint (login with VC)
-          pathname.endsWith(SERVER_PATH.VERIFIABLE_PRESENTATION) ||
+          pathname.endsWith(SERVER_PATH.VERIFIABLE_PRESENTATION_CREDENTIALS) ||
           // REQUEST SIGNATURE endpoint
           pathname.endsWith(SERVER_PATH.CREDENTIALS_SIGNED_BY_ID) ||
           // IAM endpoint
