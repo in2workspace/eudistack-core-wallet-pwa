@@ -98,6 +98,7 @@ export class Oid4vpEngineService {
         }
         const signedVpJwt = await this.signVpAsJwt(vpJwtPayload, keyId, thumbprint);
 
+        // todo review format; maybe it should be sent as JWT in Base64URL
         const compactVpToken = btoa(signedVpJwt);
 
         const presentationSubmissionJson = this.buildPresentationSubmissionJson(verifiablePresentation, [selectedVC]);
