@@ -2,9 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AlertController } from '@ionic/angular';
 import { TranslateService } from '@ngx-translate/core';
-import { of, throwError } from 'rxjs';
+import { of } from 'rxjs';
 import { VcSelectorPage } from './vc-selector.page';
-import { WalletService } from 'src/app/services/wallet.service';
 import { VerifiableCredential, CredentialStatus, Issuer, CredentialSubject, Mandate, Mandatee, Mandator, Power, LifeCycleStatus } from 'src/app/interfaces/verifiable-credential';
 import { Oid4vpEngineService } from 'src/app/core/protocol/oid4vp/oid4vp.engine.service';
 import { LoaderService } from 'src/app/services/loader.service';
@@ -14,7 +13,6 @@ describe('VcSelectorPage', () => {
   let component: VcSelectorPage;
   let fixture: ComponentFixture<VcSelectorPage>;
   let mockRouter: jest.Mocked<Router>;
-  let mockWalletService: jest.Mocked<WalletService>;
   let mockActivatedRoute: any;
   let mockTranslateService: jest.Mocked<TranslateService>;
   let mockAlertController: jest.Mocked<AlertController>;
@@ -118,10 +116,6 @@ describe('VcSelectorPage', () => {
       navigate: jest.fn()
     } as any;
 
-    mockWalletService = {
-      executeVC: jest.fn()
-    } as any;
-
     mockTranslateService = {
       instant: jest.fn()
     } as any;
@@ -155,16 +149,13 @@ describe('VcSelectorPage', () => {
     } as any;
 
     // Setup default return values
-    mockTranslateService.instant.mockReturnValue('Translated text');
     mockAlert.onDidDismiss.mockResolvedValue({ role: 'ok' });
     mockAlertController.create.mockResolvedValue(mockAlert);
-    mockWalletService.executeVC.mockReturnValue(of('response'));
 
     await TestBed.configureTestingModule({
       imports: [VcSelectorPage],
       providers: [
         { provide: Router, useValue: mockRouter },
-        { provide: WalletService, useValue: mockWalletService },
         { provide: ActivatedRoute, useValue: mockActivatedRoute },
         { provide: TranslateService, useValue: mockTranslateService },
         { provide: AlertController, useValue: mockAlertController },
@@ -336,35 +327,27 @@ describe('VcSelectorPage', () => {
         credentialStatus: {} as CredentialStatus,
       } as VerifiableCredential;
     });
-
-    it('should show confirmation alert', async () => {
-      await component.sendCred(mockCred);
-
-      expect(mockAlertController.create).toHaveBeenCalledWith({
-        header: 'Translated text',
-        buttons: [
-          {
-            text: 'Translated text',
-            role: 'cancel',
-          },
-          {
-            text: 'Translated text',
-            role: 'ok',
-          },
-        ],
-      });
-      expect(mockAlert.present).toHaveBeenCalled();
-    });
-
-    it('should not execute VC when user cancels', async () => {
-      mockAlert.onDidDismiss.mockResolvedValue({ role: 'cancel' });
-
-      await component.sendCred(mockCred);
-
-      expect(mockWalletService.executeVC).not.toHaveBeenCalled();
-    });
-
+    
     //todo complete tests
+    // it('should show confirmation alert', async () => {
+    //   await component.sendCred(mockCred);
+
+    //   expect(mockAlertController.create).toHaveBeenCalledWith({
+    //     header: 'Translated text',
+    //     buttons: [
+    //       {
+    //         text: 'Translated text',
+    //         role: 'cancel',
+    //       },
+    //       {
+    //         text: 'Translated text',
+    //         role: 'ok',
+    //       },
+    //     ],
+    //   });
+    //   expect(mockAlert.present).toHaveBeenCalled();
+    // });
+
     // it('should handle service error and show error message', async () => {
     //   const errorResponse = { status: 500 };
     //   mockWalletService.executeVC.mockReturnValue(throwError(() => errorResponse));

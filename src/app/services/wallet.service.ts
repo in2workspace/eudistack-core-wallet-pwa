@@ -121,7 +121,40 @@ export class WalletService {
     .set('Accept', 'application/json')
     .set('Authorization', `Bearer ${accessToken}`);
 
-  return this.http.post<CredentialResponse>(url, body, { headers, observe: 'response' });
+    return this.http.post<CredentialResponse>(url, body, { headers, observe: 'response' });
+  }
+
+  public getVerifiablePresentationCredentials(vcReply: VCReply): Observable<string[]> {
+    return this.http.post<string[]>(
+      environment.server_url + SERVER_PATH.VERIFIABLE_PRESENTATION_CREDENTIALS,
+      vcReply,
+      {
+        headers: new HttpHeaders({
+          [CONTENT_TYPE]: CONTENT_TYPE_APPLICATION_JSON,
+        }),
+      }
+    );
+  }
+
+  public postOid4vpAuthorizationResponse(
+    redirectUri: string,
+    state: string,
+    vpJwt: string,
+    presentationSubmissionJson: string
+  ): Observable<string> {
+    const body = new HttpParams()
+      .set('state', state)
+      .set('vp_token', vpJwt)
+      .set('presentation_submission', presentationSubmissionJson);
+
+    let headers = new HttpHeaders({
+      [CONTENT_TYPE]: CONTENT_TYPE_URL_ENCODED_FORM,
+    });
+
+    return this.http.post(redirectUri, body.toString(), {
+      headers,
+      responseType: TEXT as 'text',
+    });
   }
 
 }

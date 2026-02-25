@@ -1,18 +1,16 @@
 import { inject, Injectable } from '@angular/core';
 import { VCReply } from 'src/app/interfaces/verifiable-credential-reply';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { environment } from 'src/environments/environment';
 import { WebCryptoKeyStorageProvider } from '../../spi-impl/web-crypto-key-storage.service';
 import { firstValueFrom } from 'rxjs';
 import { JwtService } from '../oid4vci/jwt.service';
 import { v4 as uuidv4 } from "uuid";
-import { SERVER_PATH } from 'src/app/constants/api.constants';
 import { DescriptorMap, PresentationSubmission, VerifiablePresentation } from '../../models/VerifiablePresentation';
 import { ToastServiceHandler } from 'src/app/services/toast.service';
 import { LoaderService } from 'src/app/services/loader.service';
 import { AppError } from 'src/app/interfaces/error/AppError';
 import { Oid4vpError } from '../../models/error/Oid4vpError';
 import { wrapOid4vpHttpError } from 'src/app/helpers/http-error-message';
+import { WalletService } from 'src/app/services/wallet.service';
 
     const CUSTOMER_PRESENTATION_DEFINITION = "CustomerPresentationDefinition";
     const CUSTOMER_PRESENTATION_SUBMISSION = "CustomerPresentationSubmission";
@@ -23,11 +21,11 @@ import { wrapOid4vpHttpError } from 'src/app/helpers/http-error-message';
 })
 export class Oid4vpEngineService {
 
-  private readonly http = inject(HttpClient);
   private readonly jwtService = inject(JwtService);
   private readonly keyStorageProvider = inject(WebCryptoKeyStorageProvider);
   private readonly loader = inject(LoaderService);
   private readonly toastServiceHandler = inject(ToastServiceHandler);
+  private readonly walletService = inject(WalletService);
 
   //todo move here the logic to get the credentials to select (from vc selector page)
 
@@ -49,7 +47,7 @@ export class Oid4vpEngineService {
 
         let credentialPayload: any;
         try {
-        credentialPayload = this.jwtService.parseJwtPayload(selectedVC) as any;
+          credentialPayload = this.parseJwtPayloadOrThrow(selectedVC, 'Selected credential JWT payload could not be parsed') as any;
         } catch (e: unknown) {
           // If you also have a JwtParseError here, you can mirror the OID4VCI logic.
           throw new Oid4vpError('Selected credential JWT payload could not be parsed', {
@@ -117,8 +115,7 @@ export class Oid4vpEngineService {
             selectorResponse.redirectUri,
             selectorResponse.state,
             compactVpToken,
-            presentationSubmissionJson,
-            undefined
+            presentationSubmissionJson
         );
 
         console.log('Verifier response:', verifierResponse);
@@ -182,32 +179,18 @@ private async postAuthorizationResponse(
   redirectUri: string,
   state: string,
   vpJwt: string,
-  presentationSubmissionJson: string,
-  authorizationToken?: string
+  presentationSubmissionJson: string
 ): Promise<string> {
-  const body = new HttpParams()
-    .set('state', state)
-    .set('vp_token', vpJwt)
-    .set('presentation_submission', presentationSubmissionJson);
-  console.log('Constructed authorization response body:', body.toString());
-
-  let headers = new HttpHeaders({
-    'Content-Type': 'application/x-www-form-urlencoded',
-  });
-
-  if (authorizationToken) {
-    headers = headers.set('Authorization', `Bearer ${authorizationToken}`);
-  }
 
   try {
-    const resp = await firstValueFrom(
-      this.http.post(redirectUri, body.toString(), {
-        headers,
-        responseType: 'text',
-        observe: 'response',
-      })
+     return await firstValueFrom(
+      this.walletService.postOid4vpAuthorizationResponse(
+        redirectUri,
+        state,
+        vpJwt,
+        presentationSubmissionJson
+      )
     );
-    return resp.body ?? '';
   } catch (e: unknown) {
     wrapOid4vpHttpError(e, 'Failed to post authorization response to verifier', {
       translationKey: 'errors.verifier-post-failed',
@@ -237,14 +220,7 @@ private appendNested(existing: DescriptorMap | null, next: DescriptorMap): Descr
 
   private getVcIdFromJwt(vcJwt: string): string {
     let payload: any;
-    try {
-        payload = this.jwtService.parseJwtPayload(vcJwt) as any;
-    } catch (e: unknown) {
-        throw new Oid4vpError('VC JWT payload could not be parsed', {
-        cause: e,
-        translationKey: 'errors.invalid-jwt',
-        });
-    }
+    payload = this.parseJwtPayloadOrThrow(vcJwt, 'VC JWT payload could not be parsed');
 
     const vc = payload?.vc;
     if (!vc?.id) {
@@ -294,26 +270,29 @@ private appendNested(existing: DescriptorMap | null, next: DescriptorMap): Descr
   
   private async getVerifiableCredentials(vcReply: VCReply): Promise<string[]> {
     try {
-        return await firstValueFrom(
-        this.http.post<string[]>(
-            environment.server_url + SERVER_PATH.VERIFIABLE_PRESENTATION_CREDENTIALS,
-            vcReply,
-            {
-            headers: new HttpHeaders({
-                'Content-Type': 'application/json',
-            }),
-            }
-        )
-        );
+      return await firstValueFrom(
+        this.walletService.getVerifiablePresentationCredentials(vcReply)
+      );
     } catch (e: unknown) {
-        wrapOid4vpHttpError(e, 'Failed to obtain verifiable credentials for VP', {
+      wrapOid4vpHttpError(e, 'Failed to obtain verifiable credentials for VP', {
         translationKey: 'errors.loading-VCs',
-        });
+      });
     }
-    }
+  }
 
   //todo review this
   private generateAudience(){
     return "https://self-issued.me/v2";
   }
+
+  private parseJwtPayloadOrThrow(jwt: string, contextMsg: string): any {
+  try {
+    return this.jwtService.parseJwtPayload(jwt) as any;
+  } catch (e: unknown) {
+    throw new Oid4vpError(contextMsg, {
+      cause: e,
+      translationKey: 'errors.invalid-jwt',
+    });
+  }
+}
 }

@@ -132,32 +132,6 @@ describe('WalletService', () => {
     req.flush(expectedResponse);
   });
 
-
-  it('should execute Verifiable Credential and return response', (done) => {
-    const mockVCReply: VCReply = {
-      selectedVcList: [],
-      state: 'test-state',
-      redirectUri: 'test-redirect-uri',
-      nonce: 'test-nonce',
-    };
-    const mockResponse = 'VC executed successfully';
-
-    service.executeVC(mockVCReply).subscribe((response) => {
-      expect(response).toEqual(mockResponse);
-      done();
-    });
-
-    const req = httpTestingController.expectOne(
-      `${
-        environment.server_url +
-        SERVER_PATH.VERIFIABLE_PRESENTATION
-      }`
-    );
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual(mockVCReply);
-    req.flush(mockResponse);
-  });
-
   it('should fetch all Verifiable Credentials', (done) => {
     const mockResponse: VerifiableCredential[] = [
       {
