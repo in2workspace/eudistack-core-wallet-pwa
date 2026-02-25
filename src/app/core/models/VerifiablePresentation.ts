@@ -2,8 +2,12 @@ export interface VerifiablePresentation {
   '@context': string[];
   id: string;
   type: string[];
-  holder: string;
+  holder: HolderCnf;
   verifiableCredential: string[];
+}
+
+export interface HolderCnf {
+  [key: string]: unknown;
 }
 
 export type DescriptorMap = {
