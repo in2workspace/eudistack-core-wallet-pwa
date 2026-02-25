@@ -34,7 +34,6 @@ export class Oid4vpEngineService {
       logPrefix: '[Oid4vpEngine]',
       errorToTranslationKey: (e) => this.errorToTranslationKey(e),
       fn: async () => {
-        this.loader.addLoadingProcess();
         console.log('Received selector response:', selectorResponse);
 
         
