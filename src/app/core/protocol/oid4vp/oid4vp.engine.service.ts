@@ -111,8 +111,6 @@ export class Oid4vpEngineService {
         );
 
         console.info('OID4VP flow completed successfully.');
-
-
       }});
     }
 

@@ -47,17 +47,6 @@ export class WalletService {
     );
   }
 
-  public requestOpenidCredentialOffer(credentialOfferUri: string): Observable<JSON> {
-    const params = new HttpParams().set('credentialOfferUri', credentialOfferUri);
-    return this.http.get<JSON>(
-      environment.server_url + SERVER_PATH.REQUEST_CREDENTIAL,
-      {
-        params,
-        headers: options.headers
-      }
-    );
-  }
-
   // Request all Verifiable Credentials of a user from the Wallet Data
   public getAllVCs(): Observable<VerifiableCredential[]> {
     return this.http.get<VerifiableCredential[]>(

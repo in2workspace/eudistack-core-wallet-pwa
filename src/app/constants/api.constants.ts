@@ -1,6 +1,5 @@
 const apiV1Path = '/api/v1';
 
-export const WEBSOCKET_PIN_PATH = `${apiV1Path}/pin`;
 export const WEBSOCKET_NOTIFICATION_PATH = `${apiV1Path}/notification`;
 
 const OPENID_OFFER = `${apiV1Path}/openid-credential-offer` as const;

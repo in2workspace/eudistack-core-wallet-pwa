@@ -114,24 +114,6 @@ describe('WalletService', () => {
     req.flush(mockResponse);
   });
 
-  it('should request a new credential', () => {
-    const mockCredentialOfferUri = 'test-offer-uri';
-    const expectedResponse = {
-      message: 'Credential request successful',
-    };
-
-    service.requestOpenidCredentialOffer(mockCredentialOfferUri).subscribe((response) => {
-      expect(response).toEqual(expectedResponse);
-    });
-
-    const req = httpTestingController.expectOne(
-      `${environment.server_url}${SERVER_PATH.REQUEST_CREDENTIAL}?credentialOfferUri=${mockCredentialOfferUri}`
-    );
-    expect(req.request.method).toBe('GET');
-    expect(req.request.params.get('credentialOfferUri')).toBe(mockCredentialOfferUri);
-    req.flush(expectedResponse);
-  });
-
   it('should fetch all Verifiable Credentials', (done) => {
     const mockResponse: VerifiableCredential[] = [
       {

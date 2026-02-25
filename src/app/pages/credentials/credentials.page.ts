@@ -169,29 +169,14 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       this.websocket.connectNotificationSocket(),
     ];
 
-     const needsLegacyPin = !environment.browser_signature_enabled;
-      if (needsLegacyPin) {
-        socketsToConnect.push(this.websocket.connectPinSocket());
-      }
-
     from(Promise.all(socketsToConnect))
       .pipe(
         switchMap(() => {
-          if(environment.browser_signature_enabled){
-            console.log("Browser signature enabled. Starting OID4VCI flow with browser signature.");
-            return this.oid4vciEngineService.executeOid4vciFlow(credentialOfferUri)
-        }else{
-          console.log("Browser signature disabled. Starting OID4VCI flow without browser signature.");
-          return this.walletService.requestOpenidCredentialOffer(credentialOfferUri)
-        }}),
+          console.log("Browser signature enabled. Starting OID4VCI flow with browser signature.");
+          return this.oid4vciEngineService.executeOid4vciFlow(credentialOfferUri)
+      }),
 
         switchMap(() => this.handleActivationSuccess()),
-
-              finalize(() => {
-                if (needsLegacyPin) {
-                  this.websocket.closePinConnection();
-                }
-              }),
 
         catchError((err: ExtendedHttpErrorResponse) => {
           console.error(err);
