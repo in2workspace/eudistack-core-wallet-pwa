@@ -30,16 +30,14 @@ export class Oid4vpEngineService {
   //todo move here the logic to get the credentials to select (from vc selector page)
 
   public async buildVerifiablePresentationWithSelectedVCs(selectorResponse: VCReply): Promise<void> {
+    console.info('Starting OID4VP flow.');
+
     return this.loaderHandledFlowService.run({
       logPrefix: '[Oid4vpEngine]',
       errorToTranslationKey: (e) => this.errorToTranslationKey(e),
       fn: async () => {
-        console.log('Received selector response:', selectorResponse);
-
-        
         const selectedVCs = await this.getVerifiableCredentials(selectorResponse);
         const selectedVC = selectedVCs[0]; // todo: handle multiple VCs
-        console.log('Selected VC JWT:', selectedVC);
 
         if (!selectedVC) {
           throw new Oid4vpError('No VC available for presentation', {
@@ -51,22 +49,18 @@ export class Oid4vpEngineService {
         try {
           credentialPayload = this.parseJwtPayloadOrThrow(selectedVC, 'Selected credential JWT payload could not be parsed');
         } catch (e: unknown) {
-          // If you also have a JwtParseError here, you can mirror the OID4VCI logic.
           throw new Oid4vpError('Selected credential JWT payload could not be parsed', {
               cause: e,
               translationKey: 'errors.invalid-jwt',
           });
         }
-        console.log('Parsed credential payload:', credentialPayload);
 
         const cnf = credentialPayload?.cnf;
-        console.log('Extracted cnf from credential payload:', cnf);
         if (!cnf?.jwk) {
           throw new Oid4vpError('Missing cnf.jwk in selected credential', {
               translationKey: 'errors.credential-validation-failed',
           });
         }
-        console.log('Extracted JWK from cnf:', cnf.jwk);
 
         const credentialSubjectId = credentialPayload?.vc?.credentialSubject?.id;
         if (!credentialSubjectId) {
@@ -74,28 +68,24 @@ export class Oid4vpEngineService {
               translationKey: 'errors.credential-validation-failed',
           });
         }
-        console.log('Extracted credentialSubjectId from credential payload:', credentialSubjectId);
 
         const verifiablePresentation = this.createVerifiablePresentation(selectedVC, cnf);
-        console.log('Created verifiable presentation:', verifiablePresentation);
 
         const aud = this.generateAudience();
-        console.log('Generated audience for VP:', aud);
 
         const issueTime = Math.floor(Date.now() / 1000);
 
         const vpJwtPayload = {
-        id: verifiablePresentation.id,
-        iss: credentialSubjectId,
-        sub: credentialSubjectId,
-        aud,
-        nbf: issueTime,
-        iat: issueTime,
-        exp: issueTime + (3 * 60),
-        vp: verifiablePresentation,
-        nonce: selectorResponse.nonce,
+          id: verifiablePresentation.id,
+          iss: credentialSubjectId,
+          sub: credentialSubjectId,
+          aud,
+          nbf: issueTime,
+          iat: issueTime,
+          exp: issueTime + (3 * 60),
+          vp: verifiablePresentation,
+          nonce: selectorResponse.nonce,
         };
-        console.log("Constructed VP JWT payload:", vpJwtPayload);
 
         const publicKey = cnf.jwk;
         const thumbprint = await this.keyStorageProvider.computeJwkThumbprint(publicKey);
@@ -107,20 +97,21 @@ export class Oid4vpEngineService {
         });
         }
         const signedVpJwt = await this.signVpAsJwt(vpJwtPayload, keyId, thumbprint);
-        console.log('Signed VP JWT:', signedVpJwt);
 
         const compactVpToken = btoa(signedVpJwt);
 
         const presentationSubmissionJson = this.buildPresentationSubmissionJson(verifiablePresentation, [selectedVC]);
 
-        const verifierResponse = await this.postAuthorizationResponse(
+        await this.postAuthorizationResponse(
             selectorResponse.redirectUri,
             selectorResponse.state,
             compactVpToken,
             presentationSubmissionJson
         );
 
-        console.log('Verifier response:', verifierResponse);
+        console.info('OID4VP flow completed successfully.');
+
+
       }});
     }
 
