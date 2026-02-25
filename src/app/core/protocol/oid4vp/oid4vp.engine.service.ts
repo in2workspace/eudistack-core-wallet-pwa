@@ -64,13 +64,16 @@ export class Oid4vpEngineService {
         const cnf = credentialPayload?.cnf;
         console.log('Extracted cnf from credential payload:', cnf);
         if (!cnf?.jwk) {
+          //todo
           // throw new Oid4vpError('Missing cnf.jwk in selected credential', {
           //     translationKey: 'errors.credential-validation-failed',
           // });
           console.log("No cnf.jwk found in credential payload. Assuming no proof of possession required, sending credential directly to Wallet API to process sign it...");
           this.walletService.executeVC(selectorResponse).subscribe({
-            next: () => {
-              console.log("[VC-Selector] Credentials sent successfully. Navigating back to home page...");
+            next: res => {
+              console.log("[VC-Selector] Credentials sent successfully. Response: ");
+              console.log(res);
+              console.log("Navigating back to home page...");
               this.loader.removeLoadingProcess(); //todo
             },
             error: err => {
@@ -310,7 +313,7 @@ private appendNested(existing: DescriptorMap | null, next: DescriptorMap): Descr
     try {
         return await firstValueFrom(
         this.http.post<string[]>(
-            environment.server_url + SERVER_PATH.VERIFIABLE_PRESENTATION,
+            environment.server_url + SERVER_PATH.VERIFIABLE_PRESENTATION + "/credentials",
             vcReply,
             {
             headers: new HttpHeaders({
