@@ -5,12 +5,12 @@ import { firstValueFrom } from 'rxjs';
 import { JwtService } from '../oid4vci/jwt.service';
 import { v4 as uuidv4 } from "uuid";
 import { DescriptorMap, PresentationSubmission, VerifiablePresentation } from '../../models/VerifiablePresentation';
-import { ToastServiceHandler } from 'src/app/services/toast.service';
 import { LoaderService } from 'src/app/services/loader.service';
 import { AppError } from 'src/app/interfaces/error/AppError';
 import { Oid4vpError } from '../../models/error/Oid4vpError';
 import { wrapOid4vpHttpError } from 'src/app/helpers/http-error-message';
 import { WalletService } from 'src/app/services/wallet.service';
+import { LoaderHandledFlowService } from 'src/app/services/loader-handled-flow.service';
 
     const CUSTOMER_PRESENTATION_DEFINITION = "CustomerPresentationDefinition";
     const CUSTOMER_PRESENTATION_SUBMISSION = "CustomerPresentationSubmission";
@@ -24,13 +24,16 @@ export class Oid4vpEngineService {
   private readonly jwtService = inject(JwtService);
   private readonly keyStorageProvider = inject(WebCryptoKeyStorageProvider);
   private readonly loader = inject(LoaderService);
-  private readonly toastServiceHandler = inject(ToastServiceHandler);
+  private readonly loaderHandledFlowService = inject(LoaderHandledFlowService);
   private readonly walletService = inject(WalletService);
 
   //todo move here the logic to get the credentials to select (from vc selector page)
 
   public async buildVerifiablePresentationWithSelectedVCs(selectorResponse: VCReply): Promise<void> {
-    try {
+    return this.loaderHandledFlowService.run({
+      logPrefix: '[Oid4vpEngine]',
+      errorToTranslationKey: (e) => this.errorToTranslationKey(e),
+      fn: async () => {
         this.loader.addLoadingProcess();
         console.log('Received selector response:', selectorResponse);
 
@@ -119,22 +122,7 @@ export class Oid4vpEngineService {
         );
 
         console.log('Verifier response:', verifierResponse);
-    } catch (e: unknown) {
-        if (e instanceof AppError) {
-            console.error('[Oid4vpEngine] Flow failed:', { message: e.message, code: e.code, cause: e.cause });
-        } else {
-            console.error('[Oid4vpEngine] Flow failed:', e);
-        }
-
-        const msg = this.errorToTranslationKey(e);
-        if (msg) {
-            this.toastServiceHandler.showErrorAlertByTranslateLabel(msg).subscribe();
-        }
-
-        throw e;
-    } finally {
-        this.loader.removeLoadingProcess();
-    }
+      }});
     }
 
   private errorToTranslationKey(e: unknown): string | null {
