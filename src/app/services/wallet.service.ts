@@ -58,19 +58,6 @@ export class WalletService {
     );
   }
 
-  // Send the Selected VC List to the WCA to create the Verifiable Presentation
-  public executeVC(_VCReply: VCReply): Observable<string> {
-    console.log("Sending VC Reply to server:", _VCReply);
-    return this.http.post<string>(
-      environment.server_url +
-      SERVER_PATH.VERIFIABLE_PRESENTATION,
-      _VCReply,
-      {
-        headers: contentTypeApplicationJsonHeader,
-      }
-    );
-  }
-
   // Request all Verifiable Credentials of a user from the Wallet Data
   public getAllVCs(): Observable<VerifiableCredential[]> {
     return this.http.get<VerifiableCredential[]>(

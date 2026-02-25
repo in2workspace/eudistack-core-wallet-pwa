@@ -13,7 +13,6 @@ import { LoaderService } from 'src/app/services/loader.service';
 import { AppError } from 'src/app/interfaces/error/AppError';
 import { Oid4vpError } from '../../models/error/Oid4vpError';
 import { wrapOid4vpHttpError } from 'src/app/helpers/http-error-message';
-import { WalletService } from 'src/app/services/wallet.service';
 
     const CUSTOMER_PRESENTATION_DEFINITION = "CustomerPresentationDefinition";
     const CUSTOMER_PRESENTATION_SUBMISSION = "CustomerPresentationSubmission";
@@ -29,7 +28,6 @@ export class Oid4vpEngineService {
   private readonly keyStorageProvider = inject(WebCryptoKeyStorageProvider);
   private readonly loader = inject(LoaderService);
   private readonly toastServiceHandler = inject(ToastServiceHandler);
-  private readonly walletService = inject(WalletService);
 
   //todo move here the logic to get the credentials to select (from vc selector page)
 
@@ -40,13 +38,13 @@ export class Oid4vpEngineService {
 
         
         const selectedVCs = await this.getVerifiableCredentials(selectorResponse);
-        const selectedVC = selectedVCs[0]; // todo: handle multiple
+        const selectedVC = selectedVCs[0]; // todo: handle multiple VCs
         console.log('Selected VC JWT:', selectedVC);
 
         if (!selectedVC) {
-        throw new Oid4vpError('No VC available for presentation', {
-            translationKey: 'errors.no-credentials-available',
-        });
+          throw new Oid4vpError('No VC available for presentation', {
+              translationKey: 'errors.no-credentials-available',
+          });
         }
 
         let credentialPayload: any;
@@ -64,23 +62,9 @@ export class Oid4vpEngineService {
         const cnf = credentialPayload?.cnf;
         console.log('Extracted cnf from credential payload:', cnf);
         if (!cnf?.jwk) {
-          //todo
-          // throw new Oid4vpError('Missing cnf.jwk in selected credential', {
-          //     translationKey: 'errors.credential-validation-failed',
-          // });
-          console.log("No cnf.jwk found in credential payload. Assuming no proof of possession required, sending credential directly to Wallet API to process sign it...");
-          this.walletService.executeVC(selectorResponse).subscribe({
-            next: res => {
-              console.log("[VC-Selector] Credentials sent successfully. Response: ");
-              console.log(res);
-              console.log("Navigating back to home page...");
-              this.loader.removeLoadingProcess(); //todo
-            },
-            error: err => {
-              console.error("[VC-Selector] Error sending credentials:");
-            }
+          throw new Oid4vpError('Missing cnf.jwk in selected credential', {
+              translationKey: 'errors.credential-validation-failed',
           });
-          return;
         }
         console.log('Extracted JWK from cnf:', cnf.jwk);
 
@@ -308,12 +292,11 @@ private appendNested(existing: DescriptorMap | null, next: DescriptorMap): Descr
     }
   }
   
-  //todo
   private async getVerifiableCredentials(vcReply: VCReply): Promise<string[]> {
     try {
         return await firstValueFrom(
         this.http.post<string[]>(
-            environment.server_url + SERVER_PATH.VERIFIABLE_PRESENTATION + "/credentials",
+            environment.server_url + SERVER_PATH.VERIFIABLE_PRESENTATION_CREDENTIALS,
             vcReply,
             {
             headers: new HttpHeaders({

@@ -12,5 +12,5 @@ export const SERVER_PATH = Object.freeze({
   EXECUTE_CONTENT: `${apiV1Path}/execute-content`,
   REQUEST_CREDENTIAL: OPENID_OFFER,
   CREDENTIAL_RESPONSE: `${OPENID_OFFER}/credential-response`,
-  VERIFIABLE_PRESENTATION: `${apiV1Path}/vp`
+  VERIFIABLE_PRESENTATION_CREDENTIALS: `${apiV1Path}/vp/credentials`
 });

@@ -82,7 +82,7 @@ describe('HttpErrorInterceptor with HttpClient', () => {
     const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
     const logSpy = jest.spyOn(console, 'error');
 
-    const url = `http://localhost/${SERVER_PATH.VERIFIABLE_PRESENTATION}?x=1`;
+    const url = `http://localhost/${SERVER_PATH.VERIFIABLE_PRESENTATION_CREDENTIALS}?x=1`;
     httpClient.get(url).subscribe({ error: (e) => {
       expect(e).toBeTruthy();
       expect(logSpy).toHaveBeenCalledWith('Handled silently:', 'Test error message');
@@ -255,7 +255,7 @@ it('it should print the correct message if a request to process the QR is made',
 });
 
   it('should handle errors silently for verifiable presentation URI', () => {
-    const testUrl = SERVER_PATH.VERIFIABLE_PRESENTATION;
+    const testUrl = SERVER_PATH.VERIFIABLE_PRESENTATION_CREDENTIALS;
     const spy = jest.spyOn(console, 'error');
 
     httpClient.get(testUrl).subscribe({
