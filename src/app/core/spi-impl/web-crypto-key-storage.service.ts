@@ -267,61 +267,6 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
     }
   }
 
-  async hasKey(keyId: string): Promise<boolean> {
-    const mode = await this.requireAvailableMode();
-    if (this.keyCache.has(keyId)) return true;
-    if (mode !== 'full') return false;
-    return (await this.getKeyRecordFromIndexedDB(keyId)) !== null;
-  }
-
-  async listKeys(): Promise<KeyInfo[]> {
-    const mode = await this.requireAvailableMode();
-
-    if (mode !== 'full') {
-      console.log(`${this.LOG_PREFIX} listKeys(): in-memory`, { count: this.keyCache.size });
-      return Array.from(this.keyCache.values()).map((e) => ({
-        keyId: e.keyId,
-        algorithm: e.algorithm,
-        createdAt: e.createdAt,
-      }));
-    }
-
-    const db = await this.openDatabase();
-    try {
-      const tx = db.transaction(this.STORE_NAME, 'readonly');
-      const store = tx.objectStore(this.STORE_NAME);
-
-      const records = (await this.wrapRequest(store.getAll())) as StoredAnyKeyRecord[];
-      await this.awaitTx(tx);
-
-      for (const r of records) {
-        if (isFullRecord(r)) this.upsertCacheFromRecord(r);
-        else {
-          this.keyCache.set(r.keyId, {
-            keyId: r.keyId,
-            kid: r.kid,
-            algorithm: r.algorithm,
-            createdAt: r.createdAt,
-            publicKeyJwk: r.publicKeyJwk,
-          });
-          this.kidToKeyId.set(r.kid, r.keyId);
-        }
-      }
-
-      return records.map((r) => ({
-        keyId: r.keyId,
-        algorithm: r.algorithm,
-        createdAt: r.createdAt,
-      }));
-    } finally {
-      try {
-        db.close();
-      } catch {
-        // ignore
-      }
-    }
-  }
-
   private async deleteKeyFromIndexedDBInternal(keyId: string): Promise<void> {
     const db = await this.openDatabase();
     try {
@@ -337,17 +282,6 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
         // ignore
       }
     }
-  }
-
-  async deleteKey(keyId: string): Promise<void> {
-    const mode = this.storageMode;
-
-    const cached = this.keyCache.get(keyId);
-    if (cached) this.kidToKeyId.delete(cached.kid);
-    this.keyCache.delete(keyId);
-
-    console.log(`${this.LOG_PREFIX} deleteKey(): cache cleared`, { keyId, mode });
-
   }
 
   // ---------- Public helper used by your flows ----------
