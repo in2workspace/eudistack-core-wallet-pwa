@@ -89,7 +89,10 @@ export class Oid4vpEngineService {
 
         const publicKey = cnf.jwk;
         const thumbprint = await this.keyStorageProvider.computeJwkThumbprint(publicKey);
+        console.log("Computed JWK thumbprint:", thumbprint);
+
         const keyId = await this.keyStorageProvider.resolveKeyIdByKid(thumbprint);
+        console.info(`Resolved keyId=${keyId} for JWK thumbprint=${thumbprint}`);
 
         if (!keyId) {
         throw new Oid4vpError(`No local key found for kid=${thumbprint}`, {

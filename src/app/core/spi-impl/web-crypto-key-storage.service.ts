@@ -130,6 +130,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
     const publicKeyJwk = await globalThis.crypto.subtle.exportKey('jwk', keyPair.publicKey);
     const kid = await this.computeJwkThumbprint(publicKeyJwk);
+    console.log("Generated key pair with kid:", kid);
     const createdAt = new Date().toISOString();
 
     const cacheEntry: CachedKeyEntry = {
@@ -367,7 +368,9 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
     const thumbprintInput = JSON.stringify({ crv, kty, x, y });
 
     const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(thumbprintInput));
-    return base64UrlEncode(new Uint8Array(digest));
+    const thumbprint = base64UrlEncode(new Uint8Array(digest));
+    console.log("Computed JWK thumbprint digest (base64url):", thumbprint);
+    return thumbprint;
   }
 
   public async isCnfBoundToPublicKey(unparsedCnf: unknown, publicKeyJwk: JsonWebKey): Promise<boolean> {
