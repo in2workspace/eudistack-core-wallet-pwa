@@ -43,6 +43,7 @@ export class Oid4vciEngineService {
 
 
   public init(): Promise<void> {
+    console.log('[Oid4vciEngine] Initializing OID4VCI engine...');
     this.initPromise ??= this.checkBrowserCompatibilityWithKeyStorage();
     return this.initPromise;
   }
