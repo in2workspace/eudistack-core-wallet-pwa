@@ -49,7 +49,9 @@ export class Oid4vciEngineService {
   }
 
   public async executeOid4vciFlow(credentialOfferUri: string): Promise<void> {
+    //todo maybe move insed .run
     await this.init();
+    console.log('[Oid4vciEngine] Starting OID4VCI flow with credential offer URI:', credentialOfferUri);
     
     return this.loaderHandledFlowService.run({
     logPrefix: '[Oid4vciEngine]',
@@ -265,7 +267,7 @@ export class Oid4vciEngineService {
     const keyInfo = await this.keyStorageProvider.generateKeyPair('ES256', globalThis.crypto.randomUUID());
     console.log("Generated key pair for proof JWT with keyId:", keyInfo.keyId);
 
-    
+
 
     const publicKeyJwk = keyInfo.publicKeyJwk;
 

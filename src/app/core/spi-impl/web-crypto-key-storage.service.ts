@@ -322,17 +322,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
     }
   }
 
-  async deleteKey(keyId: string): Promise<void> {
-    const mode = await this.requireAvailableMode();
-
-    const cached = this.keyCache.get(keyId);
-    if (cached) this.kidToKeyId.delete(cached.kid);
-    this.keyCache.delete(keyId);
-
-    console.log(`${this.LOG_PREFIX} deleteKey(): cache cleared`, { keyId, mode });
-
-    if (mode !== 'full') return;
-
+  private async deleteKeyFromIndexedDBInternal(keyId: string): Promise<void> {
     const db = await this.openDatabase();
     try {
       const tx = db.transaction(this.STORE_NAME, 'readwrite');
@@ -340,8 +330,6 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
       await this.wrapRequest(store.delete(keyId));
       await this.awaitTx(tx);
-
-      console.log(`${this.LOG_PREFIX} deleteKey(): deleted from IndexedDB`, { keyId });
     } finally {
       try {
         db.close();
@@ -349,6 +337,17 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
         // ignore
       }
     }
+  }
+
+  async deleteKey(keyId: string): Promise<void> {
+    const mode = this.storageMode;
+
+    const cached = this.keyCache.get(keyId);
+    if (cached) this.kidToKeyId.delete(cached.kid);
+    this.keyCache.delete(keyId);
+
+    console.log(`${this.LOG_PREFIX} deleteKey(): cache cleared`, { keyId, mode });
+
   }
 
   // ---------- Public helper used by your flows ----------
@@ -518,7 +517,7 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
   private async selfTestFullPersistence(): Promise<boolean> {
     const testKeyId = `__compat_test__${globalThis.crypto.randomUUID?.() ?? String(Date.now())}`;
-    let saved = false;
+    let savedInDB = false;
 
     try {
       const params = this.getAlgorithmParams('ES256');
@@ -526,20 +525,22 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
       const publicKeyJwk = await globalThis.crypto.subtle.exportKey('jwk', keyPair.publicKey);
 
+      const kid = await this.computeJwkThumbprint(publicKeyJwk);
+
       const record: StoredFullKeyRecord = {
         keyId: testKeyId,
         algorithm: 'ES256',
         publicKeyJwk,
         privateKey: keyPair.privateKey,
         publicKey: keyPair.publicKey,
-        kid: 'compat-test',
+        kid,
         createdAt: new Date().toISOString(),
       };
 
       console.log(`${this.LOG_PREFIX} Full persistence self-test: store CryptoKey`);
 
       await this.saveKeyRecordInternal(record);
-      saved = true;
+      savedInDB = true;
 
       const loaded = await this.getKeyRecordFromIndexedDB(testKeyId);
       if (!loaded || !isFullRecord(loaded)) {
@@ -562,9 +563,9 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
       console.warn(`${this.LOG_PREFIX} Full persistence self-test FAILED`, e);
       return false;
     } finally {
-      if (saved) {
+      if (savedInDB) {
         try {
-          await this.deleteKey(testKeyId);
+          await this.deleteKeyFromIndexedDBInternal(testKeyId);
         } catch {
           // ignore
         }
