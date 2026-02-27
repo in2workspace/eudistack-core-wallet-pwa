@@ -43,15 +43,12 @@ export class Oid4vciEngineService {
 
 
   public init(): Promise<void> {
-    console.log('[Oid4vciEngine] Initializing OID4VCI engine...');
     this.initPromise ??= this.checkBrowserCompatibilityWithKeyStorage();
     return this.initPromise;
   }
 
   public async executeOid4vciFlow(credentialOfferUri: string): Promise<void> {
-    //todo maybe move insed .run
     await this.init();
-    console.log('[Oid4vciEngine] Starting OID4VCI flow with credential offer URI:', credentialOfferUri);
     
     return this.loaderHandledFlowService.run({
     logPrefix: '[Oid4vciEngine]',
@@ -85,7 +82,6 @@ export class Oid4vciEngineService {
         jwtProof = proofContext.jwt;
         proofPublicJwk = proofContext.publicKeyJwk;
       }
-      console.log("Generated proof JWT:", jwtProof);
       
       const format = cfg.format;
       const credentialConfigurationId = cfg.credentialConfigurationId;
@@ -133,7 +129,6 @@ export class Oid4vciEngineService {
 
   try {
     const mode = await this.keyStorageProvider.checkBrowserCompatibility();
-    console.log('[Oid4vciEngine] Key storage compatibility mode:', mode);
 
     if (mode === 'unavailable') {
       this.toastServiceHandler
@@ -265,7 +260,6 @@ export class Oid4vciEngineService {
 
   private async buildProofJwt(params: { nonce: string; credentialIssuer: string; }): Promise<ProofJwtContext> {
     const keyInfo = await this.keyStorageProvider.generateKeyPair('ES256', globalThis.crypto.randomUUID());
-    console.log("Generated key pair for proof JWT with keyId:", keyInfo.keyId);
 
 
 
@@ -281,7 +275,6 @@ export class Oid4vciEngineService {
     const signature = await this.keyStorageProvider.sign(keyInfo.keyId, new TextEncoder().encode(signingInput));
 
     const jwt = `${signingInput}.${this.jwtService.base64UrlEncode(signature)}`;
-    console.log("Generated proof JWT:", jwt);
 
     return { 
       jwt: `${signingInput}.${this.jwtService.base64UrlEncode(signature)}`, 
