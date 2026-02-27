@@ -12,6 +12,6 @@ export abstract class KeyStorageProvider {
   ): Promise<boolean>;
 
   // Optional backup methods (Enterprise)
-  abstract exportKey?(keyId: string): Promise<JsonWebKey>;
-  abstract importKey?(keyId: string, jwk: JsonWebKey): Promise<void>;
+  // abstract exportKey?(keyId: string): Promise<JsonWebKey>;
+  // abstract importKey?(keyId: string, jwk: JsonWebKey): Promise<void>;
 }

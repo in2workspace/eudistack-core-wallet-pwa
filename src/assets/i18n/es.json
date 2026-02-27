@@ -190,6 +190,7 @@
         }
     },
     "errors":{
+        "key-storage-in-memory": "Las claves se almacenan en la memoria y se perderán cuando la aplicación se cierre o recargue. Puedes añadir credenciales, pero podrían dejar de funcionar después de cerrar o recargar la aplicación.",
         "default": "Algo ha salido mal. Si vuelve a ocurrir, contacta con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
         "key-storage-unavailable": "Este navegador no puede guardar claves de forma segura. No podrás activar ni usar credenciales en este dispositivo.",
         "key-storage-public-only": "Este navegador no puede guardar claves de forma segura. Puedes añadir credenciales, pero podrían dejar de funcionar al cerrar o recargar la app.",

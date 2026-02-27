@@ -189,9 +189,10 @@
             "attest": "Acreditar",
             "upload": "Pujar"
         }
-    },
+    }, 
     "errors":{
-         "default": "Alguna cosa ha anat malament. Si et torna a passar, contacta amb l’<a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equip de suport</a>.",
+        "key-storage-in-memory": "Les claus s'emmagatzemen a la memòria i es perdran quan l'aplicació es tanqui o es recarregui. Pots afegir credencials, però podrien deixar de funcionar després de tancar o recarregar l'aplicació.",
+        "default": "Alguna cosa ha anat malament. Si et torna a passar, contacta amb l’<a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equip de suport</a>.",
         "key-storage-unavailable": "Aquest navegador no pot desar claus de manera segura. No podràs activar ni fer servir credencials en aquest dispositiu.",
         "key-storage-public-only": "Aquest navegador no pot desar claus de manera segura. Pots afegir credencials, però podrien deixar de funcionar en tancar o recarregar l’app.",
         "credential-validation-failed": "No hem pogut validar la credencial. Torna-ho a provar.",

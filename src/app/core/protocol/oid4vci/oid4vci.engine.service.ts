@@ -125,24 +125,41 @@ export class Oid4vciEngineService {
   }
 
   private async checkBrowserCompatibilityWithKeyStorage(): Promise<void> {
-    if(this.hasWarnedKeyStorageMode) return;
+  if (this.hasWarnedKeyStorageMode) return;
+
+  try {
     const mode = await this.keyStorageProvider.checkBrowserCompatibility();
+    console.log('[Oid4vciEngine] Key storage compatibility mode:', mode);
 
     if (mode === 'unavailable') {
-      this.toastServiceHandler.showErrorAlertByTranslateLabel("errors.key-storage-unavailable").pipe(
-        take(1)
-      ).subscribe();
+      this.toastServiceHandler
+        .showErrorAlertByTranslateLabel('errors.key-storage-unavailable')
+        .pipe(take(1))
+        .subscribe();
       this.hasWarnedKeyStorageMode = true;
+      return;
     }
 
-    if (mode === 'public-only') {
-      this.toastServiceHandler.showErrorAlertByTranslateLabel("errors.key-storage-public-only").pipe(
-        take(1)
-      ).subscribe();
+    if (mode === 'in-memory') {
+      this.toastServiceHandler
+        .showErrorAlertByTranslateLabel('errors.key-storage-in-memory')
+        .pipe(take(1))
+        .subscribe();
       this.hasWarnedKeyStorageMode = true;
     }
+  } catch (e) {
+    console.error('[Oid4vciEngine] Browser compatibility check threw error:', e);
 
+    this.toastServiceHandler
+      .showErrorAlertByTranslateLabel('errors.browser-compatibility-check-failed')
+      .pipe(take(1))
+      .subscribe();
+
+    this.hasWarnedKeyStorageMode = true;
+
+    throw e;
   }
+}
 
   private errorToTranslationKey(e: unknown): string | null {
   if (e instanceof AppError) {

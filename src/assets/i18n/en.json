@@ -189,6 +189,7 @@
 
     },
     "errors":{
+        "key-storage-in-memory": "Keys are stored in memory and will be lost when the app is closed or reloaded. You can add credentials, but they may stop working after you close or reload the app.",
         "default": "Something went wrong. If it keeps happening, please contact the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
         "key-storage-unavailable": "This browser can’t securely store keys. You won’t be able to activate or use credentials on this device.",
         "key-storage-public-only": "This browser can’t securely store keys. You can add credentials, but they may stop working after you close or reload the app.",
