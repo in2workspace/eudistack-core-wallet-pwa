@@ -4,7 +4,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { PopoverController, IonicModule, NavController } from '@ionic/angular';
 import { Router, ActivatedRoute, ActivatedRouteSnapshot, NavigationEnd } from '@angular/router';
 import { of, Subject } from 'rxjs';
-import { AuthenticationService } from './services/authentication.service';
+import { AuthService } from './services/auth.service';
 import { StorageService } from './services/storage.service';
 import { RouterTestingModule } from '@angular/router/testing';
 import { environment } from '../environments/environment';
@@ -19,7 +19,7 @@ describe('AppComponent', () => {
   let translateServiceMock: jest.Mocked<TranslateService>;
   let popoverControllerMock: jest.Mocked<PopoverController>;
   let routerMock: jest.Mocked<Router>;
-  let authenticationServiceMock: jest.Mocked<AuthenticationService>;
+  let authServiceMock: jest.Mocked<AuthService>;
   let storageServiceMock: jest.Mocked<StorageService>;
   let routerEventsSubject: Subject<Event>;
   let languageService: jest.Mocked<any>;
@@ -97,12 +97,12 @@ describe('AppComponent', () => {
     routerMock = {
       navigate: jest.fn(),
       events: routerEventsSubject as any,
-      url: '/callback?test=true',
+      url: '/auth/login',
     } as unknown as jest.Mocked<Router>;
 
-    authenticationServiceMock = {
+    authServiceMock = {
       getName$: jest.fn().mockReturnValue(of('John Doe')),
-    } as unknown as jest.Mocked<AuthenticationService>;
+    } as unknown as jest.Mocked<AuthService>;
 
     storageServiceMock = {
       get: jest.fn().mockResolvedValue('en'),
@@ -125,7 +125,7 @@ describe('AppComponent', () => {
         { provide: TranslateService, useValue: translateServiceMock },
         { provide: PopoverController, useValue: popoverControllerMock },
         { provide: Router, useValue: routerMock },
-        { provide: AuthenticationService, useValue: authenticationServiceMock },
+        { provide: AuthService, useValue: authServiceMock },
         { provide: StorageService, useValue: storageServiceMock },
         { provide: ActivatedRoute, useValue: activatedRouteMock },
         { provide: NavController, useValue: navControllerMock },
@@ -221,19 +221,19 @@ describe('AppComponent', () => {
     expect(component.openPopover).toHaveBeenCalledWith(mockEvent);
   });
 
-  it('should NOT open popover on /callback route', async () => {
+  it('should NOT open popover on /auth route', async () => {
     const event = new MouseEvent('click');
 
-    (routerMock as any).url = '/callback';
-    routerEventsSubject.next(new NavigationEnd(1, '/callback', '/callback') as any);
+    (routerMock as any).url = '/auth/login';
+    routerEventsSubject.next(new NavigationEnd(1, '/auth/login', '/auth/login') as any);
 
     await component.openPopover(event);
 
     expect(popoverControllerMock.create).not.toHaveBeenCalled();
   });
 
-  it('should open popover on non-callback route', async () => {
-    (component as any).isCallbackRoute$ = () => false;
+  it('should open popover on non-auth route', async () => {
+    (component as any).isAuthRoute$ = () => false;
 
     popoverControllerMock.create.mockResolvedValue({
       present: jest.fn(),
@@ -260,26 +260,26 @@ describe('AppComponent', () => {
     expect(completeSpy).toHaveBeenCalledTimes(1);
   });
 
-  describe('isCallbackRoute$', () => {
-    it('should return true initially for /callback route', fakeAsync(() => {
-      (routerMock as any).url = '/callback';
-      routerEventsSubject.next(new NavigationEnd(1, '/callback', '/callback') as any);
+  describe('isAuthRoute$', () => {
+    it('should return true for /auth/login route', fakeAsync(() => {
+      (routerMock as any).url = '/auth/login';
+      routerEventsSubject.next(new NavigationEnd(1, '/auth/login', '/auth/login') as any);
       tick();
-      expect(component.isCallbackRoute$()).toBe(true);
+      expect(component.isAuthRoute$()).toBe(true);
     }));
 
-    it('should return false for non-callback route', fakeAsync(() => {
+    it('should return false for non-auth route', fakeAsync(() => {
       (routerMock as any).url = '/home';
       routerEventsSubject.next(new NavigationEnd(1, '/home', '/home') as any);
       tick();
-      expect(component.isCallbackRoute$()).toBe(false);
+      expect(component.isAuthRoute$()).toBe(false);
     }));
 
-    it('should return true for routes starting with /callback even with segments', fakeAsync(() => {
-      (routerMock as any).url = '/callback/step2?foo=bar';
-      routerEventsSubject.next(new NavigationEnd(1, '/callback/step2?foo=bar', '/callback/step2?foo=bar') as any);
+    it('should return true for /auth/register route', fakeAsync(() => {
+      (routerMock as any).url = '/auth/register';
+      routerEventsSubject.next(new NavigationEnd(1, '/auth/register', '/auth/register') as any);
       tick();
-      expect(component.isCallbackRoute$()).toBe(true);
+      expect(component.isAuthRoute$()).toBe(true);
     }));
   });
 

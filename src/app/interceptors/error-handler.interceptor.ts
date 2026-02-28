@@ -11,10 +11,12 @@ import { catchError } from 'rxjs/operators';
 import { ToastServiceHandler } from '../services/toast.service';
 import { SERVER_PATH } from '../constants/api.constants';
 import { environment } from 'src/environments/environment';
+import { AuthService } from '../services/auth.service';
 
 @Injectable()
 export class HttpErrorInterceptor implements HttpInterceptor {
   private readonly toastServiceHandler = inject(ToastServiceHandler);
+  private readonly authService = inject(AuthService);
 
   private logHandledSilentlyErrorMsg(errMsg: string) {
     console.error('Handled silently:', errMsg);
@@ -32,14 +34,19 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         const urlObj = new URL(request.url);
         const href = urlObj.href;
         const isOwnBackend = href.startsWith(environment.server_url);
-        const isIam = href.startsWith(environment.iam_url);
         const pathname = urlObj.pathname;
 
         let errMessage =
           errorResp.error?.message || errorResp.message || 'Unknown Http error';
         const errStatus = errorResp.status ?? errorResp.error?.status;
 
-        if (!isOwnBackend && !isIam) {
+        // Handle 401 Unauthorized — force logout
+        if (errStatus === 401 && !pathname.startsWith('/api/v1/auth/')) {
+          this.authService.forceLogout();
+          return throwError(() => errorResp);
+        }
+
+        if (!isOwnBackend) {
           // Do not toast for 3rd party endpoints (issuers, well-known, etc.)
           this.logHandledSilentlyErrorMsg(errMessage);
           return throwError(() => errorResp);
@@ -56,8 +63,8 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           pathname.endsWith(SERVER_PATH.VERIFIABLE_PRESENTATION_CREDENTIALS) ||
           // REQUEST SIGNATURE endpoint
           pathname.endsWith(SERVER_PATH.CREDENTIALS_SIGNED_BY_ID) ||
-          // IAM endpoint
-          urlObj.href.startsWith(environment.iam_url);
+          // Auth endpoints
+          pathname.startsWith('/api/v1/auth/');
 
         if (shouldHandleSilently) {
           this.logHandledSilentlyErrorMsg(errMessage);

@@ -3,28 +3,21 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { Router } from '@angular/router';
 import { routes } from './app.routes';
 import { HttpClientModule } from '@angular/common/http';
-import { AutoLoginPartialRoutesGuard } from 'angular-auth-oidc-client';
 import { logsEnabledGuard } from './guards/logs-enabled.guard';
+import { authGuard } from './guards/auth.guard';
 import { of } from 'rxjs';
-import { StsConfigLoader } from 'angular-auth-oidc-client';
 
 describe('App Routing', () => {
   let router: Router;
 
   const mockLogsEnabledGuard = jest.fn().mockReturnValue(true);
-  
-  const mockAutoLoginPartialRoutesGuard = jest.fn().mockReturnValue(of(true));
-
-  const mockStsConfigLoader = {
-    getConfig: jest.fn().mockReturnValue(Promise.resolve({})),
-  };
+  const mockAuthGuard = jest.fn().mockReturnValue(of(true));
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [RouterTestingModule.withRoutes(routes), HttpClientModule],
       providers: [
-        { provide: StsConfigLoader, useValue: mockStsConfigLoader },
-        { provide: AutoLoginPartialRoutesGuard, useValue: mockAutoLoginPartialRoutesGuard },
+        { provide: authGuard, useValue: mockAuthGuard },
         { provide: logsEnabledGuard, useValue: mockLogsEnabledGuard },
       ],
     }).compileComponents();
@@ -32,23 +25,23 @@ describe('App Routing', () => {
     router = TestBed.inject(Router);
   });
 
-  it('should redirect an empty path to /tabs/home', async () => {
-    const navigation = await router.navigate(['']);
-    expect(router.url).toBe('/tabs/home');
+  it('should redirect an empty path to /auth/login', async () => {
+    await router.navigate(['']);
+    expect(router.url).toBe('/auth/login');
   });
 
   it('should lazy load tabs module for /tabs/home', async () => {
-    const navigation = await router.navigate(['/tabs']);
+    await router.navigate(['/tabs']);
     expect(router.url).toBe('/tabs/home');
   });
 
-  it('should lazy load callback module for /callback', async () => {
-    const navigation = await router.navigate(['/callback']);
-    expect(router.url).toBe('/callback');
+  it('should load login page for /auth/login', async () => {
+    await router.navigate(['/auth/login']);
+    expect(router.url).toBe('/auth/login');
   });
 
-  it('should redirect unknown routes to / then to /tabs/home', async () => {
-    const navigation = await router.navigate(['/unknown-route']);
-    expect(router.url).toBe('/tabs/home');
+  it('should redirect unknown routes to /auth/login', async () => {
+    await router.navigate(['/unknown-route']);
+    expect(router.url).toBe('/auth/login');
   });
 });

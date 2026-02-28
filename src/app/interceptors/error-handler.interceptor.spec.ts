@@ -290,11 +290,11 @@ it('it should print the correct message if a request to process the QR is made',
     );
   });
 
-  it('should handle errors silently for IAM URI', () => {
-    const testUrl = environment.iam_url;
+  it('should handle errors silently for auth endpoints', () => {
+    const testUrl = `${environment.server_url}/api/v1/auth/register`;
     const spy = jest.spyOn(console, 'error');
 
-    httpClient.get(testUrl).subscribe({
+    httpClient.post(testUrl, {}).subscribe({
       error: (error) => {
         expect(spy).toHaveBeenCalledWith('Handled silently:', 'Test error message');
         expect(error).toBeTruthy();

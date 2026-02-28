@@ -57,6 +57,34 @@
         "no-more-logs": "No hay más logs de cámara para mostrar."
     },
     "mailto_permission_alert": "Por favor, asegúrate de que tienes los permisos necesarios para enviar correos electrónicos con tu aplicación de correo predeterminada. Si el servicio de correo no se abre, es probable que se deba a restricciones de permisos.",
+    "auth": {
+        "login": {
+            "title": "Bienvenido",
+            "subtitle": "Usa tu passkey para acceder de forma segura",
+            "passkey-button": "Iniciar sesión con Passkey"
+        },
+        "register": {
+            "title": "Crear cuenta",
+            "subtitle": "Introduce tu email para empezar",
+            "step-email": "Email",
+            "step-verify": "Verificar",
+            "email": "Email",
+            "email-placeholder": "Introduce tu email",
+            "send-code": "Enviar código de verificación",
+            "code-sent": "Hemos enviado un código de verificación a tu email",
+            "code": "Código de verificación",
+            "code-placeholder": "Introduce el código de 6 dígitos",
+            "verify": "Verificar",
+            "change-email": "Cambiar email"
+        },
+        "passkey": {
+            "title": "Configurar Passkey",
+            "description": "Crea una passkey para iniciar sesión de forma segura sin contraseña. Tu dispositivo usará biometría o un PIN para verificar tu identidad.",
+            "register-button": "Crear Passkey",
+            "email-verified": "Email verificado",
+            "success": "¡Passkey registrada correctamente!"
+        }
+    },
     "login":{
         "title":"Login",
         "login":"Login",

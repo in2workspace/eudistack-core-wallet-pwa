@@ -1,7 +1,7 @@
 import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { MenuComponent } from './menu.component';
 import { IonicModule, PopoverController } from '@ionic/angular';
-import { AuthenticationService } from 'src/app/services/authentication.service';
+import { AuthService } from 'src/app/services/auth.service';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { TranslateModule } from '@ngx-translate/core';
@@ -14,8 +14,8 @@ describe('MenuComponent', () => {
       dismiss: jest.fn(() => Promise.resolve())
     }
 
-  const mockAuthenticationService = {
-    logout$: jest.fn(() => of(undefined)),
+  const mockAuthService = {
+    logout: jest.fn(() => of(undefined)),
   };
 
   const mockRouter = {
@@ -27,7 +27,7 @@ describe('MenuComponent', () => {
     await TestBed.configureTestingModule({
       imports: [MenuComponent, IonicModule.forRoot(), TranslateModule.forRoot() ],
       providers: [
-        { provide: AuthenticationService, useValue: mockAuthenticationService },
+        { provide: AuthService, useValue: mockAuthService },
         { provide: Router, useValue: mockRouter },
       ],
     })

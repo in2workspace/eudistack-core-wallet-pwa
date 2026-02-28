@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { AuthenticationService } from './authentication.service';
+import { AuthService } from './auth.service';
 import { AlertController, AlertOptions } from '@ionic/angular';
 import { environment } from 'src/environments/environment';
 import { TranslateService } from '@ngx-translate/core';
@@ -15,7 +15,7 @@ export class WebsocketService {
   private notificationSocket?: WebSocket;
 
   private readonly alertController = inject(AlertController);
-  private readonly authenticationService = inject(AuthenticationService);
+  private readonly authService = inject(AuthService);
   public readonly loader = inject(LoaderService);
   public readonly translate = inject(TranslateService);
   private readonly toastServiceHandler = inject(ToastServiceHandler);
@@ -36,7 +36,7 @@ export class WebsocketService {
 
       ws.onopen = () => {
         console.log(`WebSocket connection opened: ${path}`);
-        this.sendMessage(ws, JSON.stringify({ id: this.authenticationService.getToken() }));
+        this.sendMessage(ws, JSON.stringify({ id: this.authService.getToken() }));
         resolve();
       };
 

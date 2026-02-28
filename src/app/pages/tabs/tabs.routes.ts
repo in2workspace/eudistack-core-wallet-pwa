@@ -1,11 +1,11 @@
 import { Routes } from '@angular/router';
-import { AutoLoginPartialRoutesGuard } from 'angular-auth-oidc-client';
+import { authGuard } from '../../guards/auth.guard';
 import { logsEnabledGuard } from '../../guards/logs-enabled.guard';
 
 const routes: Routes = [
   {
     path: '',
-    canActivateChild: [AutoLoginPartialRoutesGuard],
+    canActivateChild: [authGuard],
     loadComponent: () =>
       import('./tabs.page').then((m) => m.TabsPage),
     children: [
@@ -73,7 +73,7 @@ const routes: Routes = [
       },
       {
         path: 'vc-selector',
-        canActivate: [AutoLoginPartialRoutesGuard],
+        canActivate: [authGuard],
         loadComponent: () =>
           import('../vc-selector/vc-selector.page').then((m) => m.VcSelectorPage),
       },

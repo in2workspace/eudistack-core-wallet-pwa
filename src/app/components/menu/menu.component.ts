@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { AuthenticationService } from 'src/app/services/authentication.service';
+import { AuthService } from 'src/app/services/auth.service';
 import { RouterModule } from '@angular/router';
 import { IonicModule, PopoverController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
@@ -16,7 +16,7 @@ import { TranslateModule } from '@ngx-translate/core';
 export class MenuComponent {
   public constructor(
     private readonly popOverController: PopoverController,
-    private readonly authenticationService: AuthenticationService,
+    private readonly authService: AuthService,
   ) {}
   public logoutOnKeydown(event: KeyboardEvent): void{
     if (event.key === 'Enter' || event.key === ' ') {
@@ -25,7 +25,9 @@ export class MenuComponent {
     }
   }
   public logout(): void {
-    this.authenticationService.logout$().subscribe();
+    this.authService.logout().subscribe(() => {
+      window.location.href = '/auth/login';
+    });
     this.popOverController.dismiss();
   }
 }

@@ -59,6 +59,34 @@
     "send-logs": {
         "mailto_permission_alert": "Assegureu-vos que teniu els permisos necessaris per enviar correus electrònics amb la vostra aplicació de correu predeterminada. Si el servei de correu no s'obre, probablement és a causa de restriccions de permisos."
     },
+    "auth": {
+        "login": {
+            "title": "Benvingut",
+            "subtitle": "Usa la teva passkey per accedir de forma segura",
+            "passkey-button": "Iniciar sessió amb Passkey"
+        },
+        "register": {
+            "title": "Crear compte",
+            "subtitle": "Introdueix el teu email per començar",
+            "step-email": "Email",
+            "step-verify": "Verificar",
+            "email": "Email",
+            "email-placeholder": "Introdueix el teu email",
+            "send-code": "Enviar codi de verificació",
+            "code-sent": "Hem enviat un codi de verificació al teu email",
+            "code": "Codi de verificació",
+            "code-placeholder": "Introdueix el codi de 6 dígits",
+            "verify": "Verificar",
+            "change-email": "Canviar email"
+        },
+        "passkey": {
+            "title": "Configurar Passkey",
+            "description": "Crea una passkey per iniciar sessió de forma segura sense contrasenya. El teu dispositiu farà servir biometria o un PIN per verificar la teva identitat.",
+            "register-button": "Crear Passkey",
+            "email-verified": "Email verificat",
+            "success": "Passkey registrada correctament!"
+        }
+    },
     "login":{
         "title":"Login",
         "login":"Login",

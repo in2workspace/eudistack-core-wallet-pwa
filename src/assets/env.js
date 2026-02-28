@@ -1,17 +1,17 @@
 (function (window) {
-  window["env"] = window["env"] || {};
+  window.env = window.env || {};
 
   // Environment variables
-  window["env"]["server_url"] = 'http://localhost:8082';
-  window["env"]["websocket_url"] = 'ws://localhost:8082';
-  window["env"]["iam_url"] ='http://localhost:7002/realms/wallet';
+  window["env"]["server_url"] = "http://localhost:8083";
+  window["env"]["websocket_url"] = "ws://localhost:8083";
+
   window["env"]["logs_enabled"] = "false";
-  window["env"]["primary"] = "#00ADD3";
+  window["env"]["primary"] = "#002060";
   window["env"]["primary_contrast"] = "#ffffff";
-  window["env"]["secondary"] = "#50c8ff";
-  window["env"]["secondary_contrast"] = "#000000";
-  window["env"]["assets_base_url"]= "${ASSETS_BASE_URL}";
-  window["env"]["logo_path"]= "${LOGO_PATH}";
-  window["env"]["favicon_path"]= "${FAVICON_PATH}";
+  window["env"]["secondary"] = "#001540";
+  window["env"]["secondary_contrast"] = "#00ADD3";
+  window["env"]["assets_base_url"]= "assets";
+  window["env"]["logo_path"]= "logos/dome-logo.png";
+  window["env"]["favicon_path"]= "icons/dome-favicon.png";
   window["env"]["default_lang"] =  "en";
 })(this);

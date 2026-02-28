@@ -59,6 +59,34 @@
         "no-more-logs": "No more camera logs to load."
     },
     "mailto_permission_alert": "Si us plau, assegura't que tens els permisos necessaris per enviar correus electrònics amb la teva aplicació de correu predeterminada. Si el servei de correu no s’obre, és probable que sigui a causa de restriccions de permisos.",
+    "auth": {
+        "login": {
+            "title": "Welcome back",
+            "subtitle": "Use your passkey to sign in securely",
+            "passkey-button": "Sign in with Passkey"
+        },
+        "register": {
+            "title": "Create account",
+            "subtitle": "Enter your email to get started",
+            "step-email": "Email",
+            "step-verify": "Verify",
+            "email": "Email",
+            "email-placeholder": "Enter your email",
+            "send-code": "Send verification code",
+            "code-sent": "We sent a verification code to your email",
+            "code": "Verification code",
+            "code-placeholder": "Enter the 6-digit code",
+            "verify": "Verify",
+            "change-email": "Change email"
+        },
+        "passkey": {
+            "title": "Set up Passkey",
+            "description": "Create a passkey to sign in securely without a password. Your device will use biometrics or a PIN to verify your identity.",
+            "register-button": "Create Passkey",
+            "email-verified": "Email verified",
+            "success": "Passkey registered successfully!"
+        }
+    },
     "login":{
         "title":"Login",
         "login":"Login",

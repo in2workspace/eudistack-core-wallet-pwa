@@ -61,7 +61,7 @@ export class CredentialIssuerMetadataService {
         credentialEndpoint: mapped.credentialEndpoint,
         credentialsSupported: mapped.credentialsSupported,
         deferredCredentialEndpoint: mapped.deferredCredentialEndpoint,
-        authorizationServer: environment.iam_url,
+        authorizationServer: environment.server_url,
         credentialToken: mapped.credentialToken,
         credential_configurations_supported: mapped.credential_configurations_supported,
       };

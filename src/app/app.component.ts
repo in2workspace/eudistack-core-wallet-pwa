@@ -3,7 +3,7 @@ import { Component, OnDestroy, OnInit, Signal, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonicModule, PopoverController } from '@ionic/angular';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { AuthenticationService } from './services/authentication.service';
+import { AuthService } from './services/auth.service';
 import { MenuComponent } from './components/menu/menu.component';
 import { Subject, map } from 'rxjs';
 import { CameraService } from './services/camera.service';
@@ -27,7 +27,7 @@ import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.ser
 })
 
 export class AppComponent implements OnInit, OnDestroy {
-  private readonly authenticationService = inject(AuthenticationService);
+  private readonly authService = inject(AuthService);
   private readonly colorService = inject(ColorService);
   private readonly document = inject(DOCUMENT);
   private readonly languageService = inject(LanguageService);
@@ -35,14 +35,14 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly oid4vciEngine = inject(Oid4vciEngineService);
   private readonly router = inject(Router);
 
-  public userName = this.authenticationService.getName$();
+  public userName = this.authService.getName$();
   public routerEvents$ = this.router.events;
   // if the route is "/", don't allow menu popover
   public isBaseRoute$ = toSignal<boolean>(this.routerEvents$.pipe(map(ev => this.router.url === '/')));
-  // if the route is "/callback" blurs the toolbar to give a "transitional effect"
-  public isCallbackRoute$ = toSignal<boolean>(this.routerEvents$.pipe(map(ev => {
+  // if the route is an auth route, blurs the toolbar to give a "transitional effect"
+  public isAuthRoute$ = toSignal<boolean>(this.routerEvents$.pipe(map(ev => {
       const currentUrl = this.router.url.split('?')[0];
-      return currentUrl.startsWith('/callback');
+      return currentUrl.startsWith('/auth');
   })));
   public readonly logoSrc = environment.customizations.assets.base_url + '/' + environment.customizations.assets.logo_path;
   private readonly destroy$ = new Subject<void>();
@@ -123,7 +123,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   public async openPopover(ev: Event): Promise<void> {
-    if (this.isCallbackRoute$()) {
+    if (this.isAuthRoute$()) {
       return; 
     }
     const popover = await this.popoverController.create({
