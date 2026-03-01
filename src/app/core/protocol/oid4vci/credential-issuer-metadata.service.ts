@@ -3,9 +3,9 @@ import { firstValueFrom } from 'rxjs';
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { environment } from 'src/environments/environment';
-import { WalletService } from 'src/app/services/wallet.service';
+import { WalletService } from 'src/app/core/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
+import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 
 
 

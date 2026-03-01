@@ -6,10 +6,10 @@ import { firstValueFrom } from 'rxjs';
 import { CredentialResponseWithStatus } from '../../models/CredentialResponseWithStatus';
 import { CredentialRequest } from '../../models/CredentialRequest';
 import { CredentialResponse } from '../../models/dto/CredentialResponse';
-import { JWT_VC_JSON } from 'src/app/constants/jwt.constants';
-import { WalletService } from 'src/app/services/wallet.service';
+import { JWT_VC_JSON } from 'src/app/core/constants/jwt.constants';
+import { WalletService } from 'src/app/core/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
+import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 
 @Injectable({ providedIn: 'root' })
 export class CredentialService {

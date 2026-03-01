@@ -14,4 +14,5 @@
   window["env"]["logo_path"]= "logos/dome-logo.png";
   window["env"]["favicon_path"]= "icons/dome-favicon.png";
   window["env"]["default_lang"] =  "en";
+  window["env"]["key_storage_mode"] = "server";
 })(this);

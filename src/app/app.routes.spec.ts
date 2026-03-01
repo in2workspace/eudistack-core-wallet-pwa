@@ -3,8 +3,8 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { Router } from '@angular/router';
 import { routes } from './app.routes';
 import { HttpClientModule } from '@angular/common/http';
-import { logsEnabledGuard } from './guards/logs-enabled.guard';
-import { authGuard } from './guards/auth.guard';
+import { logsEnabledGuard } from './core/guards/logs-enabled.guard';
+import { authGuard } from './core/guards/auth.guard';
 import { of } from 'rxjs';
 
 describe('App Routing', () => {

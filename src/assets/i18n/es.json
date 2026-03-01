@@ -129,7 +129,10 @@
         "revoked": "Revocado"
     },
     "scanner":{
-        "initializing": "Inicializando escáner..."
+        "initializing": "Inicializando escáner...",
+        "manualInput": "O pega el contenido del QR manualmente:",
+        "manualInputPlaceholder": "Pega aquí el contenido del código QR...",
+        "send": "Enviar"
     },
     "vc-fields": {
         "delete": "Eliminar",        
@@ -282,6 +285,26 @@
             "not-supported": "Tu navegador no admite el acceso a la cámara. Considera utilizar un navegador diferente.",
             "default": "Error inesperado. Revisa los permisos de tu navegador y asegúrate de que ninguna otra aplicación esté utilizando la cámara. Intenta actualizar la página."
         }
+    },
+    "devices": {
+        "settings-link": "Mis Dispositivos",
+        "title": "Mis Dispositivos",
+        "subtitle": "Gestiona las passkeys registradas en tu cuenta",
+        "rename-header": "Renombrar Passkey",
+        "rename-placeholder": "Introduce un nuevo nombre",
+        "rename-confirm": "Renombrar",
+        "rename-aria": "Renombrar esta passkey",
+        "delete-header": "Eliminar Passkey",
+        "delete-message": "¿Estás seguro de que quieres eliminar esta passkey? Si es la passkey de tu dispositivo actual, no podrás iniciar sesión desde este navegador.",
+        "delete-confirm": "Eliminar",
+        "delete-aria": "Eliminar esta passkey",
+        "cancel": "Cancelar",
+        "ok": "OK",
+        "error-header": "No se puede eliminar",
+        "last-passkey-error": "No puedes eliminar tu última passkey. Registra un nuevo dispositivo primero.",
+        "load-error": "No se pudieron cargar tus dispositivos. Inténtalo de nuevo.",
+        "retry": "Reintentar",
+        "no-passkeys": "No hay passkeys registradas."
     },
     "confirmation":{
         "header":"¿Enviar Credencial?",

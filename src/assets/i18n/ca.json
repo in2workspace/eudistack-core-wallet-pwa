@@ -131,7 +131,10 @@
         "revoked": "Revocat"
     },
     "scanner":{
-        "initializing": "Inicialitzant escàner..."
+        "initializing": "Inicialitzant escàner...",
+        "manualInput": "O enganxa el contingut del QR manualment:",
+        "manualInputPlaceholder": "Enganxa aquí el contingut del codi QR...",
+        "send": "Enviar"
     },
     "vc-fields": {
         "delete": "Eliminar",
@@ -283,6 +286,26 @@
             "not-supported": "El teu navegador no admet l'accés a la càmera. Considera utilitzar un navegador diferent.",
             "default": "Error inesperat. Comprova els permisos del teu navegador i assegura't que cap altra aplicació estigui utilitzant la càmera. Intenta refrescar la pàgina."
         }
+    },
+    "devices": {
+        "settings-link": "Els Meus Dispositius",
+        "title": "Els Meus Dispositius",
+        "subtitle": "Gestiona les passkeys registrades al teu compte",
+        "rename-header": "Canviar nom de Passkey",
+        "rename-placeholder": "Introdueix un nou nom",
+        "rename-confirm": "Canviar nom",
+        "rename-aria": "Canviar el nom d'aquesta passkey",
+        "delete-header": "Eliminar Passkey",
+        "delete-message": "Estàs segur que vols eliminar aquesta passkey? Si és la passkey del teu dispositiu actual, no podràs iniciar sessió des d'aquest navegador.",
+        "delete-confirm": "Eliminar",
+        "delete-aria": "Eliminar aquesta passkey",
+        "cancel": "Cancel·lar",
+        "ok": "OK",
+        "error-header": "No es pot eliminar",
+        "last-passkey-error": "No pots eliminar la teva última passkey. Registra un nou dispositiu primer.",
+        "load-error": "No s'han pogut carregar els teus dispositius. Torna-ho a provar.",
+        "retry": "Tornar a provar",
+        "no-passkeys": "No hi ha passkeys registrades."
     },
     "confirmation":{
         "header":"Enviar credencial?",

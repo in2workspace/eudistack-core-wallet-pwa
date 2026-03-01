@@ -1,18 +1,16 @@
-import { CommonModule, DOCUMENT } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, Signal, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonicModule, PopoverController } from '@ionic/angular';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { AuthService } from './services/auth.service';
-import { MenuComponent } from './components/menu/menu.component';
+import { AuthService } from './core/services/auth.service';
+import { MenuComponent } from './shared/components/menu/menu.component';
 import { Subject, map } from 'rxjs';
-import { CameraService } from './services/camera.service';
-import { environment } from 'src/environments/environment';
-import { LoaderService } from './services/loader.service';
+import { CameraService } from './shared/services/camera.service';
+import { LoaderService } from './shared/services/loader.service';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { LanguageService } from './services/language.service';
-import { ColorService } from './services/color-service.service';
 import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.service';
+import { ThemeService } from './core/services/theme.service';
 
 @Component({
     selector: 'app-root',
@@ -27,12 +25,10 @@ import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.ser
 
 export class AppComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
-  private readonly colorService = inject(ColorService);
-  private readonly document = inject(DOCUMENT);
-  private readonly languageService = inject(LanguageService);
   private readonly loader = inject(LoaderService);
   private readonly oid4vciEngine = inject(Oid4vciEngineService);
   private readonly router = inject(Router);
+  private readonly themeService = inject(ThemeService);
 
   public userName = this.authService.getName$();
   public routerEvents$ = this.router.events;
@@ -43,7 +39,7 @@ export class AppComponent implements OnInit, OnDestroy {
       const currentUrl = this.router.url.split('?')[0];
       return currentUrl.startsWith('/auth') || currentUrl.startsWith('/protocol');
   })));
-  public readonly logoSrc = environment.customizations.assets.base_url + '/' + environment.customizations.assets.logo_path;
+  public logoSrc: string | null = null;
   private readonly destroy$ = new Subject<void>();
   public isLoading$: Signal<boolean>;
 
@@ -56,9 +52,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   public ngOnInit() {
-    this.setCustomStyles();
-    this.setFavicon();
-    this.languageService.setLanguages();
+    this.logoSrc = this.themeService.snapshot?.branding?.logoUrl ?? null;
     this.initOid4vciEngine();
     this.alertIncompatibleDevice();
   }
@@ -70,38 +64,6 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private initOid4vciEngine(): void {
     this.oid4vciEngine.init().catch(console.error);
-  }
-
-
-  public setCustomStyles(): void {
-  const cssVarMap = {
-    '--primary-custom-color': environment.customizations.colors.primary,
-    '--primary-contrast-custom-color': environment.customizations.colors.primary_contrast,
-    '--secondary-custom-color': environment.customizations.colors.secondary,
-    '--secondary-contrast-custom-color': environment.customizations.colors.secondary_contrast,
-  };
-
-  this.colorService.applyCustomColors(cssVarMap);
-}
-
-  private setFavicon(): void {
-    const faviconUrl = environment.customizations.assets.base_url + '/' + environment.customizations.assets.favicon_path;
-
-    // load favicon from environment
-    let faviconLink: HTMLLinkElement = this.document.querySelector("link[rel='icon']") || this.document.createElement('link');
-    faviconLink.type = 'image/x-icon';
-    faviconLink.rel = 'icon';
-    faviconLink.href = faviconUrl;
-    
-    this.document.head.appendChild(faviconLink);
-
-    // load apple-touch icon from environment
-    let appleFaviconLink: HTMLLinkElement = this.document.querySelector("link[rel='apple-touch-icon']") || this.document.createElement('link');
-    appleFaviconLink.type = 'image/x-icon';
-    appleFaviconLink.rel = 'apple-touch-icon';
-    appleFaviconLink.href = faviconUrl;
-    
-    this.document.head.appendChild(appleFaviconLink);
   }
 
   //alert for IOs below 14.3

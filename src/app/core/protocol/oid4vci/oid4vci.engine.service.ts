@@ -1,4 +1,4 @@
-import { ToastServiceHandler } from './../../../services/toast.service';
+import { ToastServiceHandler } from './../../../shared/services/toast.service';
 import { inject, Injectable } from '@angular/core';
 import { CredentialOfferService } from './credential-offer.service';
 import { CredentialIssuerMetadataService } from './credential-issuer-metadata.service';
@@ -7,20 +7,21 @@ import { PreAuthorizedTokenService } from './pre-authorized-token.service';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { ProofBuilderService } from './proof-builder.service';
+import { KeyStorageProvider } from '../../spi/key-storage.provider.service';
 import { WebCryptoKeyStorageProvider } from '../../spi-impl/web-crypto-key-storage.service';
-import { WalletService } from 'src/app/services/wallet.service';
+import { WalletService } from 'src/app/core/services/wallet.service';
 import { firstValueFrom, take } from 'rxjs';
 import { JwtService } from './jwt.service';
-import { LoaderService } from 'src/app/services/loader.service';
+import { LoaderService } from 'src/app/shared/services/loader.service';
 import { CredentialService } from './credential.service';
 import { CredentialResponseWithStatus, CredentialResponseWithStatusCode } from '../../models/CredentialResponseWithStatus';
 import { CredentialConfigurationContext } from '../../models/CredentialConfigurationContext';
 import { FinalizeIssuancePayload } from '../../models/FinalizeIssuancePayload';
 import { ProofJwtContext } from '../../models/ProofJwt';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { AppError } from 'src/app/interfaces/error/AppError';
+import { AppError } from 'src/app/core/models/error/AppError';
 import { JwtParseError } from '../../models/error/JwtParseError';
-import { LoaderHandledFlowService } from 'src/app/services/loader-handled-flow.service';
+import { LoaderHandledFlowService } from 'src/app/shared/services/loader-handled-flow.service';
 
 @Injectable({ providedIn: 'root' })
 export class Oid4vciEngineService {
@@ -29,7 +30,7 @@ export class Oid4vciEngineService {
   private readonly credentialOfferService = inject(CredentialOfferService);
   private readonly credentialService = inject(CredentialService);
   private readonly jwtService = inject(JwtService);
-  private readonly keyStorageProvider = inject(WebCryptoKeyStorageProvider);
+  private readonly keyStorageProvider = inject(KeyStorageProvider);
   private readonly loader = inject(LoaderService);
   private readonly loaderHandledFlowService = inject(LoaderHandledFlowService);
   private readonly preAuthorizedTokenService = inject(PreAuthorizedTokenService);
@@ -126,22 +127,27 @@ export class Oid4vciEngineService {
 
   private async checkBrowserCompatibilityWithKeyStorage(): Promise<void> {
     if(this.hasWarnedKeyStorageMode) return;
-    const mode = await this.keyStorageProvider.checkBrowserCompatibility();
 
-    if (mode === 'unavailable') {
-      this.toastServiceHandler.showErrorAlertByTranslateLabel("errors.key-storage-unavailable").pipe(
-        take(1)
-      ).subscribe();
-      this.hasWarnedKeyStorageMode = true;
+    await this.keyStorageProvider.init();
+
+    // Browser-specific compatibility warnings only apply to WebCrypto mode
+    if (this.keyStorageProvider instanceof WebCryptoKeyStorageProvider) {
+      const mode = this.keyStorageProvider.storageMode;
+
+      if (mode === 'unavailable') {
+        this.toastServiceHandler.showErrorAlertByTranslateLabel("errors.key-storage-unavailable").pipe(
+          take(1)
+        ).subscribe();
+        this.hasWarnedKeyStorageMode = true;
+      }
+
+      if (mode === 'public-only') {
+        this.toastServiceHandler.showErrorAlertByTranslateLabel("errors.key-storage-public-only").pipe(
+          take(1)
+        ).subscribe();
+        this.hasWarnedKeyStorageMode = true;
+      }
     }
-
-    if (mode === 'public-only') {
-      this.toastServiceHandler.showErrorAlertByTranslateLabel("errors.key-storage-public-only").pipe(
-        take(1)
-      ).subscribe();
-      this.hasWarnedKeyStorageMode = true;
-    }
-
   }
 
   private errorToTranslationKey(e: unknown): string | null {

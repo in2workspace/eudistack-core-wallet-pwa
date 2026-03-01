@@ -4,18 +4,18 @@
 /** Ionic CSS Variables **/
 :root {
   /**  Customer-customized variables **/
-  --primary-custom-color: #184BFF;
-  --primary-contrast-custom-color: #ffffff;
-  --secondary-custom-color: #132153;
-  --secondary-contrast-custom-color: #ffffff;
+  --primary-color: #184BFF;
+  --primary-contrast-color: #ffffff;
+  --secondary-color: #132153;
+  --secondary-contrast-color: #ffffff;
 
   /** primary **/
-  --ion-color-primary: var(--primary-custom-color);
-  --ion-color-primary-rgb: var(--primary-custom-color-rgb);
-  --ion-color-primary-contrast: var(--primary-contrast-custom-color);
-  --ion-color-primary-contrast-rgb: var(--primary-contrast-custom-color-rgb);
-  --ion-color-primary-shade: var(--primary-custom-color-shade);
-  --ion-color-primary-tint: var(--primary-custom-color-tint);
+  --ion-color-primary: var(--primary-color);
+  --ion-color-primary-rgb: var(--primary-color-rgb);
+  --ion-color-primary-contrast: var(--primary-contrast-color);
+  --ion-color-primary-contrast-rgb: var(--primary-contrast-color-rgb);
+  --ion-color-primary-shade: var(--primary-color-shade);
+  --ion-color-primary-tint: var(--primary-color-tint);
   --ion-text-color:#000000;
 
   --ion-item-background	: #ffffff;
@@ -26,12 +26,12 @@
   --ion-card-color:#ffffff;
 
   /** secondary **/
-  --ion-color-secondary: var(--secondary-custom-color);
-  --ion-color-secondary-rgb: var(--secondary-custom-color-rgb);
-  --ion-color-secondary-contrast: var(--secondary-contrast-custom-color);
-  --ion-color-secondary-contrast-rgb: var(--secondary-contrast-custom-color-rgb);
-  --ion-color-secondary-shade: var(--secondary-custom-color-shade);
-  --ion-color-secondary-tint: var(--secondary-custom-color-tint);
+  --ion-color-secondary: var(--secondary-color);
+  --ion-color-secondary-rgb: var(--secondary-color-rgb);
+  --ion-color-secondary-contrast: var(--secondary-contrast-color);
+  --ion-color-secondary-contrast-rgb: var(--secondary-contrast-color-rgb);
+  --ion-color-secondary-shade: var(--secondary-color-shade);
+  --ion-color-secondary-tint: var(--secondary-color-tint);
 
   //todo review colors below
   /** tertiary **/

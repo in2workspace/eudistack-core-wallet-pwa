@@ -1,0 +1,50 @@
+<ion-content [fullscreen]="true" class="devices-content">
+  <ion-grid class="settings-pages-grid">
+    <b class="settings-pages-title">{{ "devices.title" | translate }}</b>
+    <p class="devices-subtitle">{{ "devices.subtitle" | translate }}</p>
+
+    @if (loading) {
+      <div class="state-container">
+        <ion-spinner name="lines"></ion-spinner>
+      </div>
+    }
+
+    @if (error) {
+      <div class="state-container">
+        <ion-text color="danger">{{ "devices.load-error" | translate }}</ion-text>
+        <ion-button fill="clear" (click)="loadPasskeys()">
+          {{ "devices.retry" | translate }}
+        </ion-button>
+      </div>
+    }
+
+    @if (!loading && !error) {
+      @if (passkeys.length === 0) {
+        <div class="state-container">
+          <ion-icon name="key-outline" class="empty-icon"></ion-icon>
+          <ion-text color="medium">{{ "devices.no-passkeys" | translate }}</ion-text>
+        </div>
+      } @else {
+        <ion-list class="devices-list">
+          @for (passkey of passkeys; track passkey.id) {
+            <ion-item class="device-item">
+              <ion-icon name="key-outline" slot="start" class="device-icon"></ion-icon>
+              <ion-label>
+                <h2>{{ passkey.displayName }}</h2>
+                <p>{{ passkey.createdAt | date:'mediumDate' }}</p>
+              </ion-label>
+              <ion-button fill="clear" slot="end" (click)="renamePasskey(passkey)"
+                          [attr.aria-label]="'devices.rename-aria' | translate">
+                <ion-icon name="pencil-outline" slot="icon-only"></ion-icon>
+              </ion-button>
+              <ion-button fill="clear" slot="end" color="danger" (click)="deletePasskey(passkey)"
+                          [attr.aria-label]="'devices.delete-aria' | translate">
+                <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+              </ion-button>
+            </ion-item>
+          }
+        </ion-list>
+      }
+    }
+  </ion-grid>
+</ion-content>

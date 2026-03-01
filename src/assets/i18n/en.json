@@ -12,7 +12,10 @@
         "logout":"Logout"
     },
     "scanner":{
-        "initializing": "Initializing scanner... Please wait."
+        "initializing": "Initializing scanner... Please wait.",
+        "manualInput": "Or paste QR content manually:",
+        "manualInputPlaceholder": "Paste QR code content here...",
+        "send": "Send"
     },
     "camera-selector":{
         "title":"Selected camera",
@@ -280,6 +283,26 @@
             "not-supported": "Your browser does not support camera access. Consider using a different browser.",
             "default": "Unexpected error. Check your browser permissions and make sure no other application is using the camera. Try refreshing the page."
         }
+    },
+    "devices": {
+        "settings-link": "My Devices",
+        "title": "My Devices",
+        "subtitle": "Manage the passkeys registered to your account",
+        "rename-header": "Rename Passkey",
+        "rename-placeholder": "Enter new name",
+        "rename-confirm": "Rename",
+        "rename-aria": "Rename this passkey",
+        "delete-header": "Delete Passkey",
+        "delete-message": "Are you sure you want to delete this passkey? If this is the passkey for your current device, you will not be able to sign in from this browser anymore.",
+        "delete-confirm": "Delete",
+        "delete-aria": "Delete this passkey",
+        "cancel": "Cancel",
+        "ok": "OK",
+        "error-header": "Cannot Delete",
+        "last-passkey-error": "You cannot delete your last passkey. Register a new device first.",
+        "load-error": "Could not load your devices. Please try again.",
+        "retry": "Retry",
+        "no-passkeys": "No passkeys registered."
     },
     "confirmation":{
         "header":"Send credential?",

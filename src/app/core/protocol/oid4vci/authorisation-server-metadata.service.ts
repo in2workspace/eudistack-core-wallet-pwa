@@ -2,9 +2,9 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { AuthorisationServerMetadata } from '../../models/dto/AuthorisationServerMetadata';
-import { WalletService } from 'src/app/services/wallet.service';
+import { WalletService } from 'src/app/core/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
+import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 
 @Injectable({ providedIn: 'root' })
 export class AuthorisationServerMetadataService {

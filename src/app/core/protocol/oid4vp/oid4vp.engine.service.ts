@@ -1,20 +1,16 @@
 import { inject, Injectable } from '@angular/core';
-import { VCReply } from 'src/app/interfaces/verifiable-credential-reply';
-import { WebCryptoKeyStorageProvider } from '../../spi-impl/web-crypto-key-storage.service';
+import { VCReply } from 'src/app/core/models/verifiable-credential-reply';
+import { KeyStorageProvider } from '../../spi/key-storage.provider.service';
 import { firstValueFrom } from 'rxjs';
 import { JwtService } from '../oid4vci/jwt.service';
 import { v4 as uuidv4 } from "uuid";
-import { DescriptorMap, PresentationSubmission, VerifiablePresentation } from '../../models/VerifiablePresentation';
-import { LoaderService } from 'src/app/services/loader.service';
-import { AppError } from 'src/app/interfaces/error/AppError';
+import { VerifiablePresentation } from '../../models/VerifiablePresentation';
+import { AppError } from 'src/app/core/models/error/AppError';
 import { Oid4vpError } from '../../models/error/Oid4vpError';
-import { wrapOid4vpHttpError } from 'src/app/helpers/http-error-message';
-import { WalletService } from 'src/app/services/wallet.service';
-import { LoaderHandledFlowService } from 'src/app/services/loader-handled-flow.service';
-
-    const CUSTOMER_PRESENTATION_DEFINITION = "CustomerPresentationDefinition";
-    const CUSTOMER_PRESENTATION_SUBMISSION = "CustomerPresentationSubmission";
-
+import { wrapOid4vpHttpError } from 'src/app/shared/helpers/http-error-message';
+import { WalletService } from 'src/app/core/services/wallet.service';
+import { LoaderHandledFlowService } from 'src/app/shared/services/loader-handled-flow.service';
+import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 
 @Injectable({
   providedIn: 'root'
@@ -22,12 +18,10 @@ import { LoaderHandledFlowService } from 'src/app/services/loader-handled-flow.s
 export class Oid4vpEngineService {
 
   private readonly jwtService = inject(JwtService);
-  private readonly keyStorageProvider = inject(WebCryptoKeyStorageProvider);
-  private readonly loader = inject(LoaderService);
+  private readonly keyStorageProvider = inject(KeyStorageProvider);
   private readonly loaderHandledFlowService = inject(LoaderHandledFlowService);
   private readonly walletService = inject(WalletService);
-
-  //todo move here the logic to get the credentials to select (from vc selector page)
+  private readonly credentialCacheService = inject(CredentialCacheService);
 
   public async buildVerifiablePresentationWithSelectedVCs(selectorResponse: VCReply): Promise<void> {
     console.info('Starting OID4VP flow.');
@@ -36,42 +30,38 @@ export class Oid4vpEngineService {
       logPrefix: '[Oid4vpEngine]',
       errorToTranslationKey: (e) => this.errorToTranslationKey(e),
       fn: async () => {
-        const selectedVCs = await this.getVerifiableCredentials(selectorResponse);
-        const selectedVC = selectedVCs[0]; // todo: handle multiple VCs
+        console.debug('[OID4VP] Step 1: Getting signed VC JWT from credential...');
+        const selectedVC = this.getSignedVcJwt(selectorResponse);
+        console.debug('[OID4VP] Step 1 OK: Got signed VC JWT');
 
-        if (!selectedVC) {
-          throw new Oid4vpError('No VC available for presentation', {
-              translationKey: 'errors.no-credentials-available',
-          });
-        }
+        console.debug('[OID4VP] Step 2: Parsing VC JWT payload...');
+        const credentialPayload = this.parseJwtPayloadOrThrow(selectedVC, 'Selected credential JWT payload could not be parsed');
+        console.debug('[OID4VP] Step 2 OK: Parsed payload. Keys:', Object.keys(credentialPayload));
 
-        let credentialPayload: any;
-        try {
-          credentialPayload = this.parseJwtPayloadOrThrow(selectedVC, 'Selected credential JWT payload could not be parsed');
-        } catch (e: unknown) {
-          throw new Oid4vpError('Selected credential JWT payload could not be parsed', {
-              cause: e,
-              translationKey: 'errors.invalid-jwt',
-          });
-        }
-
+        console.debug('[OID4VP] Step 3: Checking cnf.jwk...');
         const cnf = credentialPayload?.cnf;
         if (!cnf?.jwk) {
+          console.error('[OID4VP] FAIL: Missing cnf.jwk. cnf=', cnf, 'Full payload=', credentialPayload);
           throw new Oid4vpError('Missing cnf.jwk in selected credential', {
               translationKey: 'errors.credential-validation-failed',
           });
         }
+        console.debug('[OID4VP] Step 3 OK: cnf.jwk present');
 
+        console.debug('[OID4VP] Step 4: Checking credentialSubject.id...');
         const credentialSubjectId = credentialPayload?.vc?.credentialSubject?.id;
         if (!credentialSubjectId) {
+          console.error('[OID4VP] FAIL: Missing vc.credentialSubject.id. vc=', credentialPayload?.vc);
           throw new Oid4vpError('Missing vc.credentialSubject.id in selected credential', {
               translationKey: 'errors.credential-validation-failed',
           });
         }
+        console.debug('[OID4VP] Step 4 OK: credentialSubject.id=', credentialSubjectId);
 
-        const verifiablePresentation = this.createVerifiablePresentation(selectedVC, cnf);
+        const verifiablePresentation = this.createVerifiablePresentation(selectedVC, credentialSubjectId);
 
-        const aud = this.generateAudience();
+        // OID4VP Final 1.0: aud MUST be client_id
+        const aud = selectorResponse.clientId ?? selectorResponse.redirectUri;
 
         const issueTime = Math.floor(Date.now() / 1000);
 
@@ -87,32 +77,68 @@ export class Oid4vpEngineService {
           nonce: selectorResponse.nonce,
         };
 
+        console.debug('[OID4VP] Step 5: Resolving signing key...');
         const publicKey = cnf.jwk;
         const thumbprint = await this.keyStorageProvider.computeJwkThumbprint(publicKey);
         const keyId = await this.keyStorageProvider.resolveKeyIdByKid(thumbprint);
 
         if (!keyId) {
-        throw new Oid4vpError(`No local key found for kid=${thumbprint}`, {
+          console.error('[OID4VP] FAIL: No local key for thumbprint=', thumbprint);
+          throw new Oid4vpError(`No local key found for kid=${thumbprint}`, {
             translationKey: 'errors.key-not-found',
-        });
+          });
         }
+        console.debug('[OID4VP] Step 5 OK: keyId resolved');
+
+        console.debug('[OID4VP] Step 6: Signing VP JWT...');
         const signedVpJwt = await this.signVpAsJwt(vpJwtPayload, keyId, thumbprint);
+        console.debug('[OID4VP] Step 6 OK: VP signed');
 
-        // todo review format; maybe it should be sent as JWT in Base64URL
-        const compactVpToken = btoa(signedVpJwt);
+        // Build vp_token: Base64 encode because the verifier currently expects Base64.getDecoder().decode()
+        const vpToken = this.buildVpToken(signedVpJwt, selectorResponse);
 
-        const presentationSubmissionJson = this.buildPresentationSubmissionJson(verifiablePresentation, [selectedVC]);
-
+        console.debug('[OID4VP] Step 7: Posting auth response to', selectorResponse.redirectUri);
         await this.postAuthorizationResponse(
             selectorResponse.redirectUri,
             selectorResponse.state,
-            compactVpToken,
-            presentationSubmissionJson
+            vpToken
         );
 
         console.info('OID4VP flow completed successfully.');
       }});
     }
+
+  private getSignedVcJwt(selectorResponse: VCReply): string {
+    const selectedVc = selectorResponse.selectedVcList[0];
+
+    if (!selectedVc) {
+      throw new Oid4vpError('No VC available for presentation', {
+          translationKey: 'errors.no-credentials-available',
+      });
+    }
+
+    // Use credentialEncoded (the signed JWT) directly from the credential
+    const signedJwt = this.credentialCacheService.getSignedJwt(selectedVc);
+    if (!signedJwt) {
+      throw new Oid4vpError('Selected credential does not have a signed JWT (credentialEncoded)', {
+          translationKey: 'errors.credential-validation-failed',
+      });
+    }
+    return signedJwt;
+  }
+
+  private buildVpToken(signedVpJwt: string, selectorResponse: VCReply): string {
+    if (selectorResponse.dcqlQuery) {
+      // DCQL format: { "credential_query_id": ["vp_jwt"] }
+      // Use the first credential query ID from the DCQL query
+      const credQueryId = selectorResponse.dcqlQuery.credentials[0]?.id ?? 'default';
+      const dcqlVpToken = { [credQueryId]: [signedVpJwt] };
+      return btoa(JSON.stringify(dcqlVpToken));
+    }
+
+    // Legacy format: just Base64-encode the JWT
+    return btoa(signedVpJwt);
+  }
 
   private errorToTranslationKey(e: unknown): string | null {
     if (e instanceof AppError) {
@@ -122,92 +148,25 @@ export class Oid4vpEngineService {
     return 'errors.default';
     }
 
-  private buildDescriptorMapping(vp: VerifiablePresentation, vcJwts: string[]): DescriptorMap {
-  if (!vcJwts.length) {
-    throw new Oid4vpError('No verifiable credentials provided to build descriptor map', {
-      translationKey: 'errors.no-credentials-available',
-    });
-  }
-
-  const vcMaps: DescriptorMap[] = vcJwts.map((vcJwt, i) => ({
-    format: 'jwt_vc',
-    path: `$.verifiableCredential[${i}]`,
-    id: this.getVcIdFromJwt(vcJwt),
-    path_nested: null
-  }));
-
-  let chained: DescriptorMap = vcMaps[0];
-  for (let i = 1; i < vcMaps.length; i++) {
-    chained = {
-      ...chained,
-      path_nested: this.appendNested(chained.path_nested ?? null, vcMaps[i])
-    };
-  }
-
-  return {
-    format: 'jwt_vp',
-    path: '$',
-    id: vp.id,
-    path_nested: chained
-  };
-}
-
-private async postAuthorizationResponse(
-  redirectUri: string,
-  state: string,
-  vpJwt: string,
-  presentationSubmissionJson: string
-): Promise<string> {
-
-  try {
-     return await firstValueFrom(
-      this.walletService.postOid4vpAuthorizationResponse(
-        redirectUri,
-        state,
-        vpJwt,
-        presentationSubmissionJson
-      )
-    );
-  } catch (e: unknown) {
-    wrapOid4vpHttpError(e, 'Failed to post authorization response to verifier', {
-      translationKey: 'errors.verifier-post-failed',
-    });
-  }
-}
-
-private buildPresentationSubmissionJson(vp: VerifiablePresentation, vcJwts: string[]): string {
-  const rootMap = this.buildDescriptorMapping(vp, vcJwts);
-
-  const submission: PresentationSubmission = {
-    id: CUSTOMER_PRESENTATION_SUBMISSION,
-    definition_id: CUSTOMER_PRESENTATION_DEFINITION,
-    descriptor_map: [rootMap]
-  };
-
-  return JSON.stringify(submission);
-}
-
-private appendNested(existing: DescriptorMap | null, next: DescriptorMap): DescriptorMap {
-  if (!existing) return next;
-  return {
-    ...existing,
-    path_nested: this.appendNested(existing.path_nested ?? null, next)
-  };
-}
-
-  private getVcIdFromJwt(vcJwt: string): string {
-    let payload: any;
-    payload = this.parseJwtPayloadOrThrow(vcJwt, 'VC JWT payload could not be parsed');
-
-    const vc = payload?.vc;
-    if (!vc?.id) {
-        throw new Oid4vpError('VC JWT payload does not contain vc.id', {
-        translationKey: 'errors.credential-validation-failed',
-        });
+  private async postAuthorizationResponse(
+    redirectUri: string,
+    state: string,
+    vpToken: string
+  ): Promise<string> {
+    try {
+       return await firstValueFrom(
+        this.walletService.postOid4vpAuthorizationResponse(
+          redirectUri,
+          state,
+          vpToken
+        )
+      );
+    } catch (e: unknown) {
+      wrapOid4vpHttpError(e, 'Failed to post authorization response to verifier', {
+        translationKey: 'errors.verifier-post-failed',
+      });
     }
-
-    return vc.id;
-    }
+  }
 
   private async signVpAsJwt(vpJwtPayload: {}, keyId: string, kid: string): Promise<string> {
     const header = {
@@ -232,44 +191,26 @@ private appendNested(existing: DescriptorMap | null, next: DescriptorMap): Descr
 
     const encodedSignature = this.jwtService.base64UrlEncode(signature);
     return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
-}
+  }
 
-
-  private createVerifiablePresentation(credential: any, cnf: any): VerifiablePresentation{
+  private createVerifiablePresentation(credential: string, holderId: string): VerifiablePresentation {
     return {
-      id: uuidv4(),
-      holder: cnf,
+      id: `urn:uuid:${uuidv4()}`,
+      holder: holderId,
       '@context': ["https://www.w3.org/2018/credentials/v1"],
       type: ["VerifiablePresentation"],
       verifiableCredential: [credential],
-    }
-  }
-  
-  private async getVerifiableCredentials(vcReply: VCReply): Promise<string[]> {
-    try {
-      return await firstValueFrom(
-        this.walletService.getVerifiablePresentationCredentials(vcReply)
-      );
-    } catch (e: unknown) {
-      wrapOid4vpHttpError(e, 'Failed to obtain verifiable credentials for VP', {
-        translationKey: 'errors.loading-VCs',
-      });
-    }
-  }
-
-  //todo review this
-  private generateAudience(){
-    return "https://self-issued.me/v2";
+    };
   }
 
   private parseJwtPayloadOrThrow(jwt: string, contextMsg: string): any {
-  try {
-    return this.jwtService.parseJwtPayload(jwt) as any;
-  } catch (e: unknown) {
-    throw new Oid4vpError(contextMsg, {
-      cause: e,
-      translationKey: 'errors.invalid-jwt',
-    });
+    try {
+      return this.jwtService.parseJwtPayload(jwt) as any;
+    } catch (e: unknown) {
+      throw new Oid4vpError(contextMsg, {
+        cause: e,
+        translationKey: 'errors.invalid-jwt',
+      });
+    }
   }
-}
 }

@@ -1,8 +1,8 @@
 import { Routes } from '@angular/router';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { PENDING_DEEP_LINK_KEY } from './constants/deep-link.constants';
-import { authGuard } from './guards/auth.guard';
+import { PENDING_DEEP_LINK_KEY } from './core/constants/deep-link.constants';
+import { authGuard } from './core/guards/auth.guard';
 
 /**
  * Redirects to /auth/login if a passkey was previously registered on this
@@ -30,15 +30,15 @@ export const routes: Routes = [
     children: [
       {
         path: 'login',
-        loadComponent: () => import('./pages/auth/login/login.page').then(m => m.LoginPage),
+        loadComponent: () => import('./features/auth/login/login.page').then(m => m.LoginPage),
       },
       {
         path: 'register',
-        loadComponent: () => import('./pages/auth/register/register.page').then(m => m.RegisterPage),
+        loadComponent: () => import('./features/auth/register/register.page').then(m => m.RegisterPage),
       },
       {
         path: 'passkey-setup',
-        loadComponent: () => import('./pages/auth/passkey-setup/passkey-setup.page').then(m => m.PasskeySetupPage),
+        loadComponent: () => import('./features/auth/passkey-setup/passkey-setup.page').then(m => m.PasskeySetupPage),
       },
     ]
   },
@@ -46,13 +46,13 @@ export const routes: Routes = [
     path: 'protocol/callback',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./pages/protocol-callback/protocol-callback.page').then(
+      import('./features/protocol-callback/protocol-callback.page').then(
         m => m.ProtocolCallbackPage
       ),
   },
   {
     path: 'tabs',
-    loadChildren: () => import('./pages/tabs/tabs.routes').then(m => m.default),
+    loadChildren: () => import('./features/tabs/tabs.routes').then(m => m.default),
   },
   {
     path: '**',

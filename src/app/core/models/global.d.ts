@@ -1,0 +1,20 @@
+// src/types/global.d.ts
+
+interface Window {
+    env: {
+      server_url?: string;
+      websocket_url?: string;
+
+      logs_enabled?: string;
+      primary: string;
+      primary_contrast: string;
+      secondary: string;
+      secondary_contrast: string;
+      assets_base_url?: string;
+      logo_path?: string;
+      favicon_path?: string;
+      default_lang: string;
+      key_storage_mode?: string;
+    };
+  }
+  

@@ -162,13 +162,13 @@ ion-item{
     --background: #00ADD3;
   }
   .logout-list {
-    background-color: var(--primary-custom-color);
+    background-color: var(--primary-color);
   }
 
   .logout-list ion-item{
-    --ion-item-background: var(--primary-custom-color);
-    --ion-item-color: var(--primary-contrast-custom-color);
-    --border-color:var(--primary-contrast-custom-color) !important;
+    --ion-item-background: var(--primary-color);
+    --ion-item-color: var(--primary-contrast-color);
+    --border-color:var(--primary-contrast-color) !important;
   }
   
   .background-content {

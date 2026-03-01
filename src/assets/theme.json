@@ -1,0 +1,19 @@
+{
+  "branding": {
+    "name": "Wallet",
+    "primaryColor": "#184BFF",
+    "primaryContrastColor": "#ffffff",
+    "secondaryColor": "#132153",
+    "secondaryContrastColor": "#ffffff",
+    "logoUrl": null,
+    "faviconUrl": null
+  },
+  "content": {
+    "links": [],
+    "footer": null
+  },
+  "i18n": {
+    "defaultLang": "en",
+    "available": ["en", "es", "ca"]
+  }
+}

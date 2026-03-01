@@ -3,13 +3,13 @@ import { firstValueFrom } from 'rxjs';
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { TokenResponse } from '../../models/dto/TokenResponse';
 import { AuthorisationServerMetadata } from '../../models/dto/AuthorisationServerMetadata';
-import { PRE_AUTH_CODE_GRANT_TYPE } from 'src/app/constants/credential-offer.constants';
+import { PRE_AUTH_CODE_GRANT_TYPE } from 'src/app/core/constants/credential-offer.constants';
 import { AlertController, AlertOptions } from '@ionic/angular';
-import { LoaderService } from 'src/app/services/loader.service';
+import { LoaderService } from 'src/app/shared/services/loader.service';
 import { TranslateService } from '@ngx-translate/core';
-import { WalletService } from 'src/app/services/wallet.service';
+import { WalletService } from 'src/app/core/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
+import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 import { HttpErrorResponse } from '@angular/common/http';
 
 

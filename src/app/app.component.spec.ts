@@ -4,14 +4,13 @@ import { TranslateService } from '@ngx-translate/core';
 import { PopoverController, IonicModule, NavController } from '@ionic/angular';
 import { Router, ActivatedRoute, ActivatedRouteSnapshot, NavigationEnd } from '@angular/router';
 import { of, Subject } from 'rxjs';
-import { AuthService } from './services/auth.service';
-import { StorageService } from './services/storage.service';
+import { AuthService } from './core/services/auth.service';
+import { StorageService } from './shared/services/storage.service';
 import { RouterTestingModule } from '@angular/router/testing';
-import { environment } from '../environments/environment';
-import { LoaderService } from './services/loader.service';
-import { MenuComponent } from './components/menu/menu.component';
-import { LanguageService } from './services/language.service';
+import { LoaderService } from './shared/services/loader.service';
+import { MenuComponent } from './shared/components/menu/menu.component';
 import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.service';
+import { ThemeService } from './core/services/theme.service';
 
 describe('AppComponent', () => {
   let component: AppComponent;
@@ -22,7 +21,7 @@ describe('AppComponent', () => {
   let authServiceMock: jest.Mocked<AuthService>;
   let storageServiceMock: jest.Mocked<StorageService>;
   let routerEventsSubject: Subject<Event>;
-  let languageService: jest.Mocked<any>;
+  let themeServiceMock: { snapshot: any };
   let oid4vciEngineMock: { init: jest.Mock };
 
   const activatedRouteMock: Partial<ActivatedRoute> = {
@@ -78,9 +77,9 @@ describe('AppComponent', () => {
   beforeEach(async () => {
     routerEventsSubject = new Subject<Event>();
 
-    languageService = {
-      setLanguages: jest.fn()
-    }
+    themeServiceMock = {
+      snapshot: { branding: { logoUrl: null } }
+    };
     translateServiceMock = {
       addLangs: jest.fn(),
       getLangs: jest.fn().mockReturnValue(['en', 'es', 'ca']),
@@ -129,7 +128,7 @@ describe('AppComponent', () => {
         { provide: StorageService, useValue: storageServiceMock },
         { provide: ActivatedRoute, useValue: activatedRouteMock },
         { provide: NavController, useValue: navControllerMock },
-        { provide: LanguageService, useValue: languageService },
+        { provide: ThemeService, useValue: themeServiceMock },
         { provide: Oid4vciEngineService, useValue: oid4vciEngineMock }
       ],
     })
@@ -149,24 +148,8 @@ describe('AppComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should set languages', () => {
-    expect(languageService.setLanguages).toHaveBeenCalled();
-  });
-
-  it('should set CSS variables from environment', () => {
-    component.setCustomStyles();
-
-    const cssVarMap = {
-      '--primary-custom-color': environment.customizations.colors.primary,
-      '--primary-contrast-custom-color': environment.customizations.colors.primary_contrast,
-      '--secondary-custom-color': environment.customizations.colors.secondary,
-      '--secondary-contrast-custom-color': environment.customizations.colors.secondary_contrast,
-    };
-
-    Object.entries(cssVarMap).forEach(([cssVariable, expectedValue]) => {
-      const actualValue = document.documentElement.style.getPropertyValue(cssVariable);
-      expect(actualValue).toBe(expectedValue);
-    });
+  it('should read logoSrc from ThemeService snapshot', () => {
+    expect(component.logoSrc).toBeNull();
   });
 
   it('should show an alert if the device is iOS < 14.3 and not Safari', () => {

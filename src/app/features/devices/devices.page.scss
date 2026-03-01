@@ -1,0 +1,48 @@
+.devices-content {
+  --ion-background-color: #DDE6F6;
+}
+
+.devices-subtitle {
+  color: grey;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.devices-list {
+  width: 100%;
+  --ion-item-background: #f2f4f8;
+  --ion-item-color: grey;
+  border-radius: 5px;
+  background-color: #f2f4f8;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.device-item {
+  --border-width: 0px;
+  --inner-border-width: 0 0 1px 0;
+  --border-color: #e0e0e0;
+}
+
+.device-item:last-child {
+  --inner-border-width: 0;
+}
+
+.device-icon {
+  color: grey;
+  margin-right: 12px;
+  font-size: 22px;
+}
+
+.state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  gap: 12px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  color: #aaa;
+}

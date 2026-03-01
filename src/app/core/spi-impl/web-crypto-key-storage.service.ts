@@ -9,12 +9,12 @@ import {
   StoredAnyKeyRecord,
   isFullRecord,
 } from '../models/StoredKeyRecord';
-import { AppError } from 'src/app/interfaces/error/AppError';
+import { AppError } from 'src/app/core/models/error/AppError';
 
 type AvailableBrowserKeyStorageMode = 'full' | 'public-only';
 type BrowserKeyStorageMode = AvailableBrowserKeyStorageMode | 'unavailable';
 
-@Injectable({ providedIn: 'root' })
+@Injectable()
 export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
   private readonly DB_NAME = 'wallet-key-storage';
   private readonly STORE_NAME = 'keys';
@@ -26,6 +26,10 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
 
   constructor() {
     super();
+  }
+
+  override async init(): Promise<void> {
+    await this.checkBrowserCompatibility();
   }
 
   public checkBrowserCompatibility(): Promise<BrowserKeyStorageMode> {
@@ -387,33 +391,6 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
     });
   }
 
-  /**
-   * Computes JWK thumbprint according to RFC 7638.
-   * For EC keys: required members are crv, kty, x, y (lexicographic order).
-   */
-  public async computeJwkThumbprint(jwk: JsonWebKey): Promise<string> {
-    const crv = jwk.crv;
-    const kty = jwk.kty;
-    const x = jwk.x;
-    const y = jwk.y;
-
-    if (!crv || !kty || !x || !y) {
-      throw new AppError('Invalid EC public JWK: missing required parameters (crv, kty, x, y).', {
-        translationKey: 'errors.invalid-public-jwk',
-      });
-    }
-
-    const thumbprintInput = JSON.stringify({
-      crv: crv,
-      kty: kty,
-      x: x,
-      y: y,
-    });
-
-    const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(thumbprintInput));
-    return base64UrlEncode(new Uint8Array(digest));
-  }
-
   private jwkToAlgorithm(jwk: JsonWebKey): RawKeyAlgorithm {
     const kty = jwk.kty;
     const crv = jwk.crv;
@@ -674,29 +651,4 @@ export class WebCryptoKeyStorageProvider extends KeyStorageProvider {
       /quota/i.test(message)
     );
   }
-}
-
-/** Base64url encoding without external dependencies. */
-function base64UrlEncode(bytes: Uint8Array): string {
-  const b64 = bytesToBase64(bytes);
-
-  let out = b64.split('+').join('-').split('/').join('_');
-
-  while (out.endsWith('=')) {
-    out = out.slice(0, -1);
-  }
-
-  return out;
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  const chunkSize = 0x2000;
-
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, i + chunkSize);
-    binary += String.fromCodePoint(...chunk);
-  }
-
-  return btoa(binary);
 }

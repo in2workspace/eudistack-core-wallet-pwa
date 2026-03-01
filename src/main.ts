@@ -1,4 +1,4 @@
-import { enableProdMode, importProvidersFrom } from '@angular/core';
+import { APP_INITIALIZER, enableProdMode, importProvidersFrom } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { RouteReuseStrategy, provideRouter } from '@angular/router';
 import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
@@ -14,11 +14,16 @@ import {
   withInterceptorsFromDi,
 } from '@angular/common/http';
 import { IonicStorageModule } from '@ionic/storage-angular';
-import { HttpErrorInterceptor } from './app/interceptors/error-handler.interceptor';
-import { authInterceptor } from './app/interceptors/auth.interceptor';
-import { disableTouchScrollOnPaths } from './app/helpers/disable-touch-scroll-on-paths';
-import { httpTranslateLoader } from './app/helpers/http-translate-loader';
+import { HttpErrorInterceptor } from './app/core/interceptors/error-handler.interceptor';
+import { authInterceptor } from './app/core/interceptors/auth.interceptor';
+import { disableTouchScrollOnPaths } from './app/shared/helpers/disable-touch-scroll-on-paths';
+import { httpTranslateLoader } from './app/shared/helpers/http-translate-loader';
+import { KEY_STORAGE_PROVIDERS } from './app/core/spi-impl/key-storage.provider.factory';
+import { ThemeService } from './app/core/services/theme.service';
 
+function initializeTheme(themeService: ThemeService): () => Promise<void> {
+  return () => themeService.load();
+}
 
 disableTouchScrollOnPaths(
   ['/tabs/settings', '/tabs/home']
@@ -36,6 +41,12 @@ bootstrapApplication(AppComponent, {
     ),
     provideHttpClient(withInterceptorsFromDi(), withInterceptors([authInterceptor])),
     { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeTheme,
+      deps: [ThemeService],
+      multi: true
+    },
     importProvidersFrom(
       TranslateModule.forRoot({
         loader: {
@@ -46,6 +57,7 @@ bootstrapApplication(AppComponent, {
       })
     ),
     importProvidersFrom(IonicStorageModule.forRoot()),
+    ...KEY_STORAGE_PROVIDERS,
     provideRouter(routes)
   ],
 });

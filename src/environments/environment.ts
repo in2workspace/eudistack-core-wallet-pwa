@@ -6,18 +6,5 @@ export const environment = {
   server_url: window["env"]?.["server_url"] || 'http://localhost:8083',
   websocket_url: window["env"]?.["websocket_url"] || 'ws://localhost:8083',
   logs_enabled: window["env"]?.["logs_enabled"] === "true" || false,
-  customizations:{
-    colors:{
-      primary: window["env"]?.["primary"] || '#184BFF',
-      primary_contrast: window["env"]?.["primary_contrast"] || '#ffffff',
-      secondary: window["env"]?.["secondary"] || '#132153',
-      secondary_contrast: window["env"]?.["secondary_contrast"] || '#ffffff'
-    },
-    assets: {
-      base_url: window["env"]?.["assets_base_url"] || "assets",
-      logo_path: window["env"]?.["logo_path"] || "logos/altia-logo.svg",
-      favicon_path: window["env"]?.["favicon_path"] || "icons/altia-favicon.ico",
-    },
-    default_lang: window["env"]?.["default_lang"] || "en",
-  }
+  key_storage_mode: window["env"]?.["key_storage_mode"] || 'browser',
 };

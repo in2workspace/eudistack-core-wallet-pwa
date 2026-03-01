@@ -14,4 +14,5 @@
   window["env"]["logo_path"]= "${LOGO_PATH}";
   window["env"]["favicon_path"]= "${FAVICON_PATH}";
   window["env"]["default_lang"] =  "${DEFAULT_LANG}";
+  window["env"]["key_storage_mode"] = "${KEY_STORAGE_MODE}";
 })(this);
