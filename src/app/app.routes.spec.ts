@@ -14,6 +14,8 @@ describe('App Routing', () => {
   const mockAuthGuard = jest.fn().mockReturnValue(of(true));
 
   beforeEach(async () => {
+    localStorage.setItem('wallet_has_passkey', 'true');
+
     await TestBed.configureTestingModule({
       imports: [RouterTestingModule.withRoutes(routes), HttpClientModule],
       providers: [
@@ -23,6 +25,10 @@ describe('App Routing', () => {
     }).compileComponents();
 
     router = TestBed.inject(Router);
+  });
+
+  afterEach(() => {
+    localStorage.removeItem('wallet_has_passkey');
   });
 
   it('should redirect an empty path to /auth/login', async () => {

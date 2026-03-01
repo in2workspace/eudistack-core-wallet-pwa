@@ -15,15 +15,14 @@ import { ColorService } from './services/color-service.service';
 import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.service';
 
 @Component({
-  selector: 'app-root',
-  templateUrl: 'app.component.html',
-  styleUrls: ['app.component.scss'],
-  standalone: true,
-  imports: [
-    IonicModule,
-    CommonModule,
-    TranslateModule,
-  ],
+    selector: 'app-root',
+    templateUrl: 'app.component.html',
+    styleUrls: ['app.component.scss'],
+    imports: [
+        IonicModule,
+        CommonModule,
+        TranslateModule,
+    ]
 })
 
 export class AppComponent implements OnInit, OnDestroy {
@@ -42,7 +41,7 @@ export class AppComponent implements OnInit, OnDestroy {
   // if the route is an auth route, blurs the toolbar to give a "transitional effect"
   public isAuthRoute$ = toSignal<boolean>(this.routerEvents$.pipe(map(ev => {
       const currentUrl = this.router.url.split('?')[0];
-      return currentUrl.startsWith('/auth');
+      return currentUrl.startsWith('/auth') || currentUrl.startsWith('/protocol');
   })));
   public readonly logoSrc = environment.customizations.assets.base_url + '/' + environment.customizations.assets.logo_path;
   private readonly destroy$ = new Subject<void>();

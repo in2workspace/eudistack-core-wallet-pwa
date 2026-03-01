@@ -1,31 +1,30 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { ToastServiceHandler } from 'src/app/services/toast.service';
 
 @Component({
-  selector: 'app-home',
-  templateUrl: './home.page.html',
-  styleUrls: ['./home.page.scss'],
-  standalone: true,
-  imports: [
-    IonicModule,
-    CommonModule,
-    FormsModule,
-    TranslateModule,
-    RouterModule,
-  ],
+    selector: 'app-home',
+    templateUrl: './home.page.html',
+    styleUrls: ['./home.page.scss'],
+    imports: [
+        IonicModule,
+        CommonModule,
+        FormsModule,
+        TranslateModule,
+        RouterModule,
+    ]
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
-export class HomePage implements OnInit {
+export class HomePage {
   @Input() public availableDevices: MediaDeviceInfo[] = [];
   public userName = '';
   public desactivar = true;
 
-  public constructor(private readonly router: Router, private readonly route: ActivatedRoute, 
+  public constructor(private readonly router: Router,
     private readonly toastService: ToastServiceHandler) { }
 
   public async startScan(): Promise<void> {
@@ -45,15 +44,5 @@ export class HomePage implements OnInit {
       this.startScan();
       event.preventDefault();
     }
-  }
-  public ngOnInit(): void {    
-    this.route.queryParams.subscribe((params) => {
-      const credentialOfferUri = params['credential_offer_uri'];
-      if (credentialOfferUri) {
-        this.router.navigate(['/tabs/credentials'], {
-          queryParams: { credentialOfferUri: credentialOfferUri },
-        });
-      }
-    });
   }
 }

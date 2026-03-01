@@ -11,19 +11,8 @@ const routes: Routes = [
     children: [
       {
         path: 'home',
-        data: { credentialOfferUri: 'credentialOfferUri' },
         loadComponent: () =>
           import('../home/home.page').then((m) => m.HomePage),
-        children: [
-          {
-            path: 'openid-credential-offer',
-            data: { credentialOfferUri: 'credentialOfferUri' },
-            loadComponent: () =>
-              import('../credentials/credentials.page').then(
-                (m) => m.CredentialsPage
-              ),
-          }
-        ]
       },
       {
         path: 'credentials',
@@ -48,6 +37,11 @@ const routes: Routes = [
           import('../camera-selector/camera-selector.page').then(
             (m) => m.CameraSelectorPage
           ),
+      },
+      {
+        path: 'devices',
+        loadComponent: () =>
+          import('../devices/devices.page').then((m) => m.DevicesPage),
       },
       {
         path: 'logs',

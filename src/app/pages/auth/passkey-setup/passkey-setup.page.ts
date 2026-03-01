@@ -6,10 +6,11 @@ import { TranslateModule } from '@ngx-translate/core';
 import { AuthService } from 'src/app/services/auth.service';
 import { startRegistration } from '@simplewebauthn/browser';
 import { environment } from 'src/environments/environment';
+import { PENDING_DEEP_LINK_KEY } from 'src/app/constants/deep-link.constants';
 
 @Component({
-  selector: 'app-passkey-setup',
-  template: `
+    selector: 'app-passkey-setup',
+    template: `
     <ion-content [fullscreen]="true" class="auth-bg">
       <div class="auth-wrapper">
         <div class="auth-card" [class.card-enter]="true">
@@ -50,9 +51,8 @@ import { environment } from 'src/environments/environment';
       </div>
     </ion-content>
   `,
-  styleUrl: './passkey-setup.page.scss',
-  standalone: true,
-  imports: [IonicModule, CommonModule, TranslateModule],
+    styleUrl: './passkey-setup.page.scss',
+    imports: [IonicModule, CommonModule, TranslateModule]
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class PasskeySetupPage {
@@ -62,6 +62,26 @@ export class PasskeySetupPage {
 
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+
+  private detectDevice(): string {
+    const ua = navigator.userAgent;
+    let browser = 'Browser';
+    let os = 'Device';
+
+    if (ua.includes('Firefox/')) browser = 'Firefox';
+    else if (ua.includes('Edg/')) browser = 'Edge';
+    else if (ua.includes('OPR/') || ua.includes('Opera')) browser = 'Opera';
+    else if (ua.includes('Chrome/') && !ua.includes('Edg/')) browser = 'Chrome';
+    else if (ua.includes('Safari/') && !ua.includes('Chrome')) browser = 'Safari';
+
+    if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+    else if (ua.includes('Android')) os = 'Android';
+    else if (ua.includes('Mac OS')) os = 'macOS';
+    else if (ua.includes('Windows')) os = 'Windows';
+    else if (ua.includes('Linux')) os = 'Linux';
+
+    return `${browser} on ${os}`;
+  }
 
   async registerPasskey(): Promise<void> {
     this.loading = true;
@@ -86,9 +106,10 @@ export class PasskeySetupPage {
 
       // Step 4: Send attestation + unwrapped options to backend
       // Backend uses fromJson() which expects the flat format (same as toJson())
+      const deviceInfo = this.detectDevice();
       await new Promise<void>((resolve, reject) => {
         this.authService.finishPasskeyRegistration(
-          JSON.stringify(attestation), JSON.stringify(creationOptions)
+          JSON.stringify(attestation), JSON.stringify(creationOptions), deviceInfo
         ).subscribe({
           next: () => resolve(),
           error: reject
@@ -98,8 +119,10 @@ export class PasskeySetupPage {
       // Mark that this device has a passkey registered
       localStorage.setItem('wallet_has_passkey', 'true');
 
-      // Success — navigate to home
-      this.router.navigate(['/tabs/home']);
+      // Restore pending deep link or navigate to home
+      const pendingLink = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
+      sessionStorage.removeItem(PENDING_DEEP_LINK_KEY);
+      this.router.navigateByUrl(pendingLink || '/tabs/home');
     } catch (err: any) {
       console.error('Passkey registration error:', err);
       this.errorMessage = err?.error?.message || err?.message || 'Passkey registration failed';

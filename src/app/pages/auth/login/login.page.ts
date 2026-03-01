@@ -6,10 +6,11 @@ import { TranslateModule } from '@ngx-translate/core';
 import { AuthService } from 'src/app/services/auth.service';
 import { startAuthentication } from '@simplewebauthn/browser';
 import { environment } from 'src/environments/environment';
+import { PENDING_DEEP_LINK_KEY } from 'src/app/constants/deep-link.constants';
 
 @Component({
-  selector: 'app-login',
-  template: `
+    selector: 'app-login',
+    template: `
     <ion-content [fullscreen]="true" class="auth-bg">
       <div class="auth-wrapper">
         <div class="auth-card" [class.card-enter]="true">
@@ -45,9 +46,8 @@ import { environment } from 'src/environments/environment';
       </div>
     </ion-content>
   `,
-  styleUrl: './login.page.scss',
-  standalone: true,
-  imports: [IonicModule, CommonModule, TranslateModule],
+    styleUrl: './login.page.scss',
+    imports: [IonicModule, CommonModule, TranslateModule]
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class LoginPage {
@@ -85,8 +85,10 @@ export class LoginPage {
         });
       });
 
-      // Success — navigate to home
-      this.router.navigate(['/tabs/home']);
+      // Restore pending deep link or navigate to home
+      const pendingLink = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
+      sessionStorage.removeItem(PENDING_DEEP_LINK_KEY);
+      this.router.navigateByUrl(pendingLink || '/tabs/home');
     } catch (err: any) {
       console.error('Login error:', err);
       this.errorMessage = err?.error?.message || err?.message || 'Login failed';
