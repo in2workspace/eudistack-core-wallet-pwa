@@ -205,7 +205,7 @@ export class Oid4vciEngineService {
           translationKey: 'errors.credential-validation-failed',
         });
     }
-
+    
   }
 
   private sendCredentialToFinalizeCredentialIssuance(credResponse: FinalizeIssuancePayload): Promise<void> {
@@ -261,8 +261,6 @@ export class Oid4vciEngineService {
   private async buildProofJwt(params: { nonce: string; credentialIssuer: string; }): Promise<ProofJwtContext> {
     const keyInfo = await this.keyStorageProvider.generateKeyPair('ES256', globalThis.crypto.randomUUID());
 
-
-
     const publicKeyJwk = keyInfo.publicKeyJwk;
 
     const headerAndPayload = this.proofBuilderService.buildHeaderAndPayload(
@@ -270,6 +268,7 @@ export class Oid4vciEngineService {
       params.credentialIssuer,
       publicKeyJwk
     );
+
     const signingInput = this.buildSigningInput(headerAndPayload);
 
     const signature = await this.keyStorageProvider.sign(keyInfo.keyId, new TextEncoder().encode(signingInput));

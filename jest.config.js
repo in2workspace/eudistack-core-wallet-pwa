@@ -25,6 +25,7 @@ module.exports = {
     "src/app/services/**/*.ts",
     "src/app/interceptors/**/*.ts",
     "src/app/components/**/*.ts",
+    "src/app/core/**/*.ts",
   ],
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/', 
