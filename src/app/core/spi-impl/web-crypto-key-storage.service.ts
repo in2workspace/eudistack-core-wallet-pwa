@@ -3,7 +3,6 @@ import { KeyStorageProvider } from '../spi/key-storage.provider.service';
 import {
   RawKeyAlgorithm,
   PublicKeyInfo,
-  KeyInfo,
   AlgorithmParams,
   StoredFullKeyRecord,
   StoredAnyKeyRecord,

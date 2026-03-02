@@ -1,4 +1,4 @@
-import { RawKeyAlgorithm, PublicKeyInfo, KeyInfo } from "../models/StoredKeyRecord";
+import { RawKeyAlgorithm, PublicKeyInfo } from "../models/StoredKeyRecord";
 
 export abstract class KeyStorageProvider {
   abstract generateKeyPair(algorithm: RawKeyAlgorithm, keyId: string): Promise<PublicKeyInfo>;

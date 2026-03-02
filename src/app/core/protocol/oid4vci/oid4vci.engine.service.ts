@@ -274,8 +274,6 @@ export class Oid4vciEngineService {
 
     const signature = await this.keyStorageProvider.sign(keyInfo.keyId, new TextEncoder().encode(signingInput));
 
-    const jwt = `${signingInput}.${this.jwtService.base64UrlEncode(signature)}`;
-
     return { 
       jwt: `${signingInput}.${this.jwtService.base64UrlEncode(signature)}`, 
       publicKeyJwk, 
