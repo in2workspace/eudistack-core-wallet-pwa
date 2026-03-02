@@ -1,7 +1,7 @@
 .logs-list {
     margin: 20px;
-    --ion-item-background: white;
-    --ion-item-color: grey;
+    --ion-item-background: var(--surface-card);
+    --ion-item-color: var(--text-secondary);
 }
 
 .logs-icon {

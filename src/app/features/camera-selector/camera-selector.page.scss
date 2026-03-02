@@ -1,5 +1,5 @@
 .camera-selector-content {
-    --ion-background-color: #DDE6F6;
+    --ion-background-color: var(--surface-page);
   }
 
   .select-row {
@@ -9,8 +9,8 @@
   .camera-select {
     width: auto;
     padding-inline: 12px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
   }
 
   .switching{

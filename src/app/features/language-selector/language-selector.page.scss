@@ -11,12 +11,12 @@
 
 .settings-box {
     white-space: pre-line;
-    color: grey;
+    color: var(--text-secondary);
     width: fit-content;
-    border-radius: 5px;
-    background-color: #f2f4f8;
+    border-radius: var(--radius-sm);
+    background-color: var(--surface-card);
     text-align: center;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-md);
   }
 
   .list{

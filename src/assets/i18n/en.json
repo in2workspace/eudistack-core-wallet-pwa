@@ -319,7 +319,8 @@
         "holder":"Holder: ",
         "powers":"Powers: ",
         "expiration":"Expiration date: ",
-        "unknown": "Unknown"
+        "unknown": "Unknown",
+        "time-remaining": "Time remaining"
     }
 
 }

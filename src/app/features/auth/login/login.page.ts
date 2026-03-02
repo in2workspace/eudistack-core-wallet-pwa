@@ -52,7 +52,7 @@ import { ThemeService } from 'src/app/core/services/theme.service';
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class LoginPage {
   private readonly themeService = inject(ThemeService);
-  readonly logoSrc = this.themeService.snapshot?.branding?.logoUrl ?? null;
+  readonly logoSrc = this.themeService.getLogoUrl('dark');
   loading = false;
   errorMessage = '';
 

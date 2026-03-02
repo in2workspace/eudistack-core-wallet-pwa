@@ -322,6 +322,7 @@
         "holder":"Titular: ",
         "powers":"Poders: ",
         "expiration":"Data de caducitat: ",
-        "unknown": "Desconegut"
+        "unknown": "Desconegut",
+        "time-remaining": "Temps restant"
     }
 }

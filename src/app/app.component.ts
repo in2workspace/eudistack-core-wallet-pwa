@@ -52,7 +52,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   public ngOnInit() {
-    this.logoSrc = this.themeService.snapshot?.branding?.logoUrl ?? null;
+    this.logoSrc = this.themeService.getLogoUrl('light');
     this.initOid4vciEngine();
     this.alertIncompatibleDevice();
   }

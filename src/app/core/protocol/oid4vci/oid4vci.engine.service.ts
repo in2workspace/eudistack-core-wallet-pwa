@@ -9,8 +9,7 @@ import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { ProofBuilderService } from './proof-builder.service';
 import { KeyStorageProvider } from '../../spi/key-storage.provider.service';
 import { WebCryptoKeyStorageProvider } from '../../spi-impl/web-crypto-key-storage.service';
-import { WalletService } from 'src/app/core/services/wallet.service';
-import { firstValueFrom, take } from 'rxjs';
+import { take } from 'rxjs';
 import { JwtService } from './jwt.service';
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { CredentialService } from './credential.service';
@@ -36,7 +35,6 @@ export class Oid4vciEngineService {
   private readonly preAuthorizedTokenService = inject(PreAuthorizedTokenService);
   private readonly proofBuilderService = inject(ProofBuilderService);
   private readonly toastServiceHandler = inject(ToastServiceHandler);
-  private readonly walletService = inject(WalletService);
 
   private hasWarnedKeyStorageMode = false;
   private initPromise: Promise<void> | null = null;
@@ -48,9 +46,9 @@ export class Oid4vciEngineService {
     return this.initPromise;
   }
 
-  public async executeOid4vciFlow(credentialOfferUri: string): Promise<void> {
+  public async executeOid4vciFlow(credentialOfferUri: string): Promise<FinalizeIssuancePayload> {
     await this.init();
-    
+
     return this.loaderHandledFlowService.run({
     logPrefix: '[Oid4vciEngine]',
     errorToTranslationKey: (e) => this.errorToTranslationKey(e),
@@ -58,20 +56,20 @@ export class Oid4vciEngineService {
 
       // GET DATA FOR THE CREDENTIAL REQUEST
       const credentialOffer = await this.credentialOfferService.getCredentialOfferFromCredentialOfferUri(credentialOfferUri);
-      
+
       const credentialIssuerMetadata = await this.credentialIssuerMetadataService.getCredentialIssuerMetadataFromCredentialOffer(credentialOffer);
-      
+
       const authorisationServerMetadata = await this.authorisationServerMetadataService.getAuthorizationServerMetadataFromCredentialIssuerMetadata(credentialIssuerMetadata);
-      
+
       this.loader.removeLoadingProcess();
 
       const tokenResponse = await this.preAuthorizedTokenService.getPreAuthorizedToken(credentialOffer, authorisationServerMetadata);
-      
+
       this.loader.addLoadingProcess();
       const cfg = this.resolveCredentialConfigurationContext(credentialOffer, credentialIssuerMetadata);
 
       const nonce = this.getNonce();
-      
+
       let jwtProof = null;
       let proofPublicJwk: JsonWebKey | null = null;
 
@@ -83,13 +81,13 @@ export class Oid4vciEngineService {
         jwtProof = proofContext.jwt;
         proofPublicJwk = proofContext.publicKeyJwk;
       }
-      
+
       const format = cfg.format;
       const credentialConfigurationId = cfg.credentialConfigurationId;
-      
+
       // GET CREDENTIAL
       const credentialResponseWithStatus = await this.credentialService.getCredential({
-        jwtProof, 
+        jwtProof,
         tokenResponse,
         credentialIssuerMetadata,
         format,
@@ -103,24 +101,20 @@ export class Oid4vciEngineService {
         console.warn("Skipping cnf validation since no proof JWT was generated.");
       }
 
-      // SEND THE CREDENTIAL RESPONSE TO THE API TO CALL THE NOTIFICATION ENDPOINT, SAVE THE CREDENTIAL AND HANDLE DEFERRED METADATA
-      // todo the "post-credential" logic that is currently done by the API will be moved to the client
-
-      // Parse status code to match API expectations
       const credentialResponseWithStatusCode: CredentialResponseWithStatusCode = {
         statusCode: credentialResponseWithStatus.status, ...credentialResponseWithStatus
       }
-      
+
       const tokenObtainedAt = Math.floor(Date.now() / 1000);
 
-      return await this.sendCredentialToFinalizeCredentialIssuance({
+      return {
         credentialResponseWithStatus: credentialResponseWithStatusCode,
         tokenResponse,
         issuerMetadata: credentialIssuerMetadata,
         authorisationServerMetadata,
         tokenObtainedAt,
         format
-      });
+      };
     }});
 
   }
@@ -196,10 +190,6 @@ export class Oid4vciEngineService {
         });
     }
 
-  }
-
-  private sendCredentialToFinalizeCredentialIssuance(credResponse: FinalizeIssuancePayload): Promise<void> {
-      return firstValueFrom(this.walletService.finalizeCredentialIssuance(credResponse));
   }
 
   private resolveCredentialConfigurationContext(

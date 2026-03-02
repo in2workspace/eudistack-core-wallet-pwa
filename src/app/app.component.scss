@@ -3,7 +3,7 @@
 }
 
 ion-menu ion-content {
-  --background: var(--ion-item-background, var(--ion-color-primary, #fff));
+  --background: var(--ion-item-background, var(--ion-color-primary, var(--surface-card)));
 }
 
 ion-menu.md ion-content {
@@ -27,30 +27,26 @@ ion-menu.md ion-note {
 }
 
 ion-menu.md ion-list#inbox-list {
-  border-bottom: 1px solid var(--ion-color-step-150, #d7d8da);
+  border-bottom: 1px solid var(--ion-color-step-150, var(--border-default));
 }
 
 ion-menu.md ion-list#inbox-list ion-list-header {
   font-size: 22px;
   font-weight: 600;
-
   min-height: 20px;
 }
 
 ion-menu.md ion-list#labels-list ion-list-header {
   font-size: 16px;
-
   margin-bottom: 18px;
-
-  color: #757575;
-
+  color: var(--text-secondary);
   min-height: 26px;
 }
 
 ion-menu.md ion-item {
   --padding-start: 10px;
   --padding-end: 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 }
 
 ion-menu.md ion-item.selected {
@@ -62,7 +58,7 @@ ion-menu.md ion-item.selected ion-icon {
 }
 
 ion-menu.md ion-item ion-icon {
-  color: #616e7e;
+  color: var(--text-secondary);
 }
 
 ion-menu.md ion-item ion-label {
@@ -94,7 +90,7 @@ ion-menu.ios ion-item.selected ion-icon {
 
 ion-menu.ios ion-item ion-icon {
   font-size: 24px;
-  color: #73849a;
+  color: var(--text-secondary);
 }
 
 ion-menu.ios ion-list#labels-list ion-list-header {
@@ -111,7 +107,6 @@ ion-menu.ios ion-note {
 ion-note {
   display: inline-block;
   font-size: 16px;
-
   color: var(--ion-color-medium-shade);
 }
 
@@ -120,21 +115,21 @@ ion-item.selected {
 }
 
 ion-button[disabled] {
-  pointer-events: none; 
-  opacity: 1; 
+  pointer-events: none;
+  opacity: 1;
 }
 
 ion-toolbar {
-  transition: filter 0.3s ease; 
-  --ion-toolbar-background: var(--primary-color);
+  transition: filter 0.3s ease;
+  --ion-toolbar-background: var(--brand-primary, var(--primary-color));
   &.blurred {
-    filter: blur(1.5px); 
+    filter: blur(1.5px);
   }
 }
 
 ion-toolbar ion-button {
-  --ion-toolbar-color: var(--primary-color);
-  --ion-toolbar-background:var(--primary-contrast-color);
+  --ion-toolbar-color: var(--brand-primary, var(--primary-color));
+  --ion-toolbar-background: var(--brand-primary-contrast, var(--primary-contrast-color));
 }
 
 ion-toolbar img.logo{
@@ -157,7 +152,7 @@ ion-app .overlay {
 ion-app .spinner {
   width: 50px;
   height: 50px;
-  border: 5px solid #fff;
+  border: 5px solid var(--surface-card);
   border-top: 5px solid transparent;
   border-radius: 50%;
   animation: spin 1s linear infinite;

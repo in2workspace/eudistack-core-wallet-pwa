@@ -5,26 +5,26 @@
 }
 
 ion-button:focus {
-  --background: #067856;
+  --background: var(--status-success);
   --color: white;
 }
-ion-alert.custom-alert {   
-    --ion-text-color:black;
+ion-alert.custom-alert {
+    --ion-text-color: var(--text-primary);
     --backdrop-opacity: 0.7;
   }
 
 .custom-close-button {
-  color: #000000;
+  color: var(--text-primary);
 }
 
 .vc-selector-content {
-  --ion-background-color: #DDE6F6 !important;
+  --ion-background-color: var(--surface-page) !important;
   box-shadow: none;
 }
 
 .vc-selector-card {
-  --ion-background-color: #DDE6F6;
-  background-color: #DDE6F6;
+  --ion-background-color: var(--surface-page);
+  background-color: var(--surface-page);
   box-shadow: none;
 }
 

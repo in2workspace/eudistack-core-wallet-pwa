@@ -1,11 +1,12 @@
 {
   "branding": {
     "name": "Wallet",
-    "primaryColor": "#184BFF",
+    "primaryColor": "#001E8C",
     "primaryContrastColor": "#ffffff",
     "secondaryColor": "#132153",
     "secondaryContrastColor": "#ffffff",
     "logoUrl": null,
+    "logoDarkUrl": null,
     "faviconUrl": null
   },
   "content": {

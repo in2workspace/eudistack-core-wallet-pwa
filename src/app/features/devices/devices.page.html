@@ -4,9 +4,7 @@
     <p class="devices-subtitle">{{ "devices.subtitle" | translate }}</p>
 
     @if (loading) {
-      <div class="state-container">
-        <ion-spinner name="lines"></ion-spinner>
-      </div>
+      <app-skeleton variant="list-item" [count]="3"></app-skeleton>
     }
 
     @if (error) {

@@ -9,7 +9,6 @@ import { WalletService } from 'src/app/core/services/wallet.service';
 import { VcViewComponent } from '../../shared/components/vc-view/vc-view.component';
 import { TranslateModule } from '@ngx-translate/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { WebsocketService } from 'src/app/core/services/websocket.service';
 import { VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { VerifiableCredentialSubjectDataNormalizer } from 'src/app/core/models/verifiable-credential-subject-data-normalizer';
 import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
@@ -21,9 +20,13 @@ import { ExtendedHttpErrorResponse } from 'src/app/core/models/errors';
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
 import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engine.service';
-import { environment } from 'src/environments/environment';
 import { AuthorizationRequestService } from 'src/app/core/protocol/oid4vp/authorization-request.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
+import { CredentialPreviewBuilderService } from 'src/app/core/services/credential-preview-builder.service';
+import { CredentialDecisionService } from 'src/app/core/services/credential-decision.service';
+import { IssuerNotificationService, NOTIFICATION_EVENT } from 'src/app/core/services/issuer-notification.service';
+import { FinalizeIssuancePayload } from 'src/app/core/models/FinalizeIssuancePayload';
+import { SkeletonComponent } from 'src/app/shared/components/skeleton/skeleton.component';
 //todo restore tests
 
 // TODO separate scan in another component/ page
@@ -40,7 +43,8 @@ import { CredentialCacheService } from 'src/app/shared/services/credential-cache
         QRCodeComponent,
         VcViewComponent,
         TranslateModule,
-        BarcodeScannerComponent
+        BarcodeScannerComponent,
+        SkeletonComponent
     ]
 })
 
@@ -57,14 +61,16 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   private readonly cameraLogsService = inject(CameraLogsService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly credentialCacheService = inject(CredentialCacheService);
+  private readonly credentialDecisionService = inject(CredentialDecisionService);
+  private readonly credentialPreviewBuilder = inject(CredentialPreviewBuilderService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly issuerNotificationService = inject(IssuerNotificationService);
   private readonly loader = inject(LoaderService);
   private readonly oid4vciEngineService = inject(Oid4vciEngineService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toastServiceHandler = inject(ToastServiceHandler);
   private readonly walletService = inject(WalletService);
-  private readonly websocket = inject(WebsocketService);
 
   private authorizationRequest = '';
 
@@ -186,28 +192,75 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   }
 
   private credentialActivationFlow(credentialOfferUri: string): void{
-    const socketsToConnect: Promise<void>[] = [
-      this.websocket.connectNotificationSocket(),
-    ];
-
-    from(Promise.all(socketsToConnect))
+    from(this.oid4vciEngineService.executeOid4vciFlow(credentialOfferUri))
       .pipe(
-        switchMap(() => {
-          console.log("Browser signature enabled. Starting OID4VCI flow with browser signature.");
-          return this.oid4vciEngineService.executeOid4vciFlow(credentialOfferUri)
-      }),
+        switchMap((flowResult: FinalizeIssuancePayload) => {
+          // Deferred credentials (202): save to backend without user decision
+          if (flowResult.credentialResponseWithStatus.statusCode === 202) {
+            return this.walletService.finalizeCredentialIssuance(flowResult)
+              .pipe(switchMap(() => this.handleActivationSuccess()));
+          }
 
-        switchMap(() => this.handleActivationSuccess()),
+          // Normal flow (200): show preview and ask user
+          const preview = this.credentialPreviewBuilder.buildPreview(
+            flowResult.credentialResponseWithStatus.credentialResponse
+          );
+
+          return from(this.credentialDecisionService.showDecisionDialog(preview))
+            .pipe(
+              switchMap((decision) => {
+                if (decision === 'ACCEPTED') {
+                  return this.handleCredentialAccepted(flowResult);
+                }
+                return this.handleCredentialRejected(flowResult, decision);
+              })
+            );
+        }),
 
         catchError((err: ExtendedHttpErrorResponse) => {
           console.error(err);
-          this.websocket.closeNotificationConnection();
-          this.handleContentExecutionError(err); //todo review (adding camera log?)
+          this.handleContentExecutionError(err);
           return of(null);
-        })
+        }),
+
+        takeUntilDestroyed(this.destroyRef)
       )
-      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe();
+  }
+
+  private handleCredentialAccepted(flowResult: FinalizeIssuancePayload): Observable<boolean> {
+    return this.walletService.finalizeCredentialIssuance(flowResult).pipe(
+      tap(() => this.notifyIssuer(flowResult, NOTIFICATION_EVENT.CREDENTIAL_ACCEPTED, 'Credential accepted by user')),
+      tap(() => this.credentialDecisionService.showTempMessage('home.ok-msg')),
+      switchMap(() => this.handleActivationSuccess())
+    );
+  }
+
+  private handleCredentialRejected(flowResult: FinalizeIssuancePayload, decision: string): Observable<boolean> {
+    const event = decision === 'REJECTED'
+      ? NOTIFICATION_EVENT.CREDENTIAL_DELETED
+      : NOTIFICATION_EVENT.CREDENTIAL_FAILURE;
+    const description = decision === 'REJECTED'
+      ? 'User rejected credential'
+      : 'Timeout waiting for user decision';
+
+    this.notifyIssuer(flowResult, event, description);
+    this.credentialDecisionService.showTempMessage('home.rejected-msg');
+    return from(this.router.navigate(['/tabs/credentials']));
+  }
+
+  private notifyIssuer(flowResult: FinalizeIssuancePayload, event: string, description: string): void {
+    const notificationId = flowResult.credentialResponseWithStatus.credentialResponse.notification_id;
+    const notificationEndpoint = flowResult.issuerMetadata.notification_endpoint;
+    const accessToken = flowResult.tokenResponse.access_token;
+
+    if (notificationId && notificationEndpoint && accessToken) {
+      this.issuerNotificationService.notifyIssuer(
+        notificationEndpoint, accessToken, notificationId, event as any, description
+      ).pipe(
+        catchError((e) => { console.error('Issuer notification failed:', e); return of(null); })
+      ).subscribe();
+    }
   }
 
   private verifiablePresentationFlow(qrCode: string): void{

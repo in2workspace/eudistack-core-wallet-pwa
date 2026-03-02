@@ -5,6 +5,7 @@ import { IonicModule, AlertController } from '@ionic/angular';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { PasskeyInfo, PasskeyService } from 'src/app/core/services/passkey.service';
 import { AuthService } from 'src/app/core/services/auth.service';
+import { SkeletonComponent } from 'src/app/shared/components/skeleton/skeleton.component';
 
 @Component({
     selector: 'app-devices',
@@ -15,6 +16,7 @@ import { AuthService } from 'src/app/core/services/auth.service';
         CommonModule,
         FormsModule,
         TranslateModule,
+        SkeletonComponent,
     ]
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix

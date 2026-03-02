@@ -1,108 +1,108 @@
-// Resources: https://lea.verou.me/blog/2024/css-conditionals-now/
+// Custom alert styles using semantic design tokens
 
 :root{
-  /** custom alert **/
+  /** custom alert — mapped to semantic status tokens **/
   --custom-alert-error-bg: #fdf0f0;
-  --custom-alert-error-text: #7b2531;
+  --custom-alert-error-text: var(--status-error);
   --custom-alert-ok-bg: #e7f8e4;
   --custom-alert-ok-info-bg: #d0efff;
-  --custom-alert-ok-text: #215112;
+  --custom-alert-ok-text: var(--status-success);
 }
 
 ion-alert.custom-alert-error .alert-wrapper {
-    background-color: var(--custom-alert-error-bg) !important;
-    color: white !important;
-    border-radius: 8px;
-  }
-  
-  ion-alert.custom-alert-error .alert-message {
-    color: var(--custom-alert-error-text) !important;
-  }
-  
-  ion-alert.custom-alert-error .alert-button.sc-ion-alert-md {
-    color: var(--custom-alert-error-text) !important;
-  }
-  
-  ion-alert.custom-alert-error .alert-message ion-icon {
-    width: 55px;
-    font-size: 38px;
-    color: var(--custom-alert-error-text);
-  }
-  
-  ion-alert.custom-alert-ok .alert-wrapper {
-    background-color: var(--custom-alert-ok-bg) !important;
-    color: white !important;
-    border-radius: 8px;
-  }
+  background-color: var(--custom-alert-error-bg) !important;
+  color: var(--surface-card) !important;
+  border-radius: var(--radius-md);
+}
 
-  ion-alert.custom-alert-ok-info .alert-wrapper {
-    background-color: var(--custom-alert-ok-info-bg) !important;
-    color: white !important;
-    border-radius: 8px;
-  }
-  
-  ion-alert.custom-alert-ok .alert-message {
-    color: var(--custom-alert-ok-text) !important;
-  }
-  
-  ion-alert.custom-alert-ok .alert-message ion-icon {
-    font-size: 38px;
-    color: var(--custom-alert-ok-text);
-  }
-  
-  ion-alert .alert-message div {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-  }
-  
-  /* Center the button for error alert */
-  ion-alert.custom-alert-error .alert-button-group {
-    justify-content: center !important;
-  }
+ion-alert.custom-alert-error .alert-message {
+  color: var(--custom-alert-error-text) !important;
+}
 
-  ion-alert.custom-alert-unsigned .alert-button-group {
-    justify-content: center !important;
-  }
-  
-  ion-alert .alert-message span {
-    line-height: 1.2;
-  }
+ion-alert.custom-alert-error .alert-button.sc-ion-alert-md {
+  color: var(--custom-alert-error-text) !important;
+}
 
-  // For the PIN counter
-  ion-alert small.counter{
-    display: block;
-    padding-top: 0.5em;
-    font-weight: bold;
-  }
+ion-alert.custom-alert-error .alert-message ion-icon {
+  width: 55px;
+  font-size: 38px;
+  color: var(--custom-alert-error-text);
+}
 
-  ion-alert .alert-message div.cred-preview {
-    margin-top: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
+ion-alert.custom-alert-ok .alert-wrapper {
+  background-color: var(--custom-alert-ok-bg) !important;
+  color: var(--surface-card) !important;
+  border-radius: var(--radius-md);
+}
 
-  @media (min-width: 768px) {
-    ion-alert .alert-message .cred-preview {
-      align-items: flex-start;
-    }
-  }
+ion-alert.custom-alert-ok-info .alert-wrapper {
+  background-color: var(--custom-alert-ok-info-bg) !important;
+  color: var(--surface-card) !important;
+  border-radius: var(--radius-md);
+}
 
-  ion-alert.custom-alert-credential .cred-row {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    column-gap: 8px;
-    align-items: start;
-  }
+ion-alert.custom-alert-ok .alert-message {
+  color: var(--custom-alert-ok-text) !important;
+}
 
-  ion-alert.custom-alert-credential .cred-label {
-    font-weight: 600;
-    white-space: nowrap;
-  }
+ion-alert.custom-alert-ok .alert-message ion-icon {
+  font-size: 38px;
+  color: var(--custom-alert-ok-text);
+}
 
-  ion-alert.custom-alert-credential .cred-value {
-    min-width: 0;
-    word-break: break-word;
-    overflow-wrap: anywhere;
+ion-alert .alert-message div {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Center the button for error alert */
+ion-alert.custom-alert-error .alert-button-group {
+  justify-content: center !important;
+}
+
+ion-alert.custom-alert-unsigned .alert-button-group {
+  justify-content: center !important;
+}
+
+ion-alert .alert-message span {
+  line-height: 1.2;
+}
+
+// For the PIN counter
+ion-alert small.counter{
+  display: block;
+  padding-top: 0.5em;
+  font-weight: bold;
+}
+
+ion-alert .alert-message div.cred-preview {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (min-width: 768px) {
+  ion-alert .alert-message .cred-preview {
+    align-items: flex-start;
   }
+}
+
+ion-alert.custom-alert-credential .cred-row {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 8px;
+  align-items: start;
+}
+
+ion-alert.custom-alert-credential .cred-label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+ion-alert.custom-alert-credential .cred-value {
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}

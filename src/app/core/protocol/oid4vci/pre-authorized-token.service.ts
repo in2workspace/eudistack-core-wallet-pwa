@@ -4,13 +4,14 @@ import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { TokenResponse } from '../../models/dto/TokenResponse';
 import { AuthorisationServerMetadata } from '../../models/dto/AuthorisationServerMetadata';
 import { PRE_AUTH_CODE_GRANT_TYPE } from 'src/app/core/constants/credential-offer.constants';
-import { AlertController, AlertOptions } from '@ionic/angular';
+import { ModalController } from '@ionic/angular';
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { TranslateService } from '@ngx-translate/core';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
 import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 import { HttpErrorResponse } from '@angular/common/http';
+import { PinModalComponent } from 'src/app/shared/components/pin-modal/pin-modal.component';
 
 
 const TIMEOUT_DURATION_S = 55;
@@ -18,7 +19,7 @@ const TIMEOUT_DURATION_S = 55;
 @Injectable({ providedIn: 'root' })
 export class PreAuthorizedTokenService {
   private readonly walletService = inject(WalletService);
-  private readonly alertController = inject(AlertController);
+  private readonly modalController = inject(ModalController);
   private readonly loader = inject(LoaderService);
   private readonly translate = inject(TranslateService);
 
@@ -38,7 +39,7 @@ export class PreAuthorizedTokenService {
 
     let code: string | null = null;
     if (needsCode) {
-      code = await this.openPromptAndGetCode();
+      code = await this.openPinModal();
     }
 
     this.loader.addLoadingProcess();
@@ -103,122 +104,38 @@ export class PreAuthorizedTokenService {
     return parts.join('&');
   }
 
-  private async openPromptAndGetCode(): Promise<string> {
-    const description = this.translate.instant('confirmation.description');
-    const counter = TIMEOUT_DURATION_S;
-
-    let interval: number | undefined;
-
-    const cancel = this.translate.instant('confirmation.cancel');
-    const send = this.translate.instant('confirmation.send');
+  private async openPinModal(): Promise<string> {
     const header = this.translate.instant('confirmation.pin');
+    const description = this.translate.instant('confirmation.description');
 
-    const message = this.translate.instant('confirmation.messageHtml', { description, counter });
-
-    return new Promise<string>((resolve, reject) => {
-      let settled = false;
-
-      const cleanup = () => {
-        if (interval != null) globalThis.clearInterval(interval);
-      };
-
-      const safeResolve = (pin: string) => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        resolve(pin);
-      };
-
-      const safeReject = (err: unknown) => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        reject(err);
-      };
-
-      const alertOptions: AlertOptions = {
+    const modal = await this.modalController.create({
+      component: PinModalComponent,
+      cssClass: 'pin-modal-wrapper',
+      componentProps: {
         header,
-        message,
-        inputs: [
-          {
-            name: 'pin',
-            type: 'text',
-            placeholder: 'PIN',
-            attributes: {
-              inputmode: 'numeric',
-              pattern: '[0-9]*',
-            },
-          },
-        ],
-        buttons: [
-          {
-            text: cancel,
-            role: 'cancel',
-            handler: () => {
-              safeReject(
-                new Oid4vciError('User cancelled PIN entry', {
-                  code: 'user_cancelled',
-                })
-              );
-              return true;
-            },
-          },
-          {
-            text: send,
-            handler: (alertData: { pin?: string }) => {
-              const pin = String(alertData?.pin ?? '').trim();
-              safeResolve(pin);
-              return true;
-            },
-          },
-        ],
-        backdropDismiss: false,
-      };
-
-      this.alertController
-        .create(alertOptions)
-        .then((alert) => {
-          alert.onDidDismiss().then(() => {
-            if (settled) return;
-            safeReject(
-              new Oid4vciError('PIN request timed out', {
-                translationKey: 'errors.pin-timeout',
-              })
-            );
-          });
-
-          interval = this.startCountdown(alert, description, counter);
-
-          return alert.present();
-        })
-        .catch((err) => {
-          safeReject(
-            new Oid4vciError('Could not open PIN prompt', {
-              cause: err,
-              translationKey: 'errors.cannot-open-pin-prompt',
-            })
-          );
-        });
+        description,
+        pinLength: 4,
+        timeoutSeconds: TIMEOUT_DURATION_S,
+      },
+      backdropDismiss: false,
     });
-  }
 
-  private startCountdown(alert: any, description: string, initialCounter: number): number {
-    let counter = initialCounter;
+    await modal.present();
 
-    const interval = globalThis.setInterval(() => {
-      if (counter > 0) {
-        counter--;
-        const message = this.translate.instant('confirmation.messageHtml', {
-          description,
-          counter,
-        });
-        alert.message = message;
-      } else {
-        globalThis.clearInterval(interval);
-        alert.dismiss();
-      }
-    }, 1000);
+    const { data, role } = await modal.onDidDismiss();
 
-    return interval;
+    if (role === 'cancel') {
+      throw new Oid4vciError('User cancelled PIN entry', {
+        code: 'user_cancelled',
+      });
+    }
+
+    if (role === 'timeout') {
+      throw new Oid4vciError('PIN request timed out', {
+        translationKey: 'errors.pin-timeout',
+      });
+    }
+
+    return data?.pin ?? '';
   }
 }

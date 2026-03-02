@@ -21,7 +21,7 @@ describe('AppComponent', () => {
   let authServiceMock: jest.Mocked<AuthService>;
   let storageServiceMock: jest.Mocked<StorageService>;
   let routerEventsSubject: Subject<Event>;
-  let themeServiceMock: { snapshot: any };
+  let themeServiceMock: { snapshot: any; getLogoUrl: jest.Mock };
   let oid4vciEngineMock: { init: jest.Mock };
 
   const activatedRouteMock: Partial<ActivatedRoute> = {
@@ -78,7 +78,8 @@ describe('AppComponent', () => {
     routerEventsSubject = new Subject<Event>();
 
     themeServiceMock = {
-      snapshot: { branding: { logoUrl: null } }
+      snapshot: { branding: { logoUrl: null, logoDarkUrl: null } },
+      getLogoUrl: jest.fn().mockReturnValue(null)
     };
     translateServiceMock = {
       addLangs: jest.fn(),

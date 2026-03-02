@@ -1,7 +1,5 @@
 const apiV1Path = '/api/v1';
 
-export const WEBSOCKET_NOTIFICATION_PATH = `${apiV1Path}/notification`;
-
 const OPENID_OFFER = `${apiV1Path}/openid-credential-offer` as const;
 
 export const SERVER_PATH = Object.freeze({
