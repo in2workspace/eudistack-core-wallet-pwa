@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { CredentialResponseWithStatus } from '../../models/CredentialResponseWithStatus';
 import { CredentialRequest } from '../../models/CredentialRequest';
 import { CredentialResponse } from '../../models/dto/CredentialResponse';
-import { JWT_VC_JSON } from 'src/app/core/constants/jwt.constants';
+import { JWT_VC_JSON, DC_SD_JWT } from 'src/app/core/constants/jwt.constants';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
 import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
@@ -61,7 +61,8 @@ export class CredentialService {
       });
     }
 
-    if (params.format !== JWT_VC_JSON) {
+    const SUPPORTED_FORMATS = [JWT_VC_JSON, DC_SD_JWT];
+    if (!SUPPORTED_FORMATS.includes(params.format)) {
       throw new Oid4vciError(`Format not supported: ${params.format}`, {
         translationKey: 'errors.unsupported-credential-format',
       });

@@ -56,7 +56,7 @@ export class BarcodeScannerComponent implements OnInit {
 
   //COUNTDOWN
   public readonly isError$ = this.cameraService.isCameraError$;
-  private readonly activationTimeoutInSeconds = 4;
+  private readonly activationTimeoutInSeconds = 1;
   private readonly _activatedScanner$$ = new Subject<void>();
   readonly activatedScanner$$: Observable<void> = this._activatedScanner$$.pipe(
     takeUntilDestroyed()
@@ -93,7 +93,7 @@ export class BarcodeScannerComponent implements OnInit {
         setTimeout(() => {
           this.scanner.device = selectedDevice;
           this._activatedScanner$$.next();
-        }, 1000);
+        }, 200);
       }else{
         console.error('SCANNER: Permission denied');
       }

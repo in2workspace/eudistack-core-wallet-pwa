@@ -151,7 +151,9 @@
             "issuerCommonName": "Issuer Common Name",
             "issuerSerialNumber": "Issuer Serial Number",
             "validFrom": "Valid From",
-            "validUntil": "Valid Until"
+            "validUntil": "Valid Until",
+            "format": "Format",
+            "status": "Status"
         },
         "credentialEncoded": "Credential",
         "learCredentialEmployee":{

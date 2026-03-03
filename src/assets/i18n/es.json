@@ -152,7 +152,9 @@
             "issuerCommonName": "Nombre común del emisor",
             "issuerSerialNumber": "Número de serie del emisor",
             "validFrom": "Válido desde",
-            "validUntil": "Válido hasta"
+            "validUntil": "Válido hasta",
+            "format": "Formato",
+            "status": "Estado"
         },
         
         "credentialEncoded": "Credencial",

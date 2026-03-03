@@ -154,7 +154,9 @@
             "issuerCommonName": "Nom comú de l'emissor",
             "issuerSerialNumber": "Número de sèrie de l'emissor",
             "validFrom": "Vàlid des de",
-            "validUntil": "Vàlid fins a"
+            "validUntil": "Vàlid fins a",
+            "format": "Format",
+            "status": "Estat"
         },
         "credentialEncoded": "Credencial",
         "learCredentialEmployee": {

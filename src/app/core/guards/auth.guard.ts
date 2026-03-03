@@ -1,15 +1,17 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { map, take } from 'rxjs/operators';
+import { filter, map, switchMap, take } from 'rxjs/operators';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
 
 export const authGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  return authService.isLoggedIn$().pipe(
+  return authService.isInitialized$().pipe(
+    filter(initialized => initialized),
     take(1),
+    switchMap(() => authService.isLoggedIn$().pipe(take(1))),
     map(isLoggedIn => {
       if (isLoggedIn) {
         return true;

@@ -19,6 +19,25 @@ export interface CredentialIssuerMetadata {
 export interface CredentialsConfigurationsSuppported{
   format: string;
   cryptographic_binding_methods_supported?: string[];
+  vct?: string;
+  credential_definition?: { type?: string[] };
+  credential_metadata?: CredentialMetadata;
+}
+
+export interface CredentialMetadata {
+  display: MetadataDisplay[];
+  claims: ClaimDefinition[];
+}
+
+export interface MetadataDisplay {
+  name: string;
+  locale: string;
+  description?: string;
+}
+
+export interface ClaimDefinition {
+  path: string[];
+  display: MetadataDisplay[];
 }
 
 export interface CredentialsSupported{

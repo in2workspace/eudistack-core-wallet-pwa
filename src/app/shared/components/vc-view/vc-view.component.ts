@@ -1,12 +1,14 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   EventEmitter,
   Input,
   OnInit,
   Output,
-  computed,
+  effect,
   inject,
-  input
+  input,
+  signal
 } from '@angular/core';
 import { QRCodeComponent } from 'angularx-qrcode';
 import { WalletService } from 'src/app/core/services/wallet.service';
@@ -14,11 +16,12 @@ import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { CredentialSubject, EmployeeCredentialSubject, ExtendedCredentialType, MachineCredentialSubject, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { IonicModule } from '@ionic/angular';
-import { CredentialMapConfig, CredentialTypeMap } from 'src/app/core/models/credential-type-map';
-import { CredentialDetailMap, EvaluatedField, EvaluatedSection } from 'src/app/core/models/credential-detail-map';
+import { EvaluatedField, EvaluatedSection } from 'src/app/core/models/credential-detail-map';
 import * as dayjs from 'dayjs';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
+import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
+import { CredentialMapConfig, CredentialTypeMap } from 'src/app/core/models/credential-type-map';
 
 
 
@@ -32,23 +35,25 @@ import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared
     selector: 'app-vc-view',
     templateUrl: './vc-view.component.html',
     styleUrls: ['./vc-view.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [IonicModule, QRCodeComponent, TranslateModule, CommonModule]
 })
 export class VcViewComponent implements OnInit {
   private readonly translate = inject(TranslateService);
   private readonly walletService = inject(WalletService);
   private readonly toastService = inject(ToastServiceHandler);
+  private readonly displayService = inject(CredentialDisplayService);
 
   public credentialInput$ = input.required<VerifiableCredential>();
-  public cardViewFields$ = computed<EvaluatedField[]>(() => {
-    const subject = this.credentialInput$().credentialSubject;
-    const evaluatedFields: EvaluatedField[] = this.cardViewConfigByCredentialType?.fields.map(f => {
-      return {
-      label: f.label,
-      value: f.valueGetter(subject),
-    }
-    }) ?? [];
-    return evaluatedFields;
+  public cardFields = signal<EvaluatedField[]>([]);
+  public displayName = signal<string>('');
+  public formatLabel = signal<string>('');
+
+  private readonly loadCardDataEffect = effect(async () => {
+    const cred = this.credentialInput$();
+    this.cardFields.set(await this.displayService.getCardFields(cred));
+    this.displayName.set(await this.displayService.getDisplayName(cred));
+    this.formatLabel.set(this.displayService.getFormatLabel(cred));
   });
 
   @Input() public isDetailViewActive = false;
@@ -106,10 +111,10 @@ export class VcViewComponent implements OnInit {
   public isDetailModalOpen = false;
   public detailViewSections!: EvaluatedSection[];
 
-  public openDetailModal(): void {
+  public async openDetailModal(): Promise<void> {
     if(this.isDetailViewActive){
       this.isDetailModalOpen = true;
-      this.getStructuredFields();
+      await this.getStructuredFields();
     }
   }
 
@@ -208,65 +213,40 @@ export class VcViewComponent implements OnInit {
     return this.cardViewConfigByCredentialType?.icon;
   }
 
-public getStructuredFields(): void {
+public async getStructuredFields(): Promise<void> {
   const vc = this.credentialInput$();
   const cs = vc.credentialSubject;
+
+  const formatLabel = this.displayService.getFormatLabel(vc);
+  const displayNameValue = await this.displayService.getDisplayName(vc);
 
   const credentialInfo: EvaluatedSection = {
     section: 'vc-fields.title',
     fields: [
-      { label: 'vc-fields.credentialInfo.context', value: Array.isArray(vc['@context']) ? vc['@context'].join(', ') : (vc['@context'] ?? '') },
-      { label: 'vc-fields.credentialInfo.id', value: vc.id },
-      { label: 'vc-fields.credentialInfo.type', value: Array.isArray(vc.type) ? vc.type.join(', ') : (vc.type ?? '') },
-      { label: 'vc-fields.credentialInfo.name', value: vc.name ?? '' },
-      { label: 'vc-fields.credentialInfo.description', value: vc.description ?? '' },
-      { label: 'vc-fields.credentialInfo.issuerId', value: typeof vc.issuer === 'string' ? vc.issuer : (vc.issuer?.id ?? '') }, // issuer may be json or string
+      { label: 'vc-fields.credentialInfo.type', value: displayNameValue },
+      ...(formatLabel ? [{ label: 'vc-fields.credentialInfo.format', value: formatLabel }] : []),
+      { label: 'vc-fields.credentialInfo.issuerId', value: typeof vc.issuer === 'string' ? vc.issuer : (vc.issuer?.id ?? '') },
       { label: 'vc-fields.credentialInfo.issuerOrganization', value: vc.issuer?.organization ?? '' },
-      { label: 'vc-fields.credentialInfo.issuerOrganizationIdentifier', value: vc.issuer?.organizationIdentifier ?? '' },
-      { label: 'vc-fields.credentialInfo.issuerCountry', value: vc.issuer?.country ?? '' },
-      { label: 'vc-fields.credentialInfo.issuerCommonName', value: vc.issuer?.commonName ?? '' },
-      { label: 'vc-fields.credentialInfo.issuerSerialNumber', value: vc.issuer?.serialNumber ?? '' },
       { label: 'vc-fields.credentialInfo.validFrom', value: this.formatDate(vc.validFrom) },
-      { label: 'vc-fields.credentialInfo.validUntil', value: this.formatDate(vc.validUntil) }
+      { label: 'vc-fields.credentialInfo.validUntil', value: this.formatDate(vc.validUntil) },
+      { label: 'vc-fields.credentialInfo.status', value: vc.lifeCycleStatus ?? '' },
     ].filter(field => !!field.value && field.value !== ''),
   };
 
-  const entry = isValidCredentialType(this.credentialType)
-    ? CredentialDetailMap[this.credentialType]
-    : undefined;
+  // Try dynamic sections from issuer metadata, fallback to hardcoded
+  let detailSections = await this.displayService.getDetailSections(vc);
 
-  const evaluatedDetailedSections: EvaluatedSection[] =
-    typeof entry === 'function'
-      ? entry(cs, vc).map(section => ({
-          section: section.section,
-          fields: section.fields
-            .map(f => ({
-              label: f.label,
-              value: f.valueGetter(cs as any, vc as any),
-            }))
-            .filter(f => !!f.value && f.value !== ''),
-        }))
-      : (entry ?? []).map(section => ({
-          section: section.section,
-          fields: section.fields
-            .map(f => ({
-              label: f.label,
-              value: f.valueGetter(cs as any, vc as any),
-            }))
-            .filter(f => !!f.value && f.value !== ''),
-        }));
+  // Translate "powers" sections for hardcoded fallback
+  detailSections = this.translatePowerSections(detailSections, cs);
 
   if ((this.credentialType === 'LEARCredentialMachine' || this.credentialType === 'gx:LabelCredential') && vc.credentialEncoded) {
-    evaluatedDetailedSections.push({
+    detailSections.push({
       section: 'vc-fields.credentialEncoded',
       fields: [{ label: 'vc-fields.credentialEncoded', value: vc.credentialEncoded ?? '' }]
     });
   }
 
-  // Translate "powers" sections (function + action values)
-  const translatedDetailedSections = this.translatePowerSections(evaluatedDetailedSections, cs);
-
-  this.detailViewSections = [credentialInfo, ...translatedDetailedSections]
+  this.detailViewSections = [credentialInfo, ...detailSections]
     .filter(section => section.fields.length > 0);
 }
 

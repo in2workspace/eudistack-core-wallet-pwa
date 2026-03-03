@@ -27,6 +27,7 @@ import { CredentialDecisionService } from 'src/app/core/services/credential-deci
 import { IssuerNotificationService, NOTIFICATION_EVENT } from 'src/app/core/services/issuer-notification.service';
 import { FinalizeIssuancePayload } from 'src/app/core/models/FinalizeIssuancePayload';
 import { SkeletonComponent } from 'src/app/shared/components/skeleton/skeleton.component';
+import { IssuerMetadataCacheService } from 'src/app/core/services/issuer-metadata-cache.service';
 //todo restore tests
 
 // TODO separate scan in another component/ page
@@ -64,6 +65,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   private readonly credentialDecisionService = inject(CredentialDecisionService);
   private readonly credentialPreviewBuilder = inject(CredentialPreviewBuilderService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
   private readonly issuerNotificationService = inject(IssuerNotificationService);
   private readonly loader = inject(LoaderService);
   private readonly oid4vciEngineService = inject(Oid4vciEngineService);
@@ -202,8 +204,14 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
           }
 
           // Normal flow (200): show preview and ask user
+          const configId = flowResult.credentialConfigurationId;
+          const config = flowResult.issuerMetadata.credential_configurations_supported?.[configId];
+          const credentialMetadata = config?.credential_metadata;
+
           const preview = this.credentialPreviewBuilder.buildPreview(
-            flowResult.credentialResponseWithStatus.credentialResponse
+            flowResult.credentialResponseWithStatus.credentialResponse,
+            credentialMetadata,
+            flowResult.format
           );
 
           return from(this.credentialDecisionService.showDecisionDialog(preview))
@@ -232,8 +240,22 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     return this.walletService.finalizeCredentialIssuance(flowResult).pipe(
       tap(() => this.notifyIssuer(flowResult, NOTIFICATION_EVENT.CREDENTIAL_ACCEPTED, 'Credential accepted by user')),
       tap(() => this.credentialDecisionService.showTempMessage('home.ok-msg')),
+      tap(() => this.registerIssuerMetadata(flowResult)),
       switchMap(() => this.handleActivationSuccess())
     );
+  }
+
+  private registerIssuerMetadata(flowResult: FinalizeIssuancePayload): void {
+    const issuerUrl = flowResult.issuerMetadata.credentialIssuer;
+    const configId = flowResult.credentialConfigurationId;
+    if (!issuerUrl || !configId) return;
+
+    // Registration is fire-and-forget; credential ID will be mapped when loadCredentials() runs
+    // We use a placeholder since we don't have the backend-assigned ID yet
+    // The actual mapping will happen when the credential list is reloaded
+    this.issuerMetadataCache.registerIssuance(
+      `pending-${Date.now()}`, issuerUrl, configId, flowResult.issuerMetadata
+    ).catch(console.warn);
   }
 
   private handleCredentialRejected(flowResult: FinalizeIssuancePayload, decision: string): Observable<boolean> {
@@ -400,7 +422,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     
         if (successfulResponses.length > 0) {
           console.log('Signed credentials:', successfulResponses.length);
-          this.forcePageReload();
+          this.reloadCredentials();
         }
       },
       error: (error: HttpErrorResponse) => {
@@ -410,10 +432,10 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     });
   }
 
-  private forcePageReload(): void {
-    this.router.navigate(['/tabs/credentials']).then(() => {
-      window.location.reload();
-    });
+  private reloadCredentials(): void {
+    this.loadCredentials()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe();
   }
 
   //todo review this (it is storing camera logs, but is used after API calls)

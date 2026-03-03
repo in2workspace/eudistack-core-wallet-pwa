@@ -142,7 +142,8 @@ export class Oid4vciEngineService {
         issuerMetadata: credentialIssuerMetadata,
         authorisationServerMetadata,
         tokenObtainedAt,
-        format
+        format,
+        credentialConfigurationId
       };
     }});
 

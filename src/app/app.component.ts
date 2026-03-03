@@ -11,6 +11,7 @@ import { LoaderService } from './shared/services/loader.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.service';
 import { ThemeService } from './core/services/theme.service';
+import { IssuerMetadataCacheService } from './core/services/issuer-metadata-cache.service';
 
 @Component({
     selector: 'app-root',
@@ -28,6 +29,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly loader = inject(LoaderService);
   private readonly oid4vciEngine = inject(Oid4vciEngineService);
   private readonly router = inject(Router);
+  private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
   private readonly themeService = inject(ThemeService);
 
   public userName = this.authService.getName$();
@@ -54,6 +56,7 @@ export class AppComponent implements OnInit, OnDestroy {
   public ngOnInit() {
     this.logoSrc = this.themeService.getLogoUrl('light');
     this.initOid4vciEngine();
+    this.issuerMetadataCache.refreshStaleMetadata().catch(console.warn);
     this.alertIncompatibleDevice();
   }
 

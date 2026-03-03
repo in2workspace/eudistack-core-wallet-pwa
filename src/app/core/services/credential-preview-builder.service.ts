@@ -1,25 +1,73 @@
 import { inject, Injectable } from '@angular/core';
 import { JwtService } from '../protocol/oid4vci/jwt.service';
+import { SdJwtParserService } from '../protocol/oid4vci/sd-jwt-parser.service';
 import { CredentialResponse } from '../models/dto/CredentialResponse';
-import { CredentialPreview, Power } from '../models/credential-preview';
+import { CredentialPreview, Power, PreviewField } from '../models/credential-preview';
+import { CredentialMetadata } from '../models/dto/CredentialIssuerMetadata';
 
 @Injectable({ providedIn: 'root' })
 export class CredentialPreviewBuilderService {
 
   private readonly jwtService = inject(JwtService);
+  private readonly sdJwtParser = inject(SdJwtParserService);
 
-  buildPreview(credentialResponse: CredentialResponse): CredentialPreview {
-    const credentialJwt = credentialResponse.credentials?.[0]?.credential;
-    if (!credentialJwt) {
+  buildPreview(
+    credentialResponse: CredentialResponse,
+    credentialMetadata?: CredentialMetadata,
+    format?: string
+  ): CredentialPreview {
+    const credential = credentialResponse.credentials?.[0]?.credential;
+    if (!credential) {
       return this.emptyPreview();
     }
 
     try {
-      const payload = this.jwtService.parseJwtPayload(credentialJwt) as Record<string, any>;
-      const vc = payload['vc'] ?? payload;
-      return this.mapVcToPreview(vc);
+      let vc: Record<string, any>;
+      if (this.sdJwtParser.isSdJwt(credential)) {
+        const { payload } = this.sdJwtParser.reconstructClaims(credential);
+        const exp = payload['exp'] as number | undefined;
+        vc = {
+          credentialSubject: { mandate: payload['mandate'] },
+          validUntil: exp ? new Date(exp * 1000).toISOString() : '',
+        };
+      } else {
+        const payload = this.jwtService.parseJwtPayload(credential) as Record<string, any>;
+        vc = payload['vc'] ?? payload;
+      }
+
+      const base = this.mapVcToPreview(vc);
+
+      // Enrich with metadata if available
+      if (credentialMetadata) {
+        base.displayName = credentialMetadata.display?.[0]?.name ?? '';
+        base.format = this.getHumanFormat(format);
+        base.fields = this.buildDynamicFields(vc, credentialMetadata);
+      }
+
+      return base;
     } catch {
       return this.emptyPreview();
+    }
+  }
+
+  private buildDynamicFields(vc: Record<string, any>, meta: CredentialMetadata): PreviewField[] {
+    const cs = vc?.['credentialSubject'];
+    if (!cs || !meta.claims) return [];
+
+    return meta.claims
+      .map(claim => ({
+        label: claim.display?.[0]?.name ?? claim.path[claim.path.length - 1],
+        value: this.stringifyValue(resolveByPath(cs, claim.path)),
+      }))
+      .filter(f => !!f.value);
+  }
+
+  private getHumanFormat(format?: string): string {
+    if (!format) return '';
+    switch (format) {
+      case 'dc+sd-jwt': return 'SD-JWT';
+      case 'jwt_vc_json': return 'JWT';
+      default: return format;
     }
   }
 
@@ -42,10 +90,28 @@ export class CredentialPreviewBuilderService {
 
     const expirationDate = String(vc?.['validUntil'] ?? '');
 
-    return { power, subjectName, organization, expirationDate };
+    return { displayName: '', format: '', fields: [], power, subjectName, organization, expirationDate };
   }
 
   private emptyPreview(): CredentialPreview {
-    return { power: [], subjectName: '', organization: '', expirationDate: '' };
+    return { displayName: '', format: '', fields: [], power: [], subjectName: '', organization: '', expirationDate: '' };
   }
+
+  private stringifyValue(value: unknown): string {
+    if (value == null) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    if (Array.isArray(value)) return value.map(v => this.stringifyValue(v)).join(', ');
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  }
+}
+
+function resolveByPath(obj: any, path: string[]): unknown {
+  let current = obj;
+  for (const key of path) {
+    if (current == null) return undefined;
+    current = current[key];
+  }
+  return current;
 }

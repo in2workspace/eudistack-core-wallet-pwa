@@ -76,27 +76,54 @@ export class CredentialDecisionService {
   private buildPreviewHtml(preview: CredentialPreview): string {
     if (!preview) return '';
 
+    let html = '<div class="cred-preview">';
+
+    // Header: credential name + format badge
+    if (preview.displayName) {
+      html += `<div class="cred-row"><span class="cred-label"><strong>${this.escapeHtml(preview.displayName)}</strong>`;
+      if (preview.format) {
+        html += ` <span style="background: var(--ion-color-primary, #3880ff); color: white; font-size: 10px; padding: 1px 5px; border-radius: 3px; text-transform: uppercase;">${this.escapeHtml(preview.format)}</span>`;
+      }
+      html += '</span></div>';
+    }
+
+    // Dynamic fields from metadata (if available)
+    if (preview.fields?.length) {
+      for (const field of preview.fields) {
+        if (!field.value) continue;
+        html += `<div class="cred-row"><span class="cred-label"><strong>${this.escapeHtml(field.label)}: </strong>${this.escapeHtml(field.value)}</span></div>`;
+      }
+    } else {
+      // Fallback to legacy fields
+      html += this.buildLegacyFieldsHtml(preview);
+    }
+
+    // Expiration always shown
+    if (preview.expirationDate) {
+      const expirationLabel = this.translate.instant('confirmation.expiration');
+      html += `<div class="cred-row"><span class="cred-label"><strong>${expirationLabel}</strong>${this.formatDateHuman(preview.expirationDate)}</span></div>`;
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  private buildLegacyFieldsHtml(preview: CredentialPreview): string {
     const subjectLabel = this.translate.instant('confirmation.holder');
     const organizationLabel = this.translate.instant('confirmation.organization');
     const powersLabel = this.translate.instant('confirmation.powers');
-    const expirationLabel = this.translate.instant('confirmation.expiration');
 
-    return `
-      <div class="cred-preview">
-        <div class="cred-row">
-          <span class="cred-label"><strong>${subjectLabel}</strong>${this.escapeHtml(preview.subjectName)}</span>
-        </div>
-        <div class="cred-row">
-          <span class="cred-label"><strong>${organizationLabel}</strong>${this.escapeHtml(preview.organization)}</span>
-        </div>
-        <div class="cred-row">
-          <span class="cred-label"><strong>${powersLabel}</strong>${this.mapPowersToHumanReadable(preview.power)}</span>
-        </div>
-        <div class="cred-row">
-          <span class="cred-label"><strong>${expirationLabel}</strong>${this.formatDateHuman(preview.expirationDate)}</span>
-        </div>
-      </div>
-    `;
+    let html = '';
+    if (preview.subjectName) {
+      html += `<div class="cred-row"><span class="cred-label"><strong>${subjectLabel}</strong>${this.escapeHtml(preview.subjectName)}</span></div>`;
+    }
+    if (preview.organization) {
+      html += `<div class="cred-row"><span class="cred-label"><strong>${organizationLabel}</strong>${this.escapeHtml(preview.organization)}</span></div>`;
+    }
+    if (preview.power?.length) {
+      html += `<div class="cred-row"><span class="cred-label"><strong>${powersLabel}</strong>${this.mapPowersToHumanReadable(preview.power)}</span></div>`;
+    }
+    return html;
   }
 
   private startCountdown(alert: any, description: string, initialCounter: number): number {

@@ -13,6 +13,7 @@ export interface VerifiableCredential {
   credentialSubject: CredentialSubject;
   credentialStatus: CredentialStatus;
   credentialEncoded?: string;
+  credentialFormat?: string;
 }
 
 export const CREDENTIAL_TYPES_ARRAY = ['LEARCredentialEmployee', 'LEARCredentialMachine', 'gx:LabelCredential'] as const;

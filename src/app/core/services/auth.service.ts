@@ -27,6 +27,7 @@ export class AuthService implements OnDestroy {
   private tempToken: string | null = null;
   private readonly name$ = new BehaviorSubject<string>('');
   private readonly authenticated$ = new BehaviorSubject<boolean>(false);
+  private readonly initialized$ = new BehaviorSubject<boolean>(false);
   private readonly broadcastChannel = new BroadcastChannel('auth');
   private static readonly BROADCAST_FORCE_LOGOUT = 'forceWalletLogout';
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -146,6 +147,10 @@ export class AuthService implements OnDestroy {
     return this.authenticated$.asObservable();
   }
 
+  isInitialized$(): Observable<boolean> {
+    return this.initialized$.asObservable();
+  }
+
   isLoggedIn(): boolean {
     return this.authenticated$.getValue();
   }
@@ -186,13 +191,16 @@ export class AuthService implements OnDestroy {
     const storedRefreshToken = localStorage.getItem('wallet_refresh_token');
     if (storedRefreshToken) {
       this.refreshTokenValue = storedRefreshToken;
-      // Try to get a new access token
       this.refreshAccessToken().subscribe({
+        next: () => this.initialized$.next(true),
         error: () => {
           localStorage.removeItem('wallet_refresh_token');
           this.authenticated$.next(false);
+          this.initialized$.next(true);
         }
       });
+    } else {
+      this.initialized$.next(true);
     }
   }
 
