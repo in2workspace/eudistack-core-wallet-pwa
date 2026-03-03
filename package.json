@@ -65,6 +65,7 @@
     "@typescript-eslint/eslint-plugin": "8.4.0",
     "@typescript-eslint/parser": "8.4.0",
     "eslint": "^9.9.1",
+    "fake-indexeddb": "^6.2.5",
     "jasmine-spec-reporter": "~7.0.0",
     "jest": "^29.7.0",
     "jest-preset-angular": "^14.2.4",
