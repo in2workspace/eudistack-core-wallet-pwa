@@ -21,10 +21,17 @@ import { Oid4vciError } from '../../models/error/Oid4vciError';
 import { AppError } from 'src/app/core/models/error/AppError';
 import { JwtParseError } from '../../models/error/JwtParseError';
 import { LoaderHandledFlowService } from 'src/app/shared/services/loader-handled-flow.service';
+import { AuthorizationCodeTokenService } from './authorization-code-token.service';
+import { detectIssuanceProfile } from './issuance-profile.util';
+import { NonceService } from './nonce.service';
+import { DpopService } from './dpop.service';
+import { TokenResponse } from '../../models/dto/TokenResponse';
 
 @Injectable({ providedIn: 'root' })
 export class Oid4vciEngineService {
+  private readonly authorizationCodeTokenService = inject(AuthorizationCodeTokenService);
   private readonly authorisationServerMetadataService = inject(AuthorisationServerMetadataService);
+  private readonly dpopService = inject(DpopService);
   private readonly credentialIssuerMetadataService = inject(CredentialIssuerMetadataService);
   private readonly credentialOfferService = inject(CredentialOfferService);
   private readonly credentialService = inject(CredentialService);
@@ -32,6 +39,7 @@ export class Oid4vciEngineService {
   private readonly keyStorageProvider = inject(KeyStorageProvider);
   private readonly loader = inject(LoaderService);
   private readonly loaderHandledFlowService = inject(LoaderHandledFlowService);
+  private readonly nonceService = inject(NonceService);
   private readonly preAuthorizedTokenService = inject(PreAuthorizedTokenService);
   private readonly proofBuilderService = inject(ProofBuilderService);
   private readonly toastServiceHandler = inject(ToastServiceHandler);
@@ -61,14 +69,28 @@ export class Oid4vciEngineService {
 
       const authorisationServerMetadata = await this.authorisationServerMetadataService.getAuthorizationServerMetadataFromCredentialIssuerMetadata(credentialIssuerMetadata);
 
+      // TOKEN ACQUISITION — branch by grant type
+      const profile = detectIssuanceProfile(authorisationServerMetadata);
+      let tokenResponse: TokenResponse;
+
       this.loader.removeLoadingProcess();
 
-      const tokenResponse = await this.preAuthorizedTokenService.getPreAuthorizedToken(credentialOffer, authorisationServerMetadata);
+      if (credentialOffer.grant?.authorizationCodeGrant) {
+        tokenResponse = await this.authorizationCodeTokenService.getToken(
+          credentialOffer, authorisationServerMetadata, profile
+        );
+      } else {
+        tokenResponse = await this.preAuthorizedTokenService.getPreAuthorizedToken(
+          credentialOffer, authorisationServerMetadata
+        );
+      }
 
       this.loader.addLoadingProcess();
       const cfg = this.resolveCredentialConfigurationContext(credentialOffer, credentialIssuerMetadata);
 
-      const nonce = this.getNonce();
+      const nonce = authorisationServerMetadata.nonceEndpoint
+        ? await this.nonceService.getNonce(authorisationServerMetadata.nonceEndpoint)
+        : '';
 
       let jwtProof = null;
       let proofPublicJwk: JsonWebKey | null = null;
@@ -85,13 +107,20 @@ export class Oid4vciEngineService {
       const format = cfg.format;
       const credentialConfigurationId = cfg.credentialConfigurationId;
 
-      // GET CREDENTIAL
+      // GET CREDENTIAL (with DPoP proof if token is DPoP-bound)
+      let credentialDpopJwt: string | undefined;
+      if (tokenResponse.token_type?.toLowerCase() === 'dpop' && credentialIssuerMetadata.credentialEndpoint) {
+        const dpopProof = await this.dpopService.generateProof('POST', credentialIssuerMetadata.credentialEndpoint);
+        credentialDpopJwt = dpopProof.jwt;
+      }
+
       const credentialResponseWithStatus = await this.credentialService.getCredential({
         jwtProof,
         tokenResponse,
         credentialIssuerMetadata,
         format,
-        credentialConfigurationId
+        credentialConfigurationId,
+        dpopJwt: credentialDpopJwt,
       });
 
       // VALIDATE CNF FROM THE API RESPONSE
@@ -266,9 +295,4 @@ export class Oid4vciEngineService {
     return `${headerB64}.${payloadB64}`;
   }
 
-  // todo call nonce endpoint when it is supported
-  private getNonce(): string {
-    console.warn("Using '' as nonce, since nonce endpoint is not implemented yet.");
-    return '';
-  }
 }

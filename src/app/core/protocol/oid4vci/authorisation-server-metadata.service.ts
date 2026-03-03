@@ -39,14 +39,21 @@ export class AuthorisationServerMetadataService {
         });
     }
 
-    const url = `${authServer}/.well-known/openid-configuration`;
+    // RFC 8414 §3: prefer /.well-known/oauth-authorization-server, fallback to OpenID Connect discovery
+    const rfc8414Url = `${authServer}/.well-known/oauth-authorization-server`;
+    const oidcUrl = `${authServer}/.well-known/openid-configuration`;
 
     try {
-      return await firstValueFrom(this.walletService.getTextFromUrl(url));
-    } catch (e: unknown) {
-      wrapOid4vciHttpError(e, 'Could not download authorization server metadata', {
-        translationKey: 'errors.cannot-download-auth-server-metadata',
-      });
+      return await firstValueFrom(this.walletService.getTextFromUrl(rfc8414Url));
+    } catch {
+      // Fallback to OpenID Connect discovery path
+      try {
+        return await firstValueFrom(this.walletService.getTextFromUrl(oidcUrl));
+      } catch (e: unknown) {
+        wrapOid4vciHttpError(e, 'Could not download authorization server metadata', {
+          translationKey: 'errors.cannot-download-auth-server-metadata',
+        });
+      }
     }
   }
 
@@ -59,6 +66,15 @@ export class AuthorisationServerMetadataService {
         tokenEndpoint: root?.token_endpoint ?? root?.tokenEndpoint,
         authorizationEndpoint: root?.authorization_endpoint ?? root?.authorizationEndpoint,
         jwksUri: root?.jwks_uri ?? root?.jwksUri,
+        pushedAuthorizationRequestEndpoint: root?.pushed_authorization_request_endpoint,
+        nonceEndpoint: root?.nonce_endpoint,
+        requirePushedAuthorizationRequests: root?.require_pushed_authorization_requests,
+        codeChallengeMethodsSupported: root?.code_challenge_methods_supported,
+        dpopSigningAlgValuesSupported: root?.dpop_signing_alg_values_supported,
+        tokenEndpointAuthMethodsSupported: root?.token_endpoint_auth_methods_supported,
+        grantTypesSupported: root?.grant_types_supported,
+        responseTypesSupported: root?.response_types_supported,
+        authorizationResponseIssParameterSupported: root?.authorization_response_iss_parameter_supported,
         ...root,
       };
     } catch (e: any) {
