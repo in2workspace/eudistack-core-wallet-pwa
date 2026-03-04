@@ -5,14 +5,7 @@
   (click)="openDetailModal()"
   tabindex="0"
   (keydown)="handleButtonKeydown($event, 'detail')"
-  style="
-    background-color:  whitesmoke;
-    width: 300px;
-    height: 200px;
-    border-radius: 20px;
-    border: 1px solid lightgrey;
-    align-content: center;
-  "
+  class="credential-card"
 >
 @if(formatLabel()){
   <span class="format-badge">{{ formatLabel() }}</span>
@@ -26,29 +19,17 @@
     <img
       src="../../../assets/icons/exclamation_mark_black.png"
       alt="info"
-      style="width: 19px; height: 16px"
+      class="request-signature-icon"
     />
   </button>
 }
 
-  <div
-    style="
-      position: absolute;
-      top: 0;
-      right: 10;
-      width: 50%;
-      height: 50%;
-      background-color: whitesmoke;
-      border-radius: 0% 0% 75% 75%;
-      transform: translateX(85%) translateY(-90%);
-      z-index: 1;
-    "
-  ></div>
-  <div style="height: 2%"></div>
+  <div class="card-decoration"></div>
+  <div class="card-spacer"></div>
   <ion-col>
-    <ion-col style="margin-inline: 20px">
+    <ion-col class="card-icon-area">
       @if(iconUrl){
-        <img [src]="iconUrl" alt width="50" height="50" style="margin: 10px auto" />
+        <img [src]="iconUrl" alt width="50" height="50" class="card-icon" />
       }
       @if(credentialInput.lifeCycleStatus == "EXPIRED") {
         <span class="status-ellipse status-expired">{{ "credentials.expiration" | translate }}</span>
@@ -59,35 +40,23 @@
       </ion-col>
     <ion-col>
       <ion-col size="12">
-        <ion-card-header
-          style="margin-top:5px; padding: 0% !important; margin-inline: 20px; height: 28%"
-        >
+        <ion-card-header class="card-header">
           <ion-row>
-            <ion-card-title
-              style="
-                color: black;
-                font-size: 12px;
-                font-weight: bold;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-              "
-            >
+            <ion-card-title class="card-title">
               {{ displayName() || credentialType }}
             </ion-card-title>
           </ion-row>
           @for(field of cardFields(); track field) {
             <ion-row>
-              <ion-card-title style="color: grey; font-size: 12px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <ion-card-title class="card-field">
                 {{ field.value }}
               </ion-card-title>
-            </ion-row>       
+            </ion-row>
           }
-             
         </ion-card-header>
       </ion-col>
 
-      <ion-col size="12" align-self-end style="margin-left: 15px; padding: 0% !important;">
+      <ion-col size="12" align-self-end class="card-qr-area">
         @if(showChip){
         <img
           (click)="qrView()"
@@ -95,14 +64,13 @@
           src="assets/icons/41.png"
           alt="qr"
           role="alert"
-          style="width: auto; height: 40px; cursor: pointer"
+          class="card-qr-icon"
         />
         }
 
       </ion-col>
     </ion-col>
   </ion-col>
-  <span></span>
   <ion-alert
     [isOpen]="isAlertOpenNotFound"
     class="custom-alert"
@@ -193,25 +161,25 @@
           <div class="section">
             <div class="section-header">{{ section.section | translate }}</div>
             @for(field of section.fields; track field.label){
-              <ion-item lines="none" class="field-item compact-item">
-                @if(field.label !== 'vc-fields.credentialEncoded'){
-                  <ion-label class="field-label" >
-                    <strong>{{ field.label | translate }}:</strong> {{ field.value }}
-                  </ion-label>
-                }
               @if(field.label === 'vc-fields.credentialEncoded'){
-                <div class="token-container">
-                  <div class="token-value ellipsis-text" [title]="field.value">
-                    {{ field.value }}
+                <ion-item lines="none" class="field-item compact-item">
+                  <div class="token-container">
+                    <div class="token-value ellipsis-text" [title]="field.value">
+                      {{ field.value }}
+                    </div>
+                    <div class="token-actions">
+                      <ion-button fill="clear" size="small" (click)="copyToClipboard(field.value)" (keydown)="copyToClipboard(field.value)">
+                        <ion-icon name="copy-outline"></ion-icon>
+                      </ion-button>
+                    </div>
                   </div>
-                  <div class="token-actions">
-                    <ion-button fill="clear" size="small" (click)="copyToClipboard(field.value)" (keydown)="copyToClipboard(field.value)">
-                      <ion-icon name="copy-outline"></ion-icon>
-                    </ion-button>
-                  </div>
+                </ion-item>
+              } @else {
+                <div class="field-item">
+                  <div class="field-label">{{ field.label | translate }}</div>
+                  <div class="field-value">{{ field.value }}</div>
                 </div>
               }
-              </ion-item>
           }
           </div>
         }

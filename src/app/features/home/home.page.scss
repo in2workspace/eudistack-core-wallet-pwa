@@ -38,6 +38,37 @@ ion-button {
     --ion-background-color: var(--surface-page);
 }
 
+.install-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background-color: var(--surface-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border-left: 3px solid var(--action-primary);
+}
+
+.install-banner-icon {
+  font-size: 22px;
+  color: var(--action-primary);
+  flex-shrink: 0;
+}
+
+.install-banner-text {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.install-banner-close {
+  --color: var(--text-disabled);
+  --padding-start: 4px;
+  --padding-end: 4px;
+  margin: 0;
+}
+
 .toolbar {
     padding-right: 0.5rem;
   --box-shadow: none;

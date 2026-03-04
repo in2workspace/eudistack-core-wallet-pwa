@@ -1,10 +1,92 @@
 ion-modal.stack-modal {
-    --color: var(--text-primary);
-  }
+  --color: var(--text-primary);
+}
 
-  .button-row{
-    padding-right: 20px;
+.button-row {
+  padding-right: 20px;
+}
+
+// ── Card ──────────────────────────────────────────────
+
+.credential-card {
+  background-color: var(--surface-card);
+  width: 300px;
+  height: 200px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  align-content: center;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
+}
+
+.card-decoration {
+  position: absolute;
+  top: 0;
+  right: 10px;
+  width: 50%;
+  height: 50%;
+  background-color: var(--surface-card);
+  border-radius: 0% 0% 75% 75%;
+  transform: translateX(85%) translateY(-90%);
+  z-index: 1;
+}
+
+.card-spacer {
+  height: 2%;
+}
+
+.card-icon-area {
+  margin-inline: 20px;
+}
+
+.card-icon {
+  margin: 10px auto;
+}
+
+.card-header {
+  margin-top: 5px;
+  padding: 0 !important;
+  margin-inline: 20px;
+  height: 28%;
+}
+
+.card-title {
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-field {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-qr-area {
+  margin-left: 15px;
+  padding: 0 !important;
+}
+
+.card-qr-icon {
+  width: auto;
+  height: 40px;
+  cursor: pointer;
+}
+
+.request-signature-icon {
+  width: 19px;
+  height: 16px;
+}
 
 .format-badge {
   position: absolute;
@@ -14,13 +96,14 @@ ion-modal.stack-modal {
   color: white;
   font-size: 10px;
   font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
-  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
   z-index: 2;
 }
 
-.request-signature-button{
+.request-signature-button {
   width: 27.3px;
   height: 27.3px;
   background: transparent;
@@ -34,9 +117,25 @@ ion-modal.stack-modal {
   top: 44px;
 }
 
-.request-signature-button img{
+.request-signature-button img {
   opacity: 0.5;
 }
+
+.status-ellipse {
+  min-width: 110px;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  color: var(--surface-card);
+  text-align: center;
+  float: right;
+  margin: 10px 12px 10px auto;
+}
+
+.status-expired {
+  background-color: var(--status-error);
+}
+
+// ── Detail Modal ──────────────────────────────────────
 
 .modal-toolbar {
   --background: var(--surface-card);
@@ -74,21 +173,47 @@ ion-modal.stack-modal {
 }
 
 .section {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .section-header {
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  padding: 10px;
-  background-color: var(--surface-muted);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--ion-color-primary);
+  background: transparent;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 10px;
+.field-item {
+  padding: 8px 12px;
+  margin-bottom: 2px;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--surface-muted);
+  }
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+  text-transform: capitalize;
+}
+
+.field-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.compact-item {
+  --inner-padding-end: 0px;
+  --min-height: 36px;
+  margin-bottom: 4px;
 }
 
 .modal-footer {
@@ -101,25 +226,7 @@ ion-modal.stack-modal {
   float: right;
 }
 
-.compact-item {
-  --inner-padding-end: 0px;
-  --min-height: 36px;
-  margin-bottom: 4px;
-}
-
-.status-ellipse {
-  min-width: 110px;
-  padding: 5px 10px;
-  border-radius: var(--radius-full);
-  color: var(--surface-card);
-  text-align: center;
-  float: right;
-  margin: 10px 12px 10px auto;
-}
-
-.status-expired {
-  background-color: var(--status-error);
-}
+// ── Token display ─────────────────────────────────────
 
 .token-container {
   display: flex;

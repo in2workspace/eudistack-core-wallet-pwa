@@ -1,4 +1,16 @@
 <ion-content [fullscreen]="true" class="ion-padding home-content no-scroll">
+  @if ((canInstall$ | async) && !bannerDismissed) {
+    <div class="install-banner">
+      <ion-icon name="download-outline" class="install-banner-icon"></ion-icon>
+      <span class="install-banner-text">{{"home.install-hint"|translate}}</span>
+      <ion-button size="small" fill="solid" (click)="installApp()" (keydown.enter)="installApp()" (keydown.space)="installApp()">
+        {{"menu.install"|translate}}
+      </ion-button>
+      <ion-button size="small" fill="clear" class="install-banner-close" (click)="dismissInstallBanner()" (keydown.enter)="dismissInstallBanner()" (keydown.space)="dismissInstallBanner()">
+        <ion-icon slot="icon-only" name="close"></ion-icon>
+      </ion-button>
+    </div>
+  }
   <ion-grid>
     <ion-row class="ion-justify-content-center">
       <ion-button

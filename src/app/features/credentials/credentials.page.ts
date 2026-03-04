@@ -28,6 +28,7 @@ import { IssuerNotificationService, NOTIFICATION_EVENT } from 'src/app/core/serv
 import { FinalizeIssuancePayload } from 'src/app/core/models/FinalizeIssuancePayload';
 import { SkeletonComponent } from 'src/app/shared/components/skeleton/skeleton.component';
 import { IssuerMetadataCacheService } from 'src/app/core/services/issuer-metadata-cache.service';
+import { ActivityService } from 'src/app/core/services/activity.service';
 //todo restore tests
 
 // TODO separate scan in another component/ page
@@ -73,6 +74,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   private readonly router = inject(Router);
   private readonly toastServiceHandler = inject(ToastServiceHandler);
   private readonly walletService = inject(WalletService);
+  private readonly activityService = inject(ActivityService);
 
   private authorizationRequest = '';
 
@@ -154,6 +156,11 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     this.loader.addLoadingProcess();
     this.walletService.deleteVC(cred.id)
     .pipe(
+      tap(() => {
+        const credName = cred.name ?? cred.type?.[0] ?? 'Unknown';
+        const issuer = cred.issuer?.organization ?? cred.issuer?.id ?? '';
+        this.activityService.log('deleted', credName, issuer);
+      }),
       switchMap(() => this.loadCredentials()),
       finalize(() => this.loader.removeLoadingProcess())
     )
@@ -241,6 +248,13 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       tap(() => this.notifyIssuer(flowResult, NOTIFICATION_EVENT.CREDENTIAL_ACCEPTED, 'Credential accepted by user')),
       tap(() => this.credentialDecisionService.showTempMessage('home.ok-msg')),
       tap(() => this.registerIssuerMetadata(flowResult)),
+      tap(() => {
+        const configId = flowResult.credentialConfigurationId;
+        const config = flowResult.issuerMetadata.credential_configurations_supported?.[configId];
+        const credName = config?.credential_metadata?.display?.[0]?.name ?? configId ?? 'Unknown';
+        const issuer = flowResult.issuerMetadata.credentialIssuer ?? '';
+        this.activityService.log('issued', credName, issuer);
+      }),
       switchMap(() => this.handleActivationSuccess())
     );
   }

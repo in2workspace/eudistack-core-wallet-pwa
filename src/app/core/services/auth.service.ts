@@ -1,9 +1,10 @@
-import { DestroyRef, inject, Injectable, OnDestroy } from '@angular/core';
+import { inject, Injectable, OnDestroy, Provider } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
 import { Router } from '@angular/router';
+import { LocalAuthService } from './local-auth.service';
 
 export interface TokenPairResponse {
   accessToken: string;
@@ -16,12 +17,39 @@ export interface VerifyEmailResponse {
   tempToken: string;
 }
 
+/**
+ * Abstract auth service interface consumed by guards, interceptors, and components.
+ * Concrete implementations: RemoteAuthService (server mode) and LocalAuthService (browser/PRF mode).
+ */
+export abstract class AuthService {
+  abstract isLoggedIn$(): Observable<boolean>;
+  abstract isInitialized$(): Observable<boolean>;
+  abstract isLoggedIn(): boolean;
+  abstract getName$(): Observable<string>;
+  abstract getToken(): string;
+  abstract logout(): Observable<void>;
+  abstract forceLogout(): void;
+}
+
+/** DI provider that selects the right AuthService based on key_storage_mode. */
+export const AUTH_SERVICE_PROVIDER: Provider = {
+  provide: AuthService,
+  useFactory: () => {
+    if ((environment as any).key_storage_mode === 'server') {
+      return inject(RemoteAuthService);
+    }
+    return inject(LocalAuthService);
+  },
+};
+
 const AUTH_BASE = `${environment.server_url}/api/v1/auth`;
 
-@Injectable({
-  providedIn: 'root'
-})
-export class AuthService implements OnDestroy {
+/**
+ * Auth service for server/enterprise mode. Uses backend for registration (email + OTP),
+ * passkey verification, JWT token management, and refresh.
+ */
+@Injectable({ providedIn: 'root' })
+export class RemoteAuthService extends AuthService implements OnDestroy {
   private accessToken: string | null = null;
   private refreshTokenValue: string | null = null;
   private tempToken: string | null = null;
@@ -36,6 +64,7 @@ export class AuthService implements OnDestroy {
   private readonly router = inject(Router);
 
   constructor() {
+    super();
     this.loadStoredTokens();
     this.listenToCrossTabLogout();
   }
@@ -119,7 +148,7 @@ export class AuthService implements OnDestroy {
       refreshToken: this.refreshTokenValue
     }).pipe(
       tap(() => {
-        this.broadcastChannel.postMessage(AuthService.BROADCAST_FORCE_LOGOUT);
+        this.broadcastChannel.postMessage(RemoteAuthService.BROADCAST_FORCE_LOGOUT);
         this.clearState();
       }),
       catchError(() => {
@@ -206,7 +235,7 @@ export class AuthService implements OnDestroy {
 
   private listenToCrossTabLogout(): void {
     this.broadcastChannel.onmessage = (event) => {
-      if (event.data === AuthService.BROADCAST_FORCE_LOGOUT) {
+      if (event.data === RemoteAuthService.BROADCAST_FORCE_LOGOUT) {
         console.warn('Detected logout from another tab');
         this.clearState();
         const hasPasskey = localStorage.getItem('wallet_has_passkey') === 'true';

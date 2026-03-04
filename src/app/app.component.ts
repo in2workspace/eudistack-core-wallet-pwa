@@ -3,7 +3,6 @@ import { Component, OnDestroy, OnInit, Signal, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonicModule, PopoverController } from '@ionic/angular';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { AuthService } from './core/services/auth.service';
 import { MenuComponent } from './shared/components/menu/menu.component';
 import { Subject, map } from 'rxjs';
 import { CameraService } from './shared/services/camera.service';
@@ -25,14 +24,12 @@ import { IssuerMetadataCacheService } from './core/services/issuer-metadata-cach
 })
 
 export class AppComponent implements OnInit, OnDestroy {
-  private readonly authService = inject(AuthService);
   private readonly loader = inject(LoaderService);
   private readonly oid4vciEngine = inject(Oid4vciEngineService);
   private readonly router = inject(Router);
   private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
   private readonly themeService = inject(ThemeService);
 
-  public userName = this.authService.getName$();
   public routerEvents$ = this.router.events;
   // if the route is "/", don't allow menu popover
   public isBaseRoute$ = toSignal<boolean>(this.routerEvents$.pipe(map(ev => this.router.url === '/')));

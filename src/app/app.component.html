@@ -5,16 +5,16 @@
       <img alt="Logo" [src]="logoSrc" width="auto" slot="start" height="35px" class="logo"/>
       <ion-button
         slot="end"
+        fill="clear"
         class="toolbar-but"
         [disabled]="isAuthRoute$()"
         (click)="openPopover($event)"
         (keydown)="openPopoverByKeydown($event)"
         >
-        {{userName | async}} 
         <ion-icon
-          slot="end"
-          size="small"
-          name="person"
+          slot="icon-only"
+          name="ellipsis-vertical"
+          style="color: var(--brand-primary-contrast)"
         ></ion-icon>
       </ion-button>
     </ion-toolbar>

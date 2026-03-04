@@ -6,4 +6,5 @@ export const environment = {
   websocket_url: window["env"]["websocket_url"], // REQUIRED
   logs_enabled: window["env"]["logs_enabled"] === "true" || false, //OPTIONAL WITH fallback
   key_storage_mode: window["env"]["key_storage_mode"] || 'browser', // OPTIONAL with fallback
+  appVersion: '3.0.0',
 };

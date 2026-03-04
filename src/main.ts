@@ -1,4 +1,5 @@
-import { APP_INITIALIZER, enableProdMode, importProvidersFrom } from '@angular/core';
+import { APP_INITIALIZER, enableProdMode, importProvidersFrom, isDevMode } from '@angular/core';
+import { provideServiceWorker } from '@angular/service-worker';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { RouteReuseStrategy, provideRouter } from '@angular/router';
 import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
@@ -19,6 +20,7 @@ import { authInterceptor } from './app/core/interceptors/auth.interceptor';
 import { disableTouchScrollOnPaths } from './app/shared/helpers/disable-touch-scroll-on-paths';
 import { httpTranslateLoader } from './app/shared/helpers/http-translate-loader';
 import { KEY_STORAGE_PROVIDERS } from './app/core/spi-impl/key-storage.provider.factory';
+import { AUTH_SERVICE_PROVIDER } from './app/core/services/auth.service';
 import { ThemeService } from './app/core/services/theme.service';
 
 function initializeTheme(themeService: ThemeService): () => Promise<void> {
@@ -58,6 +60,11 @@ bootstrapApplication(AppComponent, {
     ),
     importProvidersFrom(IonicStorageModule.forRoot()),
     ...KEY_STORAGE_PROVIDERS,
-    provideRouter(routes)
+    AUTH_SERVICE_PROVIDER,
+    provideRouter(routes),
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
   ],
 });

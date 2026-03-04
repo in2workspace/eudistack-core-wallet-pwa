@@ -16,15 +16,20 @@ export class CredentialDisplayService {
    * Tries issuer metadata first, falls back to hardcoded CredentialTypeMap.
    */
   async getCardFields(credential: VerifiableCredential): Promise<EvaluatedField[]> {
-    const meta = await this.issuerMetadataCache.getCredentialMetadata(credential.id, credential.type);
+    const meta = await this.issuerMetadataCache.getCredentialMetadata(credential.id, credential.type, credential.credentialFormat);
     if (meta?.claims?.length) {
-      // Use first 3 claims as card summary
-      return meta.claims.slice(0, 3)
-        .map(claim => ({
-          label: claim.display?.[0]?.name ?? claim.path.join('.'),
-          value: this.stringifyValue(resolveByPath(credential.credentialSubject, claim.path)),
-        }))
-        .filter(f => !!f.value);
+      // Use first 3 scalar claims as card summary (skip arrays like powers)
+      return meta.claims
+        .map(claim => {
+          const value = resolveByPath(credential.credentialSubject, claim.path);
+          if (Array.isArray(value) || (value != null && typeof value === 'object')) return null;
+          return {
+            label: claim.display?.[0]?.name ?? claim.path.join('.'),
+            value: this.stringifyValue(value),
+          };
+        })
+        .filter((f): f is EvaluatedField => f != null && !!f.value)
+        .slice(0, 3);
     }
 
     // Fallback to hardcoded map
@@ -44,7 +49,7 @@ export class CredentialDisplayService {
    * Tries issuer metadata first, falls back to hardcoded CredentialDetailMap.
    */
   async getDetailSections(credential: VerifiableCredential): Promise<EvaluatedSection[]> {
-    const meta = await this.issuerMetadataCache.getCredentialMetadata(credential.id, credential.type);
+    const meta = await this.issuerMetadataCache.getCredentialMetadata(credential.id, credential.type, credential.credentialFormat);
     if (meta?.claims?.length) {
       return this.buildDynamicSections(credential, meta);
     }
@@ -57,7 +62,7 @@ export class CredentialDisplayService {
    * Gets the display name of the credential type from issuer metadata.
    */
   async getDisplayName(credential: VerifiableCredential): Promise<string> {
-    const name = await this.issuerMetadataCache.getCredentialDisplayName(credential.id, credential.type);
+    const name = await this.issuerMetadataCache.getCredentialDisplayName(credential.id, credential.type, credential.credentialFormat);
     if (name) return name;
 
     // Fallback: use the type array
@@ -66,13 +71,13 @@ export class CredentialDisplayService {
   }
 
   /**
-   * Returns a human-readable format label (e.g. "SD-JWT", "JWT").
+   * Returns the protocol format label for display (e.g. "dc+sd-jwt", "jwt_vc_json").
    */
   getFormatLabel(credential: VerifiableCredential): string {
     switch (credential.credentialFormat) {
-      case 'DC_SD_JWT': return 'SD-JWT';
-      case 'JWT_VC': case 'JWT_VC_JSON': return 'JWT';
-      case 'CWT_VC': return 'CWT';
+      case 'DC_SD_JWT': return 'dc+sd-jwt';
+      case 'JWT_VC': case 'JWT_VC_JSON': return 'jwt_vc_json';
+      case 'CWT_VC': return 'cwt_vc';
       default: return credential.credentialFormat ?? '';
     }
   }
@@ -81,12 +86,23 @@ export class CredentialDisplayService {
     credential: VerifiableCredential,
     meta: CredentialMetadata
   ): EvaluatedSection[] {
-    // Group claims by the first path segment (e.g. "mandate.mandatee" → "Mandatee")
+    const sections: EvaluatedSection[] = [];
+    // Group scalar claims by path prefix; handle array claims as separate sections
     const groups = new Map<string, { claim: ClaimDefinition; value: unknown }[]>();
 
     for (const claim of meta.claims) {
       const value = resolveByPath(credential.credentialSubject, claim.path);
       if (value == null || value === '') continue;
+
+      // Array of objects (e.g. powers) → dedicated section
+      if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
+        const sectionTitle = claim.display?.[0]?.name ?? claim.path[claim.path.length - 1];
+        sections.push({
+          section: sectionTitle,
+          fields: value.map((item: any) => this.formatObjectAsField(item)),
+        });
+        continue;
+      }
 
       // Derive section key from path: use first 2 segments if available
       const sectionKey = claim.path.length >= 2
@@ -99,19 +115,49 @@ export class CredentialDisplayService {
       groups.get(sectionKey)!.push({ claim, value });
     }
 
-    return Array.from(groups.entries()).map(([sectionKey, items]) => {
-      // Derive a human-readable section title from the path
+    // Build sections from grouped scalar claims
+    const scalarSections = Array.from(groups.entries()).map(([sectionKey, items]) => {
       const lastSegment = sectionKey.split('.').pop() ?? sectionKey;
-      const sectionTitle = capitalize(lastSegment);
-
       return {
-        section: sectionTitle,
+        section: capitalize(lastSegment),
         fields: items.map(({ claim, value }) => ({
           label: claim.display?.[0]?.name ?? claim.path[claim.path.length - 1],
           value: this.stringifyValue(value),
         })),
       };
     });
+
+    return [...scalarSections, ...sections];
+  }
+
+  /**
+   * Formats a complex object (e.g. a power item) as a readable field.
+   * Power objects: { function, domain, action } → label: "Onboarding (DOME)", value: "Execute"
+   */
+  private formatObjectAsField(obj: Record<string, unknown>): EvaluatedField {
+    // Power-like objects
+    if ('function' in obj && 'domain' in obj) {
+      const fn = String(obj['function'] ?? '');
+      const domain = String(obj['domain'] ?? '');
+      const action = Array.isArray(obj['action'])
+        ? obj['action'].join(', ')
+        : String(obj['action'] ?? '');
+      return { label: `${fn} (${domain})`, value: action };
+    }
+
+    // Generic object: use first meaningful key-value pairs
+    const entries = Object.entries(obj)
+      .filter(([k, v]) => v != null && v !== '' && k !== 'type' && k !== 'id')
+      .slice(0, 2);
+
+    if (entries.length > 0) {
+      return {
+        label: capitalize(String(entries[0][0])),
+        value: entries.map(([, v]) => this.stringifyValue(v)).join(' — '),
+      };
+    }
+
+    return { label: '', value: this.stringifyValue(obj) };
   }
 
   private buildHardcodedSections(credential: VerifiableCredential): EvaluatedSection[] {
@@ -148,9 +194,15 @@ export class CredentialDisplayService {
   }
 }
 
+/**
+ * Resolves a value from an object by following the given path segments.
+ * Strips a leading "credentialSubject" segment if present, since the caller
+ * already passes `credential.credentialSubject` as the root object.
+ */
 function resolveByPath(obj: any, path: string[]): unknown {
+  const normalizedPath = path[0] === 'credentialSubject' ? path.slice(1) : path;
   let current = obj;
-  for (const key of path) {
+  for (const key of normalizedPath) {
     if (current == null) return undefined;
     current = current[key];
   }

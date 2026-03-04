@@ -1,0 +1,37 @@
+.menu-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.menu-wallet-icon {
+  font-size: 28px;
+  color: var(--action-primary);
+}
+
+.menu-wallet-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-wallet-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.menu-wallet-version {
+  font-size: 0.75rem;
+  color: var(--text-disabled);
+}
+
+.menu-list {
+  padding: 4px 0;
+
+  ion-icon {
+    margin-right: 8px;
+    font-size: 20px;
+  }
+}

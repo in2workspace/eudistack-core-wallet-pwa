@@ -19,6 +19,13 @@ const ISSUER_META_PREFIX = 'issuer-meta:';
 const CRED_ISSUER_PREFIX = 'cred-issuer:';
 const STALE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
+/** Maps backend CredentialFormats enum names to OID4VCI protocol format strings. */
+const BACKEND_TO_PROTOCOL_FORMAT: Record<string, string> = {
+  'DC_SD_JWT': 'dc+sd-jwt',
+  'JWT_VC': 'jwt_vc_json',
+  'CWT_VC': 'cwt_vc',
+};
+
 @Injectable({ providedIn: 'root' })
 export class IssuerMetadataCacheService {
 
@@ -62,9 +69,9 @@ export class IssuerMetadataCacheService {
   /**
    * Gets the credential_metadata for a specific credential.
    * First tries by credential ID mapping, then falls back to searching
-   * by credential type across all known issuers.
+   * by credential type and format across all known issuers.
    */
-  async getCredentialMetadata(credentialId: string, credentialTypes?: string[]): Promise<CredentialMetadata | null> {
+  async getCredentialMetadata(credentialId: string, credentialTypes?: string[], credentialFormat?: string): Promise<CredentialMetadata | null> {
     await this.ensureInit();
 
     // Try direct mapping first
@@ -77,9 +84,9 @@ export class IssuerMetadataCacheService {
       }
     }
 
-    // Fallback: search by credential type across all known issuers
+    // Fallback: search by credential type and format across all known issuers
     if (credentialTypes?.length) {
-      return this.findMetadataByType(credentialTypes);
+      return this.findMetadataByType(credentialTypes, credentialFormat);
     }
 
     return null;
@@ -88,8 +95,8 @@ export class IssuerMetadataCacheService {
   /**
    * Gets the display name of a credential type from cached metadata.
    */
-  async getCredentialDisplayName(credentialId: string, credentialTypes?: string[]): Promise<string | null> {
-    const meta = await this.getCredentialMetadata(credentialId, credentialTypes);
+  async getCredentialDisplayName(credentialId: string, credentialTypes?: string[], credentialFormat?: string): Promise<string | null> {
+    const meta = await this.getCredentialMetadata(credentialId, credentialTypes, credentialFormat);
     return meta?.display?.[0]?.name ?? null;
   }
 
@@ -133,18 +140,26 @@ export class IssuerMetadataCacheService {
   /**
    * Searches across all known issuers for a configuration matching the credential types.
    */
-  private async findMetadataByType(credentialTypes: string[]): Promise<CredentialMetadata | null> {
+  private async findMetadataByType(credentialTypes: string[], credentialFormat?: string): Promise<CredentialMetadata | null> {
     const knownIssuers: string[] = (await this.storage.get(KNOWN_ISSUERS_KEY)) ?? [];
+    // Exclude generic types that are shared across all credentials
+    const specificTypes = credentialTypes.filter(t => t !== 'VerifiableCredential');
+    if (specificTypes.length === 0) return null;
+
+    // Map backend enum names to OID4VCI protocol format strings
+    const protocolFormat = credentialFormat ? BACKEND_TO_PROTOCOL_FORMAT[credentialFormat] ?? credentialFormat : undefined;
 
     for (const issuerUrl of knownIssuers) {
       const cached: CachedIssuerMetadata | null = await this.storage.get(`${ISSUER_META_PREFIX}${issuerUrl}`);
       if (!cached?.metadata?.credential_configurations_supported) continue;
 
       for (const [configId, config] of Object.entries(cached.metadata.credential_configurations_supported)) {
-        // Match by configId (e.g., "LEARCredentialEmployee") or by credential_definition.type
-        const matchesConfigId = credentialTypes.includes(configId);
+        // If we know the format, only match configs with the same format
+        if (protocolFormat && config.format && config.format !== protocolFormat) continue;
+
+        const matchesConfigId = specificTypes.includes(configId);
         const matchesDefinitionType = config.credential_definition?.type?.some(
-          t => credentialTypes.includes(t)
+          t => t !== 'VerifiableCredential' && specificTypes.includes(t)
         );
 
         if ((matchesConfigId || matchesDefinitionType) && config.credential_metadata) {

@@ -9,7 +9,9 @@
         "privacy-policy":"Politica de Privacidad",
         "faqs":"FAQs",
         "settings":"Ajustes",
-        "logout":"Cerrar sesión"
+        "logout":"Cerrar sesión",
+        "install":"Instalar app",
+        "wallet":"Cartera"
     },
     "camera-selector":{
         "title":"Cámara seleccionada",
@@ -42,7 +44,8 @@
     "home":{
         "ok-msg": "Credencial agregada",
         "rejected-msg": "Oferta de credencial rechazada",
-        "scan": "Escanear QR"
+        "scan": "Escanear QR",
+        "install-hint": "Instala la app para una mejor experiencia"
     },
     "language-selector":{
         "title":"Selector de idioma"
@@ -75,14 +78,19 @@
             "code": "Código de verificación",
             "code-placeholder": "Introduce el código de 6 dígitos",
             "verify": "Verificar",
-            "change-email": "Cambiar email"
+            "change-email": "Cambiar email",
+            "passkey-subtitle": "Crea una passkey para configurar tu wallet de forma segura",
+            "create-wallet": "Crear Wallet"
         },
         "passkey": {
             "title": "Configurar Passkey",
             "description": "Crea una passkey para iniciar sesión de forma segura sin contraseña. Tu dispositivo usará biometría o un PIN para verificar tu identidad.",
             "register-button": "Crear Passkey",
             "email-verified": "Email verificado",
-            "success": "¡Passkey registrada correctamente!"
+            "success": "¡Passkey registrada correctamente!",
+            "status-connecting": "Preparando...",
+            "status-verifying": "Esperando tu dispositivo...",
+            "retry": "Reintentar"
         }
     },
     "login":{
@@ -287,6 +295,20 @@
             "not-supported": "Tu navegador no admite el acceso a la cámara. Considera utilizar un navegador diferente.",
             "default": "Error inesperado. Revisa los permisos de tu navegador y asegúrate de que ninguna otra aplicación esté utilizando la cámara. Intenta actualizar la página."
         }
+    },
+    "activity": {
+        "title": "Actividad",
+        "empty": "Sin actividad",
+        "empty-hint": "La actividad de tus credenciales aparecerá aquí",
+        "clear": "Borrar",
+        "clear-confirm": "¿Borrar toda la actividad?",
+        "type-issued": "Credencial recibida",
+        "type-presented": "Credencial presentada",
+        "type-deleted": "Credencial eliminada",
+        "time-now": "Ahora",
+        "time-minutes": "Hace {{count}}min",
+        "time-hours": "Hace {{count}}h",
+        "time-days": "Hace {{count}}d"
     },
     "devices": {
         "settings-link": "Mis Dispositivos",

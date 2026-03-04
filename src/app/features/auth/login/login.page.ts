@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
-import { AuthService } from 'src/app/core/services/auth.service';
+import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.service';
+import { LocalAuthService } from 'src/app/core/services/local-auth.service';
 import { startAuthentication } from '@simplewebauthn/browser';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 import { ThemeService } from 'src/app/core/services/theme.service';
@@ -64,29 +65,12 @@ export class LoginPage {
     this.errorMessage = '';
 
     try {
-      // Step 1: Get assertion request from backend (usernameless / discoverable credential)
-      const request = await new Promise<any>((resolve, reject) => {
-        this.authService.startLogin().subscribe({
-          next: resolve,
-          error: reject
-        });
-      });
+      if (this.authService instanceof LocalAuthService) {
+        await this.loginLocal(this.authService);
+      } else {
+        await this.loginRemote(this.authService as RemoteAuthService);
+      }
 
-      // Step 2: Extract WebAuthn options for SimpleWebAuthn
-      const assertionOptions = request.publicKeyCredentialRequestOptions ?? request;
-
-      // Step 3: Browser shows passkey picker — no email needed
-      const assertion = await startAuthentication({ optionsJSON: assertionOptions });
-
-      // Step 4: Send assertion + full request to backend
-      await new Promise<void>((resolve, reject) => {
-        this.authService.finishLogin(JSON.stringify(assertion), JSON.stringify(request)).subscribe({
-          next: () => resolve(),
-          error: reject
-        });
-      });
-
-      // Restore pending deep link or navigate to home
       const pendingLink = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
       sessionStorage.removeItem(PENDING_DEEP_LINK_KEY);
       this.router.navigateByUrl(pendingLink || '/tabs/home');
@@ -96,5 +80,29 @@ export class LoginPage {
     } finally {
       this.loading = false;
     }
+  }
+
+  private async loginLocal(auth: LocalAuthService): Promise<void> {
+    if (!auth.hasPasskey()) {
+      this.router.navigate(['/auth/register']);
+      return;
+    }
+    await auth.authenticate();
+  }
+
+  private async loginRemote(auth: RemoteAuthService): Promise<void> {
+    const request = await new Promise<any>((resolve, reject) => {
+      auth.startLogin().subscribe({ next: resolve, error: reject });
+    });
+
+    const assertionOptions = request.publicKeyCredentialRequestOptions ?? request;
+    const assertion = await startAuthentication({ optionsJSON: assertionOptions });
+
+    await new Promise<void>((resolve, reject) => {
+      auth.finishLogin(JSON.stringify(assertion), JSON.stringify(request)).subscribe({
+        next: () => resolve(),
+        error: reject,
+      });
+    });
   }
 }

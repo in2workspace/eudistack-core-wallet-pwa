@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   EventEmitter,
   Input,
@@ -43,6 +44,7 @@ export class VcViewComponent implements OnInit {
   private readonly walletService = inject(WalletService);
   private readonly toastService = inject(ToastServiceHandler);
   private readonly displayService = inject(CredentialDisplayService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   public credentialInput$ = input.required<VerifiableCredential>();
   public cardFields = signal<EvaluatedField[]>([]);
@@ -248,6 +250,7 @@ public async getStructuredFields(): Promise<void> {
 
   this.detailViewSections = [credentialInfo, ...detailSections]
     .filter(section => section.fields.length > 0);
+  this.cdr.markForCheck();
 }
 
 private translatePowerSections(

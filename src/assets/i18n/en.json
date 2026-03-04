@@ -9,7 +9,9 @@
         "privacy-policy":"Privacy Policy",
         "faqs":"FAQs",
         "settings":"Settings",
-        "logout":"Logout"
+        "logout":"Logout",
+        "install":"Install App",
+        "wallet":"Wallet"
     },
     "scanner":{
         "initializing": "Initializing scanner... Please wait.",
@@ -47,7 +49,8 @@
     "home":{
         "ok-msg": "Credential added",
         "rejected-msg": "Credential offer rejected",
-        "scan": "Scan QR"
+        "scan": "Scan QR",
+        "install-hint": "Install the app for a better experience"
     },
     "language-selector":{
         "title":"Select language"
@@ -80,14 +83,19 @@
             "code": "Verification code",
             "code-placeholder": "Enter the 6-digit code",
             "verify": "Verify",
-            "change-email": "Change email"
+            "change-email": "Change email",
+            "passkey-subtitle": "Create a passkey to set up your wallet securely",
+            "create-wallet": "Create Wallet"
         },
         "passkey": {
             "title": "Set up Passkey",
             "description": "Create a passkey to sign in securely without a password. Your device will use biometrics or a PIN to verify your identity.",
             "register-button": "Create Passkey",
             "email-verified": "Email verified",
-            "success": "Passkey registered successfully!"
+            "success": "Passkey registered successfully!",
+            "status-connecting": "Preparing...",
+            "status-verifying": "Waiting for your device...",
+            "retry": "Try again"
         }
     },
     "login":{
@@ -285,6 +293,20 @@
             "not-supported": "Your browser does not support camera access. Consider using a different browser.",
             "default": "Unexpected error. Check your browser permissions and make sure no other application is using the camera. Try refreshing the page."
         }
+    },
+    "activity": {
+        "title": "Activity",
+        "empty": "No activity yet",
+        "empty-hint": "Your credential activity will appear here",
+        "clear": "Clear",
+        "clear-confirm": "Clear all activity?",
+        "type-issued": "Credential received",
+        "type-presented": "Credential presented",
+        "type-deleted": "Credential deleted",
+        "time-now": "Just now",
+        "time-minutes": "{{count}}m ago",
+        "time-hours": "{{count}}h ago",
+        "time-days": "{{count}}d ago"
     },
     "devices": {
         "settings-link": "My Devices",

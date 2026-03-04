@@ -12,6 +12,7 @@ import { wrapOid4vpHttpError } from 'src/app/shared/helpers/http-error-message';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { LoaderHandledFlowService } from 'src/app/shared/services/loader-handled-flow.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
+import { ActivityService } from 'src/app/core/services/activity.service';
 
 @Injectable({
   providedIn: 'root'
@@ -24,6 +25,7 @@ export class Oid4vpEngineService {
   private readonly loaderHandledFlowService = inject(LoaderHandledFlowService);
   private readonly walletService = inject(WalletService);
   private readonly credentialCacheService = inject(CredentialCacheService);
+  private readonly activityService = inject(ActivityService);
 
   public async buildVerifiablePresentationWithSelectedVCs(selectorResponse: VCReply): Promise<void> {
     console.info('Starting OID4VP flow.');
@@ -66,6 +68,11 @@ export class Oid4vpEngineService {
           console.debug('[OID4VP] Step 4 OK: credentialSubject.id=', credentialSubjectId);
           await this.presentJwtVc(selectedVC, credentialSubjectId, cnf.jwk, selectorResponse);
         }
+
+        const selectedVc = selectorResponse.selectedVcList[0];
+        const credName = selectedVc?.name ?? selectedVc?.type?.[0] ?? 'Unknown';
+        const counterparty = selectorResponse.clientId ?? selectorResponse.redirectUri ?? '';
+        this.activityService.log('presented', credName, counterparty);
 
         console.info('OID4VP flow completed successfully.');
       }});

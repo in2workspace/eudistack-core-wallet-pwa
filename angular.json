@@ -34,7 +34,8 @@
                 "glob": "**/*.svg",
                 "input": "node_modules/ionicons/dist/ionicons/svg",
                 "output": "./svg"
-              }
+              },
+              "src/manifest.webmanifest"
             ],
             "styles": ["src/theme/variables.scss", "src/global.scss"],
             "scripts": []
@@ -59,8 +60,10 @@
                   "with": "src/environments/environment.production.ts"
                 }
               ],
-              "outputHashing": "all"
-            },    
+              "outputHashing": "all",
+              "serviceWorker": true,
+              "ngswConfigPath": "src/ngsw-config.json"
+            },
             "development": {
               "buildOptimizer": false,
               "optimization": false,

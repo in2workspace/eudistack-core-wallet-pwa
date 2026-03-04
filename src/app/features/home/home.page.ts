@@ -1,10 +1,11 @@
-import { Component, Input } from '@angular/core';
+import { Component, inject, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { Router, RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
+import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 
 @Component({
     selector: 'app-home',
@@ -23,9 +24,21 @@ export class HomePage {
   @Input() public availableDevices: MediaDeviceInfo[] = [];
   public userName = '';
   public desactivar = true;
+  public bannerDismissed = false;
+
+  private readonly pwaInstallService = inject(PwaInstallService);
+  readonly canInstall$ = this.pwaInstallService.installable$;
 
   public constructor(private readonly router: Router,
     private readonly toastService: ToastServiceHandler) { }
+
+  public async installApp(): Promise<void> {
+    await this.pwaInstallService.promptInstall();
+  }
+
+  public dismissInstallBanner(): void {
+    this.bannerDismissed = true;
+  }
 
   public async startScan(): Promise<void> {
     const scanRoute = '/tabs/credentials/';

@@ -2,13 +2,15 @@ import { CONTENT_TYPE } from './../constants/content-type.constants';
 
 import { HttpClient, HttpHeaders, HttpParams, HttpResponse} from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { from, Observable, of } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { VerifiableCredential } from '../models/verifiable-credential';
 import { SERVER_PATH } from '../constants/api.constants';
 import { FinalizeIssuancePayload } from '../models/FinalizeIssuancePayload';
 import { CredentialResponse } from '../models/dto/CredentialResponse';
 import { CONTENT_TYPE_APPLICATION_JSON, CONTENT_TYPE_URL_ENCODED_FORM, RESPONSE_TYPE, TEXT } from '../constants/content-type.constants';
+import { LocalCredentialStorageService } from './local-credential-storage.service';
+import { CredentialParserService } from '../utils/credential-parser.util';
 
 const contentTypeApplicationJsonHeader = new HttpHeaders({
   [CONTENT_TYPE]: CONTENT_TYPE_APPLICATION_JSON,
@@ -18,13 +20,21 @@ export const options = {
   headers: contentTypeApplicationJsonHeader,
   redirect: 'follow',
 };
+
+const isBrowserMode = () => (environment as any).key_storage_mode !== 'server';
+
 @Injectable({
   providedIn: 'root',
 })
 export class WalletService {
   private http = inject(HttpClient);
+  private credentialStorage = inject(LocalCredentialStorageService);
+  private credentialParser = inject(CredentialParserService);
 
   public getVCinCBOR(credential: VerifiableCredential): Observable<string> {
+    if (isBrowserMode()) {
+      return of(credential.credentialEncoded ?? '');
+    }
     const options = {
       headers: contentTypeApplicationJsonHeader,
       redirect: 'follow',
@@ -37,24 +47,20 @@ export class WalletService {
     );
   }
 
-  // Request all Verifiable Credentials of a user from the Wallet Data
   public getAllVCs(): Observable<VerifiableCredential[]> {
+    if (isBrowserMode()) {
+      return from(this.credentialStorage.getAllCredentials());
+    }
     return this.http.get<VerifiableCredential[]>(
       environment.server_url + SERVER_PATH.CREDENTIALS,
       options
     );
   }
 
-  // Request one Verifiable Credential of a user from the Wallet Data
-  public getOne(data: string) {
-    return this.http.get<VerifiableCredential>(
-      environment.server_url + '/api/vc/1/' + data + '/format?format=vc_json',
-      options
-    );
-  }
-
-  // Delete the selected Verifiable Credential from the Wallet Data
-  public deleteVC(credentialId: string) {
+  public deleteVC(credentialId: string): Observable<any> {
+    if (isBrowserMode()) {
+      return from(this.credentialStorage.deleteCredential(credentialId));
+    }
     return this.http.delete<string>(
       environment.server_url +
       SERVER_PATH.CREDENTIALS + '/' +
@@ -62,8 +68,12 @@ export class WalletService {
       options
     );
   }
-  
+
   public requestSignature(credentialId: string): Observable<HttpResponse<string>> {
+    if (isBrowserMode()) {
+      // No deferred credential signing in browser mode
+      return of(new HttpResponse<string>({ status: 204 }));
+    }
     const options = {
       observe: 'response' as const,
     };
@@ -75,6 +85,9 @@ export class WalletService {
   }
 
   public finalizeCredentialIssuance(credResponse: FinalizeIssuancePayload): Observable<void>{
+    if (isBrowserMode()) {
+      return from(this.finalizeLocally(credResponse));
+    }
     return this.http.post<void>(
               environment.server_url + SERVER_PATH.CREDENTIAL_RESPONSE,
               { ...credResponse },
@@ -82,6 +95,7 @@ export class WalletService {
             );
   }
 
+  // --- Generic HTTP helpers (used by protocol services for external calls) ---
 
   public getTextFromUrl(url: string): Observable<string>{
     return this.http.get(url, { headers: contentTypeApplicationJsonHeader, [RESPONSE_TYPE]: TEXT });
@@ -120,6 +134,16 @@ export class WalletService {
       headers,
       responseType: TEXT as 'text',
     });
+  }
+
+  // --- Private: browser-mode credential finalization ---
+
+  private async finalizeLocally(payload: FinalizeIssuancePayload): Promise<void> {
+    const vc = this.credentialParser.parseCredentialResponse(
+      payload.credentialResponseWithStatus.credentialResponse,
+      payload.format
+    );
+    await this.credentialStorage.saveCredential(vc);
   }
 
 }

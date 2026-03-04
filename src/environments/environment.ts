@@ -7,4 +7,5 @@ export const environment = {
   websocket_url: window["env"]?.["websocket_url"] || 'ws://localhost:8083',
   logs_enabled: window["env"]?.["logs_enabled"] === "true" || false,
   key_storage_mode: window["env"]?.["key_storage_mode"] || 'browser',
+  appVersion: '3.0.0',
 };

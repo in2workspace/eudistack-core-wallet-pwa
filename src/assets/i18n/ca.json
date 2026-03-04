@@ -9,7 +9,9 @@
         "privacy-policy":"Política de Privacitat",
         "faqs":"FAQs",
         "settings":"Configuració",
-        "logout":"Tancar sessió"
+        "logout":"Tancar sessió",
+        "install":"Instal·lar app",
+        "wallet":"Cartera"
     },
     "camera-selector":{
         "title": "Càmera seleccionada",
@@ -42,7 +44,8 @@
     "home":{
         "ok-msg": "S'ha afegit la credencial",
         "rejected-msg": "S'ha rebutjat l'oferta de credencial",
-        "scan": "Escanejar QR"
+        "scan": "Escanejar QR",
+        "install-hint": "Instal\u00b7la l'app per a una millor experi\u00e8ncia"
     },
     "language-selector":{
         "title":"Selector d'idioma"
@@ -77,14 +80,19 @@
             "code": "Codi de verificació",
             "code-placeholder": "Introdueix el codi de 6 dígits",
             "verify": "Verificar",
-            "change-email": "Canviar email"
+            "change-email": "Canviar email",
+            "passkey-subtitle": "Crea una passkey per configurar el teu wallet de forma segura",
+            "create-wallet": "Crear Wallet"
         },
         "passkey": {
             "title": "Configurar Passkey",
             "description": "Crea una passkey per iniciar sessió de forma segura sense contrasenya. El teu dispositiu farà servir biometria o un PIN per verificar la teva identitat.",
             "register-button": "Crear Passkey",
             "email-verified": "Email verificat",
-            "success": "Passkey registrada correctament!"
+            "success": "Passkey registrada correctament!",
+            "status-connecting": "Preparant...",
+            "status-verifying": "Esperant el teu dispositiu...",
+            "retry": "Tornar-ho a provar"
         }
     },
     "login":{
@@ -288,6 +296,20 @@
             "not-supported": "El teu navegador no admet l'accés a la càmera. Considera utilitzar un navegador diferent.",
             "default": "Error inesperat. Comprova els permisos del teu navegador i assegura't que cap altra aplicació estigui utilitzant la càmera. Intenta refrescar la pàgina."
         }
+    },
+    "activity": {
+        "title": "Activitat",
+        "empty": "Sense activitat",
+        "empty-hint": "L'activitat de les teves credencials apareixerà aquí",
+        "clear": "Esborrar",
+        "clear-confirm": "Esborrar tota l'activitat?",
+        "type-issued": "Credencial rebuda",
+        "type-presented": "Credencial presentada",
+        "type-deleted": "Credencial eliminada",
+        "time-now": "Ara",
+        "time-minutes": "Fa {{count}}min",
+        "time-hours": "Fa {{count}}h",
+        "time-days": "Fa {{count}}d"
     },
     "devices": {
         "settings-link": "Els Meus Dispositius",

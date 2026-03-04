@@ -1,20 +1,20 @@
 {
   "branding": {
-    "name": "Wallet",
+    "name": "Altia",
     "primaryColor": "#001E8C",
     "primaryContrastColor": "#ffffff",
     "secondaryColor": "#132153",
     "secondaryContrastColor": "#ffffff",
-    "logoUrl": null,
-    "logoDarkUrl": null,
-    "faviconUrl": null
+    "logoUrl": "assets/logos/altia-logo.svg",
+    "logoDarkUrl": "assets/logos/altia-logo-dark.svg",
+    "faviconUrl": "assets/icons/altia-favicon.ico"
   },
   "content": {
     "links": [],
     "footer": null
   },
   "i18n": {
-    "defaultLang": "en",
-    "available": ["en", "es", "ca"]
+    "defaultLang": "es",
+    "available": ["en","es","ca"]
   }
 }

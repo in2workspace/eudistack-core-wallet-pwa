@@ -134,6 +134,44 @@ export class ThemeService {
     if (theme.branding.faviconUrl) {
       this.setFavicon(theme.branding.faviconUrl);
     }
+
+    this.updateManifest(theme);
+  }
+
+  private updateManifest(theme: Theme): void {
+    const origin = window.location.origin;
+    const manifest = {
+      name: `${theme.branding.name || 'EUDI'} Wallet`,
+      short_name: theme.branding.name || 'Wallet',
+      theme_color: theme.branding.primaryColor,
+      background_color: SEMANTIC_DEFAULTS['--surface-page'],
+      display: 'standalone',
+      scope: `${origin}/`,
+      start_url: `${origin}/`,
+      orientation: 'portrait',
+      icons: [
+        { src: `${origin}/assets/icons/pwa-192x192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: `${origin}/assets/icons/pwa-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: `${origin}/assets/icons/pwa-maskable-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      ],
+      screenshots: [
+        { src: `${origin}/assets/screenshots/screenshot-wide.png`, sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: `${theme.branding.name || 'EUDI'} Wallet` },
+        { src: `${origin}/assets/screenshots/screenshot-mobile.png`, sizes: '540x720', type: 'image/png', label: `${theme.branding.name || 'EUDI'} Wallet` },
+      ],
+    };
+
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    if (link) {
+      link.href = url;
+    }
+
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (meta) {
+      meta.content = theme.branding.primaryColor;
+    }
   }
 
   /**
