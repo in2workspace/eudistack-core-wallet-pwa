@@ -100,7 +100,8 @@
         "unsigned": "Unsigned",
         "unsigned-header": "Unsigned Credential",
         "unsigned-message": "Your credential has not yet been signed and cannot be used. Wait for the issuer to complete the signing process.",
-        "revoked": "Revoked"
+        "revoked": "Revoked",
+        "delete-success": "Credential deleted successfully"
     },
     "vc-fields":{
         "delete": "Delete",

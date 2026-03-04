@@ -134,6 +134,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     this.walletService.deleteVC(cred.id)
     .pipe(
       switchMap(() => this.loadCredentials()),
+      tap(() => this.toastServiceHandler.showToast('vc-view.delete-success')),
       finalize(() => this.loader.removeLoadingProcess())
     )
     .subscribe(() => {
