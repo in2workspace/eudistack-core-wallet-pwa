@@ -5,6 +5,7 @@ import { routes } from './app.routes';
 import { HttpClientModule } from '@angular/common/http';
 import { logsEnabledGuard } from './core/guards/logs-enabled.guard';
 import { authGuard } from './core/guards/auth.guard';
+import { PasskeyStoreService } from './core/services/passkey-store.service';
 import { of } from 'rxjs';
 
 describe('App Routing', () => {
@@ -12,23 +13,19 @@ describe('App Routing', () => {
 
   const mockLogsEnabledGuard = jest.fn().mockReturnValue(true);
   const mockAuthGuard = jest.fn().mockReturnValue(of(true));
+  const mockPasskeyStore = { hasPasskey: jest.fn().mockReturnValue(true), getCredentialId: jest.fn() };
 
   beforeEach(async () => {
-    localStorage.setItem('wallet_has_passkey', 'true');
-
     await TestBed.configureTestingModule({
       imports: [RouterTestingModule.withRoutes(routes), HttpClientModule],
       providers: [
         { provide: authGuard, useValue: mockAuthGuard },
         { provide: logsEnabledGuard, useValue: mockLogsEnabledGuard },
+        { provide: PasskeyStoreService, useValue: mockPasskeyStore },
       ],
     }).compileComponents();
 
     router = TestBed.inject(Router);
-  });
-
-  afterEach(() => {
-    localStorage.removeItem('wallet_has_passkey');
   });
 
   it('should redirect an empty path to /auth/login', async () => {

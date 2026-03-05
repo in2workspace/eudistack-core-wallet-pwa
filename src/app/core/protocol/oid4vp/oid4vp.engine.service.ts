@@ -108,7 +108,7 @@ export class Oid4vpEngineService {
     console.debug('[OID4VP] Step 5 OK: keyId resolved');
 
     console.debug('[OID4VP] Step 6: Signing VP JWT...');
-    const signedVpJwt = await this.signJwt({ alg: 'ES256', typ: 'JWT', kid: thumbprint }, vpJwtPayload, keyId);
+    const signedVpJwt = await this.signJwt({ alg: 'ES256', typ: 'JWT', kid: thumbprint, jwk: publicKey }, vpJwtPayload, keyId);
     console.debug('[OID4VP] Step 6 OK: VP signed');
 
     const vpToken = this.buildJwtVcVpToken(signedVpJwt, selectorResponse);
@@ -206,7 +206,7 @@ export class Oid4vpEngineService {
     return keyId;
   }
 
-  private async signJwt(header: Record<string, string>, payload: Record<string, unknown>, keyId: string): Promise<string> {
+  private async signJwt(header: Record<string, unknown>, payload: Record<string, unknown>, keyId: string): Promise<string> {
     const encodedHeader = this.jwtService.base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
     const encodedPayload = this.jwtService.base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
 

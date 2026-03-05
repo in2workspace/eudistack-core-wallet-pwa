@@ -161,8 +161,9 @@ export class IssuerMetadataCacheService {
         const matchesDefinitionType = config.credential_definition?.type?.some(
           t => t !== 'VerifiableCredential' && specificTypes.includes(t)
         );
+        const matchesVct = config.vct != null && specificTypes.includes(config.vct);
 
-        if ((matchesConfigId || matchesDefinitionType) && config.credential_metadata) {
+        if ((matchesConfigId || matchesDefinitionType || matchesVct) && config.credential_metadata) {
           return config.credential_metadata;
         }
       }

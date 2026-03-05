@@ -5,6 +5,7 @@ import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
 import { Router } from '@angular/router';
 import { LocalAuthService } from './local-auth.service';
+import { PasskeyStoreService } from './passkey-store.service';
 
 export interface TokenPairResponse {
   accessToken: string;
@@ -62,6 +63,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly passkeyStore = inject(PasskeyStoreService);
 
   constructor() {
     super();
@@ -160,7 +162,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   forceLogout(): void {
     this.clearState();
-    const hasPasskey = localStorage.getItem('wallet_has_passkey') === 'true';
+    const hasPasskey = this.passkeyStore.hasPasskey();
     this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
   }
 
@@ -238,7 +240,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       if (event.data === RemoteAuthService.BROADCAST_FORCE_LOGOUT) {
         console.warn('Detected logout from another tab');
         this.clearState();
-        const hasPasskey = localStorage.getItem('wallet_has_passkey') === 'true';
+        const hasPasskey = this.passkeyStore.hasPasskey();
         this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
       }
     };

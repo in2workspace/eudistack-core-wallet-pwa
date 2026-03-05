@@ -54,6 +54,16 @@ export class LocalAuthService {
   }
 
   /**
+   * Attempt to recover a discoverable passkey whose credential ID
+   * was lost from localStorage (e.g. after clearing site data).
+   * Returns true if a passkey was recovered.
+   */
+  async tryRecoverPasskey(): Promise<boolean> {
+    const recovered = await this.prfService.tryRecoverPasskey();
+    return recovered !== null;
+  }
+
+  /**
    * First-time setup: create a discoverable passkey on this device.
    * After this, the user is authenticated.
    */

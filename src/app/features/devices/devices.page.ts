@@ -5,6 +5,7 @@ import { IonicModule, AlertController } from '@ionic/angular';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { PasskeyInfo, PasskeyService } from 'src/app/core/services/passkey.service';
 import { AuthService } from 'src/app/core/services/auth.service';
+import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
 import { SkeletonComponent } from 'src/app/shared/components/skeleton/skeleton.component';
 
 @Component({
@@ -29,6 +30,7 @@ export class DevicesPage implements OnInit {
   private readonly alertController = inject(AlertController);
   private readonly translate = inject(TranslateService);
   private readonly authService = inject(AuthService);
+  private readonly passkeyStore = inject(PasskeyStoreService);
 
   ngOnInit(): void {
     this.loadPasskeys();
@@ -97,7 +99,7 @@ export class DevicesPage implements OnInit {
               next: () => {
                 this.passkeys = this.passkeys.filter(p => p.id !== passkey.id);
                 if (this.passkeys.length === 0) {
-                  localStorage.removeItem('wallet_has_passkey');
+                  this.passkeyStore.setHasPasskey(false);
                   this.authService.forceLogout();
                 }
               },

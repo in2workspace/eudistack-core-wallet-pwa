@@ -47,16 +47,29 @@ export class CredentialParserService {
     return this.buildVerifiableCredential(vc, jwt, format);
   }
 
+  private static readonly SD_JWT_STANDARD_CLAIMS = new Set([
+    'iss', 'iat', 'exp', 'nbf', 'sub', 'jti', 'cnf', 'vct',
+    'status', 'type', '@context', 'id', 'credentialSubject',
+    'issuer', 'validFrom', 'validUntil', 'issuanceDate', 'expirationDate',
+    'credentialStatus',
+  ]);
+
   private parseSdJwtCredential(compact: string, format: string): VerifiableCredential {
     const { payload } = this.sdJwtParser.reconstructClaims(compact);
 
-    // SD-JWT wraps the credential differently — claims are at the top level
+    // SD-JWT places disclosed claims at the top level; build credentialSubject
+    // from all non-standard claims when credentialSubject is not explicitly present.
+    const credentialSubject = payload['credentialSubject'] ??
+      Object.fromEntries(
+        Object.entries(payload).filter(([k]) => !CredentialParserService.SD_JWT_STANDARD_CLAIMS.has(k))
+      );
+
     const vc: Record<string, any> = {
       '@context': payload['@context'] ?? [],
       id: payload['jti'] ?? payload['id'] ?? `urn:uuid:${globalThis.crypto.randomUUID()}`,
-      type: payload['type'] ?? payload['vct'] ? [payload['vct']] : ['VerifiableCredential'],
+      type: payload['type'] ?? (payload['vct'] ? ['VerifiableCredential', payload['vct']] : ['VerifiableCredential']),
       issuer: this.extractIssuer(payload),
-      credentialSubject: payload['credentialSubject'] ?? { mandate: payload['mandate'] },
+      credentialSubject,
       validFrom: this.extractValidFrom(payload),
       validUntil: this.extractValidUntil(payload),
       credentialStatus: payload['credentialStatus'] ?? this.defaultCredentialStatus(),

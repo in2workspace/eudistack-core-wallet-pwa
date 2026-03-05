@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { PENDING_DEEP_LINK_KEY } from './core/constants/deep-link.constants';
 import { authGuard } from './core/guards/auth.guard';
+import { PasskeyStoreService } from './core/services/passkey-store.service';
 
 /**
  * Redirects to /auth/login if a passkey was previously registered on this
@@ -11,11 +12,12 @@ import { authGuard } from './core/guards/auth.guard';
  */
 const authLandingGuard = () => {
   const router = inject(Router);
+  const passkeyStore = inject(PasskeyStoreService);
   const currentUrl = window.location.pathname + window.location.search;
   if (currentUrl && currentUrl !== '/') {
     sessionStorage.setItem(PENDING_DEEP_LINK_KEY, currentUrl);
   }
-  const hasPasskey = localStorage.getItem('wallet_has_passkey') === 'true';
+  const hasPasskey = passkeyStore.hasPasskey();
   return router.createUrlTree([hasPasskey ? '/auth/login' : '/auth/register']);
 };
 

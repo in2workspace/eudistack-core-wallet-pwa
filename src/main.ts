@@ -22,9 +22,14 @@ import { httpTranslateLoader } from './app/shared/helpers/http-translate-loader'
 import { KEY_STORAGE_PROVIDERS } from './app/core/spi-impl/key-storage.provider.factory';
 import { AUTH_SERVICE_PROVIDER } from './app/core/services/auth.service';
 import { ThemeService } from './app/core/services/theme.service';
+import { PasskeyStoreService } from './app/core/services/passkey-store.service';
 
 function initializeTheme(themeService: ThemeService): () => Promise<void> {
   return () => themeService.load();
+}
+
+function initializePasskeyStore(store: PasskeyStoreService): () => Promise<void> {
+  return () => store.init();
 }
 
 disableTouchScrollOnPaths(
@@ -47,6 +52,12 @@ bootstrapApplication(AppComponent, {
       provide: APP_INITIALIZER,
       useFactory: initializeTheme,
       deps: [ThemeService],
+      multi: true
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializePasskeyStore,
+      deps: [PasskeyStoreService],
       multi: true
     },
     importProvidersFrom(

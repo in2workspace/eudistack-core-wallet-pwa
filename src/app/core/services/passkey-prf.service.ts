@@ -1,9 +1,9 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { base64UrlEncode, base64UrlDecode } from '../utils/base64url';
 import { AppError } from '../models/error/AppError';
 import { p256 } from '@noble/curves/nist.js';
+import { PasskeyStoreService } from './passkey-store.service';
 
-const CREDENTIAL_ID_KEY = 'wallet_passkey_credential_id';
 const HKDF_INFO = 'eudistack:p256:v1';
 
 export type PrfSupportStatus = 'available' | 'unavailable';
@@ -19,6 +19,7 @@ export type PrfSupportStatus = 'available' | 'unavailable';
 @Injectable({ providedIn: 'root' })
 export class PasskeyPrfService {
   private status: PrfSupportStatus | null = null;
+  private readonly store = inject(PasskeyStoreService);
 
   /** Check whether the current browser + authenticator support PRF. */
   async init(): Promise<PrfSupportStatus> {
@@ -29,12 +30,48 @@ export class PasskeyPrfService {
 
   /** Whether a passkey credential ID is stored locally. */
   hasPasskey(): boolean {
-    return !!localStorage.getItem(CREDENTIAL_ID_KEY);
+    return !!this.store.getCredentialId();
   }
 
   /** Returns the stored passkey credential ID, or null. */
   getCredentialId(): string | null {
-    return localStorage.getItem(CREDENTIAL_ID_KEY);
+    return this.store.getCredentialId();
+  }
+
+  /**
+   * Attempt to recover a previously registered discoverable passkey
+   * when the credential ID has been lost from localStorage.
+   *
+   * Uses navigator.credentials.get() without allowCredentials, which
+   * prompts the user to select a discoverable credential for this origin.
+   * If found, the credential ID is re-persisted to localStorage.
+   *
+   * Returns the recovered credential ID, or null if no passkey was found.
+   */
+  async tryRecoverPasskey(): Promise<string | null> {
+    if (this.hasPasskey()) {
+      return this.getCredentialId();
+    }
+
+    try {
+      const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32));
+      const assertion = (await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          userVerification: 'required',
+          // No allowCredentials → discoverable credential prompt
+        },
+      })) as PublicKeyCredential | null;
+
+      if (!assertion) return null;
+
+      const credentialId = base64UrlEncode(new Uint8Array(assertion.rawId));
+      await this.store.setCredentialId(credentialId);
+
+      return credentialId;
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -80,8 +117,7 @@ export class PasskeyPrfService {
     }
 
     const credentialId = base64UrlEncode(new Uint8Array(credential.rawId));
-    localStorage.setItem(CREDENTIAL_ID_KEY, credentialId);
-    localStorage.setItem('wallet_has_passkey', 'true');
+    await this.store.setCredentialId(credentialId);
 
     return credentialId;
   }
@@ -97,7 +133,7 @@ export class PasskeyPrfService {
     privateKey: CryptoKey;
     publicKeyJwk: JsonWebKey;
   }> {
-    const credentialIdB64 = localStorage.getItem(CREDENTIAL_ID_KEY);
+    const credentialIdB64 = this.store.getCredentialId();
     if (!credentialIdB64) {
       throw new AppError('No passkey registered on this device', {
         translationKey: 'errors.no-passkey',
@@ -110,9 +146,8 @@ export class PasskeyPrfService {
   }
 
   /** Remove the stored passkey credential ID (logout / reset). */
-  clearPasskey(): void {
-    localStorage.removeItem(CREDENTIAL_ID_KEY);
-    localStorage.removeItem('wallet_has_passkey');
+  async clearPasskey(): Promise<void> {
+    await this.store.clear();
   }
 
   // ---------------------------------------------------------------------------

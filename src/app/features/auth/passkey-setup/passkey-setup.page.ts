@@ -7,6 +7,7 @@ import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.servi
 import { startRegistration } from '@simplewebauthn/browser';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 import { ThemeService } from 'src/app/core/services/theme.service';
+import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
 
 @Component({
     selector: 'app-passkey-setup',
@@ -84,6 +85,7 @@ export class PasskeySetupPage {
 
   private readonly authService = inject(AuthService) as RemoteAuthService;
   private readonly router = inject(Router);
+  private readonly passkeyStore = inject(PasskeyStoreService);
 
   private detectDevice(): string {
     const ua = navigator.userAgent;
@@ -138,7 +140,7 @@ export class PasskeySetupPage {
         });
       });
 
-      localStorage.setItem('wallet_has_passkey', 'true');
+      await this.passkeyStore.setHasPasskey(true);
       this.state = 'success';
 
       await this.delay(500);
