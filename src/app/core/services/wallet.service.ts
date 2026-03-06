@@ -21,7 +21,7 @@ export const options = {
   redirect: 'follow',
 };
 
-const isBrowserMode = () => (environment as any).key_storage_mode !== 'server';
+const isBrowserMode = () => (environment as any).wallet_mode !== 'server';
 
 @Injectable({
   providedIn: 'root',
@@ -97,7 +97,7 @@ export class WalletService {
 
   // --- Generic HTTP helpers (used by protocol services for external calls) ---
 
-  public getTextFromUrl(url: string): Observable<string>{
+  public fetchTextFromUrl(url: string): Observable<string>{
     return this.http.get(url, { headers: contentTypeApplicationJsonHeader, [RESPONSE_TYPE]: TEXT });
   }
 

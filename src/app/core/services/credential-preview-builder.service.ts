@@ -31,7 +31,7 @@ export class CredentialPreviewBuilderService {
           validUntil: exp ? new Date(exp * 1000).toISOString() : '',
         };
       } else {
-        const payload = this.jwtService.parseJwtPayload(credential) as Record<string, any>;
+        const payload = this.jwtService.extractJwtPayload(credential) as Record<string, any>;
         vc = payload['vc'] ?? payload;
       }
 
@@ -41,7 +41,7 @@ export class CredentialPreviewBuilderService {
       if (credentialMetadata) {
         base.displayName = credentialMetadata.display?.[0]?.name ?? '';
         base.format = this.getHumanFormat(format);
-        base.fields = this.buildDynamicFields(vc, credentialMetadata);
+        base.fields = this.createDynamicFields(vc, credentialMetadata);
       }
 
       return base;
@@ -50,7 +50,7 @@ export class CredentialPreviewBuilderService {
     }
   }
 
-  private buildDynamicFields(vc: Record<string, any>, meta: CredentialMetadata): PreviewField[] {
+  private createDynamicFields(vc: Record<string, any>, meta: CredentialMetadata): PreviewField[] {
     const cs = vc?.['credentialSubject'];
     if (!cs || !meta.claims) return [];
 

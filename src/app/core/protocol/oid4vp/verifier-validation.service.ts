@@ -11,22 +11,22 @@ export class VerifierValidationService {
   private readonly jwtService = inject(JwtService);
 
   async verifyAuthorizationRequest(jwt: string): Promise<string> {
-    this.validateHeaderTyp(jwt);
-    this.validateClientIdMatchesIss(jwt);
+    this.verifyHeaderTyp(jwt);
+    this.verifyClientIdMatchesIss(jwt);
     await this.verifySignature(jwt);
     return jwt;
   }
 
-  private validateHeaderTyp(jwt: string): void {
-    const header = this.jwtService.parseJwtHeader(jwt) as Record<string, unknown>;
+  private verifyHeaderTyp(jwt: string): void {
+    const header = this.jwtService.extractJwtHeader(jwt) as Record<string, unknown>;
     const typ = header['typ'];
     if (typ !== 'oauth-authz-req+jwt') {
       throw new Error(`Invalid or missing 'typ' claim in Authorization Request. Expected: oauth-authz-req+jwt, got: ${typ}`);
     }
   }
 
-  private validateClientIdMatchesIss(jwt: string): void {
-    const payload = this.jwtService.parseJwtPayload(jwt) as Record<string, unknown>;
+  private verifyClientIdMatchesIss(jwt: string): void {
+    const payload = this.jwtService.extractJwtPayload(jwt) as Record<string, unknown>;
     const iss = payload['iss'] as string | undefined;
     const clientId = payload['client_id'] as string | undefined;
 
@@ -42,8 +42,8 @@ export class VerifierValidationService {
   }
 
   private async verifySignature(jwt: string): Promise<void> {
-    const header = this.jwtService.parseJwtHeader(jwt) as Record<string, unknown>;
-    const payload = this.jwtService.parseJwtPayload(jwt) as Record<string, unknown>;
+    const header = this.jwtService.extractJwtHeader(jwt) as Record<string, unknown>;
+    const payload = this.jwtService.extractJwtPayload(jwt) as Record<string, unknown>;
     const x5c = header['x5c'] as string[] | undefined;
     const clientIdScheme = payload['client_id_scheme'] as string | undefined;
 
@@ -70,11 +70,11 @@ export class VerifierValidationService {
     const clientId = payload['client_id'] as string | undefined;
 
     if (clientIdScheme === 'x509_hash' && clientId) {
-      await this.validateX509Hash(leafCertBase64, clientId);
+      await this.verifyX509Hash(leafCertBase64, clientId);
     }
   }
 
-  private async validateX509Hash(leafCertBase64: string, clientId: string): Promise<void> {
+  private async verifyX509Hash(leafCertBase64: string, clientId: string): Promise<void> {
     const prefix = 'x509_hash:';
     if (!clientId.startsWith(prefix)) {
       throw new Error(`client_id does not have x509_hash prefix: ${clientId}`);

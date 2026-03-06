@@ -23,6 +23,7 @@ import { detectIssuanceProfile } from './issuance-profile.util';
 import { NonceService } from './nonce.service';
 import { DpopService } from './dpop.service';
 import { TokenResponse } from '../../models/dto/TokenResponse';
+import { environment } from 'src/environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class Oid4vciEngineService {
@@ -49,7 +50,7 @@ export class Oid4vciEngineService {
     return this.initPromise;
   }
 
-  public async executeOid4vciFlow(credentialOfferUri: string): Promise<FinalizeIssuancePayload> {
+  public async performOid4vciFlow(credentialOfferUri: string): Promise<FinalizeIssuancePayload> {
     await this.init();
 
     return this.loaderHandledFlowService.run({
@@ -64,34 +65,39 @@ export class Oid4vciEngineService {
 
       const authorisationServerMetadata = await this.authorisationServerMetadataService.getAuthorizationServerMetadataFromCredentialIssuerMetadata(credentialIssuerMetadata);
 
-      // TOKEN ACQUISITION — branch by grant type
+      // TOKEN ACQUISITION — branch by grant type, respecting preferred_grant config
       const profile = detectIssuanceProfile(authorisationServerMetadata);
       let tokenResponse: TokenResponse;
 
       this.loader.removeLoadingProcess();
 
-      if (credentialOffer.grant?.authorizationCodeGrant) {
-        tokenResponse = await this.authorizationCodeTokenService.getToken(
-          credentialOffer, authorisationServerMetadata, profile
-        );
-      } else {
+      const usePreAuthorized = this.shouldUsePreAuthorizedGrant(credentialOffer);
+
+      if (usePreAuthorized) {
         tokenResponse = await this.preAuthorizedTokenService.getPreAuthorizedToken(
           credentialOffer, authorisationServerMetadata
+        );
+      } else {
+        tokenResponse = await this.authorizationCodeTokenService.getToken(
+          credentialOffer, authorisationServerMetadata, profile
         );
       }
 
       this.loader.addLoadingProcess();
-      const cfg = this.resolveCredentialConfigurationContext(credentialOffer, credentialIssuerMetadata);
+      const cfg = this.findCredentialConfigurationContext(credentialOffer, credentialIssuerMetadata);
 
-      const nonce = authorisationServerMetadata.nonceEndpoint
-        ? await this.nonceService.getNonce(authorisationServerMetadata.nonceEndpoint)
+      const nonceEndpoint = credentialIssuerMetadata.nonceEndpoint
+        ?? authorisationServerMetadata.nonceEndpoint;
+
+      const nonce = nonceEndpoint
+        ? await this.nonceService.fetchNonce(nonceEndpoint)
         : '';
 
       let jwtProof = null;
       let proofPublicJwk: JsonWebKey | null = null;
 
       if (cfg.isCryptographicBindingSupported && credentialIssuerMetadata.credentialIssuer) {
-        const proofContext = await this.buildProofJwt({
+        const proofContext = await this.issueProofJwt({
           nonce,
           credentialIssuer: credentialIssuerMetadata.credentialIssuer,
           credentialConfigurationId: cfg.credentialConfigurationId,
@@ -106,7 +112,7 @@ export class Oid4vciEngineService {
       // GET CREDENTIAL (with DPoP proof if token is DPoP-bound)
       let credentialDpopJwt: string | undefined;
       if (tokenResponse.token_type?.toLowerCase() === 'dpop' && credentialIssuerMetadata.credentialEndpoint) {
-        const dpopProof = await this.dpopService.generateProof('POST', credentialIssuerMetadata.credentialEndpoint);
+        const dpopProof = await this.dpopService.issueProof('POST', credentialIssuerMetadata.credentialEndpoint);
         credentialDpopJwt = dpopProof.jwt;
       }
 
@@ -145,6 +151,18 @@ export class Oid4vciEngineService {
 
   }
 
+  private shouldUsePreAuthorizedGrant(credentialOffer: CredentialOffer): boolean {
+    const hasPreAuth = !!credentialOffer.grant?.preAuthorizedCodeGrant;
+    const hasAuthCode = !!credentialOffer.grant?.authorizationCodeGrant;
+    const preferred = environment.preferred_grant;
+
+    if (preferred === 'pre-authorized_code' && hasPreAuth) return true;
+    if (preferred === 'authorization_code' && hasAuthCode) return false;
+
+    // 'auto' or preferred grant not available: fallback to pre-authorized if no auth code
+    return !hasAuthCode;
+  }
+
   private async checkBrowserCompatibilityWithKeyStorage(): Promise<void> {
     await this.keyStorageProvider.init();
   }
@@ -176,7 +194,7 @@ export class Oid4vciEngineService {
 
     let payload: any;
     try {
-      payload = this.jwtService.parseJwtPayload(credentialJwt);
+      payload = this.jwtService.extractJwtPayload(credentialJwt);
     } catch (e: unknown) {
       if (e instanceof JwtParseError) {
         throw new Oid4vciError('Credential JWT payload could not be parsed', {
@@ -197,7 +215,7 @@ export class Oid4vciEngineService {
 
   }
 
-  private resolveCredentialConfigurationContext(
+  private findCredentialConfigurationContext(
     credentialOffer: CredentialOffer,
     credentialIssuerMetadata: CredentialIssuerMetadata
   ): CredentialConfigurationContext {
@@ -243,18 +261,18 @@ export class Oid4vciEngineService {
     };
   }
 
-  private async buildProofJwt(params: { nonce: string; credentialIssuer: string; credentialConfigurationId: string }): Promise<ProofJwtContext> {
+  private async issueProofJwt(params: { nonce: string; credentialIssuer: string; credentialConfigurationId: string }): Promise<ProofJwtContext> {
     const keyId = `${params.credentialIssuer}:${params.credentialConfigurationId}`;
     const keyInfo = await this.keyStorageProvider.generateKeyPair('ES256', keyId);
 
     const publicKeyJwk = keyInfo.publicKeyJwk;
 
-    const headerAndPayload = this.proofBuilderService.buildHeaderAndPayload(
+    const headerAndPayload = this.proofBuilderService.createHeaderAndPayload(
       params.nonce,
       params.credentialIssuer,
       publicKeyJwk
     );
-    const signingInput = this.buildSigningInput(headerAndPayload);
+    const signingInput = this.composeSigningInput(headerAndPayload);
 
     const signature = await this.keyStorageProvider.sign(keyInfo.keyId, new TextEncoder().encode(signingInput));
 
@@ -265,7 +283,7 @@ export class Oid4vciEngineService {
     };
   }
 
-  private buildSigningInput(parts: { header: unknown; payload: unknown }): string {
+  private composeSigningInput(parts: { header: unknown; payload: unknown }): string {
     const enc = new TextEncoder();
     const headerB64 = this.jwtService.base64UrlEncode(enc.encode(JSON.stringify(parts.header)));
     const payloadB64 = this.jwtService.base64UrlEncode(enc.encode(JSON.stringify(parts.payload)));

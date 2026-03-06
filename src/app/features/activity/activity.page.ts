@@ -26,7 +26,7 @@ export class ActivityPage implements OnInit {
 
   async load(): Promise<void> {
     this.loading = true;
-    this.entries = await this.activityService.getAll();
+    this.entries = await this.activityService.findAll();
     this.loading = false;
   }
 

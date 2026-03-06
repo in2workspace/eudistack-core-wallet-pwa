@@ -10,7 +10,7 @@ export const KEY_STORAGE_PROVIDERS: Provider[] = [
   {
     provide: KeyStorageProvider,
     useFactory: () => {
-      if ((environment as any).key_storage_mode === 'server') {
+      if ((environment as any).wallet_mode === 'server') {
         return inject(ServerKeyStorageProvider);
       }
       return inject(PasskeyPrfKeyStorageProvider);

@@ -41,7 +41,7 @@ export class CredentialParserService {
   }
 
   private parseJwtCredential(jwt: string, format: string): VerifiableCredential {
-    const payload = this.jwtService.parseJwtPayload(jwt) as Record<string, any>;
+    const payload = this.jwtService.extractJwtPayload(jwt) as Record<string, any>;
     const vc = payload['vc'] ?? payload;
 
     return this.buildVerifiableCredential(vc, jwt, format);

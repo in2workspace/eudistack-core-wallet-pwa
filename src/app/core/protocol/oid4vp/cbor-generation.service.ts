@@ -31,7 +31,7 @@ export class CborGenerationService {
   }
 
   private extractVpPayload(vpJwt: string): unknown {
-    const payload = this.jwtService.parseJwtPayload(vpJwt) as Record<string, unknown>;
+    const payload = this.jwtService.extractJwtPayload(vpJwt) as Record<string, unknown>;
     const vp = payload['vp'] as Record<string, unknown> | undefined;
 
     if (vp && Array.isArray(vp['verifiableCredential']) && vp['verifiableCredential'].length > 0) {

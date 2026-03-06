@@ -201,7 +201,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   }
 
   private credentialActivationFlow(credentialOfferUri: string): void{
-    from(this.oid4vciEngineService.executeOid4vciFlow(credentialOfferUri))
+    from(this.oid4vciEngineService.performOid4vciFlow(credentialOfferUri))
       .pipe(
         switchMap((flowResult: FinalizeIssuancePayload) => {
           // Deferred credentials (202): save to backend without user decision
@@ -302,14 +302,14 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   private verifiablePresentationFlow(qrCode: string): void{
     this.loader.addLoadingProcess();
 
-    from(this.authorizationRequestService.processAuthorizationRequestFromQr(qrCode)).pipe(
+    from(this.authorizationRequestService.parseAuthorizationRequestFromQr(qrCode)).pipe(
       switchMap((authRequest) => {
         // Filter credentials using DCQL query or scope fallback
         let selectableVcList: VerifiableCredential[];
         if (authRequest.dcqlQuery) {
-          selectableVcList = this.credentialCacheService.getCredentialsByDcqlQuery(authRequest.dcqlQuery);
+          selectableVcList = this.credentialCacheService.findCredentialsByDcqlQuery(authRequest.dcqlQuery);
         } else if (authRequest.scope) {
-          selectableVcList = this.credentialCacheService.getCredentialsByScope(authRequest.scope);
+          selectableVcList = this.credentialCacheService.findCredentialsByScope(authRequest.scope);
         } else {
           selectableVcList = this.credentialCacheService.getAll().filter(c => c.lifeCycleStatus === 'VALID');
         }

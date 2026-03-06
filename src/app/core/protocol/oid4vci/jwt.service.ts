@@ -6,7 +6,7 @@ import { JwtParseError } from '../../models/error/JwtParseError';
 })
 export class JwtService {
 
-  public parseJwtPayload(jwt: string): unknown {
+  public extractJwtPayload(jwt: string): unknown {
     const parts = jwt.split('.');
     if (parts.length < 2) {
       throw new JwtParseError('Invalid JWT format (missing payload).');
@@ -23,7 +23,7 @@ export class JwtService {
     }
   }
 
-  public parseJwtHeader(jwt: string): unknown {
+  public extractJwtHeader(jwt: string): unknown {
     const parts = jwt.split('.');
     if (parts.length < 2) {
       throw new JwtParseError('Invalid JWT format (missing header).');

@@ -20,7 +20,7 @@ export class CredentialDecisionService {
         resolve(result);
       };
 
-      const previewHtml = this.buildPreviewHtml(preview);
+      const previewHtml = this.createPreviewHtml(preview);
 
       const header = this.translate.instant('confirmation.new-credential-title');
       const accept = this.translate.instant('confirmation.accept');
@@ -73,7 +73,7 @@ export class CredentialDecisionService {
     setTimeout(() => alert.dismiss(), 3000);
   }
 
-  private buildPreviewHtml(preview: CredentialPreview): string {
+  private createPreviewHtml(preview: CredentialPreview): string {
     if (!preview) return '';
 
     let html = '<div class="cred-preview">';
@@ -95,7 +95,7 @@ export class CredentialDecisionService {
       }
     } else {
       // Fallback to legacy fields
-      html += this.buildLegacyFieldsHtml(preview);
+      html += this.createLegacyFieldsHtml(preview);
     }
 
     // Expiration always shown
@@ -108,7 +108,7 @@ export class CredentialDecisionService {
     return html;
   }
 
-  private buildLegacyFieldsHtml(preview: CredentialPreview): string {
+  private createLegacyFieldsHtml(preview: CredentialPreview): string {
     const subjectLabel = this.translate.instant('confirmation.holder');
     const organizationLabel = this.translate.instant('confirmation.organization');
     const powersLabel = this.translate.instant('confirmation.powers');

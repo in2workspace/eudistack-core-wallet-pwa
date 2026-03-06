@@ -69,7 +69,7 @@ describe('StorageService', () => {
       ionicStorageSpy.get.mockResolvedValueOnce(value);
     });
 
-    const result = await service.getAll();
+    const result = await service.findAll();
 
     expect(result.length).toEqual(expectedValues.length);
     expect(result).toEqual(expectedValues);

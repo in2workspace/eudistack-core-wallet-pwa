@@ -15,7 +15,7 @@ export class StorageService {
     await this._storage?.set(llave, value);
   }
 
-  public async getAll() {
+  public async findAll() {
     const items: string[] = [];
     const size = await this._storage?.length();
     for (let i = 0; i < (size || 0); i++) {

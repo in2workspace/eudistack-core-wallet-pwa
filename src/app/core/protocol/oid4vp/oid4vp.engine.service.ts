@@ -35,11 +35,11 @@ export class Oid4vpEngineService {
       errorToTranslationKey: (e) => this.errorToTranslationKey(e),
       fn: async () => {
         console.debug('[OID4VP] Step 1: Getting signed VC from credential...');
-        const selectedVC = this.getSignedVcJwt(selectorResponse);
+        const selectedVC = this.extractSignedVcJwt(selectorResponse);
         console.debug('[OID4VP] Step 1 OK: Got signed VC');
 
         console.debug('[OID4VP] Step 2: Parsing VC JWT payload...');
-        const credentialPayload = this.parseJwtPayloadOrThrow(selectedVC, 'Selected credential JWT payload could not be parsed');
+        const credentialPayload = this.extractJwtPayloadOrThrow(selectedVC, 'Selected credential JWT payload could not be parsed');
         console.debug('[OID4VP] Step 2 OK: Parsed payload. Keys:', Object.keys(credentialPayload));
 
         console.debug('[OID4VP] Step 3: Checking cnf.jwk...');
@@ -104,14 +104,14 @@ export class Oid4vpEngineService {
 
     console.debug('[OID4VP] Step 5: Resolving signing key...');
     const thumbprint = await this.keyStorageProvider.computeJwkThumbprint(publicKey);
-    const keyId = await this.resolveKeyIdOrThrow(thumbprint);
+    const keyId = await this.findKeyIdByThumbprint(thumbprint);
     console.debug('[OID4VP] Step 5 OK: keyId resolved');
 
     console.debug('[OID4VP] Step 6: Signing VP JWT...');
     const signedVpJwt = await this.signJwt({ alg: 'ES256', typ: 'JWT', kid: thumbprint, jwk: publicKey }, vpJwtPayload, keyId);
     console.debug('[OID4VP] Step 6 OK: VP signed');
 
-    const vpToken = this.buildJwtVcVpToken(signedVpJwt, selectorResponse);
+    const vpToken = this.createJwtVcVpToken(signedVpJwt, selectorResponse);
 
     console.debug('[OID4VP] Step 7: Posting auth response to', selectorResponse.redirectUri);
     await this.postAuthorizationResponse(selectorResponse.redirectUri, selectorResponse.state, vpToken);
@@ -126,7 +126,7 @@ export class Oid4vpEngineService {
   ): Promise<void> {
     console.debug('[OID4VP-SDJWT] Resolving signing key...');
     const thumbprint = await this.keyStorageProvider.computeJwkThumbprint(publicKey);
-    const keyId = await this.resolveKeyIdOrThrow(thumbprint);
+    const keyId = await this.findKeyIdByThumbprint(thumbprint);
 
     console.debug('[OID4VP-SDJWT] Building KB-JWT...');
     const sdHash = await this.computeSdHash(sdJwtCompact);
@@ -143,7 +143,7 @@ export class Oid4vpEngineService {
     // sdJwtCompact already ends with '~', so just append kbJwt
     const sdJwtPresentation = sdJwtCompact + kbJwt;
 
-    const vpToken = this.buildSdJwtVpToken(sdJwtPresentation, selectorResponse);
+    const vpToken = this.createSdJwtVpToken(sdJwtPresentation, selectorResponse);
 
     console.debug('[OID4VP-SDJWT] Posting auth response to', selectorResponse.redirectUri);
     await this.postAuthorizationResponse(selectorResponse.redirectUri, selectorResponse.state, vpToken);
@@ -157,7 +157,7 @@ export class Oid4vpEngineService {
 
   // ── VP token building ──────────────────────────────────────────────
 
-  private buildJwtVcVpToken(signedVpJwt: string, selectorResponse: VCReply): string {
+  private createJwtVcVpToken(signedVpJwt: string, selectorResponse: VCReply): string {
     if (selectorResponse.dcqlQuery) {
       const credQueryId = selectorResponse.dcqlQuery.credentials[0]?.id ?? 'default';
       const dcqlVpToken = { [credQueryId]: [signedVpJwt] };
@@ -166,7 +166,7 @@ export class Oid4vpEngineService {
     return btoa(signedVpJwt);
   }
 
-  private buildSdJwtVpToken(sdJwtPresentation: string, selectorResponse: VCReply): string {
+  private createSdJwtVpToken(sdJwtPresentation: string, selectorResponse: VCReply): string {
     if (selectorResponse.dcqlQuery) {
       const credQueryId = selectorResponse.dcqlQuery.credentials[0]?.id ?? 'default';
       const dcqlVpToken = { [credQueryId]: sdJwtPresentation };
@@ -177,7 +177,7 @@ export class Oid4vpEngineService {
 
   // ── Shared helpers ─────────────────────────────────────────────────
 
-  private getSignedVcJwt(selectorResponse: VCReply): string {
+  private extractSignedVcJwt(selectorResponse: VCReply): string {
     const selectedVc = selectorResponse.selectedVcList[0];
 
     if (!selectedVc) {
@@ -186,7 +186,7 @@ export class Oid4vpEngineService {
       });
     }
 
-    const signedJwt = this.credentialCacheService.getSignedJwt(selectedVc);
+    const signedJwt = this.credentialCacheService.extractSignedJwt(selectedVc);
     if (!signedJwt) {
       throw new Oid4vpError('Selected credential does not have a signed JWT (credentialEncoded)', {
           translationKey: 'errors.credential-validation-failed',
@@ -195,7 +195,7 @@ export class Oid4vpEngineService {
     return signedJwt;
   }
 
-  private async resolveKeyIdOrThrow(thumbprint: string): Promise<string> {
+  private async findKeyIdByThumbprint(thumbprint: string): Promise<string> {
     const keyId = await this.keyStorageProvider.resolveKeyIdByKid(thumbprint);
     if (!keyId) {
       console.error('[OID4VP] FAIL: No local key for thumbprint=', thumbprint);
@@ -263,9 +263,9 @@ export class Oid4vpEngineService {
     };
   }
 
-  private parseJwtPayloadOrThrow(jwt: string, contextMsg: string): any {
+  private extractJwtPayloadOrThrow(jwt: string, contextMsg: string): any {
     try {
-      return this.jwtService.parseJwtPayload(jwt) as any;
+      return this.jwtService.extractJwtPayload(jwt) as any;
     } catch (e: unknown) {
       throw new Oid4vpError(contextMsg, {
         cause: e,

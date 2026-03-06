@@ -14,7 +14,9 @@ interface Window {
       logo_path?: string;
       favicon_path?: string;
       default_lang: string;
-      key_storage_mode?: string;
+      wallet_mode?: string;
+      preferred_grant?: string;
+      oid4vci_redirect_uri?: string;
     };
   }
   

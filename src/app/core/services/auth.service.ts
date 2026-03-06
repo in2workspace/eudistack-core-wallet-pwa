@@ -32,11 +32,11 @@ export abstract class AuthService {
   abstract forceLogout(): void;
 }
 
-/** DI provider that selects the right AuthService based on key_storage_mode. */
+/** DI provider that selects the right AuthService based on wallet_mode. */
 export const AUTH_SERVICE_PROVIDER: Provider = {
   provide: AuthService,
   useFactory: () => {
-    if ((environment as any).key_storage_mode === 'server') {
+    if ((environment as any).wallet_mode === 'server') {
       return inject(RemoteAuthService);
     }
     return inject(LocalAuthService);

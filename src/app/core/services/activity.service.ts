@@ -32,7 +32,7 @@ export class ActivityService {
     await this.storage.set(STORAGE_KEY, JSON.stringify(entries));
   }
 
-  async getAll(): Promise<ActivityEntry[]> {
+  async findAll(): Promise<ActivityEntry[]> {
     return this.loadEntries();
   }
 

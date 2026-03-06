@@ -15,7 +15,7 @@ export class DpopService {
   private dpopKeyId: string | null = null;
   private dpopPublicKeyJwk: JsonWebKey | null = null;
 
-  async generateProof(httpMethod: string, httpUri: string): Promise<DpopProof> {
+  async issueProof(httpMethod: string, httpUri: string): Promise<DpopProof> {
     if (!this.dpopKeyId || !this.dpopPublicKeyJwk) {
       await this.initDpopKey();
     }
@@ -33,7 +33,7 @@ export class DpopService {
       iat: Math.floor(Date.now() / 1000),
     };
 
-    const signingInput = this.buildSigningInput(header, payload);
+    const signingInput = this.composeSigningInput(header, payload);
     const signature = await this.keyStorageProvider.sign(
       this.dpopKeyId!,
       new TextEncoder().encode(signingInput)
@@ -57,7 +57,7 @@ export class DpopService {
     this.dpopPublicKeyJwk = keyInfo.publicKeyJwk;
   }
 
-  private buildSigningInput(header: unknown, payload: unknown): string {
+  private composeSigningInput(header: unknown, payload: unknown): string {
     const enc = new TextEncoder();
     const headerB64 = this.jwtService.base64UrlEncode(enc.encode(JSON.stringify(header)));
     const payloadB64 = this.jwtService.base64UrlEncode(enc.encode(JSON.stringify(payload)));

@@ -25,7 +25,7 @@ export class CredentialService {
     dpopJwt?: string;
   }): Promise<CredentialResponseWithStatus> {
 
-    const request = this.buildCredentialRequest({
+    const request = this.createCredentialRequest({
       jwtProof: params.jwtProof,
       format: params.format,
       credentialConfigurationId: params.credentialConfigurationId,
@@ -50,7 +50,7 @@ export class CredentialService {
     });
   }
 
-  private buildCredentialRequest(params: {
+  private createCredentialRequest(params: {
     jwtProof: string | null;
     format: string;
     credentialConfigurationId: string;

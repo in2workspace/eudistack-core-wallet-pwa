@@ -15,7 +15,7 @@ export class AuthorisationServerMetadataService {
     credentialIssuerMetadata: CredentialIssuerMetadata
   ): Promise<AuthorisationServerMetadata> {
     try {
-      const responseText = await this.getAuthorizationServerMetadata(credentialIssuerMetadata);
+      const responseText = await this.fetchAuthorizationServerMetadata(credentialIssuerMetadata);
       return this.parseAuthorisationServerMetadataResponse(responseText);
     } catch (e: unknown) {
       if (e instanceof Oid4vciError) throw e;
@@ -27,7 +27,7 @@ export class AuthorisationServerMetadataService {
     }
   }
 
-  private async getAuthorizationServerMetadata(
+  private async fetchAuthorizationServerMetadata(
     credentialIssuerMetadata: CredentialIssuerMetadata
   ): Promise<string> {
     const authServer =
@@ -44,11 +44,11 @@ export class AuthorisationServerMetadataService {
     const oidcUrl = `${authServer}/.well-known/openid-configuration`;
 
     try {
-      return await firstValueFrom(this.walletService.getTextFromUrl(rfc8414Url));
+      return await firstValueFrom(this.walletService.fetchTextFromUrl(rfc8414Url));
     } catch {
       // Fallback to OpenID Connect discovery path
       try {
-        return await firstValueFrom(this.walletService.getTextFromUrl(oidcUrl));
+        return await firstValueFrom(this.walletService.fetchTextFromUrl(oidcUrl));
       } catch (e: unknown) {
         wrapOid4vciHttpError(e, 'Could not download authorization server metadata', {
           translationKey: 'errors.cannot-download-auth-server-metadata',

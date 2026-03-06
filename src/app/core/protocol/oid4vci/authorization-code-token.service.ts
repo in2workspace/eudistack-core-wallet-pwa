@@ -11,6 +11,7 @@ import { WiaService } from './wia.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
 import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 import { CONTENT_TYPE_URL_ENCODED_FORM } from 'src/app/core/constants/content-type.constants';
+import { environment } from 'src/environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AuthorizationCodeTokenService {
@@ -27,22 +28,22 @@ export class AuthorizationCodeTokenService {
     this.dpopService.reset();
     this.wiaService.reset();
 
-    const codeVerifier = this.pkceService.generateCodeVerifier();
-    const codeChallenge = await this.pkceService.generateCodeChallenge(codeVerifier);
+    const codeVerifier = this.pkceService.issueCodeVerifier();
+    const codeChallenge = await this.pkceService.issueCodeChallenge(codeVerifier);
 
     const issuerState = credentialOffer.grant?.authorizationCodeGrant?.issuerState;
     const scope = credentialOffer.credentialConfigurationsIds?.[0] ?? '';
-    const redirectUri = 'http://localhost/callback';
+    const redirectUri = environment.oid4vci_redirect_uri;
     const state = globalThis.crypto.randomUUID();
 
     let authCode: string;
 
     if (profile === 'haip') {
-      authCode = await this.executeHaipFlow({
+      authCode = await this.performHaipFlow({
         metadata, codeChallenge, scope, redirectUri, state, issuerState,
       });
     } else {
-      authCode = await this.executePlainFlow({
+      authCode = await this.performPlainFlow({
         metadata, codeChallenge, scope, redirectUri, state, issuerState,
       });
     }
@@ -52,7 +53,7 @@ export class AuthorizationCodeTokenService {
     });
   }
 
-  private async executeHaipFlow(params: {
+  private async performHaipFlow(params: {
     metadata: AuthorisationServerMetadata;
     codeChallenge: string;
     scope: string;
@@ -67,8 +68,8 @@ export class AuthorizationCodeTokenService {
       });
     }
 
-    const dpopProof = await this.dpopService.generateProof('POST', parEndpoint);
-    const attestation = await this.wiaService.getAttestationHeaders(params.metadata.issuer ?? parEndpoint);
+    const dpopProof = await this.dpopService.issueProof('POST', parEndpoint);
+    const attestation = await this.wiaService.fetchAttestationHeaders(params.metadata.issuer ?? parEndpoint);
 
     const parBody = new URLSearchParams();
     parBody.set('response_type', 'code');
@@ -108,7 +109,7 @@ export class AuthorizationCodeTokenService {
     });
   }
 
-  private async executePlainFlow(params: {
+  private async performPlainFlow(params: {
     metadata: AuthorisationServerMetadata;
     codeChallenge: string;
     scope: string;
@@ -213,7 +214,7 @@ export class AuthorizationCodeTokenService {
       .set('Content-Type', CONTENT_TYPE_URL_ENCODED_FORM);
 
     if (params.profile === 'haip') {
-      const dpopProof = await this.dpopService.generateProof('POST', tokenEndpoint);
+      const dpopProof = await this.dpopService.issueProof('POST', tokenEndpoint);
       headers = headers.set('DPoP', dpopProof.jwt);
     }
 

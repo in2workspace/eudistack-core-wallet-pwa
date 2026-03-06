@@ -24,7 +24,7 @@ import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 export class SettingsPage {
   public userName = '';
   public featureLogsEnabled = environment.logs_enabled;
-  public isServerMode = (environment as any).key_storage_mode === 'server';
+  public isServerMode = (environment as any).wallet_mode === 'server';
 
   private readonly pwaInstallService = inject(PwaInstallService);
   readonly canInstall$ = this.pwaInstallService.installable$;

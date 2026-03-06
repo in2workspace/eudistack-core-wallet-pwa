@@ -51,7 +51,7 @@ export class SdJwtParserService {
 
   reconstructClaims(compact: string): ReconstructedSdJwt {
     const { issuerJwt, disclosures } = this.split(compact);
-    const payload = { ...(this.jwtService.parseJwtPayload(issuerJwt) as Record<string, unknown>) };
+    const payload = { ...(this.jwtService.extractJwtPayload(issuerJwt) as Record<string, unknown>) };
 
     for (const encoded of disclosures) {
       const { claimName, claimValue } = this.decodeDisclosure(encoded);

@@ -14,5 +14,7 @@
   window["env"]["logo_path"]= "${LOGO_PATH}";
   window["env"]["favicon_path"]= "${FAVICON_PATH}";
   window["env"]["default_lang"] =  "${DEFAULT_LANG}";
-  window["env"]["key_storage_mode"] = "${KEY_STORAGE_MODE}";
+  window["env"]["wallet_mode"] = "${WALLET_MODE}";
+  window["env"]["preferred_grant"] = "${PREFERRED_GRANT}";
+  window["env"]["oid4vci_redirect_uri"] = "${OID4VCI_REDIRECT_URI}";
 })(this);

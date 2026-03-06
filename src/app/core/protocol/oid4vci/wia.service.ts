@@ -17,7 +17,7 @@ export class WiaService {
   private popKeyId: string | null = null;
   private popPublicKeyJwk: JsonWebKey | null = null;
 
-  async getAttestationHeaders(audience: string): Promise<ClientAttestationHeaders> {
+  async fetchAttestationHeaders(audience: string): Promise<ClientAttestationHeaders> {
     const wia = this.getStaticWia();
 
     if (!this.popKeyId || !this.popPublicKeyJwk) {
@@ -45,7 +45,7 @@ export class WiaService {
   }
 
   private async initPopKey(wia: string): Promise<void> {
-    const wiaPayload = this.jwtService.parseJwtPayload(wia) as Record<string, unknown>;
+    const wiaPayload = this.jwtService.extractJwtPayload(wia) as Record<string, unknown>;
     const cnf = wiaPayload['cnf'] as Record<string, unknown> | undefined;
     const cnfJwk = cnf?.['jwk'] as JsonWebKey | undefined;
 
@@ -70,7 +70,7 @@ export class WiaService {
 
     const now = Math.floor(Date.now() / 1000);
     const payload = {
-      iss: (this.jwtService.parseJwtPayload(this.getStaticWia()) as Record<string, unknown>)['sub'],
+      iss: (this.jwtService.extractJwtPayload(this.getStaticWia()) as Record<string, unknown>)['sub'],
       aud: audience,
       iat: now,
       exp: now + 300,

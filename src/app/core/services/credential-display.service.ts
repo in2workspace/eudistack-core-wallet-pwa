@@ -16,7 +16,7 @@ export class CredentialDisplayService {
    * Tries issuer metadata first, falls back to hardcoded CredentialTypeMap.
    */
   async getCardFields(credential: VerifiableCredential): Promise<EvaluatedField[]> {
-    const meta = await this.issuerMetadataCache.getCredentialMetadata(credential.id, credential.type, credential.credentialFormat);
+    const meta = await this.issuerMetadataCache.findCredentialMetadata(credential.id, credential.type, credential.credentialFormat);
     if (meta?.claims?.length) {
       // Use first 3 scalar claims as card summary (skip arrays like powers)
       return meta.claims
@@ -49,20 +49,20 @@ export class CredentialDisplayService {
    * Tries issuer metadata first, falls back to hardcoded CredentialDetailMap.
    */
   async getDetailSections(credential: VerifiableCredential): Promise<EvaluatedSection[]> {
-    const meta = await this.issuerMetadataCache.getCredentialMetadata(credential.id, credential.type, credential.credentialFormat);
+    const meta = await this.issuerMetadataCache.findCredentialMetadata(credential.id, credential.type, credential.credentialFormat);
     if (meta?.claims?.length) {
-      return this.buildDynamicSections(credential, meta);
+      return this.createDynamicSections(credential, meta);
     }
 
     // Fallback to hardcoded detail map
-    return this.buildHardcodedSections(credential);
+    return this.createHardcodedSections(credential);
   }
 
   /**
    * Gets the display name of the credential type from issuer metadata.
    */
   async getDisplayName(credential: VerifiableCredential): Promise<string> {
-    const name = await this.issuerMetadataCache.getCredentialDisplayName(credential.id, credential.type, credential.credentialFormat);
+    const name = await this.issuerMetadataCache.findCredentialDisplayName(credential.id, credential.type, credential.credentialFormat);
     if (name) return name;
 
     // Fallback: use the type array
@@ -82,7 +82,7 @@ export class CredentialDisplayService {
     }
   }
 
-  private buildDynamicSections(
+  private createDynamicSections(
     credential: VerifiableCredential,
     meta: CredentialMetadata
   ): EvaluatedSection[] {
@@ -160,7 +160,7 @@ export class CredentialDisplayService {
     return { label: '', value: this.stringifyValue(obj) };
   }
 
-  private buildHardcodedSections(credential: VerifiableCredential): EvaluatedSection[] {
+  private createHardcodedSections(credential: VerifiableCredential): EvaluatedSection[] {
     const credType = getExtendedCredentialType(credential);
     const entry = isValidCredentialType(credType) ? CredentialDetailMap[credType] : undefined;
     if (!entry) return [];

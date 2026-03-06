@@ -45,14 +45,14 @@ export class PreAuthorizedTokenService {
     this.loader.addLoadingProcess();
 
     try {
-      const raw = await this.getAccessToken(tokenURL, credentialOffer, code);
+      const raw = await this.fetchAccessToken(tokenURL, credentialOffer, code);
       return this.parseTokenResponse(raw);
     } finally {
       this.loader.removeLoadingProcess();
     }
   }
 
-  private async getAccessToken(
+  private async fetchAccessToken(
     tokenURL: string,
     credentialOffer: CredentialOffer,
     code: string | null

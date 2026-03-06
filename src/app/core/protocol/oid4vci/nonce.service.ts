@@ -8,7 +8,7 @@ import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message'
 export class NonceService {
   private readonly http = inject(HttpClient);
 
-  async getNonce(nonceEndpoint: string): Promise<string> {
+  async fetchNonce(nonceEndpoint: string): Promise<string> {
     try {
       const response = await firstValueFrom(
         this.http.post<{ c_nonce: string; c_nonce_expires_in: number }>(

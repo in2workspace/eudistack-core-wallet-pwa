@@ -14,5 +14,7 @@
   window["env"]["logo_path"]= "logos/altia-logo.svg";
   window["env"]["favicon_path"]= "icons/altia-favicon.ico";
   window["env"]["default_lang"] =  "es";
-  window["env"]["key_storage_mode"] = "";
+  window["env"]["wallet_mode"] = "";
+  window["env"]["preferred_grant"] = "pre-authorized_code";
+  window["env"]["oid4vci_redirect_uri"] = "http://localhost/callback";
 })(this);

@@ -14,7 +14,7 @@ export class AuthorizationRequestService {
   private readonly jwtService = inject(JwtService);
   private readonly verifierValidationService = inject(VerifierValidationService);
 
-  async processAuthorizationRequestFromQr(qrContent: string): Promise<AuthorizationRequestOID4VP> {
+  async parseAuthorizationRequestFromQr(qrContent: string): Promise<AuthorizationRequestOID4VP> {
     const params = this.extractQueryParams(qrContent);
     const jwt = await this.fetchJwtFromParams(params);
     await this.verifierValidationService.verifyAuthorizationRequest(jwt);
@@ -54,7 +54,7 @@ export class AuthorizationRequestService {
   }
 
   private parseAuthorizationRequest(jwt: string): AuthorizationRequestOID4VP {
-    const payload = this.jwtService.parseJwtPayload(jwt) as Record<string, unknown>;
+    const payload = this.jwtService.extractJwtPayload(jwt) as Record<string, unknown>;
 
     const scopeRaw = payload['scope'];
     let scope: string[] | undefined;

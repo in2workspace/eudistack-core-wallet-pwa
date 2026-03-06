@@ -71,7 +71,7 @@ export class IssuerMetadataCacheService {
    * First tries by credential ID mapping, then falls back to searching
    * by credential type and format across all known issuers.
    */
-  async getCredentialMetadata(credentialId: string, credentialTypes?: string[], credentialFormat?: string): Promise<CredentialMetadata | null> {
+  async findCredentialMetadata(credentialId: string, credentialTypes?: string[], credentialFormat?: string): Promise<CredentialMetadata | null> {
     await this.ensureInit();
 
     // Try direct mapping first
@@ -95,8 +95,8 @@ export class IssuerMetadataCacheService {
   /**
    * Gets the display name of a credential type from cached metadata.
    */
-  async getCredentialDisplayName(credentialId: string, credentialTypes?: string[], credentialFormat?: string): Promise<string | null> {
-    const meta = await this.getCredentialMetadata(credentialId, credentialTypes, credentialFormat);
+  async findCredentialDisplayName(credentialId: string, credentialTypes?: string[], credentialFormat?: string): Promise<string | null> {
+    const meta = await this.findCredentialMetadata(credentialId, credentialTypes, credentialFormat);
     return meta?.display?.[0]?.name ?? null;
   }
 
@@ -131,7 +131,7 @@ export class IssuerMetadataCacheService {
   /**
    * Returns all known issuer URLs (for future wallet-initiated flows).
    */
-  async getKnownIssuers(): Promise<{ url: string; name?: string }[]> {
+  async findKnownIssuers(): Promise<{ url: string; name?: string }[]> {
     await this.ensureInit();
     const knownIssuers: string[] = (await this.storage.get(KNOWN_ISSUERS_KEY)) ?? [];
     return knownIssuers.map(url => ({ url }));

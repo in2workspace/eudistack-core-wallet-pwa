@@ -1,11 +1,12 @@
 export interface CredentialIssuerMetadata {
   credentialIssuer?: string;
   credentialEndpoint?: string;
+  nonceEndpoint?: string;
   deferredCredentialEndpoint?: string;
   notification_endpoint?: string;
   issuance_endpoint?: string;
   credentialsSupported?: unknown;
-  credential_configurations_supported: {[key: string]: CredentialsConfigurationsSuppported}; 
+  credential_configurations_supported: {[key: string]: CredentialsConfigurationsSuppported};
 
   /** Field that is hardcoded in the deprecated backend method. */
   authorizationServer?: string;

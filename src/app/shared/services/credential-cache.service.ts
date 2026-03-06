@@ -22,13 +22,13 @@ export class CredentialCacheService {
     return [...this.credentials];
   }
 
-  getCredentialsByType(type: string): VerifiableCredential[] {
+  findCredentialsByType(type: string): VerifiableCredential[] {
     return this.credentials.filter(
       cred => cred.type?.includes(type as ExtendedCredentialType) && cred.lifeCycleStatus === 'VALID'
     );
   }
 
-  getCredentialsByDcqlQuery(dcqlQuery: DcqlQuery): VerifiableCredential[] {
+  findCredentialsByDcqlQuery(dcqlQuery: DcqlQuery): VerifiableCredential[] {
     const matchingCredentials: VerifiableCredential[] = [];
 
     for (const credQuery of dcqlQuery.credentials) {
@@ -45,7 +45,7 @@ export class CredentialCacheService {
     });
   }
 
-  getCredentialsByScope(scopes: string[]): VerifiableCredential[] {
+  findCredentialsByScope(scopes: string[]): VerifiableCredential[] {
     const types = scopes
       .map(scope => SCOPE_TO_TYPE[scope])
       .filter((type): type is string => !!type);
@@ -58,7 +58,7 @@ export class CredentialCacheService {
     );
   }
 
-  getSignedJwt(credential: VerifiableCredential): string | undefined {
+  extractSignedJwt(credential: VerifiableCredential): string | undefined {
     return credential.credentialEncoded;
   }
 

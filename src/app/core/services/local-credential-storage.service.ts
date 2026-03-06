@@ -39,7 +39,7 @@ export class LocalCredentialStorageService {
     }
   }
 
-  async getCredentialById(id: string): Promise<VerifiableCredential | null> {
+  async findCredentialById(id: string): Promise<VerifiableCredential | null> {
     const db = await this.openDatabase();
     try {
       const tx = db.transaction(this.STORE_NAME, 'readonly');

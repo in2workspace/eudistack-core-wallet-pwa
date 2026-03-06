@@ -5,13 +5,13 @@ import { JwtService } from './jwt.service';
 export class PkceService {
   private readonly jwtService = inject(JwtService);
 
-  generateCodeVerifier(): string {
+  issueCodeVerifier(): string {
     const bytes = new Uint8Array(32);
     globalThis.crypto.getRandomValues(bytes);
     return this.jwtService.base64UrlEncode(bytes);
   }
 
-  async generateCodeChallenge(codeVerifier: string): Promise<string> {
+  async issueCodeChallenge(codeVerifier: string): Promise<string> {
     const digest = await globalThis.crypto.subtle.digest(
       'SHA-256',
       new TextEncoder().encode(codeVerifier)
