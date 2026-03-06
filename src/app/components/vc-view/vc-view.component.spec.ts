@@ -158,7 +158,7 @@ describe('VcViewComponent', () => {
     component.isModalDeleteOpen = false;
 
     component.deleteButtons[1].handler();
-    expect(component.isModalDeleteOpen).toBeTruthy();
+    expect(component.isModalDeleteOpen).toBeFalsy();
     expect(component.vcEmit.emit).toHaveBeenCalledWith(
       component.credentialInput$()
     );

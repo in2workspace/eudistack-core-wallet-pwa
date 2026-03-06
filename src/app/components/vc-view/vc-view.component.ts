@@ -90,7 +90,7 @@ export class VcViewComponent implements OnInit {
       text: this.translate.instant("vc-view.delete-confirm"),
       role: 'confirm',
       handler: () => {
-        this.isModalDeleteOpen = true;
+        this.isModalDeleteOpen = false;
         this.vcEmit.emit(this.credentialInput$());
       },
     },
