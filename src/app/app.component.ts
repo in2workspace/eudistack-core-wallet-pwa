@@ -57,8 +57,6 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   public ngOnInit() {
-    console.log("////////// TEST: AppComponent ngOnInit executed //////////");
-
     this.setCustomStyles();
     this.setFavicon();
     this.languageService.setLanguages();
