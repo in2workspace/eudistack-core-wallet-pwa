@@ -101,7 +101,7 @@
         "unsigned-header": "Credencial sense signar",
         "unsigned-message": "La seva credencial encara no ha estat signada i no pot ser utilitzada. Esperi que l'emissor completi el procés de signatura.",
         "revoked": "Revocat",
-        "delete-success": "Credencial eliminada correctament"
+        "delete-success": "S'ha eliminat la credencial correctament"
     },
     "scanner":{
         "initializing": "Inicialitzant escàner..."
