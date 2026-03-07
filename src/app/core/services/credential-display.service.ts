@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
+import { CredentialSchemaRegistryService } from './credential-schema-registry.service';
 import { CredentialMetadata, ClaimDefinition } from '../models/dto/CredentialIssuerMetadata';
 import { VerifiableCredential } from '../models/verifiable-credential';
 import { EvaluatedField, EvaluatedSection, CredentialDetailMap } from '../models/credential-detail-map';
@@ -10,13 +11,35 @@ import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared
 export class CredentialDisplayService {
 
   private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
+  private readonly schemaRegistry = inject(CredentialSchemaRegistryService);
+
+  /**
+   * Resolves credential metadata from:
+   * 1. Issuer metadata cache (runtime, from OID4VCI flow)
+   * 2. Bundled schema registry (preconfigured supported types)
+   */
+  private async resolveMetadata(credential: VerifiableCredential): Promise<CredentialMetadata | null> {
+    const issuerMeta = await this.issuerMetadataCache.findCredentialMetadata(
+      credential.id, credential.type, credential.credentialFormat
+    );
+    if (issuerMeta?.claims?.length) return issuerMeta;
+
+    await this.schemaRegistry.ensureLoaded();
+    const credType = getExtendedCredentialType(credential);
+    if (isValidCredentialType(credType)) {
+      const schemaMeta = this.schemaRegistry.getCredentialMetadata(credType);
+      if (schemaMeta?.claims?.length) return schemaMeta;
+    }
+
+    return null;
+  }
 
   /**
    * Returns 2-3 summary fields for the card view.
-   * Tries issuer metadata first, falls back to hardcoded CredentialTypeMap.
+   * Tries issuer metadata first, then schema registry, falls back to hardcoded CredentialTypeMap.
    */
   async getCardFields(credential: VerifiableCredential): Promise<EvaluatedField[]> {
-    const meta = await this.issuerMetadataCache.findCredentialMetadata(credential.id, credential.type, credential.credentialFormat);
+    const meta = await this.resolveMetadata(credential);
     if (meta?.claims?.length) {
       // Use first 3 scalar claims as card summary (skip arrays like powers)
       return meta.claims
@@ -49,7 +72,7 @@ export class CredentialDisplayService {
    * Tries issuer metadata first, falls back to hardcoded CredentialDetailMap.
    */
   async getDetailSections(credential: VerifiableCredential): Promise<EvaluatedSection[]> {
-    const meta = await this.issuerMetadataCache.findCredentialMetadata(credential.id, credential.type, credential.credentialFormat);
+    const meta = await this.resolveMetadata(credential);
     if (meta?.claims?.length) {
       return this.createDynamicSections(credential, meta);
     }
@@ -59,10 +82,12 @@ export class CredentialDisplayService {
   }
 
   /**
-   * Gets the display name of the credential type from issuer metadata.
+   * Gets the display name of the credential type.
+   * Tries issuer metadata cache, then schema registry, then type array.
    */
   async getDisplayName(credential: VerifiableCredential): Promise<string> {
-    const name = await this.issuerMetadataCache.findCredentialDisplayName(credential.id, credential.type, credential.credentialFormat);
+    const meta = await this.resolveMetadata(credential);
+    const name = meta?.display?.[0]?.name;
     if (name) return name;
 
     // Fallback: use the type array

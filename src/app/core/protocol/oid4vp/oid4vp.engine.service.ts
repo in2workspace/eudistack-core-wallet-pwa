@@ -159,7 +159,7 @@ export class Oid4vpEngineService {
 
   private createJwtVcVpToken(signedVpJwt: string, selectorResponse: VCReply): string {
     if (selectorResponse.dcqlQuery) {
-      const credQueryId = selectorResponse.dcqlQuery.credentials[0]?.id ?? 'default';
+      const credQueryId = this.resolveMatchedCredentialQueryId(selectorResponse, 'jwt_vc_json');
       const dcqlVpToken = { [credQueryId]: [signedVpJwt] };
       return btoa(JSON.stringify(dcqlVpToken));
     }
@@ -168,11 +168,37 @@ export class Oid4vpEngineService {
 
   private createSdJwtVpToken(sdJwtPresentation: string, selectorResponse: VCReply): string {
     if (selectorResponse.dcqlQuery) {
-      const credQueryId = selectorResponse.dcqlQuery.credentials[0]?.id ?? 'default';
+      const credQueryId = this.resolveMatchedCredentialQueryId(selectorResponse, 'dc+sd-jwt');
       const dcqlVpToken = { [credQueryId]: sdJwtPresentation };
       return btoa(JSON.stringify(dcqlVpToken));
     }
     return btoa(sdJwtPresentation);
+  }
+
+  private resolveMatchedCredentialQueryId(selectorResponse: VCReply, format: string): string {
+    const dcqlQuery = selectorResponse.dcqlQuery!;
+    const selectedVc = selectorResponse.selectedVcList[0];
+
+    for (const credQuery of dcqlQuery.credentials) {
+      if (credQuery.format !== format) continue;
+
+      if (format === 'jwt_vc_json') {
+        const credDef = credQuery.meta?.['credential_definition'] as Record<string, unknown> | undefined;
+        const requiredTypes = credDef?.['type'] as string[] | undefined;
+        if (!requiredTypes || requiredTypes.every(t => selectedVc?.type?.includes(t as any))) {
+          return credQuery.id;
+        }
+      }
+
+      if (format === 'dc+sd-jwt') {
+        const vctValues = credQuery.meta?.['vct_values'] as string[] | undefined;
+        if (!vctValues || selectedVc?.type?.some((t: string) => vctValues.includes(t))) {
+          return credQuery.id;
+        }
+      }
+    }
+
+    return dcqlQuery.credentials[0]?.id ?? 'default';
   }
 
   // ── Shared helpers ─────────────────────────────────────────────────

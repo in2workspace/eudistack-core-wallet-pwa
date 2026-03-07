@@ -61,7 +61,7 @@ describe('WalletService', () => {
     const mockCredential: VerifiableCredential = {
       '@context': ['https://www.w3.org/ns/credentials/v1'],
       id: 'test-credential-id',
-      type: ['VerifiableCredential', 'LEARCredentialEmployee'],
+      type: ['VerifiableCredential', 'learcredential.employee.w3c.4'],
       issuer: {
         id: 'did:web:provider.dome.fiware.dev',
       },
@@ -119,7 +119,7 @@ describe('WalletService', () => {
       {
         '@context': ['https://www.w3.org/ns/credentials/v1'],
         id: 'example-credential-id',
-        type: ['VerifiableCredential', 'LEARCredentialEmployee'],
+        type: ['VerifiableCredential', 'learcredential.employee.w3c.4'],
         issuer: {
           id: 'did:web:provider.dome.fiware.dev',
         },
@@ -178,7 +178,7 @@ describe('WalletService', () => {
     const mockResponse: VerifiableCredential = {
       '@context': ['https://www.w3.org/ns/credentials/v1'],
       id: 'single-test-credential-id',
-      type: ['VerifiableCredential', 'LEARCredentialEmployee'],
+      type: ['VerifiableCredential', 'learcredential.employee.w3c.4'],
       issuer: {
         id: 'did:web:provider.dome.fiware.dev',
       },

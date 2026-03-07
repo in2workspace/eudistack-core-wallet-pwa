@@ -9,5 +9,7 @@ export const environment = {
   wallet_mode: window["env"]?.["wallet_mode"] || 'browser',
   preferred_grant: window["env"]?.["preferred_grant"] || 'auto',
   oid4vci_redirect_uri: window["env"]?.["oid4vci_redirect_uri"] || 'http://localhost/callback',
+  wia: window["env"]?.["wia"] || '',
+  wia_instance_key_jwk: window["env"]?.["wia_instance_key_jwk"] || '',
   appVersion: '3.0.0',
 };

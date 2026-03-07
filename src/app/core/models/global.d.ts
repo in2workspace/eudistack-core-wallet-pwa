@@ -17,6 +17,8 @@ interface Window {
       wallet_mode?: string;
       preferred_grant?: string;
       oid4vci_redirect_uri?: string;
+      wia?: string;
+      wia_instance_key_jwk?: string;
     };
   }
   

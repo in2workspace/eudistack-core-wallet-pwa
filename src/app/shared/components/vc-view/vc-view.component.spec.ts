@@ -42,7 +42,7 @@ describe('VcViewComponent', () => {
     componentRef.setInput('credentialInput$', {
       '@context': [],
       id: 'testId',
-      type: ['LEARCredentialEmployee'],
+      type: ['learcredential.employee.w3c.4'],
       issuer: { id: 'issuerId' },
       validFrom: '',
       validUntil: new Date(Date.now() + 86400000).toISOString(),
@@ -435,8 +435,8 @@ describe('VcViewComponent', () => {
     });
   });
 
-  it('getStructuredFields should add credentialEncoded section for LEARCredentialMachine type', () => {
-    component.credentialType = 'LEARCredentialMachine';
+  it('getStructuredFields should add credentialEncoded section for machine credential type', () => {
+    component.credentialType = 'learcredential.machine.w3c.3';
     component.credentialInput$().credentialEncoded = 'encoded_value';
     const originalDetailMap = detailMapModule.CredentialDetailMap[component.credentialType];
     detailMapModule.CredentialDetailMap[component.credentialType] = [];
@@ -478,12 +478,12 @@ describe('VcViewComponent', () => {
   });
 
   it('translatePowerSections should translate function and all actions in powers section', () => {
-  component.credentialType = 'LEARCredentialEmployee';
+  component.credentialType = 'learcredential.employee.w3c.4';
 
   const current = component.credentialInput$() as any;
   componentRef.setInput('credentialInput$', {
     ...current,
-    type: ['LEARCredentialEmployee'],
+    type: ['learcredential.employee.w3c.4'],
     credentialSubject: {
       mandate: {
         ...current.credentialSubject.mandate,
@@ -517,12 +517,12 @@ describe('VcViewComponent', () => {
 });
 
 it('translatePowerSections should be a no-op when subject has no mandate', () => {
-  component.credentialType = 'gx:LabelCredential';
+  component.credentialType = 'gx.labelcredential.w3c.1';
 
   const current = component.credentialInput$();
   componentRef.setInput('credentialInput$', {
     ...current,
-    type: ['gx:LabelCredential'],
+    type: ['gx.labelcredential.w3c.1'],
     credentialSubject: {
       id: 'label-1',
       'gx:labelLevel': 'BL',

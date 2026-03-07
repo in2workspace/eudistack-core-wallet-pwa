@@ -241,14 +241,16 @@ public async getStructuredFields(): Promise<void> {
   // Translate "powers" sections for hardcoded fallback
   detailSections = this.translatePowerSections(detailSections, cs);
 
-  if ((this.credentialType === 'LEARCredentialMachine' || this.credentialType === 'gx:LabelCredential') && vc.credentialEncoded) {
+  const showEncoded = this.credentialType?.startsWith('learcredential.machine.') || this.credentialType?.startsWith('gx.labelcredential.');
+  if (showEncoded && vc.credentialEncoded) {
     detailSections.push({
       section: 'vc-fields.credentialEncoded',
       fields: [{ label: 'vc-fields.credentialEncoded', value: vc.credentialEncoded ?? '' }]
     });
   }
 
-  this.detailViewSections = [credentialInfo, ...detailSections]
+  // Credential data first, metadata (credentialInfo) second
+  this.detailViewSections = [...detailSections, credentialInfo]
     .filter(section => section.fields.length > 0);
   this.cdr.markForCheck();
 }

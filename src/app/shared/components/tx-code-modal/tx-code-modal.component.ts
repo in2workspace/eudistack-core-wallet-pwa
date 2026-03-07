@@ -1,40 +1,40 @@
 import { Component, Input, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule, ModalController } from '@ionic/angular';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { OtpInputComponent } from '../otp-input/otp-input.component';
 
 @Component({
-  selector: 'app-pin-modal',
+  selector: 'app-tx-code-modal',
   standalone: true,
   imports: [CommonModule, IonicModule, TranslateModule, OtpInputComponent],
   template: `
-    <div class="pin-modal-backdrop">
-      <div class="pin-modal-card" [class.card-enter]="true">
-        <div class="pin-header">
-          <ion-icon name="lock-closed-outline" class="pin-icon"></ion-icon>
+    <div class="tx-code-modal-backdrop">
+      <div class="tx-code-modal-card" [class.card-enter]="true">
+        <div class="tx-code-header">
+          <ion-icon name="lock-closed-outline" class="tx-code-icon"></ion-icon>
           <h2>{{ header }}</h2>
         </div>
 
-        <p class="pin-description" *ngIf="description">{{ description }}</p>
+        <p class="tx-code-description" *ngIf="description">{{ description }}</p>
 
         <app-otp-input
-          #pinRef
-          [length]="pinLength"
+          #txCodeRef
+          [length]="txCodeLength"
           [autofocus]="true"
           [error]="!!error"
           (completed)="onCompleted($event)"
           (changed)="error = ''"
         ></app-otp-input>
 
-        <p class="pin-counter" *ngIf="remainingSeconds > 0">
+        <p class="tx-code-counter" *ngIf="remainingSeconds > 0">
           {{ 'confirmation.time-remaining' | translate }}: <strong>{{ remainingSeconds }}s</strong>
         </p>
 
-        <p class="pin-error" *ngIf="error">{{ error }}</p>
+        <p class="tx-code-error" *ngIf="error">{{ error }}</p>
 
-        <div class="pin-actions">
-          <button class="pin-btn pin-btn-cancel" (click)="onCancel()">
+        <div class="tx-code-actions">
+          <button class="tx-code-btn tx-code-btn-cancel" (click)="onCancel()">
             {{ 'confirmation.cancel' | translate }}
           </button>
         </div>
@@ -42,7 +42,7 @@ import { OtpInputComponent } from '../otp-input/otp-input.component';
     </div>
   `,
   styles: [`
-    .pin-modal-backdrop {
+    .tx-code-modal-backdrop {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -51,7 +51,7 @@ import { OtpInputComponent } from '../otp-input/otp-input.component';
       background: rgba(0, 0, 0, 0.5);
     }
 
-    .pin-modal-card {
+    .tx-code-modal-card {
       width: 100%;
       max-width: 380px;
       background: var(--surface-card, #FFFFFF);
@@ -70,10 +70,10 @@ import { OtpInputComponent } from '../otp-input/otp-input.component';
       to { opacity: 1; transform: translateY(0); }
     }
 
-    .pin-header {
+    .tx-code-header {
       margin-bottom: 16px;
 
-      ion-icon.pin-icon {
+      ion-icon.tx-code-icon {
         font-size: 40px;
         color: var(--action-primary, #2563EB);
         margin-bottom: 8px;
@@ -87,34 +87,34 @@ import { OtpInputComponent } from '../otp-input/otp-input.component';
       }
     }
 
-    .pin-description {
+    .tx-code-description {
       font-size: 0.9rem;
       color: var(--text-secondary, #6B7280);
       margin: 0 0 20px;
       line-height: 1.4;
     }
 
-    .pin-counter {
+    .tx-code-counter {
       font-size: 0.85rem;
       color: var(--text-secondary, #6B7280);
       margin: 16px 0 0;
     }
 
-    .pin-error {
+    .tx-code-error {
       font-size: 0.85rem;
       color: var(--status-error, #DC2626);
       margin: 12px 0 0;
       font-weight: 500;
     }
 
-    .pin-actions {
+    .tx-code-actions {
       display: flex;
       justify-content: center;
       gap: 12px;
       margin-top: 20px;
     }
 
-    .pin-btn {
+    .tx-code-btn {
       padding: 10px 24px;
       border-radius: var(--radius-md, 8px);
       font-size: 0.9rem;
@@ -125,19 +125,19 @@ import { OtpInputComponent } from '../otp-input/otp-input.component';
       &:hover { opacity: 0.85; }
     }
 
-    .pin-btn-cancel {
+    .tx-code-btn-cancel {
       background: var(--action-secondary, #F3F4F6);
       color: var(--action-secondary-text, #374151);
       border: 1px solid var(--border-default, #D1D5DB);
     }
   `],
 })
-export class PinModalComponent {
-  @ViewChild('pinRef') otpInput!: OtpInputComponent;
+export class TxCodeModalComponent {
+  @ViewChild('txCodeRef') otpInput!: OtpInputComponent;
 
   @Input() header = 'PIN';
   @Input() description = '';
-  @Input() pinLength = 4;
+  @Input() txCodeLength = 6;
   @Input() timeoutSeconds = 55;
 
   remainingSeconds = 0;
@@ -157,7 +157,7 @@ export class PinModalComponent {
 
   onCompleted(code: string): void {
     this.clearCountdown();
-    this.modalCtrl.dismiss({ pin: code }, 'confirm');
+    this.modalCtrl.dismiss({ txCode: code }, 'confirm');
   }
 
   onCancel(): void {

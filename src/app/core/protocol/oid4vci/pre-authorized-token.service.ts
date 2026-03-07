@@ -11,7 +11,7 @@ import { WalletService } from 'src/app/core/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
 import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 import { HttpErrorResponse } from '@angular/common/http';
-import { PinModalComponent } from 'src/app/shared/components/pin-modal/pin-modal.component';
+import { TxCodeModalComponent } from 'src/app/shared/components/tx-code-modal/tx-code-modal.component';
 
 
 const TIMEOUT_DURATION_S = 55;
@@ -39,7 +39,7 @@ export class PreAuthorizedTokenService {
 
     let code: string | null = null;
     if (needsCode) {
-      code = await this.openPinModal();
+      code = await this.openTxCodeModal();
     }
 
     this.loader.addLoadingProcess();
@@ -104,17 +104,17 @@ export class PreAuthorizedTokenService {
     return parts.join('&');
   }
 
-  private async openPinModal(): Promise<string> {
+  private async openTxCodeModal(): Promise<string> {
     const header = this.translate.instant('confirmation.pin');
     const description = this.translate.instant('confirmation.description');
 
     const modal = await this.modalController.create({
-      component: PinModalComponent,
-      cssClass: 'pin-modal-wrapper',
+      component: TxCodeModalComponent,
+      cssClass: 'tx-code-modal-wrapper',
       componentProps: {
         header,
         description,
-        pinLength: 4,
+        txCodeLength: 6,
         timeoutSeconds: TIMEOUT_DURATION_S,
       },
       backdropDismiss: false,
@@ -125,17 +125,17 @@ export class PreAuthorizedTokenService {
     const { data, role } = await modal.onDidDismiss();
 
     if (role === 'cancel') {
-      throw new Oid4vciError('User cancelled PIN entry', {
+      throw new Oid4vciError('User cancelled tx_code entry', {
         code: 'user_cancelled',
       });
     }
 
     if (role === 'timeout') {
-      throw new Oid4vciError('PIN request timed out', {
+      throw new Oid4vciError('tx_code request timed out', {
         translationKey: 'errors.pin-timeout',
       });
     }
 
-    return data?.pin ?? '';
+    return data?.txCode ?? '';
   }
 }

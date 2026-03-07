@@ -22,30 +22,30 @@ describe('credential type helpers', () => {
 
   describe('isValidCredentialType', () => {
     it('returns true for a known credential type', () => {
-      expect(isValidCredentialType('LEARCredentialEmployee' as any)).toBe(true);
-      expect(isValidCredentialType('LEARCredentialMachine' as any)).toBe(true);
-      expect(isValidCredentialType('gx:LabelCredential' as any)).toBe(true);
+      expect(isValidCredentialType('learcredential.employee.w3c.4' as any)).toBe(true);
+      expect(isValidCredentialType('learcredential.machine.w3c.3' as any)).toBe(true);
+      expect(isValidCredentialType('gx.labelcredential.w3c.1' as any)).toBe(true);
     });
 
     it('returns false for an unknown credential type', () => {
       expect(isValidCredentialType('VerifiableCredential' as any)).toBe(false);
-      expect(isValidCredentialType('LearCredentialEmployee' as any)).toBe(false);
+      expect(isValidCredentialType('LEARCredentialEmployee' as any)).toBe(false);
     });
   });
 
   describe('getExtendedCredentialType', () => {
     it('Returns type when order is [VerifiableCredential, type]', () => {
-      const vc = { type: ['VerifiableCredential', 'LEARCredentialEmployee'] } as any;
+      const vc = { type: ['VerifiableCredential', 'learcredential.employee.w3c.4'] } as any;
       const result = getExtendedCredentialType(vc);
-      expect(result).toBe('LEARCredentialEmployee');
+      expect(result).toBe('learcredential.employee.w3c.4');
       expect(errorSpy).not.toHaveBeenCalled();
       expect(warnSpy).not.toHaveBeenCalled();
     });
 
     it('Returns type when order is [Type, VerifiableCredential]', () => {
-      const vc = { type: ['LEARCredentialEmployee', 'VerifiableCredential'] } as any;
+      const vc = { type: ['learcredential.employee.w3c.4', 'VerifiableCredential'] } as any;
       const result = getExtendedCredentialType(vc);
-      expect(result).toBe('LEARCredentialEmployee');
+      expect(result).toBe('learcredential.employee.w3c.4');
       expect(errorSpy).not.toHaveBeenCalled();
       expect(warnSpy).not.toHaveBeenCalled();
     });

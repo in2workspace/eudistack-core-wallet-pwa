@@ -3,8 +3,8 @@ import { ExtendedCredentialType, VerifiableCredential } from '../../core/models/
 import { DcqlCredentialQuery, DcqlQuery } from '../../core/protocol/oid4vp/authorization-request.model';
 
 const SCOPE_TO_TYPE: Record<string, string> = {
-  'dome.credentials.presentation.LEARCredentialEmployee': 'LEARCredentialEmployee',
-  'dome.credentials.presentation.LEARCredentialMachine': 'LEARCredentialMachine',
+  'learcredential.employee': 'learcredential.employee.w3c.4',
+  'learcredential.machine': 'learcredential.machine.w3c.3',
 };
 
 @Injectable({

@@ -9,7 +9,7 @@ export const credentialsListMock: Array<VerifiableCredential> = [
     //     ],
     //     "id": "fc8b2287-6651-476d-9052-35ec5543cbbd",
     //     "type": [
-    //         "LEARCredentialEmployee",
+    //         "learcredential.employee.w3c.4",
     //         "VerifiableCredential"
     //     ],
     //     "lifeCycleStatus": "VALID",
@@ -77,7 +77,7 @@ export const credentialsListMock: Array<VerifiableCredential> = [
         ],
         "id": "c39fb1e1-6fa7-4d9c-912a-01d7363584f7",
         "type": [
-            "LEARCredentialMachine",
+            "learcredential.machine.w3c.3",
             "VerifiableCredential"
         ],
         "lifeCycleStatus": "REVOKED",
@@ -131,7 +131,7 @@ export const credentialsListMock: Array<VerifiableCredential> = [
     //     ],
     //     "id": "adbe336c-7caa-4d80-afb1-2f6f05ba1696",
     //     "type": [
-    //         "gx:LabelCredential",
+    //         "gx.labelcredential.w3c.1",
     //         "VerifiableCredential"
     //     ],
     //     "name": "",

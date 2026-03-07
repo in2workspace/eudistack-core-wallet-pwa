@@ -5,6 +5,14 @@ import { CredentialResponse } from '../models/dto/CredentialResponse';
 import { CredentialPreview, Power, PreviewField } from '../models/credential-preview';
 import { CredentialMetadata } from '../models/dto/CredentialIssuerMetadata';
 
+/** Claims that are JWT/SD-JWT envelope metadata, not credential data. */
+const SD_JWT_STANDARD_CLAIMS = new Set([
+  'iss', 'iat', 'exp', 'nbf', 'sub', 'jti', 'cnf', 'vct',
+  'status', 'type', '@context', 'id', 'credentialSubject',
+  'issuer', 'validFrom', 'validUntil', 'issuanceDate', 'expirationDate',
+  'credentialStatus', '_sd', '_sd_alg',
+]);
+
 @Injectable({ providedIn: 'root' })
 export class CredentialPreviewBuilderService {
 
@@ -26,8 +34,13 @@ export class CredentialPreviewBuilderService {
       if (this.sdJwtParser.isSdJwt(credential)) {
         const { payload } = this.sdJwtParser.reconstructClaims(credential);
         const exp = payload['exp'] as number | undefined;
+        // Build credentialSubject dynamically from non-standard claims
+        const credentialSubject = payload['credentialSubject'] ??
+          Object.fromEntries(
+            Object.entries(payload).filter(([k]) => !SD_JWT_STANDARD_CLAIMS.has(k))
+          );
         vc = {
-          credentialSubject: { mandate: payload['mandate'] },
+          credentialSubject,
           validUntil: exp ? new Date(exp * 1000).toISOString() : '',
         };
       } else {
