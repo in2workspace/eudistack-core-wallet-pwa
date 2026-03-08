@@ -77,6 +77,21 @@
   50% { transform: scale(1.05); opacity: 0.85; }
 }
 
+// Install variant
+.fp-circle.install-circle {
+  background: linear-gradient(135deg, var(--brand-primary, var(--primary-color)), var(--brand-secondary, var(--secondary-color)));
+
+  ion-icon {
+    color: #fff;
+  }
+}
+
+.secondary-button {
+  --color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 0;
+}
+
 // Title & subtitle
 .auth-title {
   text-align: center;

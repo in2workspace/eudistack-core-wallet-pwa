@@ -85,7 +85,11 @@
             "verify": "Verificar",
             "change-email": "Canviar email",
             "passkey-subtitle": "Crea una passkey per configurar el teu wallet de forma segura",
-            "create-wallet": "Crear Wallet"
+            "create-wallet": "Crear Wallet",
+            "install-title": "Instal·lar l'App",
+            "install-subtitle": "Per a la millor experiència i accés offline, instal·la l'app del wallet al teu dispositiu.",
+            "install-button": "Instal·lar App",
+            "continue-browser": "Continuar al navegador"
         },
         "passkey": {
             "title": "Configurar Passkey",

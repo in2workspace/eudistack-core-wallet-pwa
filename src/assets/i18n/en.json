@@ -88,7 +88,11 @@
             "verify": "Verify",
             "change-email": "Change email",
             "passkey-subtitle": "Create a passkey to set up your wallet securely",
-            "create-wallet": "Create Wallet"
+            "create-wallet": "Create Wallet",
+            "install-title": "Install the App",
+            "install-subtitle": "For the best experience and offline access, install the wallet app on your device.",
+            "install-button": "Install App",
+            "continue-browser": "Continue in browser"
         },
         "passkey": {
             "title": "Set up Passkey",
