@@ -67,12 +67,21 @@ export class CredentialPreviewBuilderService {
     const cs = vc?.['credentialSubject'];
     if (!cs || !meta.claims) return [];
 
-    return meta.claims
-      .map(claim => ({
-        label: claim.display?.[0]?.name ?? claim.path[claim.path.length - 1],
-        value: this.stringifyValue(resolveByPath(cs, claim.path)),
-      }))
-      .filter(f => !!f.value);
+    const fields: PreviewField[] = [];
+    for (const claim of meta.claims) {
+      const value = resolveByPath(cs, claim.path);
+      if (value == null || value === '') continue;
+
+      const label = claim.display?.[0]?.name ?? claim.path[claim.path.length - 1];
+
+      // Array of objects (e.g. powers): skip here, handled via preview.power
+      if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
+        continue;
+      }
+
+      fields.push({ label, value: this.stringifyValue(value) });
+    }
+    return fields;
   }
 
   private getHumanFormat(format?: string): string {

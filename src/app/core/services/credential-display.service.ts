@@ -144,7 +144,7 @@ export class CredentialDisplayService {
     const scalarSections = Array.from(groups.entries()).map(([sectionKey, items]) => {
       const lastSegment = sectionKey.split('.').pop() ?? sectionKey;
       return {
-        section: capitalize(lastSegment),
+        section: humanizeKey(lastSegment),
         fields: items.map(({ claim, value }) => ({
           label: claim.display?.[0]?.name ?? claim.path[claim.path.length - 1],
           value: this.stringifyValue(value),
@@ -177,7 +177,7 @@ export class CredentialDisplayService {
 
     if (entries.length > 0) {
       return {
-        label: capitalize(String(entries[0][0])),
+        label: humanizeKey(String(entries[0][0])),
         value: entries.map(([, v]) => this.stringifyValue(v)).join(' — '),
       };
     }
@@ -234,6 +234,10 @@ function resolveByPath(obj: any, path: string[]): unknown {
   return current;
 }
 
-function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
+/** Converts camelCase/PascalCase keys to readable labels: "mandatee" → "Mandatee", "firstName" → "First Name" */
+function humanizeKey(str: string): string {
+  const spaced = str
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]/g, ' ');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
