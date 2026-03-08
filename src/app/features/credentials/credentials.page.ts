@@ -177,6 +177,15 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     }
   }
 
+  public handleRefresh(event: any): void {
+    this.loadCredentials()
+      .pipe(
+        finalize(() => event.target.complete()),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
   public qrCodeEmit(qrCode: string): void {
     const isCredentialOffer = qrCode.includes('credential_offer_uri');
     //todo don't accept qrs that are not to login or get VC
@@ -281,7 +290,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       : 'Timeout waiting for user decision';
 
     this.notifyIssuer(flowResult, event, description);
-    this.credentialDecisionService.showTempMessage('home.rejected-msg');
+    this.credentialDecisionService.showTempMessage('home.rejected-msg', 'error');
     return from(this.router.navigate(['/tabs/credentials']));
   }
 

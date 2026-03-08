@@ -10,7 +10,9 @@ ion-modal.stack-modal {
 
 .credential-card {
   background-color: var(--surface-card);
-  width: 300px;
+  width: 100%;
+  max-width: 360px;
+  min-width: 240px;
   height: 200px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-default);
@@ -133,6 +135,11 @@ ion-modal.stack-modal {
 
 .status-expired {
   background-color: var(--status-error);
+}
+
+.status-expiring-soon {
+  background-color: var(--status-warning, #f59e0b);
+  font-size: 11px;
 }
 
 // ── Detail Modal ──────────────────────────────────────

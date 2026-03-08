@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  computed,
   EventEmitter,
   Input,
   OnInit,
@@ -24,7 +25,10 @@ import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared
 import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
 import { CredentialMapConfig, CredentialTypeMap } from 'src/app/core/models/credential-type-map';
 
+export type ExpiryStatus = 'valid' | 'expiring-soon' | 'expired';
 
+/** Threshold in days for the "expiring soon" warning badge. */
+const EXPIRY_WARNING_DAYS = 30;
 
 /**
  * This component displays two types of "details VC view":
@@ -51,6 +55,17 @@ export class VcViewComponent implements OnInit {
   public displayName = signal<string>('');
   public formatLabel = signal<string>('');
 
+  public expiryStatus = computed<ExpiryStatus>(() => {
+    const cred = this.credentialInput$();
+    if (!cred.validUntil) return 'valid';
+    const now = dayjs();
+    const expiry = dayjs(cred.validUntil);
+    if (!expiry.isValid()) return 'valid';
+    if (expiry.isBefore(now)) return 'expired';
+    if (expiry.diff(now, 'day') <= EXPIRY_WARNING_DAYS) return 'expiring-soon';
+    return 'valid';
+  });
+
   private readonly loadCardDataEffect = effect(async () => {
     const cred = this.credentialInput$();
     this.cardFields.set(await this.displayService.getCardFields(cred));
@@ -71,20 +86,18 @@ export class VcViewComponent implements OnInit {
   public isModalOpen = false;
   public isModalDeleteOpen = false;
   public isModalUnsignedOpen = false;
-  public showChip = false;
-  public handlerMessage = '';
-  public alertButtons = [
+
+  public readonly alertButtons = [
     {
       text: 'OK',
       role: 'confirm',
       handler: () => {
-        this.handlerMessage = 'Alert confirmed';
         this.isModalOpen = true;
       },
     },
   ];
 
-  public deleteButtons = [
+  public readonly deleteButtons = [
     {
       text: this.translate.instant("vc-view.delete-cancel"),
       role: 'cancel',
@@ -102,7 +115,7 @@ export class VcViewComponent implements OnInit {
     },
   ];
 
-  public unsignedButtons = [{
+  public readonly unsignedButtons = [{
     text: this.translate.instant("vc-view.delete-close"),
     role: 'close',
     handler: () => {

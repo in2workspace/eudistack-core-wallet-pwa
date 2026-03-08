@@ -31,8 +31,10 @@
       @if(iconUrl){
         <img [src]="iconUrl" alt width="50" height="50" class="card-icon" />
       }
-      @if(credentialInput.lifeCycleStatus == "EXPIRED") {
+      @if(credentialInput.lifeCycleStatus == "EXPIRED" || expiryStatus() === 'expired') {
         <span class="status-ellipse status-expired">{{ "credentials.expiration" | translate }}</span>
+      } @else if(expiryStatus() === 'expiring-soon') {
+        <span class="status-ellipse status-expiring-soon">{{ "credentials.expiring-soon" | translate }}</span>
       }
       @if(credentialInput.lifeCycleStatus == "REVOKED") {
         <span class="status-ellipse status-expired">{{ "vc-view.revoked" | translate }}</span>
@@ -56,18 +58,8 @@
         </ion-card-header>
       </ion-col>
 
+      <!-- TODO(dead-code): showChip was always false; QR chip area removed. Restore when QR-on-card is needed. -->
       <ion-col size="12" align-self-end class="card-qr-area">
-        @if(showChip){
-        <img
-          (click)="qrView()"
-          (keydown)="handleKeydown($event, 'qr')"
-          src="assets/icons/41.png"
-          alt="qr"
-          role="alert"
-          class="card-qr-icon"
-        />
-        }
-
       </ion-col>
     </ion-col>
   </ion-col>

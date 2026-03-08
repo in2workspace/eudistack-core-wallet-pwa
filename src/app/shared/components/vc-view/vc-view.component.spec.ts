@@ -164,12 +164,9 @@ describe('VcViewComponent', () => {
     );
   });
 
-  it('clicking on OK button in alertButtons should set handlerMessage and isModalOpen correctly', () => {
-    jest.spyOn(component, 'setOpen');
-
-    component.setOpen(true);
-
-    expect(component.setOpen).toHaveBeenCalledWith(true);
+  it('clicking on OK button in alertButtons should set isModalOpen correctly', () => {
+    component.alertButtons[0].handler();
+    expect(component.isModalOpen).toBeTruthy();
   });
 
   it('clicking on close button in unsignedButtons  should change isModalUnsignedOpen  accordingly', () => {
@@ -409,6 +406,47 @@ describe('VcViewComponent', () => {
   //   });
     
   // });
+
+  describe('expiryStatus', () => {
+    it('should return "valid" when validUntil is far in the future', () => {
+      const future = new Date(Date.now() + 365 * 86400000).toISOString();
+      componentRef.setInput('credentialInput$', {
+        ...component.credentialInput$(),
+        validUntil: future,
+      });
+      fixture.detectChanges();
+      expect(component.expiryStatus()).toBe('valid');
+    });
+
+    it('should return "expiring-soon" when validUntil is within 30 days', () => {
+      const soon = new Date(Date.now() + 15 * 86400000).toISOString();
+      componentRef.setInput('credentialInput$', {
+        ...component.credentialInput$(),
+        validUntil: soon,
+      });
+      fixture.detectChanges();
+      expect(component.expiryStatus()).toBe('expiring-soon');
+    });
+
+    it('should return "expired" when validUntil is in the past', () => {
+      const past = new Date(Date.now() - 86400000).toISOString();
+      componentRef.setInput('credentialInput$', {
+        ...component.credentialInput$(),
+        validUntil: past,
+      });
+      fixture.detectChanges();
+      expect(component.expiryStatus()).toBe('expired');
+    });
+
+    it('should return "valid" when validUntil is empty', () => {
+      componentRef.setInput('credentialInput$', {
+        ...component.credentialInput$(),
+        validUntil: '',
+      });
+      fixture.detectChanges();
+      expect(component.expiryStatus()).toBe('valid');
+    });
+  });
 
   describe('copyToClipboard', () => {
     let originalClipboard: typeof navigator.clipboard;

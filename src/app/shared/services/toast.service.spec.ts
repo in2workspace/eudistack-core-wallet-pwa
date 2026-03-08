@@ -102,11 +102,11 @@ describe('ToastServiceHandler', () => {
 
     service.showErrorAlert("The QR session expired");
     tick();
-    expect(translateSpy).toHaveBeenCalledWith("errors.pin-expired");
+    expect(translateSpy).toHaveBeenCalledWith("errors.qr-expired");
 
     service.showErrorAlert("ErrorUnsigned");
     tick();
-    expect(translateSpy).toHaveBeenCalledWith("errors.qr-expired");
+    expect(translateSpy).toHaveBeenCalledWith("errors.Errunsigned");
   }));
  
   it('should create alert for an error message 1', async () => {

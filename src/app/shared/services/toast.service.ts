@@ -3,6 +3,22 @@ import { TranslateService } from '@ngx-translate/core';
 import { map, Observable, take } from 'rxjs';
 import { AlertController } from '@ionic/angular';
 
+const ERROR_TRANSLATION_MAP: Record<string, string> = {
+  'The received QR content cannot be processed': 'errors.invalid-qr',
+  'There are no credentials available to login': 'errors.no-credentials-available',
+  'There was a problem processing the QR. It might be invalid or already have been used': 'errors.failed-qr-process',
+  'Error while fetching credentialOffer from the issuer': 'errors.expired-credentialOffer',
+  'Error while deserializing CredentialOffer': 'errors.invalid-credentialOffer',
+  'Error while processing Credential Issuer Metadata from the Issuer': 'errors.invalid-issuerMetadata',
+  'Error while fetching  Credential from Issuer': 'errors.cannot-get-VC',
+  'Error processing Verifiable Credential': 'errors.cannot-save-VC',
+  'Incorrect PIN': 'errors.incorrect-pin',
+  'Unsigned': 'errors.unsigned',
+  'ErrorUnsigned': 'errors.Errunsigned',
+  'PIN expired': 'errors.pin-expired',
+  'The QR session expired': 'errors.qr-expired',
+};
+
 @Injectable({
   providedIn: 'root',
 })
@@ -10,44 +26,12 @@ export class ToastServiceHandler {
   private readonly translate = inject(TranslateService);
   private readonly alertController = inject(AlertController);
 
-  //todo use title instead of message
- public showErrorAlert(message: string): Observable<unknown> {
-    let messageBody = "errors.default"
-    if (message.startsWith("The received QR content cannot be processed")) {
-      messageBody = "errors.invalid-qr";
-    }
-    if (message.startsWith("There are no credentials available to login")) {
-      messageBody = "errors.no-credentials-available";
-    }
-    else if(message.startsWith('There was a problem processing the QR. It might be invalid or already have been used')){
-      messageBody = "errors.failed-qr-process";
-    }
-    else if (message.startsWith("Error while fetching credentialOffer from the issuer")) {
-      messageBody = "errors.expired-credentialOffer";
-    }
-    else if (message.startsWith("Error while deserializing CredentialOffer")) {
-      messageBody = "errors.invalid-credentialOffer";
-    }
-    else if (message.startsWith("Error while processing Credential Issuer Metadata from the Issuer")) {
-      messageBody = "errors.invalid-issuerMetadata";
-    }
-    else if (message.startsWith("Error while fetching  Credential from Issuer")) {
-      messageBody = "errors.cannot-get-VC";
-    }
-    else if (message.startsWith("Error processing Verifiable Credential")) {
-      messageBody = "errors.cannot-save-VC";
-    }
-    else if (message.startsWith("Incorrect PIN")) {
-      messageBody = "errors.incorrect-pin";
-    }else if (message.startsWith("Unsigned")) {
-      messageBody = "errors.unsigned";
-    }else if (message.startsWith("ErrorUnsigned")) {
-      messageBody = "errors.Errunsigned";
-    }else if(message.startsWith("PIN expired")){
-      messageBody = "errors.pin-expired"
-    }else if(message.startsWith("The QR session expired")){
-      messageBody = "errors.qr-expired"
-    }
+  public showErrorAlert(message: string): Observable<unknown> {
+    const translationKey = Object.keys(ERROR_TRANSLATION_MAP)
+      .find(prefix => message.startsWith(prefix));
+    const messageBody = translationKey
+      ? ERROR_TRANSLATION_MAP[translationKey]
+      : 'errors.default';
 
     return this.showErrorAlertByTranslateLabel(messageBody);
   }

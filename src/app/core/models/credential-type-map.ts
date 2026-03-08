@@ -49,6 +49,12 @@ const labelConfig: CredentialMapConfig = {
   ],
 };
 
+// NOTE: W3C versions here (w3c.4, w3c.3) do not match the JSON schema profiles
+// in src/assets/schemas/ which use w3c.1. The schema registry service also uses w3c.1.
+// These versions are kept as-is because they reflect the credential_configuration_ids
+// actually issued by the current issuer deployment. A full version alignment is pending.
+// See also: verifiable-credential.ts CREDENTIAL_TYPES_ARRAY, credential-detail-map.ts,
+// verifiable-credential-subject-data-normalizer.ts, credential-cache.service.ts.
 export const CredentialTypeMap: Record<CredentialType, CredentialMapConfig> = {
   'learcredential.employee.w3c.4': employeeConfig,
   'learcredential.employee.sd.1': employeeConfig,
