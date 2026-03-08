@@ -19,6 +19,7 @@ export type PrfSupportStatus = 'available' | 'unavailable';
 @Injectable({ providedIn: 'root' })
 export class PasskeyPrfService {
   private status: PrfSupportStatus | null = null;
+  private prfLock: Promise<any> | null = null;
   private readonly store = inject(PasskeyStoreService);
 
   /** Check whether the current browser + authenticator support PRF. */
@@ -133,6 +134,11 @@ export class PasskeyPrfService {
     privateKey: CryptoKey;
     publicKeyJwk: JsonWebKey;
   }> {
+    // Serialize PRF evaluations to prevent concurrent biometric prompts
+    while (this.prfLock) {
+      await this.prfLock;
+    }
+
     const credentialIdB64 = this.store.getCredentialId();
     if (!credentialIdB64) {
       throw new AppError('No passkey registered on this device', {
@@ -141,8 +147,17 @@ export class PasskeyPrfService {
     }
 
     const credentialIdBytes = base64UrlDecode(credentialIdB64);
-    const prfOutput = await this.evaluatePrf(credentialIdBytes, salt);
-    return this.deriveP256KeyFromBytes(prfOutput, salt);
+
+    let resolve: () => void;
+    this.prfLock = new Promise<void>(r => resolve = r);
+
+    try {
+      const prfOutput = await this.evaluatePrf(credentialIdBytes, salt);
+      return this.deriveP256KeyFromBytes(prfOutput, salt);
+    } finally {
+      this.prfLock = null;
+      resolve!();
+    }
   }
 
   /** Remove the stored passkey credential ID (logout / reset). */

@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { Router } from '@angular/router';
 import { PasskeyPrfService } from './passkey-prf.service';
+import { base64UrlDecode } from '../utils/base64url';
 
 /**
  * Auth service for browser-only (PRF) mode.
@@ -91,10 +92,11 @@ export class LocalAuthService {
       publicKey: {
         challenge,
         allowCredentials: [{
-          id: Uint8Array.from(atob(credentialId.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
+          id: base64UrlDecode(credentialId),
           type: 'public-key',
         }],
         userVerification: 'required',
+        timeout: 60_000,
       },
     });
 

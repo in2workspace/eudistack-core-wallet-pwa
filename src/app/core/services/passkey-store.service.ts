@@ -77,7 +77,7 @@ export class PasskeyStoreService {
         this.cache.set(record.key, record.value);
       }
 
-      this.migrateFromLocalStorage();
+      await this.migrateFromLocalStorage();
     } finally {
       db.close();
     }
@@ -85,16 +85,16 @@ export class PasskeyStoreService {
 
   // --- Migration: one-time move from localStorage ---
 
-  private migrateFromLocalStorage(): void {
+  private async migrateFromLocalStorage(): Promise<void> {
     const legacyCredentialId = localStorage.getItem('wallet_passkey_credential_id');
     const legacyHasPasskey = localStorage.getItem('wallet_has_passkey');
 
     if (legacyCredentialId && !this.cache.has(KEY_CREDENTIAL_ID)) {
-      this.setCredentialId(legacyCredentialId);
+      await this.setCredentialId(legacyCredentialId);
       localStorage.removeItem('wallet_passkey_credential_id');
       localStorage.removeItem('wallet_has_passkey');
     } else if (legacyHasPasskey && !this.cache.has(KEY_HAS_PASSKEY)) {
-      this.setHasPasskey(legacyHasPasskey === 'true');
+      await this.setHasPasskey(legacyHasPasskey === 'true');
       localStorage.removeItem('wallet_has_passkey');
     }
   }
