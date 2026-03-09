@@ -63,18 +63,6 @@ interface StructuredItem {
                   </div>
                 </ng-template>
               </ng-container>
-              <!-- Powers (always rendered via translated legacy path) -->
-              <div class="field-row" *ngIf="mappedPowers.length">
-                <span class="field-label">{{ 'confirmation.powers' | translate }}</span>
-                <div class="structured-list">
-                  <div class="structured-item" *ngFor="let entry of mappedPowers">
-                    <span class="structured-entry">
-                      <span class="structured-key">{{ entry.fn }}</span>
-                      <span class="structured-val">{{ entry.actions }}</span>
-                    </span>
-                  </div>
-                </div>
-              </div>
             </ng-container>
 
             <ng-template #legacyFields>

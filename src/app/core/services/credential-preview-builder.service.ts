@@ -30,37 +30,47 @@ export class CredentialPreviewBuilderService {
     }
 
     try {
-      let vc: Record<string, any>;
-      if (this.sdJwtParser.isSdJwt(credential)) {
-        const { payload } = this.sdJwtParser.reconstructClaims(credential);
-        const exp = payload['exp'] as number | undefined;
-        // Build credentialSubject dynamically from non-standard claims
-        const credentialSubject = payload['credentialSubject'] ??
-          Object.fromEntries(
-            Object.entries(payload).filter(([k]) => !SD_JWT_STANDARD_CLAIMS.has(k))
-          );
-        vc = {
-          credentialSubject,
-          validUntil: exp ? new Date(exp * 1000).toISOString() : '',
+      const vc = this.extractVc(credential);
+
+      // Metadata-driven path: generic for any credential type
+      if (credentialMetadata?.claims?.length) {
+        return {
+          displayName: credentialMetadata.display?.[0]?.name ?? '',
+          format: this.getHumanFormat(format),
+          fields: this.createDynamicFields(vc, credentialMetadata),
+          power: [],
+          subjectName: '',
+          organization: '',
+          expirationDate: this.extractExpiration(vc),
         };
-      } else {
-        const payload = this.jwtService.extractJwtPayload(credential) as Record<string, any>;
-        vc = payload['vc'] ?? payload;
       }
 
-      const base = this.mapVcToPreview(vc);
-
-      // Enrich with metadata if available
-      if (credentialMetadata) {
-        base.displayName = credentialMetadata.display?.[0]?.name ?? '';
-        base.format = this.getHumanFormat(format);
-        base.fields = this.createDynamicFields(vc, credentialMetadata);
-      }
-
-      return base;
+      // Legacy fallback: hardcoded mandate/mandatee structure
+      return this.mapVcToPreview(vc);
     } catch {
       return this.emptyPreview();
     }
+  }
+
+  private extractVc(credential: string): Record<string, any> {
+    if (this.sdJwtParser.isSdJwt(credential)) {
+      const { payload } = this.sdJwtParser.reconstructClaims(credential);
+      const exp = payload['exp'] as number | undefined;
+      const credentialSubject = payload['credentialSubject'] ??
+        Object.fromEntries(
+          Object.entries(payload).filter(([k]) => !SD_JWT_STANDARD_CLAIMS.has(k))
+        );
+      return {
+        credentialSubject,
+        validUntil: exp ? new Date(exp * 1000).toISOString() : '',
+      };
+    }
+    const payload = this.jwtService.extractJwtPayload(credential) as Record<string, any>;
+    return payload['vc'] ?? payload;
+  }
+
+  private extractExpiration(vc: Record<string, any>): string {
+    return String(vc?.['validUntil'] ?? vc?.['expirationDate'] ?? '');
   }
 
   private createDynamicFields(vc: Record<string, any>, meta: CredentialMetadata): PreviewField[] {
@@ -69,16 +79,15 @@ export class CredentialPreviewBuilderService {
 
     const fields: PreviewField[] = [];
     for (const claim of meta.claims) {
-      const value = resolveByPath(cs, claim.path);
+      // Strip leading 'credentialSubject' from path — we already navigate into it
+      const path = claim.path[0] === 'credentialSubject' ? claim.path.slice(1) : claim.path;
+
+      const value = resolveByPath(cs, path);
       if (value == null || value === '') continue;
 
-      const label = claim.display?.[0]?.name ?? claim.path[claim.path.length - 1];
+      const label = claim.display?.[0]?.name ?? path[path.length - 1];
 
-      // Array of objects (e.g. powers): skip here, handled via preview.power
-      if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
-        continue;
-      }
-
+      // All values (including arrays of objects) are rendered generically
       fields.push({ label, value: this.stringifyValue(value) });
     }
     return fields;
