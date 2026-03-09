@@ -1,19 +1,8 @@
-export interface Power {
-  function: string;
-  action: string[];
-}
-
-export interface PreviewField {
-  label: string;
-  value: string;
-}
+import { DisplayField } from './display-field.model';
 
 export interface CredentialPreview {
   displayName: string;
   format: string;
-  fields: PreviewField[];
-  power: Power[];
-  subjectName: string;
-  organization: string;
+  fields: DisplayField[];
   expirationDate: string;
 }

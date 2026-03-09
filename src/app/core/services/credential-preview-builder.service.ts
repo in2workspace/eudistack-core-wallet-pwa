@@ -2,8 +2,9 @@ import { inject, Injectable } from '@angular/core';
 import { JwtService } from '../protocol/oid4vci/jwt.service';
 import { SdJwtParserService } from '../protocol/oid4vci/sd-jwt-parser.service';
 import { CredentialResponse } from '../models/dto/CredentialResponse';
-import { CredentialPreview, Power, PreviewField } from '../models/credential-preview';
+import { CredentialPreview } from '../models/credential-preview';
 import { CredentialMetadata } from '../models/dto/CredentialIssuerMetadata';
+import { CredentialDisplayService } from './credential-display.service';
 
 /** Claims that are JWT/SD-JWT envelope metadata, not credential data. */
 const SD_JWT_STANDARD_CLAIMS = new Set([
@@ -18,6 +19,7 @@ export class CredentialPreviewBuilderService {
 
   private readonly jwtService = inject(JwtService);
   private readonly sdJwtParser = inject(SdJwtParserService);
+  private readonly displayService = inject(CredentialDisplayService);
 
   buildPreview(
     credentialResponse: CredentialResponse,
@@ -25,28 +27,20 @@ export class CredentialPreviewBuilderService {
     format?: string
   ): CredentialPreview {
     const credential = credentialResponse.credentials?.[0]?.credential;
-    if (!credential) {
-      return this.emptyPreview();
-    }
+    if (!credential) return this.emptyPreview();
 
     try {
       const vc = this.extractVc(credential);
+      const cs = vc?.['credentialSubject'];
 
-      // Metadata-driven path: generic for any credential type
-      if (credentialMetadata?.claims?.length) {
-        return {
-          displayName: credentialMetadata.display?.[0]?.name ?? '',
-          format: this.getHumanFormat(format),
-          fields: this.createDynamicFields(vc, credentialMetadata),
-          power: [],
-          subjectName: '',
-          organization: '',
-          expirationDate: this.extractExpiration(vc),
-        };
-      }
-
-      // Legacy fallback: hardcoded mandate/mandatee structure
-      return this.mapVcToPreview(vc);
+      return {
+        displayName: credentialMetadata?.display?.[0]?.name ?? '',
+        format: this.getHumanFormat(format),
+        fields: credentialMetadata
+          ? this.displayService.buildFieldsFromClaims(cs, credentialMetadata)
+          : [],
+        expirationDate: String(vc?.['validUntil'] ?? vc?.['expirationDate'] ?? ''),
+      };
     } catch {
       return this.emptyPreview();
     }
@@ -69,30 +63,6 @@ export class CredentialPreviewBuilderService {
     return payload['vc'] ?? payload;
   }
 
-  private extractExpiration(vc: Record<string, any>): string {
-    return String(vc?.['validUntil'] ?? vc?.['expirationDate'] ?? '');
-  }
-
-  private createDynamicFields(vc: Record<string, any>, meta: CredentialMetadata): PreviewField[] {
-    const cs = vc?.['credentialSubject'];
-    if (!cs || !meta.claims) return [];
-
-    const fields: PreviewField[] = [];
-    for (const claim of meta.claims) {
-      // Strip leading 'credentialSubject' from path — we already navigate into it
-      const path = claim.path[0] === 'credentialSubject' ? claim.path.slice(1) : claim.path;
-
-      const value = resolveByPath(cs, path);
-      if (value == null || value === '') continue;
-
-      const label = claim.display?.[0]?.name ?? path[path.length - 1];
-
-      // All values (including arrays of objects) are rendered generically
-      fields.push({ label, value: this.stringifyValue(value) });
-    }
-    return fields;
-  }
-
   private getHumanFormat(format?: string): string {
     if (!format) return '';
     switch (format) {
@@ -102,47 +72,7 @@ export class CredentialPreviewBuilderService {
     }
   }
 
-  private mapVcToPreview(vc: Record<string, any>): CredentialPreview {
-    const cs = vc?.['credentialSubject'];
-    const mandate = cs?.['mandate'];
-    const mandatee = mandate?.['mandatee'];
-
-    const firstName = mandatee?.['firstName'] ?? '';
-    const lastName = mandatee?.['lastName'] ?? '';
-    const subjectName = `${firstName} ${lastName}`.trim() || '';
-
-    const organization = String(mandate?.['mandator']?.['organization'] ?? '');
-
-    const rawPowers: any[] = mandate?.['power'] ?? [];
-    const power: Power[] = rawPowers.map((p: any) => ({
-      function: p?.['function'] ?? '',
-      action: Array.isArray(p?.['action']) ? p['action'] : [],
-    }));
-
-    const expirationDate = String(vc?.['validUntil'] ?? '');
-
-    return { displayName: '', format: '', fields: [], power, subjectName, organization, expirationDate };
-  }
-
   private emptyPreview(): CredentialPreview {
-    return { displayName: '', format: '', fields: [], power: [], subjectName: '', organization: '', expirationDate: '' };
+    return { displayName: '', format: '', fields: [], expirationDate: '' };
   }
-
-  private stringifyValue(value: unknown): string {
-    if (value == null) return '';
-    if (typeof value === 'string') return value;
-    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-    if (Array.isArray(value)) return value.map(v => this.stringifyValue(v)).join(', ');
-    if (typeof value === 'object') return JSON.stringify(value);
-    return String(value);
-  }
-}
-
-function resolveByPath(obj: any, path: string[]): unknown {
-  let current = obj;
-  for (const key of path) {
-    if (current == null) return undefined;
-    current = current[key];
-  }
-  return current;
 }

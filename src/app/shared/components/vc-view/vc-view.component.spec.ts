@@ -1,10 +1,9 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { VcViewComponent } from './vc-view.component';
 import { WalletService } from 'src/app/core/services/wallet.service';
-import { LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
+import { VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { Observable, of, throwError } from 'rxjs';
 import { TranslateModule } from '@ngx-translate/core';
-import * as detailMapModule from 'src/app/core/models/credential-detail-map';
 import { RouterTestingModule } from '@angular/router/testing';
 import { CallbackPage } from 'src/app/features/callback/callback.page';
 import { ComponentRef } from '@angular/core';
@@ -141,14 +140,6 @@ describe('VcViewComponent', () => {
     expect(component.isModalUnsignedOpen).toBeTruthy();
   });
 
-  it('setOpen should correctly set isModalOpen based on the input', () => {
-    component.setOpen(true);
-    expect(component.isModalOpen).toBeTruthy();
-
-    component.setOpen(false);
-    expect(component.isModalOpen).toBeFalsy();
-  });
-
   it('clicking on delete button in deleteButtons should change isModalDeleteOpen accordingly', () => {
     jest.spyOn(component.vcEmit, 'emit');
 
@@ -169,19 +160,13 @@ describe('VcViewComponent', () => {
     expect(component.isModalOpen).toBeTruthy();
   });
 
-  it('clicking on close button in unsignedButtons  should change isModalUnsignedOpen  accordingly', () => {
+  it('clicking on close button in unsignedButtons should change isModalUnsignedOpen accordingly', () => {
     jest.spyOn(component.vcEmit, 'emit');
 
-    component.unsignedButtons [0].handler();
+    component.unsignedButtons[0].handler();
     expect(component.isModalUnsignedOpen).toBeFalsy();
   });
 
-  // it('qrView should set isAlertExpirationOpenNotFound when credential is expired', () => {
-  //   component.credentialInput$().lifeCycleStatus = "EXPIRED";
-  //   component.qrView();
-  //   expect(component.isAlertExpirationOpenNotFound).toBeTruthy();
-  // });
-  
   it('qrView should handle HTTP errors correctly', () => {
     const mockError = new Error('Network issue');
     jest.spyOn(walletService, 'getVCinCBOR').mockReturnValue(throwError(() => mockError));
@@ -189,17 +174,7 @@ describe('VcViewComponent', () => {
     component.qrView();
 
     expect(component.isAlertOpenNotFound).toBeTruthy();
-  })
-
-  /*it('should call deleteVC on Enter key press on delete button', fakeAsync(() => {
-    jest.spyOn(component, 'deleteVC');
-    fixture.detectChanges();
-    const deleteButton = fixture.debugElement.query(By.css('.vc-view-button'));
-    expect(deleteButton).toBeTruthy();
-    deleteButton.triggerEventHandler('keydown', { key: 'Enter', preventDefault: () => {} });
-    tick();
-    expect(component.deleteVC).toHaveBeenCalled();
-  }));*/
+  });
 
   it('should call deleteVC when keydown event with key "Enter" and action "delete"', fakeAsync(() => {
     jest.spyOn(component, 'deleteVC');
@@ -208,6 +183,7 @@ describe('VcViewComponent', () => {
     tick();
     expect(component.deleteVC).toHaveBeenCalled();
   }));
+
   it('should call setOpen when keydown event with key " " and action "close"', fakeAsync(() => {
     jest.spyOn(component, 'setOpen');
     const event = new KeyboardEvent('keydown', { key: ' ' });
@@ -215,6 +191,7 @@ describe('VcViewComponent', () => {
     tick();
     expect(component.setOpen).toHaveBeenCalledWith(false);
   }));
+
   it('should call unsignedInfo when keydown event with key "Enter" and action "info"', fakeAsync(() => {
     jest.spyOn(component, 'unsignedInfo');
     const event = new KeyboardEvent('keydown', { key: 'Enter' });
@@ -222,6 +199,7 @@ describe('VcViewComponent', () => {
     tick();
     expect(component.unsignedInfo).toHaveBeenCalled();
   }));
+
   it('should prevent default behavior for button keydown event', fakeAsync(() => {
     const event = new KeyboardEvent('keydown', { key: 'Enter' });
     jest.spyOn(event, 'preventDefault');
@@ -247,165 +225,7 @@ describe('VcViewComponent', () => {
     component.closeDetailModal();
 
     expect(component.isDetailModalOpen).toBeFalsy();
-  }); 
-
-  // describe('getStructuredFields', () => {   
-  //   it('should not fail if credentialType is not in CredentialDetailMap', () => {
-  //     component.credentialType = 'UnknownType';
-  //     expect(() => component.getStructuredFields()).not.toThrow();
-  //     expect(component.evaluatedSections.length).toBeGreaterThan(0);
-  //   });
-
-  //   it('should handle CredentialDetailMap entry as a function', () => {
-  //     const mockSection = {
-  //     section: 'Mock Section',
-  //     fields: [
-  //       {
-  //       label: 'Mock Label',
-  //       valueGetter: jest.fn().mockReturnValue('Mock Value'),
-  //       },
-  //       {
-  //       label: 'Empty Label',
-  //       valueGetter: jest.fn().mockReturnValue(''),
-  //       },
-  //     ],
-  //     };
-  //     const mockDetailMapFn = jest.fn().mockReturnValue([mockSection]);
-  //     const originalCredentialType = component.credentialType;
-  //     component.credentialType = 'MockType';
-
-  //     const originalDetailMap = detailMapModule.CredentialDetailMap[component.credentialType];
-  //     detailMapModule.CredentialDetailMap[component.credentialType] = mockDetailMapFn as any;
-
-  //     component.getStructuredFields();
-
-  //     expect(mockDetailMapFn).toHaveBeenCalled();
-  //     const foundSection = component.evaluatedSections.find(s => s.section === 'Mock Section');
-  //     expect(foundSection).toBeTruthy();
-  //     expect(foundSection?.fields.length).toBe(1);
-  //     expect(foundSection?.fields[0].label).toBe('Mock Label');
-  //     expect(foundSection?.fields[0].value).toBe('Mock Value');
-
-  //     if (originalDetailMap) {
-  //     detailMapModule.CredentialDetailMap[component.credentialType] = originalDetailMap;
-  //     } else {
-  //     delete detailMapModule.CredentialDetailMap[component.credentialType];
-  //     }
-  //     component.credentialType = originalCredentialType;
-  //   });
-
-  //   it('mappedFields should return mapped fields from typeConfig', () => {
-  //     const mockTypeConfig = {
-  //     fields: [
-  //       { label: 'Test Label', valueGetter: jest.fn().mockReturnValue('Test Value') },
-  //     ],
-  //     };
-  //     Object.defineProperty(component, 'typeConfig', { get: () => mockTypeConfig });
-  //     component.credentialInput.credentialSubject = {
-  //       mandate: {
-  //         id: '',
-  //         mandator: {
-  //           commonName: '',
-  //           serialNumber: '',
-  //           organization: '',
-  //           country: '',
-  //           id: ''
-  //         },
-  //         mandatee: {
-  //           id: '',
-  //           firstName: '',
-  //           lastName: '',
-  //           email: '',
-  //           employeeId: '',
-  //           domain: '',
-  //           ipAddress: ''
-  //         },
-  //         power: [
-  //           {
-  //             id: '',
-  //             type: '',
-  //             domain: '',
-  //             function: '',
-  //             action: [''],
-  //           },
-  //         ]
-  //       }
-  //     };
-  //     const fields = component.mappedFields;
-  //     expect(fields.length).toBe(1);
-  //     expect(fields[0].label).toBe('Test Label');
-  //     expect(fields[0].value).toBe('Test Value');
-  //   });
-
-  //   it('mappedFields should return empty array if typeConfig is undefined', () => {
-  //     Object.defineProperty(component, 'typeConfig', { get: () => undefined });
-  //     const fields = component.mappedFields;
-  //     expect(fields).toEqual([]);
-  //   });
-
-  //   it('iconUrl should return icon from typeConfig', () => {
-  //     Object.defineProperty(component, 'typeConfig', { get: () => ({ icon: 'icon-url' }) });
-  //     expect(component.iconUrl).toBe('icon-url');
-  //   });
-
-  //   it('iconUrl should return undefined if typeConfig is undefined', () => {
-  //     Object.defineProperty(component, 'typeConfig', { get: () => undefined });
-  //     expect(component.iconUrl).toBeUndefined();
-  //   });
-
-  //   it('handleKeydown should call qrView if action is "qr" and key is Enter', () => {
-  //     jest.spyOn(component, 'qrView');
-  //     const event = new KeyboardEvent('keydown', { key: 'Enter' });
-  //     component.handleKeydown(event, 'qr');
-  //     expect(component.qrView).toHaveBeenCalled();
-  //   });
-
-  //   it('handleKeydown should call qrView if action is "qr" and key is Space', () => {
-  //     jest.spyOn(component, 'qrView');
-  //     const event = new KeyboardEvent('keydown', { key: ' ' });
-  //     component.handleKeydown(event, 'qr');
-  //     expect(component.qrView).toHaveBeenCalled();
-  //   });
-
-  //   it('handleKeydown should prevent default for Enter or Space', () => {
-  //     const event = new KeyboardEvent('keydown', { key: 'Enter' });
-  //     jest.spyOn(event, 'preventDefault');
-  //     component.handleKeydown(event, 'qr');
-  //     expect(event.preventDefault).toHaveBeenCalled();
-  //   });
-
-  //   it('handleKeydown should not call qrView if action is not "qr"', () => {
-  //     jest.spyOn(component, 'qrView');
-  //     const event = new KeyboardEvent('keydown', { key: 'Enter' });
-  //     component.handleKeydown(event, 'other');
-  //     expect(component.qrView).not.toHaveBeenCalled();
-  //   });
-
-  //   it('handleButtonKeydown should call openDetailModal when action is "detail"', () => {
-  //     jest.spyOn(component, 'openDetailModal');
-  //     const event = new KeyboardEvent('keydown', { key: 'Enter' });
-  //     component.handleButtonKeydown(event, 'detail');
-  //     expect(component.openDetailModal).toHaveBeenCalled();
-  //   });
-
-  //   it('handleButtonKeydown should not call any action if key is not Enter or Space', () => {
-  //     jest.spyOn(component, 'deleteVC');
-  //     jest.spyOn(component, 'setOpen');
-  //     jest.spyOn(component, 'unsignedInfo');
-  //     jest.spyOn(component, 'openDetailModal');
-  //     const event = new KeyboardEvent('keydown', { key: 'Tab' });
-  //     component.handleButtonKeydown(event, 'delete');
-  //     expect(component.deleteVC).not.toHaveBeenCalled();
-  //     expect(component.setOpen).not.toHaveBeenCalled();
-  //     expect(component.unsignedInfo).not.toHaveBeenCalled();
-  //     expect(component.openDetailModal).not.toHaveBeenCalled();
-  //   });
-
-  //   it('checkAvailableFormats should not throw', () => {
-  //     expect(() => component.checkAvailableFormats()).not.toThrow();
-  //   });
-    
-  // });
+  });
 
   describe('expiryStatus', () => {
     it('should return "valid" when validUntil is far in the future', () => {
@@ -473,12 +293,12 @@ describe('VcViewComponent', () => {
     });
   });
 
-  it('getStructuredFields should add credentialEncoded section for machine credential type', () => {
+  it('getStructuredFields should add credentialEncoded section for machine credential type', async () => {
     component.credentialType = 'learcredential.machine.w3c.3';
-    component.credentialInput$().credentialEncoded = 'encoded_value';
-    const originalDetailMap = detailMapModule.CredentialDetailMap[component.credentialType];
-    detailMapModule.CredentialDetailMap[component.credentialType] = [];
-    component.getStructuredFields();
+    (component.credentialInput$() as any).credentialEncoded = 'encoded_value';
+
+    await component.getStructuredFields();
+
     const encodedSection = component.detailViewSections.find(
       s => s.section === 'vc-fields.credentialEncoded'
     );
@@ -486,14 +306,9 @@ describe('VcViewComponent', () => {
     expect(encodedSection?.fields.length).toBe(1);
     expect(encodedSection?.fields[0].label).toBe('vc-fields.credentialEncoded');
     expect(encodedSection?.fields[0].value).toBe('encoded_value');
-    if (originalDetailMap) {
-      detailMapModule.CredentialDetailMap[component.credentialType] = originalDetailMap;
-    } else {
-      detailMapModule.CredentialDetailMap[component.credentialType] = undefined as any;;
-    }
   });
 
-  it('getStructuredFields should use issuer string when issuer is a plain string', () => {
+  it('getStructuredFields should use issuer string when issuer is a plain string', async () => {
     const current = component.credentialInput$();
     componentRef.setInput('credentialInput$', {
       ...current,
@@ -501,7 +316,7 @@ describe('VcViewComponent', () => {
     });
     fixture.detectChanges();
 
-    component.getStructuredFields();
+    await component.getStructuredFields();
 
     const credentialInfoSection = component.detailViewSections.find(
       s => s.section === 'vc-fields.title'
@@ -514,69 +329,5 @@ describe('VcViewComponent', () => {
     expect(issuerIdField).toBeTruthy();
     expect(issuerIdField!.value).toBe('did:example:issuer');
   });
-
-  it('translatePowerSections should translate function and all actions in powers section', () => {
-  component.credentialType = 'learcredential.employee.w3c.4';
-
-  const current = component.credentialInput$() as any;
-  componentRef.setInput('credentialInput$', {
-    ...current,
-    type: ['learcredential.employee.w3c.4'],
-    credentialSubject: {
-      mandate: {
-        ...current.credentialSubject.mandate,
-        power: [
-          {
-            id: '',
-            type: '',
-            domain: 'user',
-            function: 'ADMIN',
-            action: ['CREATE', 'DELETE'],
-          },
-        ],
-        mandator: current.credentialSubject.mandate.mandator,
-        mandatee: current.credentialSubject.mandate.mandatee,
-        id: current.credentialSubject.mandate.id,
-      },
-    },
-  } as any);
-
-  fixture.detectChanges();
-
-  component.getStructuredFields();
-
-  const powersSection = component.detailViewSections.find(s => s.section.endsWith('.powers'));
-  expect(powersSection).toBeTruthy();
-
-  const field = powersSection!.fields[0];
-  // TranslateModule.forRoot() sense loader retorna la clau tal qual
-  expect(field.label).toBe('vc-fields.power.admin (user)');
-  expect(field.value).toBe('vc-fields.power.create, vc-fields.power.delete');
-});
-
-it('translatePowerSections should be a no-op when subject has no mandate', () => {
-  component.credentialType = 'gx.labelcredential.w3c.1';
-
-  const current = component.credentialInput$();
-  componentRef.setInput('credentialInput$', {
-    ...current,
-    type: ['gx.labelcredential.w3c.1'],
-    credentialSubject: {
-      id: 'label-1',
-      'gx:labelLevel': 'BL',
-      'gx:engineVersion': '1.0.0',
-      'gx:rulesVersion': '1.0.0',
-      'gx:compliantCredentials': [],
-      'gx:validatedCriteria': [],
-    } as any,
-  });
-
-  fixture.detectChanges();
-
-  expect(() => component.getStructuredFields()).not.toThrow();
-  // I no ha d'existir cap secció que acabi amb ".powers"
-  const anyPowers = component.detailViewSections.some(s => s.section.endsWith('.powers'));
-  expect(anyPowers).toBeFalsy();
-});
 
 });

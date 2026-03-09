@@ -2,19 +2,7 @@ import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule, ModalController } from '@ionic/angular';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { CredentialPreview, Power } from '../../../core/models/credential-preview';
-
-/** A field that has been processed for display. */
-interface DisplayField {
-  label: string;
-  value: string;
-  /** If the value was a JSON array of objects, each is flattened here. */
-  structured: StructuredItem[] | null;
-}
-
-interface StructuredItem {
-  entries: { key: string; value: string }[];
-}
+import { CredentialPreview } from '../../../core/models/credential-preview';
 
 @Component({
   selector: 'app-credential-confirmation-modal',
@@ -41,51 +29,27 @@ interface StructuredItem {
           <div class="card-divider"></div>
 
           <div class="card-fields">
-            <ng-container *ngIf="displayFields.length; else legacyFields">
-              <ng-container *ngFor="let field of displayFields">
-                <!-- Structured field (array of objects like powers) -->
-                <div class="field-row" *ngIf="field.structured; else simpleField">
-                  <span class="field-label">{{ field.label }}</span>
-                  <div class="structured-list">
-                    <div class="structured-item" *ngFor="let item of field.structured">
-                      <span *ngFor="let e of item.entries" class="structured-entry">
-                        <span class="structured-key">{{ e.key }}</span>
-                        <span class="structured-val">{{ e.value }}</span>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <!-- Simple text field -->
-                <ng-template #simpleField>
-                  <div class="field-row">
-                    <span class="field-label">{{ field.label }}</span>
-                    <span class="field-value">{{ field.value }}</span>
-                  </div>
-                </ng-template>
-              </ng-container>
-            </ng-container>
-
-            <ng-template #legacyFields>
-              <div class="field-row" *ngIf="preview.subjectName">
-                <span class="field-label">{{ 'confirmation.holder' | translate }}</span>
-                <span class="field-value">{{ preview.subjectName }}</span>
-              </div>
-              <div class="field-row" *ngIf="preview.organization">
-                <span class="field-label">{{ 'confirmation.organization' | translate }}</span>
-                <span class="field-value">{{ preview.organization }}</span>
-              </div>
-              <div class="field-row" *ngIf="preview.power?.length">
-                <span class="field-label">{{ 'confirmation.powers' | translate }}</span>
+            <ng-container *ngFor="let field of preview.fields">
+              <!-- Structured field (array of objects like powers) -->
+              <div class="field-row" *ngIf="field.structured?.length; else simpleField">
+                <span class="field-label">{{ field.label }}</span>
                 <div class="structured-list">
-                  <div class="structured-item" *ngFor="let entry of mappedPowers">
+                  <div class="structured-item" *ngFor="let item of field.structured">
                     <span class="structured-entry">
-                      <span class="structured-key">{{ entry.fn }}</span>
-                      <span class="structured-val">{{ entry.actions }}</span>
+                      <span class="structured-key">{{ item.label }}</span>
+                      <span class="structured-val">{{ item.value }}</span>
                     </span>
                   </div>
                 </div>
               </div>
-            </ng-template>
+              <!-- Simple text field -->
+              <ng-template #simpleField>
+                <div class="field-row">
+                  <span class="field-label">{{ field.label }}</span>
+                  <span class="field-value">{{ field.value }}</span>
+                </div>
+              </ng-template>
+            </ng-container>
           </div>
 
           <div class="card-expiration" *ngIf="preview.expirationDate">
@@ -226,8 +190,6 @@ export class CredentialConfirmationModalComponent {
 
   animateIn = false;
   remainingSeconds = 0;
-  displayFields: DisplayField[] = [];
-  mappedPowers: { fn: string; actions: string }[] = [];
   formattedExpiration = '';
   formatLabel = '';
 
@@ -246,8 +208,6 @@ export class CredentialConfirmationModalComponent {
   ionViewDidEnter(): void {
     this.animateIn = true;
     this.formatLabel = this.resolveFormatLabel(this.preview.format);
-    this.displayFields = this.buildDisplayFields(this.preview);
-    this.mappedPowers = this.buildLegacyPowers(this.preview.power);
     this.formattedExpiration = this.formatDate(this.preview.expirationDate);
     this.remainingSeconds = this.timeoutSeconds;
     this.startCountdown();
@@ -265,111 +225,6 @@ export class CredentialConfirmationModalComponent {
   onReject(): void {
     this.clearCountdown();
     this.modalCtrl.dismiss(null, 'cancel');
-  }
-
-  /**
-   * Processes preview fields. If a field value is a JSON array of objects,
-   * it gets parsed into structured items for nice rendering.
-   */
-  private buildDisplayFields(preview: CredentialPreview): DisplayField[] {
-    if (!preview.fields?.length) return [];
-
-    return preview.fields.map(field => {
-      const structured = this.tryParseStructured(field.value);
-      return { label: field.label, value: structured ? '' : field.value, structured };
-    });
-  }
-
-  /**
-   * Agnostic parser: detects JSON arrays of objects or single objects in a string
-   * and flattens them into key-value pairs for display.
-   */
-  private tryParseStructured(value: string): StructuredItem[] | null {
-    if (!value) return null;
-    const trimmed = value.trim();
-    // Only try if it looks like JSON array or object
-    if (!(trimmed.startsWith('[') || trimmed.startsWith('{'))) return null;
-
-    try {
-      let parsed = JSON.parse(trimmed);
-      if (!Array.isArray(parsed)) parsed = [parsed];
-      if (!parsed.length || typeof parsed[0] !== 'object') return null;
-
-      return parsed.map((obj: Record<string, unknown>) => ({
-        entries: this.flattenObject(obj),
-      }));
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Flattens an object into key-value string pairs, filtering out
-   * keys like 'type' that are meta and making values human-readable.
-   */
-  private flattenObject(obj: Record<string, unknown>): { key: string; value: string }[] {
-    const skipKeys = new Set(['type', 'id', '@type', '@context']);
-    return Object.entries(obj)
-      .filter(([k, v]) => !skipKeys.has(k) && v != null && v !== '')
-      .map(([k, v]) => ({
-        key: this.humanizeKey(k),
-        value: this.humanizeValue(v),
-      }));
-  }
-
-  /** Converts camelCase/snake_case keys to readable labels. */
-  private humanizeKey(key: string): string {
-    return key
-      .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .replace(/[_-]/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase());
-  }
-
-  /** Converts a value to a display string, joining arrays with commas. */
-  private humanizeValue(value: unknown): string {
-    if (Array.isArray(value)) return value.map(v => this.humanizeValue(v)).join(', ');
-    if (typeof value === 'object' && value !== null) return JSON.stringify(value);
-    return String(value ?? '');
-  }
-
-  private buildLegacyPowers(powers: Power[]): { fn: string; actions: string }[] {
-    if (!powers?.length) return [];
-
-    const unknown = this.translate.instant('confirmation.unknown');
-
-    return powers
-      .map((p) => {
-        const fnKey = this.normalizeKey(p?.function);
-        const actionKeys = this.normalizeActionKeys(p?.action);
-
-        const fn = this.getSafeTranslation(`vc-fields.power.${fnKey}`, p?.function, unknown);
-        const actions = actionKeys
-          .map((a) => this.getSafeTranslation(`vc-fields.power.${a}`, a, unknown))
-          .filter((x) => x && x !== unknown)
-          .join(', ');
-
-        if (!fn || !actions) return null;
-        return { fn, actions };
-      })
-      .filter((x): x is { fn: string; actions: string } => x !== null);
-  }
-
-  private getSafeTranslation(key: string, fallbackText: unknown, unknown: string): string {
-    const translated = this.translate.instant(key);
-    if (translated && translated !== key) return String(translated);
-    const fb = String(fallbackText ?? '').trim();
-    const looksLikeKey = fb.includes('.') || fb.includes('_') || fb.includes('-');
-    if (!fb || looksLikeKey) return unknown;
-    return fb;
-  }
-
-  private normalizeKey(value: unknown): string {
-    return String(value ?? '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-  }
-
-  private normalizeActionKeys(actions: unknown): string[] {
-    if (!Array.isArray(actions)) return [];
-    return actions.map((a) => this.normalizeKey(a)).filter(Boolean);
   }
 
   private resolveFormatLabel(format: string): string {
