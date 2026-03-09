@@ -149,11 +149,17 @@ export class ThemeService {
       scope: `${origin}/`,
       start_url: `${origin}/`,
       orientation: 'portrait',
-      icons: [
-        { src: `${origin}/assets/icons/pwa-192x192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
-        { src: `${origin}/assets/icons/pwa-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
-        { src: `${origin}/assets/icons/pwa-maskable-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-      ],
+      icons: theme.branding.pwaIconUrl
+        ? [
+            { src: theme.branding.pwaIconUrl, sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: theme.branding.pwaIconUrl, sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: theme.branding.pwaIconUrl, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          ]
+        : [
+            { src: `${origin}/assets/icons/pwa-192x192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: `${origin}/assets/icons/pwa-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: `${origin}/assets/icons/pwa-maskable-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          ],
       screenshots: [
         { src: `${origin}/assets/screenshots/screenshot-wide.png`, sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: `${theme.branding.name || 'EUDI'} Wallet` },
         { src: `${origin}/assets/screenshots/screenshot-mobile.png`, sizes: '540x720', type: 'image/png', label: `${theme.branding.name || 'EUDI'} Wallet` },

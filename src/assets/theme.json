@@ -7,7 +7,8 @@
     "secondaryContrastColor": "#ffffff",
     "logoUrl": "assets/logos/altia-logo.svg",
     "logoDarkUrl": "assets/logos/altia-logo-dark.svg",
-    "faviconUrl": "assets/icons/altia-favicon.ico"
+    "faviconUrl": "assets/icons/altia-favicon.ico",
+    "pwaIconUrl": "assets/icons/pwa-altia-512.png"
   },
   "content": {
     "links": [],

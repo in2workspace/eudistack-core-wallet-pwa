@@ -8,6 +8,7 @@ export interface Theme {
     logoUrl: string | null;
     logoDarkUrl: string | null;
     faviconUrl: string | null;
+    pwaIconUrl: string | null;
   };
   content: {
     links: { label: string; url: string }[];
