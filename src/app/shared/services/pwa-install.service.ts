@@ -13,6 +13,14 @@ export class PwaInstallService {
   readonly installable$ = this.canInstall$.asObservable();
 
   constructor() {
+    // Pick up early-captured prompt (fires before Angular bootstraps when SW cache is active)
+    const earlyPrompt = (window as any).__pwaInstallPrompt as BeforeInstallPromptEvent | null;
+    if (earlyPrompt) {
+      this.deferredPrompt = earlyPrompt;
+      this.canInstall$.next(true);
+      (window as any).__pwaInstallPrompt = null;
+    }
+
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       this.deferredPrompt = e as BeforeInstallPromptEvent;

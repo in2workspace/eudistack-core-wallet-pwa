@@ -24,6 +24,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <!-- load environment variables -->
   <script src="assets/env.js"></script>
+  <!-- capture PWA install prompt before Angular bootstraps (race condition fix) -->
+  <script>
+    window.__pwaInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      window.__pwaInstallPrompt = e;
+    });
+  </script>
 </head>
 
 <body>
