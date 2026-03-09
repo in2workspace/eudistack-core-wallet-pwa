@@ -55,6 +55,23 @@ export class AppComponent implements OnInit, OnDestroy {
     this.initOid4vciEngine();
     this.issuerMetadataCache.refreshStaleMetadata().catch(console.warn);
     this.alertIncompatibleDevice();
+    this.consumeLaunchQueue();
+  }
+
+  /**
+   * Handles URLs delivered by the Launch Handler API when the PWA is already
+   * open and the browser reuses the existing window instead of opening a new one.
+   * Requires `launch_handler.client_mode: "navigate-existing"` in the manifest.
+   */
+  private consumeLaunchQueue(): void {
+    if ('launchQueue' in window) {
+      (window as any).launchQueue.setConsumer((launchParams: any) => {
+        if (launchParams.targetURL) {
+          const url = new URL(launchParams.targetURL);
+          this.router.navigateByUrl(url.pathname + url.search);
+        }
+      });
+    }
   }
 
   public ngOnDestroy(){
