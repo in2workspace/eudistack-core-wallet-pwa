@@ -151,9 +151,9 @@ export class ThemeService {
       orientation: 'portrait',
       icons: theme.branding.pwaIconUrl
         ? [
-            { src: theme.branding.pwaIconUrl, sizes: '192x192', type: 'image/png', purpose: 'any' },
-            { src: theme.branding.pwaIconUrl, sizes: '512x512', type: 'image/png', purpose: 'any' },
-            { src: theme.branding.pwaIconUrl, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ]
         : [
             { src: `${origin}/assets/icons/pwa-192x192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
