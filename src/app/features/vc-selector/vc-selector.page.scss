@@ -1,34 +1,86 @@
-.select-text{
-  font-weight: 700;
-  padding-top: 12px;
-  padding-left: 12px;
-}
-
-ion-button:focus {
-  --background: var(--status-success);
-  --color: white;
-}
-ion-alert.custom-alert {
-    --ion-text-color: var(--text-primary);
-    --backdrop-opacity: 0.7;
-  }
-
-.custom-close-button {
-  color: var(--text-primary);
-}
-
 .vc-selector-content {
   --ion-background-color: var(--surface-page) !important;
-  box-shadow: none;
+}
+
+.vc-selector-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 20px 8px;
+}
+
+.header-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--action-primary, #2563EB);
+  margin-bottom: 14px;
+
+  ion-icon {
+    font-size: 28px;
+    color: #fff;
+  }
+}
+
+.header-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary, #1A1A2E);
+  margin: 0 0 6px;
+}
+
+.header-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #6B7280);
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+.requester-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: var(--surface-muted, #E8ECF1);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary, #6B7280);
+
+  ion-icon {
+    font-size: 16px;
+  }
 }
 
 .vc-selector-card {
   --ion-background-color: var(--surface-page);
   background-color: var(--surface-page);
   box-shadow: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md, 8px);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: var(--action-primary, #2563EB);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
 }
 
-.vc-selector-alert {
-  border-radius: 2px;
-  max-width: 60%;
+ion-footer ion-toolbar {
+  padding: 8px 16px;
+}
+
+.cancel-button {
+  --border-radius: 8px;
+  font-weight: 600;
 }

@@ -121,8 +121,11 @@
         "title":"Terms Of Use"
     },
     "vc-selector":{
-        "title":"Vc Selector",
+        "title":"Credential Presentation",
         "select-cred":"Select a Credential",
+        "presentation-request":"Credential Request",
+        "select-instruction":"Tap the credential you want to present",
+        "cancel":"Cancel",
         "send-cred":"Send Credential",
         "ok-header": "Credential sent successfully",
         "ok-message":"Log in completed",

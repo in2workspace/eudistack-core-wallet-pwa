@@ -14,6 +14,7 @@ import { LoaderService } from 'src/app/shared/services/loader.service';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
 import { Oid4vpEngineService } from 'src/app/core/protocol/oid4vp/oid4vp.engine.service';
+import { CredentialDecisionService } from 'src/app/core/services/credential-decision.service';
 
 // todo: show only VCs with powers to login
 // todo: if user has only one VC, use this directly
@@ -37,6 +38,7 @@ export class VcSelectorPage {
   public credDataList: VerifiableCredential[] = [];
   public size = 300;
   public executionResponse: any;
+  public requesterDomain = '';
   public userName = '';
   public isAlertOpen = false;
   public errorAlertOpen = false;
@@ -56,6 +58,7 @@ export class VcSelectorPage {
   private readonly toastService = inject(ToastServiceHandler);
   private readonly translate = inject(TranslateService);
   private readonly oid4vpEngineService = inject(Oid4vpEngineService);
+  private readonly credentialDecisionService = inject(CredentialDecisionService);
 
 
   public constructor() {
@@ -74,6 +77,19 @@ export class VcSelectorPage {
       this._VCReply.nonce = this.executionResponse['nonce'];
       this._VCReply.clientId = this.executionResponse['clientId'];
       this._VCReply.dcqlQuery = this.executionResponse['dcqlQuery'];
+      this.requesterDomain = this.extractDomain(this.executionResponse['clientId'] || this.executionResponse['redirectUri'] || '');
+  }
+
+  public goBack(): void {
+    this.router.navigate(['/tabs/credentials']);
+  }
+
+  private extractDomain(url: string): string {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return url;
+    }
   }
 
   // Normalize each credential, updating its credentialSubject property
@@ -146,7 +162,7 @@ export class VcSelectorPage {
         await this.oid4vpEngineService.buildVerifiablePresentationWithSelectedVCs(this._VCReply);
 
         this.router.navigate(['/tabs/home']);
-        this.okMessage();
+        this.showSuccessToast();
       } catch (err) {
         this.handleError(err);
       } finally {
@@ -162,22 +178,8 @@ export class VcSelectorPage {
     this.selCredList = [];
   }
 
-  public async okMessage() {
-    const alert = await this.alertController.create({
-      message: `
-        <div style="display: flex; align-items: center; gap: 50px;">
-          <ion-icon name="checkmark-circle-outline" ></ion-icon>
-          <span>${this.translate.instant('vc-selector.ok-header')}</span>
-        </div>
-      `,
-      cssClass: 'custom-alert-ok-info',
-    });
-
-    await alert.present();
-
-    setTimeout(async () => {
-      await alert.dismiss();
-    }, 2000);
+  private showSuccessToast(): void {
+    this.credentialDecisionService.showTempMessage('vc-selector.ok-header', 'success');
   }
 
 }

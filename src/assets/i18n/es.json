@@ -116,10 +116,13 @@
         "title":"Terminos de Uso"
     },
     "vc-selector":{
-        "title":"Selector de VC",
+        "title":"Presentación de Credencial",
         "select-cred":"Selecciona una Credencial",
-        "send-cred":"Envia Credencial",
-        "ok-header": "Credencial enviada correctamente.",
+        "presentation-request":"Solicitud de Credencial",
+        "select-instruction":"Pulsa la credencial que deseas presentar",
+        "cancel":"Cancelar",
+        "send-cred":"Enviar Credencial",
+        "ok-header": "Credencial enviada correctamente",
         "ok-message":"Login correcto",
         "unauthorized-message":"La credencial enviada no es válida.",
         "bad-request-error-message":"Error al enviar la credencial",

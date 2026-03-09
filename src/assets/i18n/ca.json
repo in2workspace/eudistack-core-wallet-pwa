@@ -118,8 +118,11 @@
         "title":"Termes d'Us"
     },
     "vc-selector":{
-        "title":"Selector de VC",
+        "title":"Presentació de Credencial",
         "select-cred":"Selecciona una Credencial",
+        "presentation-request":"Sol·licitud de Credencial",
+        "select-instruction":"Prem la credencial que vols presentar",
+        "cancel":"Cancel·lar",
         "send-cred":"Envia Credencial",
         "ok-header": "Credencial enviada correctament",
         "ok-message":"Login correcte",
