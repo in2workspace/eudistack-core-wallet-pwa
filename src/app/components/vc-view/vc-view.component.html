@@ -12,6 +12,7 @@
     border-radius: 20px;
     border: 1px solid lightgrey;
     align-content: center;
+    cursor: pointer;
   "
 >
 @if(credentialInput.lifeCycleStatus == "ISSUED"){
@@ -173,7 +174,11 @@
 </ion-card>
 
 <!-- DETAILS MODAL VIEW -->
-<ion-modal [isOpen]="isDetailModalOpen" (didDismiss)="closeDetailModal()" class="credential-detail-modal">
+<ion-modal
+  [isOpen]="isDetailViewActive"
+  (didDismiss)="closeDetailModal()"
+  class="credential-detail-modal"
+>
   <ng-template>
     <ion-header>
       <ion-toolbar class="modal-toolbar">

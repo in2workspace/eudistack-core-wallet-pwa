@@ -31,6 +31,11 @@ const routes: Routes = [
           import('../credentials/credentials.page').then((m) => m.CredentialsPage),
       },
       {
+        path: 'credentials/:id',
+        loadComponent: () =>
+          import('../credentials/credentials.page').then((m) => m.CredentialsPage),
+      },
+      {
         path: 'settings',
         loadComponent: () =>
           import('../settings/settings.page').then((m) => m.SettingsPage),

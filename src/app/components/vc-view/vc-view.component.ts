@@ -6,7 +6,9 @@ import {
   Output,
   computed,
   inject,
-  input
+  input,
+  OnChanges,
+  SimpleChanges
 } from '@angular/core';
 import { QRCodeModule } from 'angularx-qrcode';
 import { WalletService } from 'src/app/services/wallet.service';
@@ -19,6 +21,7 @@ import { CredentialDetailMap, EvaluatedField, EvaluatedSection } from 'src/app/i
 import * as dayjs from 'dayjs';
 import { ToastServiceHandler } from 'src/app/services/toast.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/helpers/get-credential-type.helpers';
+import { Router } from '@angular/router';
 
 
 
@@ -35,10 +38,11 @@ import { getExtendedCredentialType, isValidCredentialType } from 'src/app/helper
   standalone: true,
   imports: [IonicModule, QRCodeModule, TranslateModule, CommonModule],
 })
-export class VcViewComponent implements OnInit {
+export class VcViewComponent implements OnInit, OnChanges {
   private readonly translate = inject(TranslateService);
   private readonly walletService = inject(WalletService);
   private readonly toastService = inject(ToastServiceHandler);
+  private readonly router = inject(Router);
 
   public credentialInput$ = input.required<VerifiableCredential>();
   public cardViewFields$ = computed<EvaluatedField[]>(() => {
@@ -104,24 +108,29 @@ export class VcViewComponent implements OnInit {
     },
   }];
 
-  public isDetailModalOpen = false;
   public detailViewSections!: EvaluatedSection[];
 
   public openDetailModal(): void {
-    if(this.isDetailViewActive){
-      this.isDetailModalOpen = true;
-      this.getStructuredFields();
+    const vc = this.credentialInput$();
+    if (!vc.id) {
+      return;
     }
+    this.router.navigate(['/tabs/credentials', vc.id]);
   }
 
   public closeDetailModal(): void {
-    this.isDetailModalOpen = false;
+    this.router.navigate(['/tabs/credentials'], { replaceUrl: true });
   }
 
   public ngOnInit(): void {
     this.credentialType = getExtendedCredentialType(this.credentialInput$());
   }
-
+  
+  public ngOnChanges(changes: SimpleChanges): void {
+    if (changes['isDetailViewActive']?.currentValue) {
+      this.getStructuredFields();
+    }
+  }
 
   public async copyToClipboard(text: string): Promise<void> {
     try {
@@ -152,7 +161,7 @@ export class VcViewComponent implements OnInit {
 
   public deleteVC(): void {
     this.isModalDeleteOpen = true;
-    this.isDetailModalOpen = false;
+    this.router.navigate(['/tabs/credentials'], { replaceUrl: true });
   }
 
   public unsignedInfo(event: Event): void {

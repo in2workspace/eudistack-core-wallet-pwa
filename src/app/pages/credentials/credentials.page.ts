@@ -8,7 +8,8 @@ import { QRCodeModule } from 'angularx-qrcode';
 import { WalletService } from 'src/app/services/wallet.service';
 import { VcViewComponent } from '../../components/vc-view/vc-view.component';
 import { TranslateModule } from '@ngx-translate/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { WebsocketService } from 'src/app/services/websocket.service';
 import { VerifiableCredential } from 'src/app/interfaces/verifiable-credential';
 import { VerifiableCredentialSubjectDataNormalizer } from 'src/app/interfaces/verifiable-credential-subject-data-normalizer';
@@ -50,6 +51,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   public showScanner = false;
   public isFirstCredentialLoadCompleted = false;
   public credentialOfferUri = '';
+  public selectedCredentialId: string | null = null;
 
 
   private readonly cameraLogsService = inject(CameraLogsService);
@@ -76,6 +78,17 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   }
 
   public ngOnInit(): void {
+    this.syncSelectedCredentialIdFromUrl();
+
+    this.router.events
+      .pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => {
+        this.syncSelectedCredentialIdFromUrl();
+      });
+
     this.loadCredentials()
     .pipe(finalize(() => this.isFirstCredentialLoadCompleted = true))
     .subscribe();
@@ -340,4 +353,9 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     return this.showScanner === true && this.showScannerView === true;
   }
 
+  private syncSelectedCredentialIdFromUrl(): void {
+    const match = this.router.url.match(/\/credentials\/([^/?#]+)/);
+    this.selectedCredentialId = match ? match[1] : null;
+    this.cdr.detectChanges();
+  }
 }
