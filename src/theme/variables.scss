@@ -9,12 +9,6 @@
   --secondary-color: #132153;
   --secondary-contrast-color: #ffffff;
 
-  /** Brand aliases (set by ThemeService — header/footer only) **/
-  --brand-primary: var(--primary-color);
-  --brand-primary-contrast: var(--primary-contrast-color);
-  --brand-secondary: var(--secondary-color);
-  --brand-secondary-contrast: var(--secondary-contrast-color);
-
   /** Semantic design tokens — neutral, brand-independent **/
   --surface-page: #F5F7FA;
   --surface-card: #FFFFFF;
@@ -61,7 +55,7 @@
   --ion-item-background: var(--surface-card);
   --ion-item-color: var(--text-primary);
   --ion-color-step-850: var(--surface-card);
-  --ion-toolbar-color: var(--brand-primary-contrast);
+  --ion-toolbar-color: var(--primary-contrast-color);
   --ion-card-background: var(--surface-card);
   --ion-card-color: var(--text-primary);
 

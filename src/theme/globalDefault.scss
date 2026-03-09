@@ -165,13 +165,13 @@ ion-button.toolbar-but {
 }
 
 .logout-list {
-  background-color: var(--brand-primary);
+  background-color: var(--primary-color);
 }
 
 .logout-list ion-item{
-  --ion-item-background: var(--brand-primary);
-  --ion-item-color: var(--brand-primary-contrast);
-  --border-color: var(--brand-primary-contrast) !important;
+  --ion-item-background: var(--primary-color);
+  --ion-item-color: var(--primary-contrast-color);
+  --border-color: var(--primary-contrast-color) !important;
 }
 
 .background-content {

@@ -121,15 +121,15 @@ ion-button[disabled] {
 
 ion-toolbar {
   transition: filter 0.3s ease;
-  --ion-toolbar-background: var(--brand-primary, var(--primary-color));
+  --ion-toolbar-background: var(--primary-color);
   &.blurred {
     filter: blur(1.5px);
   }
 }
 
 ion-toolbar ion-button {
-  --ion-toolbar-color: var(--brand-primary, var(--primary-color));
-  --ion-toolbar-background: var(--brand-primary-contrast, var(--primary-contrast-color));
+  --ion-toolbar-color: var(--primary-color);
+  --ion-toolbar-background: var(--primary-contrast-color);
 }
 
 ion-toolbar img.logo{

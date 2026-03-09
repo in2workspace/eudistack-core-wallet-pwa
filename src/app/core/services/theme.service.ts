@@ -89,23 +89,15 @@ export class ThemeService {
     const root = document.documentElement;
 
     // ── Layer 1: Brand tokens (header/footer chrome only) ──
-    const brandMap: Record<string, string> = {
-      '--brand-primary': theme.branding.primaryColor,
-      '--brand-primary-contrast': theme.branding.primaryContrastColor,
-      '--brand-secondary': theme.branding.secondaryColor,
-      '--brand-secondary-contrast': theme.branding.secondaryContrastColor,
-    };
-
-    // Backward-compatible aliases so existing CSS keeps working
-    const legacyMap: Record<string, string> = {
+    const colorMap: Record<string, string> = {
       '--primary-color': theme.branding.primaryColor,
       '--primary-contrast-color': theme.branding.primaryContrastColor,
       '--secondary-color': theme.branding.secondaryColor,
       '--secondary-contrast-color': theme.branding.secondaryContrastColor,
     };
 
-    // Apply brand + legacy via ColorService (which also sets -rgb, -shade, -tint)
-    this.colorService.applyCustomColors({ ...brandMap, ...legacyMap });
+    // Apply via ColorService (which also sets -rgb, -shade, -tint)
+    this.colorService.applyCustomColors(colorMap);
 
     // ── Layer 2: Semantic tokens (content area) ──
     const actionPrimary = this.computeActionPrimary(theme.branding.primaryColor);

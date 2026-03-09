@@ -1,5 +1,5 @@
 .auth-bg {
-  --background: linear-gradient(135deg, var(--brand-primary, var(--primary-color)) 0%, var(--brand-secondary, var(--secondary-color)) 100%);
+  --background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
 }
 
 .auth-wrapper {
@@ -46,7 +46,7 @@
   width: auto;
   max-width: 160px;
   object-fit: contain;
-  color: var(--brand-secondary, var(--secondary-color));
+  color: var(--secondary-color);
 }
 
 // Fingerprint hero
@@ -79,7 +79,7 @@
 
 // Install variant
 .fp-circle.install-circle {
-  background: linear-gradient(135deg, var(--brand-primary, var(--primary-color)), var(--brand-secondary, var(--secondary-color)));
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
 
   ion-icon {
     color: #fff;
