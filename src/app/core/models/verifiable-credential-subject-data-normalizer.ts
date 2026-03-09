@@ -32,31 +32,45 @@ export class VerifiableCredentialSubjectDataNormalizer {
   }
 
   private normalizerMapByCredentialType: Record<CredentialType, (s: CredentialSubject) => CredentialSubject> = {
-    'learcredential.employee.w3c.4': (s: CredentialSubject) => this.normalizeLearCredentialEmployeeSubject(s),
-    'learcredential.employee.sd.1': (s: CredentialSubject) => this.normalizeLearCredentialEmployeeSubject(s),
-    'learcredential.machine.w3c.3': (s: CredentialSubject) => s,
-    'learcredential.machine.sd.1': (s: CredentialSubject) => s,
+    'learcredential.employee.w3c.4': (s: CredentialSubject) => this.normalizeMandateSubject(s, true),
+    'learcredential.employee.sd.1': (s: CredentialSubject) => this.normalizeMandateSubject(s, true),
+    'learcredential.machine.w3c.3': (s: CredentialSubject) => this.normalizeMandateSubject(s, false),
+    'learcredential.machine.sd.1': (s: CredentialSubject) => this.normalizeMandateSubject(s, false),
     'gx.labelcredential.w3c.1': (s: CredentialSubject) => s
   } as const;
 
-    private normalizeLearCredentialEmployeeSubject(data: CredentialSubject): CredentialSubject {
+  /**
+   * SD-JWT credentials place mandator/mandatee/power directly on credentialSubject
+   * instead of nesting them under a `mandate` object (W3C format).
+   * This wraps the flat structure so downstream code works uniformly.
+   */
+  private wrapFlatMandateStructure(data: any): void {
+    if ('mandate' in data || !('mandator' in data || 'mandatee' in data || 'power' in data)) return;
+    data.mandate = {
+      ...(data.mandator ? { mandator: data.mandator } : {}),
+      ...(data.mandatee ? { mandatee: data.mandatee } : {}),
+      ...(data.power ? { power: data.power } : {}),
+    };
+    delete data.mandator;
+    delete data.mandatee;
+    delete data.power;
+  }
 
-    // Create a copy to avoid modifying the original object
-    const normalizedData = { ...data };
+  private normalizeMandateSubject(data: CredentialSubject, isEmployee: boolean): CredentialSubject {
+    const normalizedData: any = { ...data };
 
-    if ('mandate' in normalizedData && normalizedData.mandate) {
+    this.wrapFlatMandateStructure(normalizedData);
 
-      const mandate = normalizedData.mandate;
+    if (!('mandate' in normalizedData) || !normalizedData.mandate) return normalizedData;
 
-      if (mandate.mandatee) {
-        // Apply normalization on the mandatee object
-        mandate.mandatee = this.normalizeMandatee(mandate.mandatee);
-      }
+    const mandate = normalizedData.mandate;
 
-      if (mandate.power && Array.isArray(mandate.power)) {
-        // Normalize each power object in the array
-        mandate.power = mandate.power.map((p: RawPower) => this.normalizePower(p));
-      }
+    if (isEmployee && mandate.mandatee) {
+      mandate.mandatee = this.normalizeMandatee(mandate.mandatee);
+    }
+
+    if (mandate.power && Array.isArray(mandate.power)) {
+      mandate.power = mandate.power.map((p: RawPower) => this.normalizePower(p));
     }
 
     return normalizedData;
