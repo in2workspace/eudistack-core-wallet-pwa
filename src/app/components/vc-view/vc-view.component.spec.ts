@@ -8,6 +8,7 @@ import * as detailMapModule from 'src/app/interfaces/credential-detail-map';
 import { RouterTestingModule } from '@angular/router/testing';
 import { CallbackPage } from 'src/app/pages/callback/callback.page';
 import { ComponentRef } from '@angular/core';
+import { Router } from '@angular/router';
 
 class WalletServiceMock {
   getVCinCBOR(credential: VerifiableCredential) {
@@ -233,24 +234,69 @@ describe('VcViewComponent', () => {
     expect(event.preventDefault).toHaveBeenCalled();
   }));
 
-  it('openDetailModal should set isDetailModalOpen to true and call getStructuredFields', () => {
-    jest.spyOn(component, 'getStructuredFields');
-    component.isDetailModalOpen = false;
+  it('openDetailModal should navigate to credential detail route', () => {
+    const router = TestBed.inject(Router);
+    const navigateSpy = jest.spyOn(router, 'navigate');
 
-    component.isDetailViewActive = true;
     component.openDetailModal();
 
-    expect(component.isDetailModalOpen).toBeTruthy();
-    expect(component.getStructuredFields).toHaveBeenCalled();
+    expect(navigateSpy).toHaveBeenCalledWith(['/tabs/credentials', 'testId']);
   });
 
-  it('closeDetailModal should set isDetailModalOpen to false', () => {
-    component.isDetailModalOpen = true;
+  it('closeDetailModal should navigate back to credentials list', () => {
+    const router = TestBed.inject(Router);
+    const navigateSpy = jest.spyOn(router, 'navigate');
 
     component.closeDetailModal();
 
-    expect(component.isDetailModalOpen).toBeFalsy();
+    expect(navigateSpy).toHaveBeenCalledWith(['/tabs/credentials'], { replaceUrl: true });
   }); 
+
+  it('openDetailModal should not navigate when credential has no id', () => {
+    const router = TestBed.inject(Router);
+    const navigateSpy = jest.spyOn(router, 'navigate');
+
+    const vcWithoutId = {
+      ...(component.credentialInput$() as VerifiableCredential),
+      id: undefined as any,
+    };
+    componentRef.setInput('credentialInput$', vcWithoutId);
+    fixture.detectChanges();
+
+    component.openDetailModal();
+
+    expect(navigateSpy).not.toHaveBeenCalled();
+  });
+
+  it('ngOnChanges should call getStructuredFields when isDetailViewActive becomes true', () => {
+    const spy = jest.spyOn(component, 'getStructuredFields');
+
+    component.ngOnChanges({
+      isDetailViewActive: {
+        previousValue: false,
+        currentValue: true,
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    } as any);
+
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('ngOnChanges should not call getStructuredFields when isDetailViewActive is false', () => {
+    const spy = jest.spyOn(component, 'getStructuredFields');
+
+    component.ngOnChanges({
+      isDetailViewActive: {
+        previousValue: true,
+        currentValue: false,
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    } as any);
+
+    expect(spy).not.toHaveBeenCalled();
+  });
 
   // describe('getStructuredFields', () => {   
   //   it('should not fail if credentialType is not in CredentialDetailMap', () => {
