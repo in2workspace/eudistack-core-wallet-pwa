@@ -4,11 +4,12 @@ import { IonicModule } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.service';
-import { LocalAuthService } from 'src/app/core/services/local-auth.service';
-import { startAuthentication } from '@simplewebauthn/browser';
+import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
+import { base64UrlDecode } from 'src/app/core/utils/base64url';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
+import { LocalAuthService } from 'src/app/core/services/local-auth.service';
 
 @Component({
     selector: 'app-login',
@@ -94,6 +95,7 @@ export class LoginPage {
   showInstallScreen = !this.pwaInstall.isStandalone;
 
   private readonly authService = inject(AuthService);
+  private readonly prfService = inject(PasskeyPrfService);
   private readonly router = inject(Router);
 
   async installApp(): Promise<void> {
@@ -109,44 +111,57 @@ export class LoginPage {
     this.errorMessage = '';
 
     try {
-      if (this.authService instanceof LocalAuthService) {
-        await this.loginLocal(this.authService);
+      // Single biometric prompt — always local
+      await this.authenticateLocally();
+
+      // In server mode, also restore the JWT session
+      if (this.authService instanceof RemoteAuthService) {
+        await new Promise<void>((resolve, reject) => {
+          (this.authService as RemoteAuthService).refreshAccessToken().subscribe({
+            next: () => resolve(),
+            error: () => {
+              this.router.navigate(['/auth/register']);
+              reject(new Error('Session expired. Please register again.'));
+            }
+          });
+        });
       } else {
-        await this.loginRemote(this.authService as RemoteAuthService);
+        (this.authService as LocalAuthService).markAuthenticated();
       }
 
       const pendingLink = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
       sessionStorage.removeItem(PENDING_DEEP_LINK_KEY);
       this.router.navigateByUrl(pendingLink || '/tabs/home');
     } catch (err: any) {
-      console.error('Login error:', err);
-      this.errorMessage = err?.error?.message || err?.message || 'Login failed';
+      this.errorMessage = err?.message || 'Login failed';
     } finally {
       this.loading = false;
     }
   }
 
-  private async loginLocal(auth: LocalAuthService): Promise<void> {
-    if (!auth.hasPasskey()) {
+  private async authenticateLocally(): Promise<void> {
+    const credentialId = this.prfService.getCredentialId();
+    if (!credentialId) {
       this.router.navigate(['/auth/register']);
-      return;
+      throw new Error('No passkey found');
     }
-    await auth.authenticate();
-  }
 
-  private async loginRemote(auth: RemoteAuthService): Promise<void> {
-    const request = await new Promise<any>((resolve, reject) => {
-      auth.startLogin().subscribe({ next: resolve, error: reject });
+    const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer;
+    const credentialIdBuffer = base64UrlDecode(credentialId).buffer as ArrayBuffer;
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        allowCredentials: [{
+          id: credentialIdBuffer,
+          type: 'public-key',
+        }],
+        userVerification: 'required',
+        timeout: 60_000,
+      },
     });
 
-    const assertionOptions = request.publicKeyCredentialRequestOptions ?? request;
-    const assertion = await startAuthentication({ optionsJSON: assertionOptions });
-
-    await new Promise<void>((resolve, reject) => {
-      auth.finishLogin(JSON.stringify(assertion), JSON.stringify(request)).subscribe({
-        next: () => resolve(),
-        error: reject,
-      });
-    });
+    if (!assertion) {
+      throw new Error('Authentication cancelled');
+    }
   }
 }

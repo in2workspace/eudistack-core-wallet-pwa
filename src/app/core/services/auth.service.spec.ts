@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
-import { AuthService, TokenPairResponse, VerifyEmailResponse } from './auth.service';
+import { RemoteAuthService, TokenPairResponse } from './auth.service';
 import { environment } from 'src/environments/environment';
 
 const AUTH_BASE = `${environment.server_url}/api/v1/auth`;
@@ -16,8 +16,8 @@ class BroadcastChannelMock {
   close() {}
 }
 
-describe('AuthService', () => {
-  let service: AuthService;
+describe('RemoteAuthService', () => {
+  let service: RemoteAuthService;
   let httpMock: HttpTestingController;
   let routerMock: jest.Mocked<Router>;
 
@@ -35,12 +35,12 @@ describe('AuthService', () => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [
-        AuthService,
+        RemoteAuthService,
         { provide: Router, useValue: routerMock },
       ],
     });
 
-    service = TestBed.inject(AuthService);
+    service = TestBed.inject(RemoteAuthService);
     httpMock = TestBed.inject(HttpTestingController);
   });
 
@@ -68,58 +68,27 @@ describe('AuthService', () => {
   });
 
   describe('verifyEmail', () => {
-    it('should POST to /verify-email and store temp token', (done) => {
-      const response: VerifyEmailResponse = { userId: 'uuid-1', tempToken: 'temp-123' };
-
-      service.verifyEmail('test@example.com', '123456').subscribe((res) => {
-        expect(res.tempToken).toBe('temp-123');
-        done();
-      });
-
-      const req = httpMock.expectOne(`${AUTH_BASE}/verify-email`);
-      expect(req.request.body).toEqual({ email: 'test@example.com', code: '123456' });
-      req.flush(response);
-    });
-  });
-
-  describe('startLogin', () => {
-    it('should POST to /login/start', (done) => {
-      const options = { challenge: 'abc' };
-
-      service.startLogin('test@example.com').subscribe((res) => {
-        expect(res.challenge).toBe('abc');
-        done();
-      });
-
-      const req = httpMock.expectOne(`${AUTH_BASE}/login/start`);
-      expect(req.request.body).toEqual({ email: 'test@example.com' });
-      req.flush(JSON.stringify(options));
-    });
-  });
-
-  describe('finishLogin', () => {
-    it('should POST to /login/finish and store tokens', (done) => {
+    it('should POST to /verify-email and store tokens', (done) => {
       const tokenResponse: TokenPairResponse = {
         accessToken: 'eyJhbGciOiJSUzI1NiJ9.' + btoa(JSON.stringify({ sub: 'uuid-1', email: 'user@test.com' })) + '.sig',
         refreshToken: 'refresh-xyz',
         expiresIn: 900,
       };
 
-      service.finishLogin('cred-json', 'opts-json').subscribe((res) => {
+      service.verifyEmail('test@example.com', '123456').subscribe(() => {
         expect(service.getToken()).toBe(tokenResponse.accessToken);
         expect(service.isLoggedIn()).toBe(true);
         done();
       });
 
-      const req = httpMock.expectOne(`${AUTH_BASE}/login/finish`);
-      expect(req.request.body).toEqual({ credential: 'cred-json', options: 'opts-json' });
+      const req = httpMock.expectOne(`${AUTH_BASE}/verify-email`);
+      expect(req.request.body).toEqual({ email: 'test@example.com', code: '123456' });
       req.flush(tokenResponse);
     });
   });
 
   describe('logout', () => {
     it('should POST to /logout and clear state', (done) => {
-      // Simulate logged-in state
       (service as any).refreshTokenValue = 'refresh-123';
       (service as any).accessToken = 'access-456';
       (service as any).authenticated$.next(true);

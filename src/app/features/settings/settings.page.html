@@ -10,11 +10,6 @@
       <ion-item [routerLink]="['/tabs/language-selector']">
         <ion-icon color="grey" name="globe-outline"  class="settings-icon"></ion-icon>{{"language-selector.title"|translate}}
       </ion-item>
-      @if(isServerMode){
-        <ion-item [routerLink]="['/tabs/devices']">
-          <ion-icon color="grey" name="key-outline" class="settings-icon"></ion-icon><ion-text>{{"devices.settings-link"|translate}}</ion-text>
-        </ion-item>
-      }
       @if(canInstall$ | async){
         <ion-item button (click)="installApp()" (keydown.enter)="installApp()" (keydown.space)="installApp()">
           <ion-icon color="grey" name="download-outline" class="settings-icon"></ion-icon><ion-text>{{"menu.install"|translate}}</ion-text>

@@ -2,7 +2,6 @@ import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { Router } from '@angular/router';
 import { PasskeyPrfService } from './passkey-prf.service';
-import { base64UrlDecode } from '../utils/base64url';
 
 /**
  * Auth service for browser-only (PRF) mode.
@@ -55,16 +54,6 @@ export class LocalAuthService {
   }
 
   /**
-   * Attempt to recover a discoverable passkey whose credential ID
-   * was lost from localStorage (e.g. after clearing site data).
-   * Returns true if a passkey was recovered.
-   */
-  async tryRecoverPasskey(): Promise<boolean> {
-    const recovered = await this.prfService.tryRecoverPasskey();
-    return recovered !== null;
-  }
-
-  /**
    * First-time setup: create a discoverable passkey on this device.
    * After this, the user is authenticated.
    */
@@ -75,35 +64,11 @@ export class LocalAuthService {
   }
 
   /**
-   * Unlock the wallet by requesting a biometric assertion.
-   * The assertion itself is not sent anywhere — it just proves user presence.
-   * PRF keys will be derived on-demand when signing operations are needed.
+   * Mark the user as authenticated after a successful local biometric check.
+   * The biometric assertion is performed by the login page — this just
+   * updates the internal state so guards and interceptors see the user as logged in.
    */
-  async authenticate(): Promise<void> {
-    const credentialId = this.prfService.getCredentialId();
-    if (!credentialId) {
-      throw new Error('No passkey registered on this device');
-    }
-
-    // Request a simple assertion to verify user presence.
-    // We don't need PRF here — just biometric check.
-    const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32));
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge,
-        allowCredentials: [{
-          id: base64UrlDecode(credentialId),
-          type: 'public-key',
-        }],
-        userVerification: 'required',
-        timeout: 60_000,
-      },
-    });
-
-    if (!assertion) {
-      throw new Error('Authentication cancelled');
-    }
-
+  markAuthenticated(): void {
     this.authenticated$.next(true);
   }
 

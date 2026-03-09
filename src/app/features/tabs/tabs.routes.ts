@@ -44,11 +44,6 @@ const routes: Routes = [
           import('../activity/activity.page').then((m) => m.ActivityPage),
       },
       {
-        path: 'devices',
-        loadComponent: () =>
-          import('../devices/devices.page').then((m) => m.DevicesPage),
-      },
-      {
         path: 'logs',
         canActivate: [logsEnabledGuard],
         loadComponent: () =>

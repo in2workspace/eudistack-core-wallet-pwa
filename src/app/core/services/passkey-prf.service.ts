@@ -40,42 +40,6 @@ export class PasskeyPrfService {
   }
 
   /**
-   * Attempt to recover a previously registered discoverable passkey
-   * when the credential ID has been lost from localStorage.
-   *
-   * Uses navigator.credentials.get() without allowCredentials, which
-   * prompts the user to select a discoverable credential for this origin.
-   * If found, the credential ID is re-persisted to localStorage.
-   *
-   * Returns the recovered credential ID, or null if no passkey was found.
-   */
-  async tryRecoverPasskey(): Promise<string | null> {
-    if (this.hasPasskey()) {
-      return this.getCredentialId();
-    }
-
-    try {
-      const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32));
-      const assertion = (await navigator.credentials.get({
-        publicKey: {
-          challenge,
-          userVerification: 'required',
-          // No allowCredentials → discoverable credential prompt
-        },
-      })) as PublicKeyCredential | null;
-
-      if (!assertion) return null;
-
-      const credentialId = base64UrlEncode(new Uint8Array(assertion.rawId));
-      await this.store.setCredentialId(credentialId);
-
-      return credentialId;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
    * Create a new discoverable passkey (client-side only, no backend).
    * The challenge is generated locally — the attestation is not verified.
    * Returns the base64url-encoded credential ID.

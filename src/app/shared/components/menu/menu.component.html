@@ -12,12 +12,6 @@
       {{ 'menu.install' | translate }}
     </ion-item>
   }
-  @if (isServerMode) {
-    <ion-item button [routerLink]="['/tabs/devices']" (click)="dismiss()" (keydown.enter)="dismiss()" (keydown.space)="dismiss()">
-      <ion-icon name="key-outline" slot="start"></ion-icon>
-      {{ 'devices.settings-link' | translate }}
-    </ion-item>
-  }
   <ion-item button (click)="logout()" (keydown)="logoutOnKeydown($event)">
     <ion-icon name="log-out-outline" slot="start" color="danger"></ion-icon>
     <ion-label color="danger">{{ 'menu.logout' | translate }}</ion-label>

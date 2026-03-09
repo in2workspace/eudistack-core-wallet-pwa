@@ -38,10 +38,6 @@ export const routes: Routes = [
         path: 'register',
         loadComponent: () => import('./features/auth/register/register.page').then(m => m.RegisterPage),
       },
-      {
-        path: 'passkey-setup',
-        loadComponent: () => import('./features/auth/passkey-setup/passkey-setup.page').then(m => m.PasskeySetupPage),
-      },
     ]
   },
   {

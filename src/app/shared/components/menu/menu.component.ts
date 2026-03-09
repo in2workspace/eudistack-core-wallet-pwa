@@ -24,7 +24,6 @@ export class MenuComponent {
 
   readonly walletName = this.themeService.snapshot?.branding?.name || 'EUDI';
   readonly appVersion = environment.appVersion;
-  readonly isServerMode = environment.wallet_mode === 'server';
   readonly canInstall$ = this.pwaInstallService.installable$;
 
   public logoutOnKeydown(event: KeyboardEvent): void {
