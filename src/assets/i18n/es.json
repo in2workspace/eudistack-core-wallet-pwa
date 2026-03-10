@@ -352,6 +352,8 @@
         "verifying": "Verificando credencial...",
         "result-valid": "La credencial es válida",
         "result-invalid": "La credencial tiene problemas",
+        "result-revoked": "Credencial revocada",
+        "result-expired": "Credencial caducada",
         "check-issuer": "Emisor",
         "check-issuance": "Fecha de emisión",
         "check-expiration": "Fecha de expiración",

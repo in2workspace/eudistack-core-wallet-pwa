@@ -133,6 +133,7 @@ export class VcViewComponent implements OnInit {
   public isVerifyModalOpen = false;
   public verificationChecks: VerificationCheck[] = [];
   public verifyOverall: 'pending' | 'valid' | 'invalid' = 'pending';
+  public verifyResultKey: string = 'verification.result-invalid';
 
   public async openDetailModal(): Promise<void> {
     if(this.isDetailViewActive){
@@ -166,7 +167,22 @@ export class VcViewComponent implements OnInit {
     }
 
     await this.delay(400);
-    this.verifyOverall = this.verificationChecks.every(c => c.status === 'passed') ? 'valid' : 'invalid';
+    const allPassed = this.verificationChecks.every(c => c.status === 'passed');
+    this.verifyOverall = allPassed ? 'valid' : 'invalid';
+
+    if (!allPassed) {
+      const statusCheck = this.verificationChecks.find(c => c.key === 'status');
+      const expirationCheck = this.verificationChecks.find(c => c.key === 'expiration');
+
+      if (statusCheck?.status === 'failed' && statusCheck?.detail === 'revoked') {
+        this.verifyResultKey = 'verification.result-revoked';
+      } else if (expirationCheck?.status === 'failed') {
+        this.verifyResultKey = 'verification.result-expired';
+      } else {
+        this.verifyResultKey = 'verification.result-invalid';
+      }
+    }
+
     this.cdr.markForCheck();
   }
 

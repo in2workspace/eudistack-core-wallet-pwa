@@ -1,7 +1,7 @@
 @let credentialInput = credentialInput$();
 
 <!-- VC CARD VIEW -->
-<ion-card (click)="openDetailModal()" tabindex="0" (keydown)="handleButtonKeydown($event, 'detail')" class="credential-card">
+<ion-card (click)="openDetailModal()" tabindex="0" (keydown)="handleButtonKeydown($event, 'detail')" class="credential-card" [class.credential-card--revoked]="credentialInput.lifeCycleStatus === 'REVOKED'" [class.credential-card--expired]="credentialInput.lifeCycleStatus === 'EXPIRED' || expiryStatus() === 'expired'">
   <!-- Decorative circles for visual depth -->
   <div class="card-deco-circle card-deco-1"></div>
   <div class="card-deco-circle card-deco-2"></div>
@@ -110,7 +110,7 @@
 </ion-card>
 
 <!-- DETAILS MODAL VIEW -->
-<ion-modal [isOpen]="isDetailModalOpen" (didDismiss)="closeDetailModal()" class="credential-detail-modal">
+<ion-modal [isOpen]="isDetailModalOpen" (didDismiss)="closeDetailModal()" class="credential-detail-modal" [class.detail-blurred]="isVerifyModalOpen">
   <ng-template>
     <ion-header>
       <ion-toolbar class="modal-toolbar">
@@ -180,8 +180,18 @@
 </ion-modal>
 
 <!-- VERIFICATION MODAL -->
-<ion-modal [isOpen]="isVerifyModalOpen" (didDismiss)="closeVerifyModal()" class="verification-modal" [initialBreakpoint]="0.55" [breakpoints]="[0, 0.55, 0.75]" [handle]="true">
+<ion-modal [isOpen]="isVerifyModalOpen" (didDismiss)="closeVerifyModal()" class="verification-modal">
   <ng-template>
+    <ion-header>
+      <ion-toolbar class="verify-toolbar">
+        <ion-title class="verify-toolbar-title">{{ "verification.modal-title" | translate }}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button fill="clear" (click)="closeVerifyModal()">
+            <ion-icon name="close-outline" class="close-icon"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
     <ion-content class="verify-modal-content">
       <div class="verify-modal-inner">
         <!-- Animated shield icon -->
@@ -194,8 +204,6 @@
             <ion-icon name="shield" class="shield-icon shield-icon--invalid"></ion-icon>
           }
         </div>
-
-        <h2 class="verify-title">{{ "verification.modal-title" | translate }}</h2>
 
         <!-- Check rows -->
         <div class="verify-checks">
@@ -226,7 +234,7 @@
         @if(verifyOverall !== 'pending') {
           <div class="verify-result" [class.verify-result--valid]="verifyOverall === 'valid'" [class.verify-result--invalid]="verifyOverall === 'invalid'">
             <ion-icon [name]="verifyOverall === 'valid' ? 'checkmark-circle' : 'alert-circle'"></ion-icon>
-            <span>{{ (verifyOverall === 'valid' ? "verification.result-valid" : "verification.result-invalid") | translate }}</span>
+            <span>{{ (verifyOverall === 'valid' ? "verification.result-valid" : verifyResultKey) | translate }}</span>
           </div>
         }
       </div>

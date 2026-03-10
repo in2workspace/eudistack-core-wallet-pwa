@@ -22,6 +22,22 @@ export class CredentialVerificationService {
     return ['issuer', 'issuance', 'expiration', 'status'];
   }
 
+  /** Checks if a credential is revoked via its bitstring status list */
+  async isRevoked(credential: VerifiableCredential): Promise<boolean> {
+    const status = credential.credentialStatus;
+    if (!status?.statusListCredential || !status?.statusListIndex) {
+      return credential.lifeCycleStatus === 'REVOKED';
+    }
+    try {
+      const jwt = await firstValueFrom(
+        this.http.get(status.statusListCredential, { responseType: 'text' })
+      );
+      return this.checkBitInStatusList(jwt, status.statusListIndex);
+    } catch {
+      return credential.lifeCycleStatus === 'REVOKED';
+    }
+  }
+
   /** Runs a single named check and returns the result */
   async runCheck(key: string, credential: VerifiableCredential): Promise<VerificationCheck> {
     switch (key) {
@@ -91,10 +107,10 @@ export class CredentialVerificationService {
         this.http.get(status.statusListCredential, { responseType: 'text' })
       );
       const revoked = this.checkBitInStatusList(jwt, status.statusListIndex);
-      return { key: 'status', status: revoked ? 'failed' : 'passed' };
+      return { key: 'status', status: revoked ? 'failed' : 'passed', ...(revoked && { detail: 'revoked' }) };
     } catch {
       const fallbackRevoked = credential.lifeCycleStatus === 'REVOKED';
-      return { key: 'status', status: fallbackRevoked ? 'failed' : 'passed' };
+      return { key: 'status', status: fallbackRevoked ? 'failed' : 'passed', ...(fallbackRevoked && { detail: 'revoked' }) };
     }
   }
 

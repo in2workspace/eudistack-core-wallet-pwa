@@ -353,6 +353,8 @@
         "verifying": "Verificant credencial...",
         "result-valid": "La credencial és vàlida",
         "result-invalid": "La credencial té problemes",
+        "result-revoked": "Credencial revocada",
+        "result-expired": "Credencial caducada",
         "check-issuer": "Emissor",
         "check-issuance": "Data d'emissió",
         "check-expiration": "Data d'expiració",

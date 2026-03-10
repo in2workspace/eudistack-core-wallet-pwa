@@ -350,6 +350,8 @@
         "verifying": "Verifying credential...",
         "result-valid": "Credential is valid",
         "result-invalid": "Credential has issues",
+        "result-revoked": "Credential revoked",
+        "result-expired": "Credential expired",
         "check-issuer": "Issuer",
         "check-issuance": "Issuance date",
         "check-expiration": "Expiration date",

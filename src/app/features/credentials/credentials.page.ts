@@ -31,6 +31,7 @@ import { IssuerMetadataCacheService } from 'src/app/core/services/issuer-metadat
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { HapticService } from 'src/app/shared/services/haptic.service';
+import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
 //todo restore tests
 
 // TODO separate scan in another component/ page
@@ -79,6 +80,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   private readonly walletService = inject(WalletService);
   private readonly activityService = inject(ActivityService);
   private readonly hapticService = inject(HapticService);
+  private readonly verificationService = inject(CredentialVerificationService);
 
   private authorizationRequest = '';
 
@@ -404,6 +406,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         if(!isScannerOpen){
           this.loader.removeLoadingProcess();
         }
+        this.checkRevocationStatuses();
       }),
       catchError((error: ExtendedHttpErrorResponse) => {
         if (error.status === 404) {
@@ -419,6 +422,30 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       })
     )
 
+  }
+
+  private async checkRevocationStatuses(): Promise<void> {
+    const candidates = this.credList.filter(c => c.lifeCycleStatus === 'VALID' && c.credentialStatus?.statusListCredential);
+    if (candidates.length === 0) return;
+
+    const checks = await Promise.allSettled(
+      candidates.map(async (cred) => {
+        const revoked = await this.verificationService.isRevoked(cred);
+        return { cred, revoked };
+      })
+    );
+
+    let changed = false;
+    for (const result of checks) {
+      if (result.status === 'fulfilled' && result.value.revoked) {
+        result.value.cred.lifeCycleStatus = 'REVOKED';
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      this.cdr.detectChanges();
+    }
   }
 
   private requestPendingSignatures(): void {
