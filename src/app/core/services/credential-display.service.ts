@@ -134,8 +134,8 @@ export class CredentialDisplayService {
       }
 
       const sectionKey = claim.path.length >= 2
-        ? claim.path.slice(0, 2).join('.')
-        : claim.path[0] ?? 'General';
+        ? claim.path.slice(0, -1).join('.')
+        : 'General';
 
       if (!groups.has(sectionKey)) groups.set(sectionKey, []);
       groups.get(sectionKey)!.push({ claim, value });
