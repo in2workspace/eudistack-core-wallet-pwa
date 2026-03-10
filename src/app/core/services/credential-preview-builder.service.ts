@@ -39,6 +39,9 @@ export class CredentialPreviewBuilderService {
         fields: credentialMetadata
           ? this.displayService.buildFieldsFromClaims(cs, credentialMetadata)
           : [],
+        sections: credentialMetadata
+          ? this.displayService.createSectionsFromClaims(cs, credentialMetadata)
+          : [],
         expirationDate: String(vc?.['validUntil'] ?? vc?.['expirationDate'] ?? ''),
       };
     } catch {
@@ -73,6 +76,6 @@ export class CredentialPreviewBuilderService {
   }
 
   private emptyPreview(): CredentialPreview {
-    return { displayName: '', format: '', fields: [], expirationDate: '' };
+    return { displayName: '', format: '', fields: [], sections: [], expirationDate: '' };
   }
 }

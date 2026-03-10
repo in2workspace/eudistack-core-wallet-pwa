@@ -28,28 +28,33 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
 
           <div class="card-divider"></div>
 
-          <div class="card-fields">
-            <ng-container *ngFor="let field of preview.fields">
-              <!-- Structured field (array of objects like powers) -->
-              <div class="field-row" *ngIf="field.structured?.length; else simpleField">
-                <span class="field-label">{{ field.label }}</span>
-                <div class="structured-list">
-                  <div class="structured-item" *ngFor="let item of field.structured">
-                    <span class="structured-entry">
-                      <span class="structured-key">{{ item.label }}</span>
-                      <span class="structured-val">{{ item.value }}</span>
-                    </span>
+          <div class="card-sections">
+            <div class="section-block" *ngFor="let section of preview.sections">
+              <span class="section-title">{{ section.section }}</span>
+              <div class="section-fields">
+                <ng-container *ngFor="let field of section.fields">
+                  <!-- Structured field (array of objects like powers) -->
+                  <div class="field-row" *ngIf="field.structured?.length; else simpleField">
+                    <span class="field-label">{{ field.label }}</span>
+                    <div class="structured-list">
+                      <div class="structured-item" *ngFor="let item of field.structured">
+                        <span class="structured-entry">
+                          <span class="structured-key">{{ item.label }}</span>
+                          <span class="structured-val">{{ item.value }}</span>
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                  <!-- Simple text field -->
+                  <ng-template #simpleField>
+                    <div class="field-row">
+                      <span class="field-label">{{ field.label }}</span>
+                      <span class="field-value">{{ field.value }}</span>
+                    </div>
+                  </ng-template>
+                </ng-container>
               </div>
-              <!-- Simple text field -->
-              <ng-template #simpleField>
-                <div class="field-row">
-                  <span class="field-label">{{ field.label }}</span>
-                  <span class="field-value">{{ field.value }}</span>
-                </div>
-              </ng-template>
-            </ng-container>
+            </div>
           </div>
 
           <div class="card-expiration" *ngIf="preview.expirationDate">
@@ -135,7 +140,14 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
     }
     .card-divider { height: 1px; background: var(--border-default, #D1D5DB); margin: 14px 0; opacity: 0.6; }
 
-    .card-fields { display: flex; flex-direction: column; gap: 12px; }
+    .card-sections { display: flex; flex-direction: column; gap: 16px; }
+    .section-block { display: flex; flex-direction: column; gap: 8px; }
+    .section-title {
+      font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--action-primary, #2563EB);
+      padding-bottom: 4px; border-bottom: 1px solid var(--border-default, #D1D5DB);
+    }
+    .section-fields { display: flex; flex-direction: column; gap: 8px; }
     .field-row { display: flex; flex-direction: column; gap: 2px; }
     .field-label {
       font-size: 0.75rem; font-weight: 600;

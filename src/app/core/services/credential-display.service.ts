@@ -109,9 +109,9 @@ export class CredentialDisplayService {
     }
   }
 
-  // ── Private ──────────────────────────────────────────
+  // ── Section builder ─────────────────────────────────
 
-  private createSectionsFromClaims(subject: any, meta: CredentialMetadata): DisplaySection[] {
+  createSectionsFromClaims(subject: any, meta: CredentialMetadata): DisplaySection[] {
     const arraySections: DisplaySection[] = [];
     const groups = new Map<string, { claim: ClaimDefinition; value: unknown }[]>();
 
