@@ -77,6 +77,18 @@
   50% { transform: scale(1.05); opacity: 0.85; }
 }
 
+// Authenticating variant
+.fp-circle.fp-authenticating {
+  animation: fpAuthPulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 0 8px rgb(var(--action-primary-rgb) / 0.15),
+              0 0 20px rgb(var(--action-primary-rgb) / 0.1);
+}
+
+@keyframes fpAuthPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.12); opacity: 0.8; }
+}
+
 // Install variant
 .fp-circle.install-circle {
   background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
@@ -120,14 +132,38 @@
   margin-top: 8px;
 
   &[disabled] {
-    --background: var(--border-default);
+    --background: var(--action-primary);
     --box-shadow: none;
+    opacity: 0.5;
   }
 }
 
-.btn-spinner {
-  width: 22px;
-  height: 22px;
+// Authenticating status text
+.auth-status {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-top: 14px;
+  animation: fadeIn 0.3s ease-out;
+
+  .dot {
+    display: inline-block;
+    animation: dotBounce 1.2s ease-in-out infinite;
+
+    &:nth-child(1) { animation-delay: 0s; }
+    &:nth-child(2) { animation-delay: 0.15s; }
+    &:nth-child(3) { animation-delay: 0.3s; }
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dotBounce {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
 }
 
 // Error box

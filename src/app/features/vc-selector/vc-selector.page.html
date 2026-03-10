@@ -24,17 +24,16 @@
     }
   </div>
 
-  <ion-grid>
-    <ion-row class="ion-justify-content-center">
-      @for (cred of credList; track cred) {
-        <ion-col size="12" size-md="6">
-          <ion-card (click)="sendCred(cred)" (keydown)="sendCred(cred)" class="vc-selector-card">
-            <app-vc-view [isDetailViewActive]="false" [credentialInput$]="cred"></app-vc-view>
-          </ion-card>
-        </ion-col>
-      }
-    </ion-row>
-  </ion-grid>
+  <div class="credential-list">
+    @for (cred of credList; track cred) {
+      <button class="selectable-card" (click)="sendCred(cred)">
+        <app-vc-view [isDetailViewActive]="false" [credentialInput$]="cred"></app-vc-view>
+        <div class="card-action-hint">
+          <ion-icon name="chevron-forward-outline"></ion-icon>
+        </div>
+      </button>
+    }
+  </div>
 </ion-content>
 
 <ion-footer [translucent]="false">

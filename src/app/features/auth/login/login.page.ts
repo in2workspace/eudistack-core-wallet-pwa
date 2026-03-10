@@ -54,7 +54,7 @@ import { LocalAuthService } from 'src/app/core/services/local-auth.service';
           <!-- Login form -->
           <ng-container *ngIf="!showInstallScreen || !(pwaInstall.installable$ | async)">
             <div class="fingerprint-hero">
-              <div class="fp-circle">
+              <div class="fp-circle" [class.fp-authenticating]="loading">
                 <ion-icon name="finger-print-outline"></ion-icon>
               </div>
             </div>
@@ -68,10 +68,13 @@ import { LocalAuthService } from 'src/app/core/services/local-auth.service';
               [disabled]="loading"
               class="auth-button"
             >
-              <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
-              <ion-icon *ngIf="!loading" name="finger-print-outline" slot="start"></ion-icon>
-              <span *ngIf="!loading">{{ 'auth.login.passkey-button' | translate }}</span>
+              <ion-icon name="finger-print-outline" slot="start"></ion-icon>
+              {{ 'auth.login.passkey-button' | translate }}
             </ion-button>
+
+            <div *ngIf="loading" class="auth-status">
+              {{ 'auth.login.authenticating' | translate }}<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+            </div>
 
             <div *ngIf="errorMessage" class="error-box">
               <ion-icon name="alert-circle-outline"></ion-icon>
