@@ -18,9 +18,11 @@
   width: 100%;
   --ion-item-background: var(--surface-card);
   --ion-item-color: var(--text-secondary);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg);
   background-color: var(--surface-card);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  padding: 0;
 }
 
 .activity-item {

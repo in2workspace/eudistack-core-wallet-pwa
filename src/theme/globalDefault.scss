@@ -19,8 +19,8 @@ html, body {
 ion-toast::part(container) {
   background-color: var(--surface-card) !important;
   border: 1px solid var(--border-default) !important;
-  border-radius: var(--radius-sm) !important;
-  box-shadow: var(--shadow-md) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-lg) !important;
 }
 
 ion-alert.custom-alert {
@@ -36,7 +36,7 @@ ion-modal#example-modal {
   --width: fit-content;
   --min-width: 20rem;
   --height: fit-content;
-  --border-radius: var(--radius-md);
+  --border-radius: var(--radius-lg);
   --box-shadow: var(--shadow-lg);
 }
 
@@ -161,17 +161,9 @@ ion-button.toolbar-but {
 }
 
 .custom-popover {
-  --background: var(--action-primary);
-}
-
-.logout-list {
-  background-color: var(--primary-color);
-}
-
-.logout-list ion-item{
-  --ion-item-background: var(--primary-color);
-  --ion-item-color: var(--primary-contrast-color);
-  --border-color: var(--primary-contrast-color) !important;
+  --background: var(--surface-card);
+  --box-shadow: var(--shadow-lg);
+  --border-radius: var(--radius-md);
 }
 
 .background-content {

@@ -74,12 +74,10 @@
 .credential-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: 16px;
   padding: 16px 20px;
-  max-width: 480px;
-  margin: 0 auto;
 
-  // Staggered entrance: each card animates in sequence
   .selectable-card {
     opacity: 0;
     animation: card-slide-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -93,98 +91,79 @@
 }
 
 .selectable-card {
-  // Reset native button styles
+  // Reset native button styles but keep block layout
   all: unset;
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
+  display: block;
   position: relative;
   width: 100%;
+  max-width: 400px;
   cursor: pointer;
-  background: var(--surface-card, #fff);
-  border: 2px solid var(--border-default, #E5E7EB);
-  border-radius: var(--radius-lg, 12px);
-  overflow: hidden;
+  border-radius: 24px;
   transition:
-    border-color 0.25s ease,
-    box-shadow 0.25s ease,
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.3s ease;
 
-  // Left accent bar — hidden by default, revealed on hover
-  &::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: var(--action-primary, #2563EB);
-    border-radius: var(--radius-lg, 12px) 0 0 var(--radius-lg, 12px);
-    opacity: 0;
-    transition: opacity 0.25s ease;
-  }
-
-  // Remove inner card own styling — let the wrapper control the look
+  // Let the inner card keep its own gradient & styling
   .credential-card {
     margin: 0;
-    border: none;
-    box-shadow: none;
-    border-radius: 0;
     width: 100%;
     max-width: none;
     min-width: 0;
+    transition: box-shadow 0.3s ease;
   }
 
   &:hover,
   &:focus-visible {
-    border-color: var(--action-primary, #2563EB);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-    transform: scale(1.02);
+    transform: scale(1.03);
 
-    &::before {
+    .credential-card {
+      box-shadow:
+        0 16px 48px rgba(0, 0, 0, 0.28),
+        0 0 0 2px rgba(255, 255, 255, 0.4);
+    }
+
+    .card-action-hint {
       opacity: 1;
+      transform: translateY(-50%) translateX(0);
     }
   }
 
   &:active {
     transform: scale(0.98);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     transition:
-      border-color 0.25s ease,
-      box-shadow 0.15s ease,
-      transform 0.1s cubic-bezier(0.22, 1, 0.36, 1);
+      transform 0.1s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.15s ease;
   }
 
   &:focus-visible {
     outline: 2px solid var(--action-primary, #2563EB);
-    outline-offset: 2px;
+    outline-offset: 3px;
+    border-radius: 22px;
   }
 }
 
 .card-action-hint {
   position: absolute;
-  right: 12px;
+  right: 16px;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(-50%) translateX(-4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: var(--surface-muted, #F3F4F6);
-  color: var(--text-secondary, #6B7280);
-  transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease, background 0.25s ease;
+  z-index: 3;
 
   ion-icon {
     font-size: 18px;
-  }
-
-  .selectable-card:hover &,
-  .selectable-card:focus-visible & {
-    background: var(--action-primary, #2563EB);
-    color: #fff;
-    transform: translateY(-50%) translateX(2px);
   }
 }
 

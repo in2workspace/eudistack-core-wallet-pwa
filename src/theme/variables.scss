@@ -123,3 +123,41 @@
   --ion-color-light-shade: var(--border-default);
   --ion-color-light-tint: #F5F6F9;
 }
+
+// ── Dark theme ──────────────────────────────────────
+.dark-theme {
+  --surface-page: #0F1117;
+  --surface-card: #1A1D27;
+  --surface-muted: #252833;
+
+  --text-primary: #F0F1F4;
+  --text-secondary: #9CA3AF;
+  --text-disabled: #6B7280;
+
+  --border-default: #374151;
+  --border-strong: #6B7280;
+
+  --action-secondary: #252833;
+  --action-secondary-hover: #2D3140;
+  --action-secondary-text: #D1D5DB;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.3);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.4);
+
+  --ion-background-color: var(--surface-page);
+  --ion-text-color: var(--text-primary);
+  --ion-item-background: var(--surface-card);
+  --ion-item-color: var(--text-primary);
+  --ion-toolbar-background: var(--surface-card);
+  --ion-card-background: var(--surface-card);
+  --ion-card-color: var(--text-primary);
+  --ion-tab-bar-background: var(--surface-card);
+  --ion-tab-bar-color: var(--text-disabled);
+  --ion-tab-bar-color-selected: var(--action-primary);
+
+  --ion-color-light: var(--surface-muted);
+  --ion-color-light-contrast: var(--text-primary);
+  --ion-color-light-shade: var(--border-default);
+  --ion-color-step-850: var(--surface-card);
+}

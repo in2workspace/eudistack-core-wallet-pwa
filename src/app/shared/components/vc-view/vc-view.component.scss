@@ -9,139 +9,155 @@ ion-modal.stack-modal {
 // ── Card ──────────────────────────────────────────────
 
 .credential-card {
-  background-color: var(--surface-card);
+  position: relative;
+  background: linear-gradient(135deg, var(--primary-color, var(--ion-color-primary)) 0%, var(--secondary-color, var(--ion-color-primary-shade)) 100%);
   width: 100%;
-  max-width: 380px;
+  max-width: 400px;
   min-width: 240px;
-  height: 200px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-default);
-  align-content: center;
+  min-height: 180px;
+  border-radius: 20px;
+  border: none;
+  padding: 20px;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 
   &:hover {
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-    transform: translateY(-2px);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
+    transform: translateY(-3px);
   }
 }
 
-.card-decoration {
+// ── Decorative circles ───────────────────────────────
+
+.card-deco-circle {
   position: absolute;
-  top: 0;
-  right: 10px;
-  width: 50%;
-  height: 50%;
-  background-color: var(--surface-card);
-  border-radius: 0% 0% 75% 75%;
-  transform: translateX(85%) translateY(-90%);
-  z-index: 1;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
 }
 
-.card-spacer {
-  height: 2%;
+.card-deco-1 {
+  width: 200px;
+  height: 200px;
+  top: -60px;
+  right: -40px;
 }
 
-.card-icon-area {
-  margin-inline: 20px;
+.card-deco-2 {
+  width: 120px;
+  height: 120px;
+  bottom: -30px;
+  left: -20px;
 }
 
-.card-icon {
-  margin: 10px auto;
+// ── Top row (badge + status) ─────────────────────────
+
+.card-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 2;
 }
 
-.card-header {
-  margin-top: 5px;
-  padding: 0 !important;
-  margin-inline: 20px;
-  height: 28%;
+.status-pill {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.status-expired {
+  background: rgba(239, 68, 68, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.status-expiring-soon {
+  background: rgba(245, 158, 11, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.status-unsigned {
+  border: none;
+  cursor: pointer;
+  padding: 4px 10px;
+
+  ion-icon {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.8);
+  }
+}
+
+// ── Card body ────────────────────────────────────────
+
+.card-body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-shield-icon {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
 }
 
 .card-title {
-  color: var(--text-primary);
-  font-size: 12px;
+  color: #fff;
+  font-size: 15px;
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.card-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 28px;
+}
+
 .card-field {
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.card-qr-area {
-  margin-left: 15px;
-  padding: 0 !important;
+// ── Privacy blur ─────────────────────────────────────
+
+.card-body {
+  transition: filter 0.3s ease;
 }
 
-.card-qr-icon {
-  width: auto;
-  height: 40px;
-  cursor: pointer;
-}
-
-.request-signature-icon {
-  width: 19px;
-  height: 16px;
-}
-
-.format-badge {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  background: var(--ion-color-primary);
-  color: white;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  text-transform: lowercase;
-  letter-spacing: 0.02em;
-  z-index: 2;
-}
-
-.request-signature-button {
-  width: 27.3px;
-  height: 27.3px;
-  background: transparent;
-  display: flex;
-  position: absolute;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: 2px solid rgba(0, 0, 0, 0.5);
-  right: 20px;
-  top: 44px;
-}
-
-.request-signature-button img {
-  opacity: 0.5;
-}
-
-.status-ellipse {
-  min-width: 110px;
-  padding: 5px 10px;
-  border-radius: var(--radius-full);
-  color: var(--surface-card);
-  text-align: center;
-  float: right;
-  margin: 10px 12px 10px auto;
-}
-
-.status-expired {
-  background-color: var(--status-error);
-}
-
-.status-expiring-soon {
-  background-color: var(--status-warning, #f59e0b);
-  font-size: 11px;
+.card-blurred {
+  filter: blur(6px);
+  user-select: none;
 }
 
 // ── Detail Modal ──────────────────────────────────────

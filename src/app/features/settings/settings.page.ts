@@ -7,6 +7,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
 import { environment } from 'src/environments/environment';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
+import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 
 @Component({
     selector: 'app-settings',
@@ -24,8 +25,10 @@ import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 export class SettingsPage {
   public userName = '';
   public featureLogsEnabled = environment.logs_enabled;
+  public readonly appVersion = environment.appVersion;
   private readonly pwaInstallService = inject(PwaInstallService);
   readonly canInstall$ = this.pwaInstallService.installable$;
+  readonly prefs = inject(UserPreferencesService);
 
   public constructor(
     private router: Router,

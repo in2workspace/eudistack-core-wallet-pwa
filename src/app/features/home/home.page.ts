@@ -6,6 +6,7 @@ import { Router, RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
+import { HapticService } from 'src/app/shared/services/haptic.service';
 
 @Component({
     selector: 'app-home',
@@ -27,6 +28,7 @@ export class HomePage {
   public bannerDismissed = false;
 
   private readonly pwaInstallService = inject(PwaInstallService);
+  private readonly hapticService = inject(HapticService);
   readonly canInstall$ = this.pwaInstallService.installable$;
 
   public constructor(private readonly router: Router,
@@ -41,6 +43,7 @@ export class HomePage {
   }
 
   public async startScan(): Promise<void> {
+    this.hapticService.impact();
     const scanRoute = '/tabs/credentials/';
     try{
       await this.router.navigate([scanRoute], {

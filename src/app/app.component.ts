@@ -11,6 +11,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.service';
 import { ThemeService } from './core/services/theme.service';
 import { IssuerMetadataCacheService } from './core/services/issuer-metadata-cache.service';
+import { UserPreferencesService } from './shared/services/user-preferences.service';
 
 @Component({
     selector: 'app-root',
@@ -29,6 +30,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
   private readonly themeService = inject(ThemeService);
+  private readonly _prefs = inject(UserPreferencesService); // eagerly init dark mode
 
   public routerEvents$ = this.router.events;
   // if the route is "/", don't allow menu popover

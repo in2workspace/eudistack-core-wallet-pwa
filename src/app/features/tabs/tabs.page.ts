@@ -8,6 +8,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 @Component({
     selector: 'app-tabs',
     templateUrl: './tabs.page.html',
+    styleUrls: ['./tabs.page.scss'],
     imports: [
         IonicModule,
         CommonModule,

@@ -47,6 +47,7 @@ export class VcViewComponent implements OnInit {
   public cardFields = signal<DisplayField[]>([]);
   public displayName = signal<string>('');
   public formatLabel = signal<string>('');
+  public blurred = input(false);
 
   public expiryStatus = computed<ExpiryStatus>(() => {
     const cred = this.credentialInput$();
@@ -57,6 +58,15 @@ export class VcViewComponent implements OnInit {
     if (expiry.isBefore(now)) return 'expired';
     if (expiry.diff(now, 'day') <= EXPIRY_WARNING_DAYS) return 'expiring-soon';
     return 'valid';
+  });
+
+  public daysUntilExpiry = computed<number | null>(() => {
+    const cred = this.credentialInput$();
+    if (!cred.validUntil) return null;
+    const expiry = dayjs(cred.validUntil);
+    if (!expiry.isValid()) return null;
+    const days = expiry.diff(dayjs(), 'day');
+    return days >= 0 ? days : null;
   });
 
   private readonly loadCardDataEffect = effect(async () => {

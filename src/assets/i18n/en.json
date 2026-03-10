@@ -115,7 +115,13 @@
         "title":"Privacy Policy"
     },
     "settings":{
-        "title":"Settings"
+        "title":"Settings",
+        "privacy-blur": "Privacy blur",
+        "privacy-blur-desc": "Blur credential details",
+        "dark-mode": "Dark mode",
+        "dark-mode-desc": "Switch to dark theme",
+        "about": "About",
+        "version": "Version"
     },
     "terms-of-use":{
         "title":"Terms Of Use"

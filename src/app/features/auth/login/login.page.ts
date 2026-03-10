@@ -73,7 +73,9 @@ import { LocalAuthService } from 'src/app/core/services/local-auth.service';
             </ion-button>
 
             <div *ngIf="loading" class="auth-status">
-              {{ 'auth.login.authenticating' | translate }}<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>
+              <span class="status-dot"></span>
+              <span class="status-dot"></span>
+              <span class="status-dot"></span>
             </div>
 
             <div *ngIf="errorMessage" class="error-box">

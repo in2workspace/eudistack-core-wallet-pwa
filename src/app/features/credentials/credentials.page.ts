@@ -29,6 +29,8 @@ import { FinalizeIssuancePayload } from 'src/app/core/models/FinalizeIssuancePay
 import { SkeletonComponent } from 'src/app/shared/components/skeleton/skeleton.component';
 import { IssuerMetadataCacheService } from 'src/app/core/services/issuer-metadata-cache.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
+import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
+import { HapticService } from 'src/app/shared/services/haptic.service';
 //todo restore tests
 
 // TODO separate scan in another component/ page
@@ -58,6 +60,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   public isFirstCredentialLoadCompleted = false;
   public credentialOfferUri = '';
   public manualQrValue = '';
+  readonly prefs = inject(UserPreferencesService);
 
   private readonly authorizationRequestService = inject(AuthorizationRequestService);
   private readonly cameraLogsService = inject(CameraLogsService);
@@ -75,6 +78,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   private readonly toastServiceHandler = inject(ToastServiceHandler);
   private readonly walletService = inject(WalletService);
   private readonly activityService = inject(ActivityService);
+  private readonly hapticService = inject(HapticService);
 
   private authorizationRequest = '';
 
@@ -187,6 +191,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   }
 
   public qrCodeEmit(qrCode: string): void {
+    this.hapticService.notification();
     const isCredentialOffer = qrCode.includes('credential_offer_uri');
     //todo don't accept qrs that are not to login or get VC
     if(isCredentialOffer){

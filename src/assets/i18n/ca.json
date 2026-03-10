@@ -112,7 +112,13 @@
         "title":"Politica de Privacitat"
     },
     "settings":{
-        "title":"Configuració"
+        "title":"Configuració",
+        "privacy-blur": "Desenfocament de privacitat",
+        "privacy-blur-desc": "Desenfoca les dades de les credencials",
+        "dark-mode": "Mode fosc",
+        "dark-mode-desc": "Canviar al tema fosc",
+        "about": "Sobre",
+        "version": "Versió"
     },
     "terms-of-use":{
         "title":"Termes d'Us"

@@ -1,19 +1,6 @@
-<div class="menu-header">
-  <ion-icon name="shield-checkmark-outline" class="menu-wallet-icon"></ion-icon>
-  <div class="menu-wallet-info">
-    <span class="menu-wallet-name">{{ walletName }} {{ 'menu.wallet' | translate }}</span>
-    <span class="menu-wallet-version">v{{ appVersion }}</span>
-  </div>
-</div>
 <ion-list class="menu-list" lines="none">
-  @if (canInstall$ | async) {
-    <ion-item button (click)="installApp()" (keydown.enter)="installApp()" (keydown.space)="installApp()">
-      <ion-icon name="download-outline" slot="start"></ion-icon>
-      {{ 'menu.install' | translate }}
-    </ion-item>
-  }
   <ion-item button (click)="logout()" (keydown)="logoutOnKeydown($event)">
-    <ion-icon name="log-out-outline" slot="start" color="danger"></ion-icon>
-    <ion-label color="danger">{{ 'menu.logout' | translate }}</ion-label>
+    <ion-icon name="log-out-outline" slot="start"></ion-icon>
+    <ion-label>{{ 'menu.logout' | translate }}</ion-label>
   </ion-item>
 </ion-list>

@@ -110,7 +110,13 @@
         "title":"Politica de Privacidad"
     },
     "settings":{
-        "title":"Configuración"
+        "title":"Configuración",
+        "privacy-blur": "Desenfoque de privacidad",
+        "privacy-blur-desc": "Desenfoca los datos de las credenciales",
+        "dark-mode": "Modo oscuro",
+        "dark-mode-desc": "Cambiar al tema oscuro",
+        "about": "Acerca de",
+        "version": "Versión"
     },
     "terms-of-use":{
         "title":"Terminos de Uso"

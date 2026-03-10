@@ -1,68 +1,44 @@
 @let credentialInput = credentialInput$();
 
 <!-- VC CARD VIEW -->
-<ion-card
-  (click)="openDetailModal()"
-  tabindex="0"
-  (keydown)="handleButtonKeydown($event, 'detail')"
-  class="credential-card"
->
-@if(formatLabel()){
-  <span class="format-badge">{{ formatLabel() }}</span>
-}
-@if(credentialInput.lifeCycleStatus == "ISSUED"){
-  <button
-    (click)="unsignedInfo($event)"
-    (keydown)="handleButtonKeydown($event, 'info')"
-    class="request-signature-button"
-  >
-    <img
-      src="../../../assets/icons/exclamation_mark_black.png"
-      alt="info"
-      class="request-signature-icon"
-    />
-  </button>
-}
+<ion-card (click)="openDetailModal()" tabindex="0" (keydown)="handleButtonKeydown($event, 'detail')" class="credential-card">
+  <!-- Decorative circles for visual depth -->
+  <div class="card-deco-circle card-deco-1"></div>
+  <div class="card-deco-circle card-deco-2"></div>
 
-  <div class="card-decoration"></div>
-  <div class="card-spacer"></div>
-  <ion-col>
-    <ion-col class="card-icon-area">
-      @if(iconUrl){
-        <img [src]="iconUrl" alt width="50" height="50" class="card-icon" />
-      }
-      @if(credentialInput.lifeCycleStatus == "EXPIRED" || expiryStatus() === 'expired') {
-        <span class="status-ellipse status-expired">{{ "credentials.expiration" | translate }}</span>
-      } @else if(expiryStatus() === 'expiring-soon') {
-        <span class="status-ellipse status-expiring-soon">{{ "credentials.expiring-soon" | translate }}</span>
-      }
-      @if(credentialInput.lifeCycleStatus == "REVOKED") {
-        <span class="status-ellipse status-expired">{{ "vc-view.revoked" | translate }}</span>
-      }
-      </ion-col>
-    <ion-col>
-      <ion-col size="12">
-        <ion-card-header class="card-header">
-          <ion-row>
-            <ion-card-title class="card-title">
-              {{ displayName() || credentialType }}
-            </ion-card-title>
-          </ion-row>
-          @for(field of cardFields(); track field) {
-            <ion-row>
-              <ion-card-title class="card-field">
-                {{ field.value }}
-              </ion-card-title>
-            </ion-row>
-          }
-        </ion-card-header>
-      </ion-col>
+  <div class="card-top-row">
+    @if(credentialInput.lifeCycleStatus == "EXPIRED" || expiryStatus() === 'expired') {
+      <span class="status-pill status-expired">{{ "credentials.expiration" | translate }}</span>
+    } @else if(expiryStatus() === 'expiring-soon') {
+      <span class="status-pill status-expiring-soon">
+        <ion-icon name="time-outline"></ion-icon>
+        @if(daysUntilExpiry() !== null && daysUntilExpiry()! > 0) {
+          {{ daysUntilExpiry() }}d
+        } @else {
+          {{ "credentials.expiring-soon" | translate }}
+        }
+      </span>
+    } @else if(credentialInput.lifeCycleStatus == "REVOKED") {
+      <span class="status-pill status-expired">{{ "vc-view.revoked" | translate }}</span>
+    } @else if(credentialInput.lifeCycleStatus == "ISSUED") {
+      <button (click)="unsignedInfo($event)" (keydown)="handleButtonKeydown($event, 'info')" class="status-pill status-unsigned">
+        <ion-icon name="alert-circle-outline"></ion-icon>
+      </button>
+    }
+  </div>
 
-      <!-- TODO(dead-code): showChip was always false; QR chip area removed. Restore when QR-on-card is needed. -->
-      <ion-col size="12" align-self-end class="card-qr-area">
-      </ion-col>
-    </ion-col>
-  </ion-col>
+  <div class="card-body" [class.card-blurred]="blurred()">
+    <div class="card-title-row">
+      <ion-icon name="shield-checkmark-outline" class="card-shield-icon"></ion-icon>
+      <span class="card-title">{{ displayName() || credentialType }}</span>
+    </div>
+    <div class="card-fields">
+      @for(field of cardFields(); track field) {
+        <span class="card-field">{{ field.value }}</span>
+      }
+    </div>
+  </div>
+
   <ion-alert
     [isOpen]="isAlertOpenNotFound"
     class="custom-alert"

@@ -56,7 +56,7 @@ ion-item-divider:last-of-type{
   display:none;
 }
 app-tabs ion-tab-button {
-  --color-selected: var(--primary-color);
+  --color-selected: var(--action-primary);
 }
 
 .no-scroll {
@@ -68,7 +68,24 @@ app-tabs ion-tab-button {
 
 .scanner-shell zxing-scanner video{
   display: block;
-  object-fit: contain !important;
+  object-fit: cover !important;
+  width: 100%;
   height: 100%;
-  max-height: calc(100vh - 180px);
+}
+
+// ── Hide scrollbars globally (keep scroll functional) ─
+*,
+*::part(scroll) {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+ion-content {
+  --overflow: auto;
+}
+
+ion-content::part(scroll) {
+  scrollbar-width: none;
+  overflow: -moz-scrollbars-none;
+  &::-webkit-scrollbar { display: none; }
 }
