@@ -39,6 +39,7 @@ export interface MetadataDisplay {
 export interface ClaimDefinition {
   path: string[];
   display: MetadataDisplay[];
+  value_map?: Record<string, string>;
 }
 
 export interface CredentialsSupported{

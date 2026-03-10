@@ -59,7 +59,10 @@ export class CredentialDisplayService {
         continue;
       }
 
-      fields.push({ label, value: stringifyValue(value) });
+      const mapped = claim.value_map && typeof value === 'string' && value in claim.value_map
+        ? claim.value_map[value]
+        : value;
+      fields.push({ label, value: stringifyValue(mapped) });
     }
     return fields;
   }
@@ -140,10 +143,15 @@ export class CredentialDisplayService {
 
     const scalarSections = Array.from(groups.entries()).map(([key, items]) => ({
       section: humanizeKey(key.split('.').pop() ?? key),
-      fields: items.map(({ claim, value }) => ({
-        label: claim.display?.[0]?.name ?? claim.path[claim.path.length - 1],
-        value: stringifyValue(value),
-      })),
+      fields: items.map(({ claim, value }) => {
+        const mapped = claim.value_map && typeof value === 'string' && value in claim.value_map
+          ? claim.value_map[value]
+          : value;
+        return {
+          label: claim.display?.[0]?.name ?? claim.path[claim.path.length - 1],
+          value: stringifyValue(mapped),
+        };
+      }),
     }));
 
     return [...scalarSections, ...arraySections];
