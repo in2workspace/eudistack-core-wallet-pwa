@@ -8,8 +8,7 @@ import { QRCodeModule } from 'angularx-qrcode';
 import { WalletService } from 'src/app/services/wallet.service';
 import { VcViewComponent } from '../../components/vc-view/vc-view.component';
 import { TranslateModule } from '@ngx-translate/core';
-import { ActivatedRoute, Router, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs/operators';
+import { ActivatedRoute, Router } from '@angular/router';
 import { WebsocketService } from 'src/app/services/websocket.service';
 import { VerifiableCredential } from 'src/app/interfaces/verifiable-credential';
 import { VerifiableCredentialSubjectDataNormalizer } from 'src/app/interfaces/verifiable-credential-subject-data-normalizer';
@@ -73,22 +72,12 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         this.showScannerView = params['showScannerView'] === 'true';
         this.showScanner = params['showScanner']     === 'true';
         this.credentialOfferUri = params['credentialOfferUri'];
+        this.selectedCredentialId = params['id'] ?? null;
         this.cdr.detectChanges();
       });
   }
 
   public ngOnInit(): void {
-    this.syncSelectedCredentialIdFromUrl();
-
-    this.router.events
-      .pipe(
-        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(() => {
-        this.syncSelectedCredentialIdFromUrl();
-      });
-
     this.loadCredentials()
     .pipe(finalize(() => this.isFirstCredentialLoadCompleted = true))
     .subscribe();
@@ -252,7 +241,8 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
 
     const normalizer = new VerifiableCredentialSubjectDataNormalizer();
 
-    return this.walletService.getAllVCs().pipe(
+    return this.walletService.getAllVCs()
+    .pipe(
       takeUntilDestroyed(this.destroyRef),
       tap((credentialListResponse: VerifiableCredential[]) => {
         // Iterate over the list and normalize each credentialSubject
@@ -351,11 +341,5 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
 
   private isScannerOpen(): boolean{
     return this.showScanner === true && this.showScannerView === true;
-  }
-
-  private syncSelectedCredentialIdFromUrl(): void {
-    const match = this.router.url.match(/\/credentials\/([^/?#]+)/);
-    this.selectedCredentialId = match ? match[1] : null;
-    this.cdr.detectChanges();
   }
 }

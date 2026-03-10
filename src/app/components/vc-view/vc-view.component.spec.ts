@@ -234,22 +234,29 @@ describe('VcViewComponent', () => {
     expect(event.preventDefault).toHaveBeenCalled();
   }));
 
-  it('openDetailModal should navigate to credential detail route', () => {
+  it('openDetailModal should navigate to credential detail with id in query params', () => {
     const router = TestBed.inject(Router);
     const navigateSpy = jest.spyOn(router, 'navigate');
 
     component.openDetailModal();
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/tabs/credentials', 'testId']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/tabs/credentials'], {
+      queryParams: { id: 'testId' },
+      queryParamsHandling: 'merge',
+    });
   });
 
-  it('closeDetailModal should navigate back to credentials list', () => {
+  it('closeDetailModal should navigate to credentials list without id in query params', () => {
     const router = TestBed.inject(Router);
     const navigateSpy = jest.spyOn(router, 'navigate');
 
     component.closeDetailModal();
 
-    expect(navigateSpy).toHaveBeenCalledWith(['/tabs/credentials'], { replaceUrl: true });
+    expect(navigateSpy).toHaveBeenCalledWith(['/tabs/credentials'], {
+      queryParams: {},
+      replaceUrl: true,
+      queryParamsHandling: '',
+    });
   }); 
 
   it('openDetailModal should not navigate when credential has no id', () => {

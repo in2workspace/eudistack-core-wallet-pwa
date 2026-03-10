@@ -21,7 +21,7 @@ import { CredentialDetailMap, EvaluatedField, EvaluatedSection } from 'src/app/i
 import * as dayjs from 'dayjs';
 import { ToastServiceHandler } from 'src/app/services/toast.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/helpers/get-credential-type.helpers';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 
 
@@ -43,6 +43,7 @@ export class VcViewComponent implements OnInit, OnChanges {
   private readonly walletService = inject(WalletService);
   private readonly toastService = inject(ToastServiceHandler);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   public credentialInput$ = input.required<VerifiableCredential>();
   public cardViewFields$ = computed<EvaluatedField[]>(() => {
@@ -112,14 +113,25 @@ export class VcViewComponent implements OnInit, OnChanges {
 
   public openDetailModal(): void {
     const vc = this.credentialInput$();
-    if (!vc.id) {
+    if (!vc.id) {     
       return;
     }
-    this.router.navigate(['/tabs/credentials', vc.id]);
+    this.router.navigate(['/tabs/credentials'], {
+        queryParams: { id: vc.id },
+      queryParamsHandling: 'merge',
+
+    });
   }
 
   public closeDetailModal(): void {
-    this.router.navigate(['/tabs/credentials'], { replaceUrl: true });
+    const q = this.route.snapshot.queryParamMap;
+    const params: Record<string, string> = {};
+    q.keys.filter((k) => k !== 'id').forEach((k) => { params[k] = q.get(k) ?? ''; });
+    this.router.navigate(['/tabs/credentials'], {
+      queryParams: params,
+      replaceUrl: true,
+      queryParamsHandling: '',
+    });
   }
 
   public ngOnInit(): void {
@@ -160,8 +172,16 @@ export class VcViewComponent implements OnInit, OnChanges {
   }
 
   public deleteVC(): void {
-    this.isModalDeleteOpen = true;
-    this.router.navigate(['/tabs/credentials'], { replaceUrl: true });
+    this.isModalDeleteOpen = true;  
+
+    const q = this.route.snapshot.queryParamMap;
+    const params: Record<string, string> = {};
+    q.keys.filter((k) => k !== 'id').forEach((k) => { params[k] = q.get(k) ?? ''; });
+    this.router.navigate(['/tabs/credentials'], {
+      queryParams: params,
+      replaceUrl: true,
+      queryParamsHandling: '',
+    });
   }
 
   public unsignedInfo(event: Event): void {
