@@ -162,12 +162,27 @@ export class CredentialDisplayService {
 
 function resolveByPath(obj: any, path: string[]): unknown {
   const normalized = path[0] === 'credentialSubject' ? path.slice(1) : path;
+
+  // Try direct resolution first.
+  const direct = walkPath(obj, normalized);
+  if (direct !== undefined) return direct;
+
+  // SD-JWT schema paths are flat (e.g. ["mandator","commonName"]) but the
+  // normaliser may have wrapped them under "mandate". Try through "mandate".
+  if (obj?.mandate && normalized[0] !== 'mandate') {
+    return walkPath(obj.mandate, normalized);
+  }
+
+  return undefined;
+}
+
+function walkPath(obj: any, path: string[]): unknown {
   let current = obj;
-  for (const key of normalized) {
+  for (const key of path) {
     if (current == null) return undefined;
     current = current[key];
   }
-  return current;
+  return current === undefined ? undefined : current;
 }
 
 function formatObjectItem(obj: Record<string, unknown>): DisplayFieldItem {
