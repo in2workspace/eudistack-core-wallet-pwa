@@ -43,6 +43,17 @@
   --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
   --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
 
+  // Responsive spacing scale
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  // Touch-target minimum (WCAG 2.5.5)
+  --touch-min: 44px;
+
   /** Ionic color palette — mapped to semantic tokens **/
   --ion-color-primary: var(--primary-color);
   --ion-color-primary-rgb: var(--primary-color-rgb);

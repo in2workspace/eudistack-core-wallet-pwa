@@ -73,7 +73,9 @@ export class CredentialParserService {
       credentialSubject,
       validFrom: this.extractValidFrom(payload),
       validUntil: this.extractValidUntil(payload),
-      credentialStatus: payload['credentialStatus'] ?? this.defaultCredentialStatus(),
+      credentialStatus: payload['credentialStatus']
+        ?? this.mapTokenStatusList(payload['status'])
+        ?? this.defaultCredentialStatus(),
     };
 
     return this.buildVerifiableCredential(vc, compact, format);
@@ -152,6 +154,18 @@ export class CredentialParserService {
     const exp = vc['exp'] as number | undefined;
     if (exp) return new Date(exp * 1000).toISOString();
     return '';
+  }
+
+  private mapTokenStatusList(status: any): CredentialStatus | undefined {
+    const sl = status?.status_list;
+    if (!sl?.uri) return undefined;
+    return {
+      id: `${sl.uri}#${sl.idx}`,
+      type: 'TokenStatusListEntry',
+      statusPurpose: 'revocation',
+      statusListIndex: String(sl.idx),
+      statusListCredential: sl.uri,
+    };
   }
 
   private defaultCredentialStatus(): CredentialStatus {

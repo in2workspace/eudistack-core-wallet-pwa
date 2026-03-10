@@ -1,0 +1,48 @@
+// ---------------------------------------------------------------------------
+// Responsive utilities — breakpoints, mixins, fluid typography
+// ---------------------------------------------------------------------------
+
+// ── Breakpoint map ──────────────────────────────────────────────────────────
+$breakpoints: (
+  xs: 320px,   // small phones (iPhone SE)
+  sm: 375px,   // standard phones
+  md: 428px,   // large phones / phablets
+  lg: 768px,   // tablets
+  xl: 1024px   // landscape tablets / small desktops
+);
+
+// ── Media-query mixins ──────────────────────────────────────────────────────
+@mixin respond-to($bp) {
+  @media (min-width: map-get($breakpoints, $bp)) {
+    @content;
+  }
+}
+
+@mixin respond-below($bp) {
+  @media (max-width: #{map-get($breakpoints, $bp) - 1px}) {
+    @content;
+  }
+}
+
+@mixin landscape {
+  @media (orientation: landscape) and (max-height: 500px) {
+    @content;
+  }
+}
+
+// ── Fluid typography ────────────────────────────────────────────────────────
+// Usage: @include fluid-type(0.875rem, 1.125rem);
+@mixin fluid-type($min-size, $max-size) {
+  font-size: clamp(#{$min-size}, #{$min-size} + 1vw, #{$max-size});
+}
+
+// ── Touch-target enforcer (WCAG 2.5.5 — 44 × 44 px minimum) ───────────────
+@mixin touch-target($size: 44px) {
+  min-width: $size;
+  min-height: $size;
+}
+
+// ── Safe-area helpers (notched devices) ─────────────────────────────────────
+@mixin safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}

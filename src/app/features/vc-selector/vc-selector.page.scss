@@ -1,3 +1,5 @@
+@use 'responsive' as *;
+
 .vc-selector-content {
   --ion-background-color: var(--surface-page) !important;
 }
@@ -14,8 +16,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: clamp(44px, 13vw, 56px);
+  height: clamp(44px, 13vw, 56px);
   border-radius: 50%;
   background: var(--action-primary, #2563EB);
   margin-bottom: 14px;
@@ -27,7 +29,7 @@
 }
 
 .header-title {
-  font-size: 1.2rem;
+  @include fluid-type(1.1rem, 1.2rem);
   font-weight: 700;
   color: var(--text-primary, #1A1A2E);
   margin: 0 0 6px;
@@ -151,8 +153,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: var(--touch-min);
+  height: var(--touch-min);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(8px);

@@ -38,7 +38,10 @@
               "src/manifest.webmanifest"
             ],
             "styles": ["src/theme/variables.scss", "src/global.scss"],
-            "scripts": []
+            "scripts": [],
+            "stylePreprocessorOptions": {
+              "includePaths": ["src/theme"]
+            }
           },
           "configurations": {
             "production": {

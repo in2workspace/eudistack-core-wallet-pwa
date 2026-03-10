@@ -8,6 +8,10 @@ html, body {
 .main-content{
   margin-top: 4rem;
   background-color: var(--surface-page);
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    margin-top: 2.5rem;
+  }
 }
 
 .toast-custom {
@@ -34,7 +38,7 @@ ion-alert.custom-alert {
 
 ion-modal#example-modal {
   --width: fit-content;
-  --min-width: 20rem;
+  --min-width: min(20rem, 90vw);
   --height: fit-content;
   --border-radius: var(--radius-lg);
   --box-shadow: var(--shadow-lg);
@@ -86,7 +90,7 @@ ion-item{
 }
 
 .header-logo{
-  height: 9rem ;
+  height: clamp(5rem, 20vw, 9rem);
 }
 
 .login-row{
@@ -153,6 +157,10 @@ ion-item{
 
 ion-toolbar {
   --min-height: 4rem;
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    --min-height: 2.5rem;
+  }
 }
 
 ion-button.toolbar-but {
@@ -188,6 +196,8 @@ ion-button.toolbar-but {
   --color-checked: var(--text-secondary);
   width: 15px;
   height: 15px;
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
 }
 
 .radio-items {
