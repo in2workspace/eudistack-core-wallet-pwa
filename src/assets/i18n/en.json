@@ -344,6 +344,17 @@
         "retry": "Retry",
         "no-passkeys": "No passkeys registered."
     },
+    "verification": {
+        "button": "Verify Credential",
+        "modal-title": "Credential Verification",
+        "verifying": "Verifying credential...",
+        "result-valid": "Credential is valid",
+        "result-invalid": "Credential has issues",
+        "check-issuer": "Issuer",
+        "check-issuance": "Issuance date",
+        "check-expiration": "Expiration date",
+        "check-status": "Revocation status"
+    },
     "confirmation":{
         "header":"Send credential?",
         "ok":"Ok",

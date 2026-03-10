@@ -346,6 +346,17 @@
         "retry": "Reintentar",
         "no-passkeys": "No hay passkeys registradas."
     },
+    "verification": {
+        "button": "Verificar Credencial",
+        "modal-title": "Verificación de Credencial",
+        "verifying": "Verificando credencial...",
+        "result-valid": "La credencial es válida",
+        "result-invalid": "La credencial tiene problemas",
+        "check-issuer": "Emisor",
+        "check-issuance": "Fecha de emisión",
+        "check-expiration": "Fecha de expiración",
+        "check-status": "Estado de revocación"
+    },
     "confirmation":{
         "header":"¿Enviar Credencial?",
         "ok":"Ok",

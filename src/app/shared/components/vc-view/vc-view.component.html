@@ -161,6 +161,14 @@
           </div>
         }
       </ion-list>
+
+      <!-- Verify Button -->
+      <div class="verification-section">
+        <ion-button expand="block" fill="outline" class="verify-button" (click)="verifyCredential()">
+          <ion-icon name="shield-checkmark-outline" slot="start"></ion-icon>
+          {{ "verification.button" | translate }}
+        </ion-button>
+      </div>
     </ion-content>
 
     <ion-footer class="modal-footer">
@@ -168,5 +176,60 @@
         {{ "vc-fields.delete" | translate }}
       </ion-button>
     </ion-footer>
+  </ng-template>
+</ion-modal>
+
+<!-- VERIFICATION MODAL -->
+<ion-modal [isOpen]="isVerifyModalOpen" (didDismiss)="closeVerifyModal()" class="verification-modal" [initialBreakpoint]="0.55" [breakpoints]="[0, 0.55, 0.75]" [handle]="true">
+  <ng-template>
+    <ion-content class="verify-modal-content">
+      <div class="verify-modal-inner">
+        <!-- Animated shield icon -->
+        <div class="verify-shield" [class.verify-shield--done]="verifyOverall !== 'pending'">
+          @if(verifyOverall === 'pending') {
+            <ion-icon name="shield-outline" class="shield-icon shield-icon--pending"></ion-icon>
+          } @else if(verifyOverall === 'valid') {
+            <ion-icon name="shield-checkmark" class="shield-icon shield-icon--valid"></ion-icon>
+          } @else {
+            <ion-icon name="shield" class="shield-icon shield-icon--invalid"></ion-icon>
+          }
+        </div>
+
+        <h2 class="verify-title">{{ "verification.modal-title" | translate }}</h2>
+
+        <!-- Check rows -->
+        <div class="verify-checks">
+          @for(check of verificationChecks; track check.key; let i = $index) {
+            <div class="verify-row" [class.verify-row--visible]="check.status !== 'pending'" [style.animation-delay]="(i * 100) + 'ms'">
+              <div class="verify-row-icon">
+                @if(check.status === 'pending') {
+                  <div class="icon-placeholder"></div>
+                } @else if(check.status === 'checking') {
+                  <ion-spinner name="crescent" class="check-spinner"></ion-spinner>
+                } @else if(check.status === 'passed') {
+                  <ion-icon name="checkmark-circle" class="check-icon check-icon--pass"></ion-icon>
+                } @else {
+                  <ion-icon name="close-circle" class="check-icon check-icon--fail"></ion-icon>
+                }
+              </div>
+              <div class="verify-row-info">
+                <span class="verify-row-label">{{ "verification.check-" + check.key | translate }}</span>
+                @if(check.detail && check.status !== 'pending' && check.status !== 'checking') {
+                  <span class="verify-row-detail">{{ check.detail }}</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Overall result banner -->
+        @if(verifyOverall !== 'pending') {
+          <div class="verify-result" [class.verify-result--valid]="verifyOverall === 'valid'" [class.verify-result--invalid]="verifyOverall === 'invalid'">
+            <ion-icon [name]="verifyOverall === 'valid' ? 'checkmark-circle' : 'alert-circle'"></ion-icon>
+            <span>{{ (verifyOverall === 'valid' ? "verification.result-valid" : "verification.result-invalid") | translate }}</span>
+          </div>
+        }
+      </div>
+    </ion-content>
   </ng-template>
 </ion-modal>

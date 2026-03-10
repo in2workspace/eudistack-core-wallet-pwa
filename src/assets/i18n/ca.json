@@ -347,6 +347,17 @@
         "retry": "Tornar a provar",
         "no-passkeys": "No hi ha passkeys registrades."
     },
+    "verification": {
+        "button": "Verificar Credencial",
+        "modal-title": "Verificació de Credencial",
+        "verifying": "Verificant credencial...",
+        "result-valid": "La credencial és vàlida",
+        "result-invalid": "La credencial té problemes",
+        "check-issuer": "Emissor",
+        "check-issuance": "Data d'emissió",
+        "check-expiration": "Data d'expiració",
+        "check-status": "Estat de revocació"
+    },
     "confirmation":{
         "header":"Enviar credencial?",
         "ok":"Ok",

@@ -24,6 +24,7 @@ import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
 import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
 import { CredentialTypeMap } from 'src/app/core/models/credential-type-map';
+import { CredentialVerificationService, VerificationCheck } from 'src/app/core/services/credential-verification.service';
 
 export type ExpiryStatus = 'valid' | 'expiring-soon' | 'expired';
 
@@ -42,6 +43,7 @@ export class VcViewComponent implements OnInit {
   private readonly toastService = inject(ToastServiceHandler);
   private readonly displayService = inject(CredentialDisplayService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly verificationService = inject(CredentialVerificationService);
 
   public credentialInput$ = input.required<VerifiableCredential>();
   public cardFields = signal<DisplayField[]>([]);
@@ -128,6 +130,9 @@ export class VcViewComponent implements OnInit {
 
   public isDetailModalOpen = false;
   public detailViewSections!: DisplaySection[];
+  public isVerifyModalOpen = false;
+  public verificationChecks: VerificationCheck[] = [];
+  public verifyOverall: 'pending' | 'valid' | 'invalid' = 'pending';
 
   public async openDetailModal(): Promise<void> {
     if(this.isDetailViewActive){
@@ -138,6 +143,39 @@ export class VcViewComponent implements OnInit {
 
   public closeDetailModal(): void {
     this.isDetailModalOpen = false;
+  }
+
+  public async verifyCredential(): Promise<void> {
+    const keys = this.verificationService.getCheckKeys();
+    this.verificationChecks = keys.map(key => ({ key, status: 'pending' as const }));
+    this.verifyOverall = 'pending';
+    this.isVerifyModalOpen = true;
+    this.cdr.markForCheck();
+
+    const credential = this.credentialInput$();
+
+    for (let i = 0; i < keys.length; i++) {
+      await this.delay(400);
+      this.verificationChecks[i] = { ...this.verificationChecks[i], status: 'checking' };
+      this.cdr.markForCheck();
+
+      await this.delay(600);
+      const result = await this.verificationService.runCheck(keys[i], credential);
+      this.verificationChecks[i] = result;
+      this.cdr.markForCheck();
+    }
+
+    await this.delay(400);
+    this.verifyOverall = this.verificationChecks.every(c => c.status === 'passed') ? 'valid' : 'invalid';
+    this.cdr.markForCheck();
+  }
+
+  public closeVerifyModal(): void {
+    this.isVerifyModalOpen = false;
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   public ngOnInit(): void {
