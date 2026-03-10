@@ -5,6 +5,8 @@
   "homepage": "https://ionicframework.com/",
   "scripts": {
     "ng": "ng",
+    "prestart": "node -e \"const fs=require('fs'),p=require('path');const src=p.resolve(__dirname,'../eudistack-platform-dev/dev-tools/schemas');const dst=p.resolve(__dirname,'src/assets/schemas');if(fs.existsSync(src)){fs.mkdirSync(dst,{recursive:true});fs.readdirSync(src).filter(f=>f.endsWith('.json')&&fs.statSync(p.join(src,f)).isFile()).forEach(f=>fs.copyFileSync(p.join(src,f),p.join(dst,f)));console.log('Schemas synced from platform-dev')}else{console.log('Warning: platform-dev schemas not found, using bundled schemas')}\"",
+    "prebuild": "node -e \"const fs=require('fs'),p=require('path');const src=p.resolve(__dirname,'../eudistack-platform-dev/dev-tools/schemas');const dst=p.resolve(__dirname,'src/assets/schemas');if(fs.existsSync(src)){fs.mkdirSync(dst,{recursive:true});fs.readdirSync(src).filter(f=>f.endsWith('.json')&&fs.statSync(p.join(src,f)).isFile()).forEach(f=>fs.copyFileSync(p.join(src,f),p.join(dst,f)));console.log('Schemas synced from platform-dev')}else{console.log('Warning: platform-dev schemas not found, using bundled schemas')}\"",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",

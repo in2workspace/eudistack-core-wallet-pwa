@@ -59,10 +59,11 @@ export class CredentialParserService {
 
     // SD-JWT places disclosed claims at the top level; build credentialSubject
     // from all non-standard claims when credentialSubject is not explicitly present.
-    const credentialSubject = payload['credentialSubject'] ??
+    const credentialSubject: Record<string, any> = payload['credentialSubject'] ??
       Object.fromEntries(
         Object.entries(payload).filter(([k]) => !CredentialParserService.SD_JWT_STANDARD_CLAIMS.has(k))
       );
+
 
     const vc: Record<string, any> = {
       '@context': payload['@context'] ?? [],

@@ -28,6 +28,8 @@ export interface CredentialsConfigurationsSuppported{
 export interface CredentialMetadata {
   display: MetadataDisplay[];
   claims: ClaimDefinition[];
+  /** Paths of claims to show on the card summary (2-3 fields). Falls back to first scalar claims if absent. */
+  summary_claims?: string[][];
 }
 
 export interface MetadataDisplay {

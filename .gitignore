@@ -67,3 +67,6 @@ testem.log
 .DS_Store
 Thumbs.db
 android/
+
+# Schemas copied from platform-dev at build time
+src/assets/schemas/*.json
