@@ -241,8 +241,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
 
     const normalizer = new VerifiableCredentialSubjectDataNormalizer();
 
-    return this.walletService.getAllVCs()
-    .pipe(
+    return this.walletService.getAllVCs().pipe(
       takeUntilDestroyed(this.destroyRef),
       tap((credentialListResponse: VerifiableCredential[]) => {
         // Iterate over the list and normalize each credentialSubject

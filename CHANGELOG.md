@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.1.4](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.1.4)
 ### Fixed
 - Close the VC detail modal when pressing the browser's back button.
+- Add cursor pointer for the card hover 
 
 ## [2.1.1](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.1.1)
 ### Changed

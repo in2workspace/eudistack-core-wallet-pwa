@@ -253,9 +253,9 @@ describe('VcViewComponent', () => {
     component.closeDetailModal();
 
     expect(navigateSpy).toHaveBeenCalledWith(['/tabs/credentials'], {
-      queryParams: {},
+      queryParams: { id: null },
+      queryParamsHandling: 'merge',
       replaceUrl: true,
-      queryParamsHandling: '',
     });
   }); 
 
@@ -275,35 +275,8 @@ describe('VcViewComponent', () => {
     expect(navigateSpy).not.toHaveBeenCalled();
   });
 
-  it('ngOnChanges should call getStructuredFields when isDetailViewActive becomes true', () => {
-    const spy = jest.spyOn(component, 'getStructuredFields');
-
-    component.ngOnChanges({
-      isDetailViewActive: {
-        previousValue: false,
-        currentValue: true,
-        firstChange: false,
-        isFirstChange: () => false,
-      },
-    } as any);
-
-    expect(spy).toHaveBeenCalled();
-  });
-
-  it('ngOnChanges should not call getStructuredFields when isDetailViewActive is false', () => {
-    const spy = jest.spyOn(component, 'getStructuredFields');
-
-    component.ngOnChanges({
-      isDetailViewActive: {
-        previousValue: true,
-        currentValue: false,
-        firstChange: false,
-        isFirstChange: () => false,
-      },
-    } as any);
-
-    expect(spy).not.toHaveBeenCalled();
-  });
+  // detailViewSections は Signal ベースの computed になっているため、
+  // 旧実装の ngOnChanges / getStructuredFields に依存するテストは削除した。
 
   // describe('getStructuredFields', () => {   
   //   it('should not fail if credentialType is not in CredentialDetailMap', () => {
@@ -493,8 +466,11 @@ describe('VcViewComponent', () => {
     component.credentialInput$().credentialEncoded = 'encoded_value';
     const originalDetailMap = detailMapModule.CredentialDetailMap[component.credentialType];
     detailMapModule.CredentialDetailMap[component.credentialType] = [];
-    component.getStructuredFields();
-    const encodedSection = component.detailViewSections.find(
+    
+    componentRef.setInput('isDetailViewActive$', true);
+    fixture.detectChanges();
+
+    const encodedSection = component.detailViewSections$().find(
       s => s.section === 'vc-fields.credentialEncoded'
     );
     expect(encodedSection).toBeTruthy();
@@ -516,9 +492,10 @@ describe('VcViewComponent', () => {
     });
     fixture.detectChanges();
 
-    component.getStructuredFields();
+    componentRef.setInput('isDetailViewActive$', true);
+    fixture.detectChanges();
 
-    const credentialInfoSection = component.detailViewSections.find(
+    const credentialInfoSection = component.detailViewSections$().find(
       s => s.section === 'vc-fields.title'
     );
     expect(credentialInfoSection).toBeTruthy();
@@ -558,9 +535,10 @@ describe('VcViewComponent', () => {
 
   fixture.detectChanges();
 
-  component.getStructuredFields();
+  componentRef.setInput('isDetailViewActive$', true);
+  fixture.detectChanges();
 
-  const powersSection = component.detailViewSections.find(s => s.section.endsWith('.powers'));
+  const powersSection = component.detailViewSections$().find(s => s.section.endsWith('.powers'));
   expect(powersSection).toBeTruthy();
 
   const field = powersSection!.fields[0];
@@ -588,9 +566,11 @@ it('translatePowerSections should be a no-op when subject has no mandate', () =>
 
   fixture.detectChanges();
 
-  expect(() => component.getStructuredFields()).not.toThrow();
   // I no ha d'existir cap secció que acabi amb ".powers"
-  const anyPowers = component.detailViewSections.some(s => s.section.endsWith('.powers'));
+  componentRef.setInput('isDetailViewActive$', true);
+  fixture.detectChanges();
+
+  const anyPowers = component.detailViewSections$().some(s => s.section.endsWith('.powers'));
   expect(anyPowers).toBeFalsy();
 });
 
