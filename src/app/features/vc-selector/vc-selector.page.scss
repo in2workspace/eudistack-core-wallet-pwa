@@ -64,10 +64,10 @@
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   border: 2px solid transparent;
   border-radius: var(--radius-md, 8px);
-  margin: 8px;
+  margin: 8px 0;
   padding: 0;
-  overflow: visible;
-  max-width: 100%;
+  overflow: hidden;
+  width: 100%;
 
   .credential-card {
     margin: 0;
