@@ -4,8 +4,9 @@ import { firstValueFrom } from 'rxjs';
 import { CredentialMetadata } from '../models/dto/CredentialIssuerMetadata';
 
 /**
- * Raw shape of the JSON Schema profile files shipped in assets/schemas/.
- * Only the fields consumed by this service are declared.
+ * Raw shape of a credential schema definition shipped in assets/schemas/.
+ * May result from merging a core file ({id}.json) with a profile overlay
+ * ({id}.profile.json). Only the fields consumed by this service are declared.
  */
 interface CredentialSchemaProfile {
   credential_configuration_id: string;
@@ -67,10 +68,23 @@ export class CredentialSchemaRegistryService {
   }
 
   private async loadSchema(configId: string): Promise<void> {
-    const url = `assets/schemas/${configId}.json`;
-    const profile = await firstValueFrom(
-      this.http.get<CredentialSchemaProfile>(url)
+    const coreUrl = `assets/schemas/${configId}.json`;
+    const profileUrl = `assets/schemas/${configId}.profile.json`;
+
+    const core = await firstValueFrom(
+      this.http.get<CredentialSchemaProfile>(coreUrl)
     );
-    this.schemas.set(profile.credential_configuration_id, profile);
+
+    let merged = core;
+    try {
+      const profile = await firstValueFrom(
+        this.http.get<Partial<CredentialSchemaProfile>>(profileUrl)
+      );
+      merged = { ...core, ...profile };
+    } catch {
+      // No profile file — use core as-is (backwards-compatible)
+    }
+
+    this.schemas.set(merged.credential_configuration_id, merged);
   }
 }
