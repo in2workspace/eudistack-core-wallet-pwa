@@ -1,7 +1,8 @@
 import { inject, Injectable } from '@angular/core';
+import { TranslateService } from '@ngx-translate/core';
 import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
 import { CredentialSchemaRegistryService } from './credential-schema-registry.service';
-import { CredentialMetadata, ClaimDefinition } from '../models/dto/CredentialIssuerMetadata';
+import { CredentialMetadata, ClaimDefinition, MetadataDisplay } from '../models/dto/CredentialIssuerMetadata';
 import { VerifiableCredential } from '../models/verifiable-credential';
 import { DisplayField, DisplayFieldItem, DisplaySection } from '../models/display-field.model';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
@@ -11,6 +12,17 @@ export class CredentialDisplayService {
 
   private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
   private readonly schemaRegistry = inject(CredentialSchemaRegistryService);
+  private readonly translate = inject(TranslateService);
+
+  private resolveDisplayName(displays: MetadataDisplay[] | undefined, fallback: string): string {
+    if (displays?.length) {
+      const lang = this.translate.currentLang || this.translate.defaultLang;
+      return displays.find(d => d.locale === lang)?.name
+        ?? displays.find(d => d.locale === 'en')?.name
+        ?? displays[0].name;
+    }
+    return fallback;
+  }
 
   /**
    * Resolves credential metadata from:
@@ -47,7 +59,7 @@ export class CredentialDisplayService {
       const value = resolveByPath(subject, claim.path);
       if (value == null || value === '') continue;
 
-      const label = claim.display?.[0]?.name ?? claim.path[claim.path.length - 1];
+      const label = this.resolveDisplayName(claim.display, claim.path[claim.path.length - 1]);
 
       // Array of objects (e.g. powers) → structured items
       if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
@@ -113,7 +125,7 @@ export class CredentialDisplayService {
 
   async getDisplayName(credential: VerifiableCredential): Promise<string> {
     const meta = await this.resolveMetadata(credential);
-    const name = meta?.display?.[0]?.name;
+    const name = this.resolveDisplayName(meta?.display, '');
     if (name) return name;
 
     const types = credential.type?.filter(t => t !== 'VerifiableCredential') ?? [];
@@ -141,7 +153,7 @@ export class CredentialDisplayService {
 
       // Array of objects → dedicated section
       if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
-        const title = claim.display?.[0]?.name ?? claim.path[claim.path.length - 1];
+        const title = this.resolveDisplayName(claim.display, claim.path[claim.path.length - 1]);
         arraySections.push({
           section: title,
           fields: [{
@@ -168,7 +180,7 @@ export class CredentialDisplayService {
           ? claim.value_map[value]
           : value;
         return {
-          label: claim.display?.[0]?.name ?? claim.path[claim.path.length - 1],
+          label: this.resolveDisplayName(claim.display, claim.path[claim.path.length - 1]),
           value: stringifyValue(mapped),
         };
       }),
