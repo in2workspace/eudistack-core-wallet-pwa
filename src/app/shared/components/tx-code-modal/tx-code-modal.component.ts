@@ -9,64 +9,40 @@ import { OtpInputComponent } from '../otp-input/otp-input.component';
   standalone: true,
   imports: [CommonModule, IonicModule, TranslateModule, OtpInputComponent],
   template: `
-    <div class="tx-code-modal-backdrop">
-      <div class="tx-code-modal-card" [class.card-enter]="true">
-        <div class="tx-code-header">
-          <ion-icon name="lock-closed-outline" class="tx-code-icon"></ion-icon>
-          <h2>{{ header }}</h2>
-        </div>
+    <div class="tx-code-content">
+      <div class="tx-code-header">
+        <ion-icon name="lock-closed-outline" class="tx-code-icon"></ion-icon>
+        <h2>{{ header }}</h2>
+      </div>
 
-        <p class="tx-code-description" *ngIf="description">{{ description }}</p>
+      <p class="tx-code-description" *ngIf="description">{{ description }}</p>
 
-        <app-otp-input
-          #txCodeRef
-          [length]="txCodeLength"
-          [autofocus]="true"
-          [error]="!!error"
-          (completed)="onCompleted($event)"
-          (changed)="error = ''"
-        ></app-otp-input>
+      <app-otp-input
+        #txCodeRef
+        [length]="txCodeLength"
+        [autofocus]="true"
+        [error]="!!error"
+        (completed)="onCompleted($event)"
+        (changed)="error = ''"
+      ></app-otp-input>
 
-        <p class="tx-code-counter" *ngIf="remainingSeconds > 0">
-          {{ 'confirmation.time-remaining' | translate }}: <strong>{{ remainingSeconds }}s</strong>
-        </p>
+      <p class="tx-code-counter" *ngIf="remainingSeconds > 0">
+        {{ 'confirmation.time-remaining' | translate }}: <strong>{{ remainingSeconds }}s</strong>
+      </p>
 
-        <p class="tx-code-error" *ngIf="error">{{ error }}</p>
+      <p class="tx-code-error" *ngIf="error">{{ error }}</p>
 
-        <div class="tx-code-actions">
-          <button class="tx-code-btn tx-code-btn-cancel" (click)="onCancel()">
-            {{ 'confirmation.cancel' | translate }}
-          </button>
-        </div>
+      <div class="tx-code-actions">
+        <button class="tx-code-btn tx-code-btn-cancel" (click)="onCancel()">
+          {{ 'confirmation.cancel' | translate }}
+        </button>
       </div>
     </div>
   `,
   styles: [`
-    .tx-code-modal-backdrop {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100%;
-      padding: 24px;
-    }
-
-    .tx-code-modal-card {
-      width: 100%;
-      max-width: 380px;
-      background: var(--surface-card, #FFFFFF);
-      border-radius: var(--radius-lg, 16px);
+    .tx-code-content {
       padding: 32px 24px;
-      box-shadow: var(--shadow-lg, 0 10px 15px rgba(0,0,0,0.1));
       text-align: center;
-
-      &.card-enter {
-        animation: cardSlideUp 0.3s ease-out;
-      }
-    }
-
-    @keyframes cardSlideUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
     }
 
     .tx-code-header {

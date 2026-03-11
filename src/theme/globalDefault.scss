@@ -218,10 +218,13 @@ input[type="number"] {
   box-shadow: none;
 }
 
-// tx_code modal — transparent background so the component controls the card
+// tx_code modal — sized and centered by Ionic, matching verification-modal style
 .tx-code-modal-wrapper {
-  --background: transparent;
-  --box-shadow: none;
+  --width: 90%;
+  --max-width: 400px;
+  --height: auto;
+  --border-radius: 16px;
+  --box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
   --backdrop-opacity: 0.4;
 
   &::part(backdrop) {
