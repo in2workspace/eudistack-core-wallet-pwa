@@ -177,7 +177,8 @@
             "validFrom": "Valid From",
             "validUntil": "Valid Until",
             "format": "Format",
-            "status": "Status"
+            "status": "Status",
+            "revocationUrl": "Revocation Status URL"
         },
         "credentialEncoded": "Credential",
         "learCredentialEmployee":{

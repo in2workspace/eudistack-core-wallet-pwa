@@ -178,7 +178,8 @@
             "validFrom": "Válido desde",
             "validUntil": "Válido hasta",
             "format": "Formato",
-            "status": "Estado"
+            "status": "Estado",
+            "revocationUrl": "URL de estado de revocación"
         },
         
         "credentialEncoded": "Credencial",

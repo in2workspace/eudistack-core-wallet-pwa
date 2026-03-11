@@ -180,7 +180,8 @@
             "validFrom": "Vàlid des de",
             "validUntil": "Vàlid fins a",
             "format": "Format",
-            "status": "Estat"
+            "status": "Estat",
+            "revocationUrl": "URL d'estat de revocació"
         },
         "credentialEncoded": "Credencial",
         "learCredentialEmployee": {
