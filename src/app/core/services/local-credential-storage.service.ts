@@ -53,6 +53,22 @@ export class LocalCredentialStorageService {
     }
   }
 
+  async updateCredentialStatus(id: string, status: string): Promise<void> {
+    const db = await this.openDatabase();
+    try {
+      const tx = db.transaction(this.STORE_NAME, 'readwrite');
+      const store = tx.objectStore(this.STORE_NAME);
+      const existing = await this.wrapRequest<VerifiableCredential | undefined>(store.get(id));
+      if (existing) {
+        existing.lifeCycleStatus = status as VerifiableCredential['lifeCycleStatus'];
+        store.put(existing);
+      }
+      await this.awaitTx(tx);
+    } finally {
+      db.close();
+    }
+  }
+
   async deleteCredential(id: string): Promise<void> {
     const db = await this.openDatabase();
     try {

@@ -32,6 +32,7 @@ import { ActivityService } from 'src/app/core/services/activity.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { HapticService } from 'src/app/shared/services/haptic.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
+import * as dayjs from 'dayjs';
 //todo restore tests
 
 // TODO separate scan in another component/ page
@@ -83,6 +84,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   private readonly verificationService = inject(CredentialVerificationService);
 
   private authorizationRequest = '';
+  private revokedCredentialIds = new Set<string>();
 
   public constructor(){
     //todo move to ngOnInit to avoid using credentialOfferUri
@@ -401,12 +403,18 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
           return cred;
 
         });
+        // Apply cached revocation status immediately so UI stays consistent
+        for (const cred of this.credList) {
+          if (this.revokedCredentialIds.has(cred.id)) {
+            cred.lifeCycleStatus = 'REVOKED';
+          }
+        }
         // todo avoid this
         this.cdr.detectChanges();
         if(!isScannerOpen){
           this.loader.removeLoadingProcess();
         }
-        this.checkRevocationStatuses();
+        this.checkCredentialStatuses();
       }),
       catchError((error: ExtendedHttpErrorResponse) => {
         if (error.status === 404) {
@@ -424,22 +432,38 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
 
   }
 
-  private async checkRevocationStatuses(): Promise<void> {
-    const candidates = this.credList.filter(c => c.lifeCycleStatus === 'VALID' && c.credentialStatus?.statusListCredential);
-    if (candidates.length === 0) return;
-
-    const checks = await Promise.allSettled(
-      candidates.map(async (cred) => {
-        const revoked = await this.verificationService.isRevoked(cred);
-        return { cred, revoked };
-      })
-    );
-
+  private async checkCredentialStatuses(): Promise<void> {
     let changed = false;
-    for (const result of checks) {
-      if (result.status === 'fulfilled' && result.value.revoked) {
-        result.value.cred.lifeCycleStatus = 'REVOKED';
-        changed = true;
+
+    // Check expiration for VALID credentials
+    for (const cred of this.credList) {
+      if (cred.lifeCycleStatus === 'VALID' && cred.validUntil) {
+        const expiry = dayjs(cred.validUntil);
+        if (expiry.isValid() && expiry.isBefore(dayjs())) {
+          cred.lifeCycleStatus = 'EXPIRED';
+          this.walletService.updateCredentialStatus(cred.id, 'EXPIRED').subscribe();
+          changed = true;
+        }
+      }
+    }
+
+    // Check revocation via status list for remaining VALID credentials
+    const candidates = this.credList.filter(c => c.lifeCycleStatus === 'VALID' && c.credentialStatus?.statusListCredential);
+    if (candidates.length > 0) {
+      const checks = await Promise.allSettled(
+        candidates.map(async (cred) => {
+          const revoked = await this.verificationService.isRevoked(cred);
+          return { cred, revoked };
+        })
+      );
+
+      for (const result of checks) {
+        if (result.status === 'fulfilled' && result.value.revoked) {
+          result.value.cred.lifeCycleStatus = 'REVOKED';
+          this.revokedCredentialIds.add(result.value.cred.id);
+          this.walletService.updateCredentialStatus(result.value.cred.id, 'REVOKED').subscribe();
+          changed = true;
+        }
       }
     }
 

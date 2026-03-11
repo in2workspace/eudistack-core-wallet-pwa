@@ -69,6 +69,17 @@ export class WalletService {
     );
   }
 
+  public updateCredentialStatus(credentialId: string, status: string): Observable<void> {
+    if (isBrowserMode()) {
+      return from(this.credentialStorage.updateCredentialStatus(credentialId, status));
+    }
+    return this.http.patch<void>(
+      `${environment.server_url}${SERVER_PATH.CREDENTIALS}/${credentialId}/status`,
+      { status },
+      options
+    );
+  }
+
   public requestSignature(credentialId: string): Observable<HttpResponse<string>> {
     if (isBrowserMode()) {
       // No deferred credential signing in browser mode
