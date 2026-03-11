@@ -12,7 +12,7 @@
   window["env"]["secondary_contrast"] = "#ffffff";
   window["env"]["assets_base_url"]= "assets";
   window["env"]["logo_path"]= "logos/altia-logo.svg";
-  window["env"]["favicon_path"]= "icons/altia-favicon.ico";
+  window["env"]["favicon_path"]= "icons/altia-favicon.png";
   window["env"]["default_lang"] =  "es";
   window["env"]["wallet_mode"] = "";
   window["env"]["preferred_grant"] = "auto";

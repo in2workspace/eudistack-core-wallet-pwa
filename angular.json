@@ -32,7 +32,7 @@
               },
               {
                 "glob": "**/*.svg",
-                "input": "node_modules/ionicons/dist/ionicons/svg",
+                "input": "src/assets/svg",
                 "output": "./svg"
               },
               "src/manifest.webmanifest"
@@ -117,7 +117,7 @@
               },
               {
                 "glob": "**/*.svg",
-                "input": "node_modules/ionicons/dist/ionicons/svg",
+                "input": "src/assets/svg",
                 "output": "./svg"
               }
             ],
