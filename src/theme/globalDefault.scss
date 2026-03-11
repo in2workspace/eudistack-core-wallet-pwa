@@ -218,8 +218,15 @@ input[type="number"] {
   box-shadow: none;
 }
 
-// tx_code modal — transparent background so the component controls the backdrop
+// tx_code modal — transparent background so the component controls the card
 .tx-code-modal-wrapper {
   --background: transparent;
   --box-shadow: none;
+  --backdrop-opacity: 0.4;
+
+  &::part(backdrop) {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
 }

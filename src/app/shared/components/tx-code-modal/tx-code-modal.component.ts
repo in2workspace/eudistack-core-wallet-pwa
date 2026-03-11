@@ -48,9 +48,6 @@ import { OtpInputComponent } from '../otp-input/otp-input.component';
       justify-content: center;
       min-height: 100%;
       padding: 24px;
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
     }
 
     .tx-code-modal-card {
