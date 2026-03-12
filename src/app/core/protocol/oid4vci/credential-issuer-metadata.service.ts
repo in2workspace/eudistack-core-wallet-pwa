@@ -3,9 +3,9 @@ import { firstValueFrom } from 'rxjs';
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { environment } from 'src/environments/environment';
-import { WalletService } from 'src/app/services/wallet.service';
+import { WalletService } from 'src/app/core/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
+import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 
 
 
@@ -28,7 +28,7 @@ export class CredentialIssuerMetadataService {
     const credentialIssuerURL = `${issuer}/.well-known/openid-credential-issuer`;
 
     try {
-      const responseText = await this.getCredentialIssuerMetadata(credentialIssuerURL);
+      const responseText = await this.fetchCredentialIssuerMetadata(credentialIssuerURL);
       return this.parseCredentialIssuerMetadataResponse(responseText);
     } catch (e: unknown) {
       if (e instanceof Oid4vciError) throw e;
@@ -40,9 +40,9 @@ export class CredentialIssuerMetadataService {
     }
   }
 
-  private async getCredentialIssuerMetadata(credentialIssuerURL: string): Promise<string> {
+  private async fetchCredentialIssuerMetadata(credentialIssuerURL: string): Promise<string> {
     try {
-      return await firstValueFrom(this.walletService.getTextFromUrl(credentialIssuerURL));
+      return await firstValueFrom(this.walletService.fetchTextFromUrl(credentialIssuerURL));
     } catch (e: unknown) {
         wrapOid4vciHttpError(e, 'Could not download issuer metadata', {
           translationKey: 'errors.cannot-download-issuerMetadata',
@@ -61,7 +61,7 @@ export class CredentialIssuerMetadataService {
         credentialEndpoint: mapped.credentialEndpoint,
         credentialsSupported: mapped.credentialsSupported,
         deferredCredentialEndpoint: mapped.deferredCredentialEndpoint,
-        authorizationServer: environment.iam_url,
+        authorizationServer: environment.server_url,
         credentialToken: mapped.credentialToken,
         credential_configurations_supported: mapped.credential_configurations_supported,
       };
@@ -94,6 +94,7 @@ export class CredentialIssuerMetadataService {
     return {
       credentialIssuer: root.credential_issuer ?? root.credentialIssuer,
       credentialEndpoint: root.credential_endpoint ?? root.credentialEndpoint,
+      nonceEndpoint: root.nonce_endpoint ?? root.nonceEndpoint,
       deferredCredentialEndpoint: root.deferred_credential_endpoint ?? root.deferredCredentialEndpoint,
       credentialsSupported: root.credentials_supported ?? root.credentialsSupported,
       authorizationServer: root.authorization_server ?? root.authorizationServer,

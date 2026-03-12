@@ -4,14 +4,15 @@ import { TranslateService } from '@ngx-translate/core';
 import { PopoverController, IonicModule, NavController } from '@ionic/angular';
 import { Router, ActivatedRoute, ActivatedRouteSnapshot, NavigationEnd } from '@angular/router';
 import { of, Subject } from 'rxjs';
-import { AuthenticationService } from './services/authentication.service';
-import { StorageService } from './services/storage.service';
+import { AuthService } from './core/services/auth.service';
+import { StorageService } from './shared/services/storage.service';
 import { RouterTestingModule } from '@angular/router/testing';
-import { environment } from '../environments/environment';
-import { LoaderService } from './services/loader.service';
-import { MenuComponent } from './components/menu/menu.component';
-import { LanguageService } from './services/language.service';
+import { LoaderService } from './shared/services/loader.service';
+import { MenuComponent } from './shared/components/menu/menu.component';
 import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.service';
+import { ThemeService } from './core/services/theme.service';
+import { IssuerMetadataCacheService } from './core/services/issuer-metadata-cache.service';
+import { UserPreferencesService } from './shared/services/user-preferences.service';
 
 describe('AppComponent', () => {
   let component: AppComponent;
@@ -19,10 +20,10 @@ describe('AppComponent', () => {
   let translateServiceMock: jest.Mocked<TranslateService>;
   let popoverControllerMock: jest.Mocked<PopoverController>;
   let routerMock: jest.Mocked<Router>;
-  let authenticationServiceMock: jest.Mocked<AuthenticationService>;
+  let authServiceMock: jest.Mocked<AuthService>;
   let storageServiceMock: jest.Mocked<StorageService>;
   let routerEventsSubject: Subject<Event>;
-  let languageService: jest.Mocked<any>;
+  let themeServiceMock: { snapshot: any; getLogoUrl: jest.Mock };
   let oid4vciEngineMock: { init: jest.Mock };
 
   const activatedRouteMock: Partial<ActivatedRoute> = {
@@ -78,9 +79,10 @@ describe('AppComponent', () => {
   beforeEach(async () => {
     routerEventsSubject = new Subject<Event>();
 
-    languageService = {
-      setLanguages: jest.fn()
-    }
+    themeServiceMock = {
+      snapshot: { branding: { logoUrl: null, logoDarkUrl: null } },
+      getLogoUrl: jest.fn().mockReturnValue(null)
+    };
     translateServiceMock = {
       addLangs: jest.fn(),
       getLangs: jest.fn().mockReturnValue(['en', 'es', 'ca']),
@@ -97,12 +99,12 @@ describe('AppComponent', () => {
     routerMock = {
       navigate: jest.fn(),
       events: routerEventsSubject as any,
-      url: '/callback?test=true',
+      url: '/auth/login',
     } as unknown as jest.Mocked<Router>;
 
-    authenticationServiceMock = {
+    authServiceMock = {
       getName$: jest.fn().mockReturnValue(of('John Doe')),
-    } as unknown as jest.Mocked<AuthenticationService>;
+    } as unknown as jest.Mocked<AuthService>;
 
     storageServiceMock = {
       get: jest.fn().mockResolvedValue('en'),
@@ -113,6 +115,12 @@ describe('AppComponent', () => {
     oid4vciEngineMock = {
       init: jest.fn().mockResolvedValue(undefined),
     };
+
+    const issuerMetadataCacheMock = {
+      refreshStaleMetadata: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const userPrefsMock = {};
 
     await TestBed.configureTestingModule({
       imports: [
@@ -125,12 +133,14 @@ describe('AppComponent', () => {
         { provide: TranslateService, useValue: translateServiceMock },
         { provide: PopoverController, useValue: popoverControllerMock },
         { provide: Router, useValue: routerMock },
-        { provide: AuthenticationService, useValue: authenticationServiceMock },
+        { provide: AuthService, useValue: authServiceMock },
         { provide: StorageService, useValue: storageServiceMock },
         { provide: ActivatedRoute, useValue: activatedRouteMock },
         { provide: NavController, useValue: navControllerMock },
-        { provide: LanguageService, useValue: languageService },
-        { provide: Oid4vciEngineService, useValue: oid4vciEngineMock }
+        { provide: ThemeService, useValue: themeServiceMock },
+        { provide: Oid4vciEngineService, useValue: oid4vciEngineMock },
+        { provide: IssuerMetadataCacheService, useValue: issuerMetadataCacheMock },
+        { provide: UserPreferencesService, useValue: userPrefsMock },
       ],
     })
       .overrideComponent(AppComponent, {
@@ -149,24 +159,8 @@ describe('AppComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should set languages', () => {
-    expect(languageService.setLanguages).toHaveBeenCalled();
-  });
-
-  it('should set CSS variables from environment', () => {
-    component.setCustomStyles();
-
-    const cssVarMap = {
-      '--primary-custom-color': environment.customizations.colors.primary,
-      '--primary-contrast-custom-color': environment.customizations.colors.primary_contrast,
-      '--secondary-custom-color': environment.customizations.colors.secondary,
-      '--secondary-contrast-custom-color': environment.customizations.colors.secondary_contrast,
-    };
-
-    Object.entries(cssVarMap).forEach(([cssVariable, expectedValue]) => {
-      const actualValue = document.documentElement.style.getPropertyValue(cssVariable);
-      expect(actualValue).toBe(expectedValue);
-    });
+  it('should read logoSrc from ThemeService snapshot', () => {
+    expect(component.logoSrc).toBeNull();
   });
 
   it('should show an alert if the device is iOS < 14.3 and not Safari', () => {
@@ -221,19 +215,19 @@ describe('AppComponent', () => {
     expect(component.openPopover).toHaveBeenCalledWith(mockEvent);
   });
 
-  it('should NOT open popover on /callback route', async () => {
+  it('should NOT open popover on /auth route', async () => {
     const event = new MouseEvent('click');
 
-    (routerMock as any).url = '/callback';
-    routerEventsSubject.next(new NavigationEnd(1, '/callback', '/callback') as any);
+    (routerMock as any).url = '/auth/login';
+    routerEventsSubject.next(new NavigationEnd(1, '/auth/login', '/auth/login') as any);
 
     await component.openPopover(event);
 
     expect(popoverControllerMock.create).not.toHaveBeenCalled();
   });
 
-  it('should open popover on non-callback route', async () => {
-    (component as any).isCallbackRoute$ = () => false;
+  it('should open popover on non-auth route', async () => {
+    (component as any).isAuthRoute$ = () => false;
 
     popoverControllerMock.create.mockResolvedValue({
       present: jest.fn(),
@@ -260,26 +254,26 @@ describe('AppComponent', () => {
     expect(completeSpy).toHaveBeenCalledTimes(1);
   });
 
-  describe('isCallbackRoute$', () => {
-    it('should return true initially for /callback route', fakeAsync(() => {
-      (routerMock as any).url = '/callback';
-      routerEventsSubject.next(new NavigationEnd(1, '/callback', '/callback') as any);
+  describe('isAuthRoute$', () => {
+    it('should return true for /auth/login route', fakeAsync(() => {
+      (routerMock as any).url = '/auth/login';
+      routerEventsSubject.next(new NavigationEnd(1, '/auth/login', '/auth/login') as any);
       tick();
-      expect(component.isCallbackRoute$()).toBe(true);
+      expect(component.isAuthRoute$()).toBe(true);
     }));
 
-    it('should return false for non-callback route', fakeAsync(() => {
+    it('should return false for non-auth route', fakeAsync(() => {
       (routerMock as any).url = '/home';
       routerEventsSubject.next(new NavigationEnd(1, '/home', '/home') as any);
       tick();
-      expect(component.isCallbackRoute$()).toBe(false);
+      expect(component.isAuthRoute$()).toBe(false);
     }));
 
-    it('should return true for routes starting with /callback even with segments', fakeAsync(() => {
-      (routerMock as any).url = '/callback/step2?foo=bar';
-      routerEventsSubject.next(new NavigationEnd(1, '/callback/step2?foo=bar', '/callback/step2?foo=bar') as any);
+    it('should return true for /auth/register route', fakeAsync(() => {
+      (routerMock as any).url = '/auth/register';
+      routerEventsSubject.next(new NavigationEnd(1, '/auth/register', '/auth/register') as any);
       tick();
-      expect(component.isCallbackRoute$()).toBe(true);
+      expect(component.isAuthRoute$()).toBe(true);
     }));
   });
 

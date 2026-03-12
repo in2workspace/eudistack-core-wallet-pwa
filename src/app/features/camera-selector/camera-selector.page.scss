@@ -1,0 +1,21 @@
+.camera-selector-content {
+    --ion-background-color: var(--surface-page);
+  }
+
+  .select-row {
+    margin-bottom: 10px;
+  }
+
+  .camera-select {
+    width: auto;
+    padding-inline: 12px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+  }
+
+  .switching{
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }

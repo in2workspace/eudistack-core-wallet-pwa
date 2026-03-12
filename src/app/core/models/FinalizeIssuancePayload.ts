@@ -10,4 +10,5 @@ export interface FinalizeIssuancePayload{
   authorisationServerMetadata: AuthorisationServerMetadata;
   tokenObtainedAt: number; // Unix timestamp in seconds
   format: string;
+  credentialConfigurationId: string;
 }

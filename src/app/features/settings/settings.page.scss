@@ -1,0 +1,154 @@
+@use 'responsive' as *;
+
+// ---------------------------------------------------------------------------
+// Settings page — Apple Settings-inspired design
+// ---------------------------------------------------------------------------
+
+:host {
+  --settings-icon-size: 30px;
+  --settings-icon-radius: 7px;
+  --settings-item-height: 48px;
+}
+
+.settings-page {
+  --background: var(--surface-page);
+}
+
+.settings-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--space-md) var(--space-md) var(--space-xl);
+  animation: settingsFadeIn 0.35s ease-out;
+}
+
+// -- Title ------------------------------------------------------------------
+
+.settings-title {
+  @include fluid-type(1.375rem, 1.75rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 12px 4px 20px;
+  line-height: 1.2;
+}
+
+// -- Grouped card -----------------------------------------------------------
+
+.settings-group {
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.settings-list {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+
+  --ion-item-background: transparent;
+}
+
+// -- Divider ----------------------------------------------------------------
+
+.item-divider {
+  height: 1px;
+  background: var(--border-default);
+  margin-left: clamp(48px, 14vw, 60px); // align with text, past the icon badge
+  margin-right: 0;
+}
+
+// -- Item -------------------------------------------------------------------
+
+.settings-item {
+  --min-height: var(--settings-item-height);
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --inner-padding-end: 0;
+  --border-width: 0;
+  --inner-border-width: 0;
+  --border-color: transparent;
+  --background-hover: var(--action-secondary);
+  --background-activated: var(--action-secondary-hover);
+  --transition: background-color 0.15s ease;
+
+  cursor: pointer;
+
+  ion-label {
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--text-primary);
+    margin: 0;
+  }
+}
+
+// -- Chevron ----------------------------------------------------------------
+
+.chevron {
+  font-size: 14px;
+  color: var(--text-disabled);
+  margin-inline-start: 4px;
+}
+
+// -- Icon badge (colored rounded square) ------------------------------------
+
+.icon-badge {
+  width: var(--settings-icon-size);
+  height: var(--settings-icon-size);
+  min-width: var(--settings-icon-size);
+  border-radius: var(--settings-icon-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline-end: 14px;
+
+  ion-icon {
+    font-size: 18px;
+    color: #ffffff;
+  }
+
+  &--blue   { background-color: var(--action-primary); }
+  &--purple { background-color: #8B5CF6; }
+  &--green  { background-color: var(--status-success); }
+  &--orange { background-color: var(--status-warning); }
+  &--gray   { background-color: var(--text-secondary); }
+  &--indigo { background-color: #6366F1; }
+  &--dark   { background-color: #1E293B; }
+}
+
+// -- Description text -------------------------------------------------------
+
+.settings-desc {
+  font-size: 12px !important;
+  color: var(--text-secondary) !important;
+  margin-top: 2px;
+}
+
+// -- Toggle -----------------------------------------------------------------
+
+.settings-toggle {
+  --track-background: var(--border-default);
+  --track-background-checked: var(--action-primary);
+  padding-inline-end: 16px;
+}
+
+// -- Value text (e.g. version) ----------------------------------------------
+
+.settings-value {
+  font-size: 14px;
+  color: var(--text-secondary);
+  padding-inline-end: 16px;
+}
+
+// -- Entrance animation -----------------------------------------------------
+
+@keyframes settingsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

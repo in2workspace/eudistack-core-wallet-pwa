@@ -16,12 +16,22 @@
   <link rel="icon" type="image/png" href="" />
   <!-- href is empty because it is set in app component with env variable -->
   <link rel="apple-touch-icon" href="">
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#001E8C" />
 
   <!-- add to homescreen for ios -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <!-- load environment variables -->
   <script src="assets/env.js"></script>
+  <!-- capture PWA install prompt before Angular bootstraps (race condition fix) -->
+  <script>
+    window.__pwaInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      window.__pwaInstallPrompt = e;
+    });
+  </script>
 </head>
 
 <body>

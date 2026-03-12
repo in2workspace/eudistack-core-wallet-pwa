@@ -1,0 +1,24 @@
+@if(isError$()){
+  <div class="scanner-error">
+    <ion-icon aria-hidden="true" name="videocam-off-outline"></ion-icon>
+    <span>{{ "camera-selector.no-device" | translate }}</span>
+  </div>
+}@else if(!firstActivationCompleted){
+  <div class="scanner-loading">
+    <div class="scanner-loading-ring"></div>
+    <span>{{ "scanner.initializing" | translate}}</span>
+  </div>
+}
+
+<div class="scanner-shell">
+  <zxing-scanner
+    #scanner
+    [style.display]="firstActivationCompleted ? 'block' : 'none'"
+    class="scanner"
+    [autostart]="false"
+    [formats]="allowedFormats"
+    (scanSuccess)="onCodeResult($event)"
+    (scanError)="onScanError($event)"
+    (scanFailure)="onScanFailure($event)"
+  ></zxing-scanner>
+</div>

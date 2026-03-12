@@ -1,11 +1,12 @@
 export interface CredentialIssuerMetadata {
   credentialIssuer?: string;
   credentialEndpoint?: string;
+  nonceEndpoint?: string;
   deferredCredentialEndpoint?: string;
   notification_endpoint?: string;
   issuance_endpoint?: string;
   credentialsSupported?: unknown;
-  credential_configurations_supported: {[key: string]: CredentialsConfigurationsSuppported}; 
+  credential_configurations_supported: {[key: string]: CredentialsConfigurationsSuppported};
 
   /** Field that is hardcoded in the deprecated backend method. */
   authorizationServer?: string;
@@ -19,6 +20,28 @@ export interface CredentialIssuerMetadata {
 export interface CredentialsConfigurationsSuppported{
   format: string;
   cryptographic_binding_methods_supported?: string[];
+  vct?: string;
+  credential_definition?: { type?: string[] };
+  credential_metadata?: CredentialMetadata;
+}
+
+export interface CredentialMetadata {
+  display: MetadataDisplay[];
+  claims: ClaimDefinition[];
+  /** Paths of claims to show on the card summary (2-3 fields). Falls back to first scalar claims if absent. */
+  summary_claims?: string[][];
+}
+
+export interface MetadataDisplay {
+  name: string;
+  locale: string;
+  description?: string;
+}
+
+export interface ClaimDefinition {
+  path: string[];
+  display: MetadataDisplay[];
+  value_map?: Record<string, string>;
 }
 
 export interface CredentialsSupported{

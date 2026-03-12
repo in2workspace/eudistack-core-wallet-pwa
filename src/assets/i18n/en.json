@@ -9,10 +9,15 @@
         "privacy-policy":"Privacy Policy",
         "faqs":"FAQs",
         "settings":"Settings",
-        "logout":"Logout"
+        "logout":"Logout",
+        "install":"Install App",
+        "wallet":"Wallet"
     },
     "scanner":{
-        "initializing": "Initializing scanner... Please wait."
+        "initializing": "Initializing scanner... Please wait.",
+        "manualInput": "Or paste QR content manually:",
+        "manualInputPlaceholder": "Paste QR code content here...",
+        "send": "Send"
     },
     "camera-selector":{
         "title":"Selected camera",
@@ -30,7 +35,10 @@
         "title":"Credentials",
         "add":"Add",
         "nocred":"You have no saved credentials.\nAdd one to start using the Wallet.",
+        "nocred-title":"No credentials yet",
+        "nocred-subtitle":"Scan a QR code or accept a credential offer to get started.",
         "expiration":"Expired",
+        "expiring-soon":"Expiring soon",
         "expiredCredential":"Credential expired",
         "expiredText":"This credential has expired and you can no longer use it.",
         "close":"Close",
@@ -44,7 +52,8 @@
     "home":{
         "ok-msg": "Credential added",
         "rejected-msg": "Credential offer rejected",
-        "scan": "Scan QR"
+        "scan": "Scan QR",
+        "install-hint": "Install the app for a better experience"
     },
     "language-selector":{
         "title":"Select language"
@@ -59,6 +68,43 @@
         "no-more-logs": "No more camera logs to load."
     },
     "mailto_permission_alert": "Si us plau, assegura't que tens els permisos necessaris per enviar correus electrònics amb la teva aplicació de correu predeterminada. Si el servei de correu no s’obre, és probable que sigui a causa de restriccions de permisos.",
+    "auth": {
+        "login": {
+            "title": "Welcome back",
+            "subtitle": "Use your passkey to sign in securely",
+            "passkey-button": "Sign in with Passkey"
+        },
+        "register": {
+            "title": "Create account",
+            "subtitle": "Enter your email to get started",
+            "step-email": "Email",
+            "step-verify": "Verify",
+            "email": "Email",
+            "email-placeholder": "Enter your email",
+            "send-code": "Send verification code",
+            "code-sent": "We sent a verification code to your email",
+            "code": "Verification code",
+            "code-placeholder": "Enter the 6-digit code",
+            "verify": "Verify",
+            "change-email": "Change email",
+            "passkey-subtitle": "Create a passkey to set up your wallet securely",
+            "create-wallet": "Create Wallet",
+            "install-title": "Install the App",
+            "install-subtitle": "For the best experience and offline access, install the wallet app on your device.",
+            "install-button": "Install App",
+            "continue-browser": "Continue in browser"
+        },
+        "passkey": {
+            "title": "Set up Passkey",
+            "description": "Create a passkey to sign in securely without a password. Your device will use biometrics or a PIN to verify your identity.",
+            "register-button": "Create Passkey",
+            "email-verified": "Email verified",
+            "success": "Passkey registered successfully!",
+            "status-connecting": "Preparing...",
+            "status-verifying": "Waiting for your device...",
+            "retry": "Try again"
+        }
+    },
     "login":{
         "title":"Login",
         "login":"Login",
@@ -69,14 +115,23 @@
         "title":"Privacy Policy"
     },
     "settings":{
-        "title":"Settings"
+        "title":"Settings",
+        "privacy-blur": "Privacy blur",
+        "privacy-blur-desc": "Blur credential details",
+        "dark-mode": "Dark mode",
+        "dark-mode-desc": "Switch to dark theme",
+        "about": "About",
+        "version": "Version"
     },
     "terms-of-use":{
         "title":"Terms Of Use"
     },
     "vc-selector":{
-        "title":"Vc Selector",
+        "title":"Credential Presentation",
         "select-cred":"Select a Credential",
+        "presentation-request":"Credential Request",
+        "select-instruction":"Tap the credential you want to present",
+        "cancel":"Cancel",
         "send-cred":"Send Credential",
         "ok-header": "Credential sent successfully",
         "ok-message":"Log in completed",
@@ -120,7 +175,10 @@
             "issuerCommonName": "Issuer Common Name",
             "issuerSerialNumber": "Issuer Serial Number",
             "validFrom": "Valid From",
-            "validUntil": "Valid Until"
+            "validUntil": "Valid Until",
+            "format": "Format",
+            "status": "Status",
+            "revocationUrl": "Revocation Status URL"
         },
         "credentialEncoded": "Credential",
         "learCredentialEmployee":{
@@ -253,6 +311,53 @@
             "default": "Unexpected error. Check your browser permissions and make sure no other application is using the camera. Try refreshing the page."
         }
     },
+    "activity": {
+        "title": "Activity",
+        "empty": "No activity yet",
+        "empty-hint": "Your credential activity will appear here",
+        "clear": "Clear",
+        "clear-confirm": "Clear all activity?",
+        "type-issued": "Credential received",
+        "type-presented": "Credential presented",
+        "type-deleted": "Credential deleted",
+        "time-now": "Just now",
+        "time-minutes": "{{count}}m ago",
+        "time-hours": "{{count}}h ago",
+        "time-days": "{{count}}d ago"
+    },
+    "devices": {
+        "settings-link": "My Devices",
+        "title": "My Devices",
+        "subtitle": "Manage the passkeys registered to your account",
+        "rename-header": "Rename Passkey",
+        "rename-placeholder": "Enter new name",
+        "rename-confirm": "Rename",
+        "rename-aria": "Rename this passkey",
+        "delete-header": "Delete Passkey",
+        "delete-message": "Are you sure you want to delete this passkey? If this is the passkey for your current device, you will not be able to sign in from this browser anymore.",
+        "delete-confirm": "Delete",
+        "delete-aria": "Delete this passkey",
+        "cancel": "Cancel",
+        "ok": "OK",
+        "error-header": "Cannot Delete",
+        "last-passkey-error": "You cannot delete your last passkey. Register a new device first.",
+        "load-error": "Could not load your devices. Please try again.",
+        "retry": "Retry",
+        "no-passkeys": "No passkeys registered."
+    },
+    "verification": {
+        "button": "Verify Credential",
+        "modal-title": "Credential Verification",
+        "verifying": "Verifying credential...",
+        "result-valid": "Credential is valid",
+        "result-invalid": "Credential has issues",
+        "result-revoked": "Credential revoked",
+        "result-expired": "Credential expired",
+        "check-issuer": "Issuer",
+        "check-issuance": "Issuance date",
+        "check-expiration": "Expiration date",
+        "check-status": "Revocation status"
+    },
     "confirmation":{
         "header":"Send credential?",
         "ok":"Ok",
@@ -268,7 +373,8 @@
         "holder":"Holder: ",
         "powers":"Powers: ",
         "expiration":"Expiration date: ",
-        "unknown": "Unknown"
+        "unknown": "Unknown",
+        "time-remaining": "Time remaining"
     }
 
 }

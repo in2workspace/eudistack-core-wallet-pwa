@@ -2,9 +2,9 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { AuthorisationServerMetadata } from '../../models/dto/AuthorisationServerMetadata';
-import { WalletService } from 'src/app/services/wallet.service';
+import { WalletService } from 'src/app/core/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
+import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 
 @Injectable({ providedIn: 'root' })
 export class AuthorisationServerMetadataService {
@@ -15,7 +15,7 @@ export class AuthorisationServerMetadataService {
     credentialIssuerMetadata: CredentialIssuerMetadata
   ): Promise<AuthorisationServerMetadata> {
     try {
-      const responseText = await this.getAuthorizationServerMetadata(credentialIssuerMetadata);
+      const responseText = await this.fetchAuthorizationServerMetadata(credentialIssuerMetadata);
       return this.parseAuthorisationServerMetadataResponse(responseText);
     } catch (e: unknown) {
       if (e instanceof Oid4vciError) throw e;
@@ -27,7 +27,7 @@ export class AuthorisationServerMetadataService {
     }
   }
 
-  private async getAuthorizationServerMetadata(
+  private async fetchAuthorizationServerMetadata(
     credentialIssuerMetadata: CredentialIssuerMetadata
   ): Promise<string> {
     const authServer =
@@ -39,14 +39,21 @@ export class AuthorisationServerMetadataService {
         });
     }
 
-    const url = `${authServer}/.well-known/openid-configuration`;
+    // RFC 8414 §3: prefer /.well-known/oauth-authorization-server, fallback to OpenID Connect discovery
+    const rfc8414Url = `${authServer}/.well-known/oauth-authorization-server`;
+    const oidcUrl = `${authServer}/.well-known/openid-configuration`;
 
     try {
-      return await firstValueFrom(this.walletService.getTextFromUrl(url));
-    } catch (e: unknown) {
-      wrapOid4vciHttpError(e, 'Could not download authorization server metadata', {
-        translationKey: 'errors.cannot-download-auth-server-metadata',
-      });
+      return await firstValueFrom(this.walletService.fetchTextFromUrl(rfc8414Url));
+    } catch {
+      // Fallback to OpenID Connect discovery path
+      try {
+        return await firstValueFrom(this.walletService.fetchTextFromUrl(oidcUrl));
+      } catch (e: unknown) {
+        wrapOid4vciHttpError(e, 'Could not download authorization server metadata', {
+          translationKey: 'errors.cannot-download-auth-server-metadata',
+        });
+      }
     }
   }
 
@@ -59,6 +66,15 @@ export class AuthorisationServerMetadataService {
         tokenEndpoint: root?.token_endpoint ?? root?.tokenEndpoint,
         authorizationEndpoint: root?.authorization_endpoint ?? root?.authorizationEndpoint,
         jwksUri: root?.jwks_uri ?? root?.jwksUri,
+        pushedAuthorizationRequestEndpoint: root?.pushed_authorization_request_endpoint,
+        nonceEndpoint: root?.nonce_endpoint,
+        requirePushedAuthorizationRequests: root?.require_pushed_authorization_requests,
+        codeChallengeMethodsSupported: root?.code_challenge_methods_supported,
+        dpopSigningAlgValuesSupported: root?.dpop_signing_alg_values_supported,
+        tokenEndpointAuthMethodsSupported: root?.token_endpoint_auth_methods_supported,
+        grantTypesSupported: root?.grant_types_supported,
+        responseTypesSupported: root?.response_types_supported,
+        authorizationResponseIssParameterSupported: root?.authorization_response_iss_parameter_supported,
         ...root,
       };
     } catch (e: any) {

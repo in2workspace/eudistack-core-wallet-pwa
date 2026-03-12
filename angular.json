@@ -32,15 +32,19 @@
               },
               {
                 "glob": "**/*.svg",
-                "input": "node_modules/ionicons/dist/ionicons/svg",
+                "input": "src/assets/svg",
                 "output": "./svg"
-              }
+              },
+              "src/manifest.webmanifest"
             ],
             "styles": ["src/theme/variables.scss", "src/global.scss"],
-            "scripts": []
+            "scripts": [],
+            "stylePreprocessorOptions": {
+              "includePaths": ["src/theme"]
+            }
           },
           "configurations": {
-            "deployment": {
+            "production": {
               "budgets": [
                 {
                   "type": "initial",
@@ -49,18 +53,20 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "2kb",
-                  "maximumError": "4kb"
+                  "maximumWarning": "8kb",
+                  "maximumError": "12kb"
                 }
               ],
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.deployment.ts"
+                  "with": "src/environments/environment.production.ts"
                 }
               ],
-              "outputHashing": "all"
-            },    
+              "outputHashing": "all",
+              "serviceWorker": true,
+              "ngswConfigPath": "src/ngsw-config.json"
+            },
             "development": {
               "buildOptimizer": false,
               "optimization": false,
@@ -73,13 +79,13 @@
               "progress": false
             }
           },
-          "defaultConfiguration": "deployment"
+          "defaultConfiguration": "production"
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
-            "deployment": {
-              "buildTarget": "app:build:deployment"
+            "production": {
+              "buildTarget": "app:build:production"
             },
             "development": {
               "buildTarget": "app:build:development"
@@ -111,7 +117,7 @@
               },
               {
                 "glob": "**/*.svg",
-                "input": "node_modules/ionicons/dist/ionicons/svg",
+                "input": "src/assets/svg",
                 "output": "./svg"
               }
             ],

@@ -1,4 +1,5 @@
-import { enableProdMode, importProvidersFrom } from '@angular/core';
+import { APP_INITIALIZER, enableProdMode, importProvidersFrom, isDevMode } from '@angular/core';
+import { provideServiceWorker } from '@angular/service-worker';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { RouteReuseStrategy, provideRouter } from '@angular/router';
 import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
@@ -10,18 +11,26 @@ import {
   HTTP_INTERCEPTORS,
   HttpClient,
   provideHttpClient,
+  withInterceptors,
   withInterceptorsFromDi,
 } from '@angular/common/http';
 import { IonicStorageModule } from '@ionic/storage-angular';
-import {
-  AuthModule,
-  AuthInterceptor
-} from 'angular-auth-oidc-client';
-import { HttpErrorInterceptor } from './app/interceptors/error-handler.interceptor';
-import { IAM_PARAMS, IAM_POST_LOGIN_ROUTE, IAM_POST_LOGOUT_URI, IAM_REDIRECT_URI } from './app/constants/iam.constants';
-import { disableTouchScrollOnPaths } from './app/helpers/disable-touch-scroll-on-paths';
-import { httpTranslateLoader } from './app/helpers/http-translate-loader';
+import { HttpErrorInterceptor } from './app/core/interceptors/error-handler.interceptor';
+import { authInterceptor } from './app/core/interceptors/auth.interceptor';
+import { disableTouchScrollOnPaths } from './app/shared/helpers/disable-touch-scroll-on-paths';
+import { httpTranslateLoader } from './app/shared/helpers/http-translate-loader';
+import { KEY_STORAGE_PROVIDERS } from './app/core/spi-impl/key-storage.provider.factory';
+import { AUTH_SERVICE_PROVIDER } from './app/core/services/auth.service';
+import { ThemeService } from './app/core/services/theme.service';
+import { PasskeyStoreService } from './app/core/services/passkey-store.service';
 
+function initializeTheme(themeService: ThemeService): () => Promise<void> {
+  return () => themeService.load();
+}
+
+function initializePasskeyStore(store: PasskeyStoreService): () => Promise<void> {
+  return () => store.init();
+}
 
 disableTouchScrollOnPaths(
   ['/tabs/settings', '/tabs/home']
@@ -37,10 +46,20 @@ bootstrapApplication(AppComponent, {
     importProvidersFrom(
       IonicModule.forRoot({ innerHTMLTemplatesEnabled: true })
     ),
-    //todo: Prefer withInterceptors and functional interceptors instead, as support for DI-provided interceptors may be phased out in a later release. 
-    provideHttpClient(withInterceptorsFromDi()),
-    { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
+    provideHttpClient(withInterceptorsFromDi(), withInterceptors([authInterceptor])),
     { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeTheme,
+      deps: [ThemeService],
+      multi: true
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializePasskeyStore,
+      deps: [PasskeyStoreService],
+      multi: true
+    },
     importProvidersFrom(
       TranslateModule.forRoot({
         loader: {
@@ -51,26 +70,12 @@ bootstrapApplication(AppComponent, {
       })
     ),
     importProvidersFrom(IonicStorageModule.forRoot()),
-    importProvidersFrom(AuthModule.forRoot({
-      config: {
-        // You can add "logLevel: 1" to see library logs
-        postLoginRoute: IAM_POST_LOGIN_ROUTE,
-        authority: environment.iam_url,
-        redirectUrl: IAM_REDIRECT_URI,
-        postLogoutRedirectUri: IAM_POST_LOGOUT_URI,
-        clientId: IAM_PARAMS.CLIENT_ID,
-        scope: IAM_PARAMS.SCOPE,
-        responseType: IAM_PARAMS.GRANT_TYPE,
-        silentRenew: true,
-        useRefreshToken: true,
-        ignoreNonceAfterRefresh: true,
-        triggerRefreshWhenIdTokenExpired: false,
-        autoUserInfo: false,
-        secureRoutes:[environment.server_url]
-      }
-    })
-    ),
-    provideRouter(routes)
+    ...KEY_STORAGE_PROVIDERS,
+    AUTH_SERVICE_PROVIDER,
+    provideRouter(routes),
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
   ],
 });
-

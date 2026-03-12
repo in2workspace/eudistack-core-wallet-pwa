@@ -1,0 +1,182 @@
+@use 'responsive' as *;
+
+// ---------------------------------------------------------------------------
+// Home page — premium wallet landing
+// ---------------------------------------------------------------------------
+
+// --- Page background -------------------------------------------------------
+
+.home-content {
+  --ion-background-color: var(--surface-page);
+}
+
+// --- Install banner (frosted glass pill) -----------------------------------
+
+.install-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  margin-bottom: 8px;
+  background: var(--surface-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 9999px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-default);
+}
+
+.install-banner-icon {
+  font-size: 20px;
+  color: var(--action-primary);
+  flex-shrink: 0;
+}
+
+.install-banner-text {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+.install-banner-close {
+  --color: var(--text-disabled);
+  --padding-start: 4px;
+  --padding-end: 4px;
+  margin: 0;
+}
+
+// --- Hero section (centered scan CTA) --------------------------------------
+
+.hero-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding-bottom: clamp(2rem, 8vw, 4rem);
+  text-align: center;
+
+  @include landscape {
+    flex-direction: row;
+    gap: var(--space-lg);
+    padding-bottom: 1rem;
+  }
+}
+
+// Scan button container (holds pulse ring + button)
+.scan-button-wrapper {
+  position: relative;
+  width: clamp(96px, 28vw, 120px);
+  height: clamp(96px, 28vw, 120px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+
+  @include landscape {
+    margin-bottom: 0;
+  }
+}
+
+// Animated pulse ring
+.scan-pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--action-primary);
+  opacity: 0;
+  animation: pulse-ring 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+  70% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+// Main scan button
+.scan-button {
+  position: relative;
+  z-index: 1;
+  width: clamp(64px, 18vw, 80px);
+  height: clamp(64px, 18vw, 80px);
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--action-primary) 0%, var(--primary-color) 100%);
+  box-shadow:
+    0 4px 20px rgba(37, 99, 235, 0.35),
+    0 0 40px rgba(37, 99, 235, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+
+  &:hover {
+    transform: scale(1.06);
+    box-shadow:
+      0 6px 28px rgba(37, 99, 235, 0.45),
+      0 0 48px rgba(37, 99, 235, 0.15);
+  }
+
+  &:active {
+    transform: scale(0.96);
+    box-shadow:
+      0 2px 12px rgba(37, 99, 235, 0.3),
+      0 0 24px rgba(37, 99, 235, 0.08);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--action-primary);
+    outline-offset: 4px;
+  }
+}
+
+.scan-icon {
+  font-size: clamp(24px, 7vw, 32px);
+  color: #ffffff;
+  pointer-events: none;
+}
+
+// Hero text
+.hero-title {
+  margin: 0 0 0.375rem;
+  @include fluid-type(1.125rem, 1.25rem);
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.hero-subtitle {
+  margin: 0;
+  @include fluid-type(0.8125rem, 0.875rem);
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+// --- Toolbar override (kept for layout consistency) ------------------------
+
+.toolbar {
+  padding-right: 0.5rem;
+  --box-shadow: none;
+}
+
+// --- Popup overlay (kept for existing functionality) -----------------------
+
+.popup-bg-cover {
+  z-index: 9999;
+  width: 100%;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.4);
+}

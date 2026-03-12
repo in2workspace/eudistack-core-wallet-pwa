@@ -9,7 +9,9 @@
         "privacy-policy":"Política de Privacitat",
         "faqs":"FAQs",
         "settings":"Configuració",
-        "logout":"Tancar sessió"
+        "logout":"Tancar sessió",
+        "install":"Instal·lar app",
+        "wallet":"Cartera"
     },
     "camera-selector":{
         "title": "Càmera seleccionada",
@@ -27,7 +29,10 @@
         "title":"Credencials",
         "add":"Afegeix",
         "nocred":"No tens cap credencial carregada",
+        "nocred-title":"Sense credencials",
+        "nocred-subtitle":"Escaneja un codi QR o accepta una oferta de credencial per comencar.",
         "expiration":"Caducat",
+        "expiring-soon":"Caduca aviat",
         "expiredCredential":"Credencial caducada",
         "expiredText":"Aquesta credencial està caducada i ja no la pots fer servir.",
         "close":"Tancar",
@@ -42,7 +47,8 @@
     "home":{
         "ok-msg": "S'ha afegit la credencial",
         "rejected-msg": "S'ha rebutjat l'oferta de credencial",
-        "scan": "Escanejar QR"
+        "scan": "Escanejar QR",
+        "install-hint": "Instal\u00b7la l'app per a una millor experi\u00e8ncia"
     },
     "language-selector":{
         "title":"Selector d'idioma"
@@ -59,6 +65,43 @@
     "send-logs": {
         "mailto_permission_alert": "Assegureu-vos que teniu els permisos necessaris per enviar correus electrònics amb la vostra aplicació de correu predeterminada. Si el servei de correu no s'obre, probablement és a causa de restriccions de permisos."
     },
+    "auth": {
+        "login": {
+            "title": "Benvingut",
+            "subtitle": "Usa la teva passkey per accedir de forma segura",
+            "passkey-button": "Iniciar sessió amb Passkey"
+        },
+        "register": {
+            "title": "Crear compte",
+            "subtitle": "Introdueix el teu email per començar",
+            "step-email": "Email",
+            "step-verify": "Verificar",
+            "email": "Email",
+            "email-placeholder": "Introdueix el teu email",
+            "send-code": "Enviar codi de verificació",
+            "code-sent": "Hem enviat un codi de verificació al teu email",
+            "code": "Codi de verificació",
+            "code-placeholder": "Introdueix el codi de 6 dígits",
+            "verify": "Verificar",
+            "change-email": "Canviar email",
+            "passkey-subtitle": "Crea una passkey per configurar el teu wallet de forma segura",
+            "create-wallet": "Crear Wallet",
+            "install-title": "Instal·lar l'App",
+            "install-subtitle": "Per a la millor experiència i accés offline, instal·la l'app del wallet al teu dispositiu.",
+            "install-button": "Instal·lar App",
+            "continue-browser": "Continuar al navegador"
+        },
+        "passkey": {
+            "title": "Configurar Passkey",
+            "description": "Crea una passkey per iniciar sessió de forma segura sense contrasenya. El teu dispositiu farà servir biometria o un PIN per verificar la teva identitat.",
+            "register-button": "Crear Passkey",
+            "email-verified": "Email verificat",
+            "success": "Passkey registrada correctament!",
+            "status-connecting": "Preparant...",
+            "status-verifying": "Esperant el teu dispositiu...",
+            "retry": "Tornar-ho a provar"
+        }
+    },
     "login":{
         "title":"Login",
         "login":"Login",
@@ -69,14 +112,23 @@
         "title":"Politica de Privacitat"
     },
     "settings":{
-        "title":"Configuració"
+        "title":"Configuració",
+        "privacy-blur": "Desenfocament de privacitat",
+        "privacy-blur-desc": "Desenfoca les dades de les credencials",
+        "dark-mode": "Mode fosc",
+        "dark-mode-desc": "Canviar al tema fosc",
+        "about": "Sobre",
+        "version": "Versió"
     },
     "terms-of-use":{
         "title":"Termes d'Us"
     },
     "vc-selector":{
-        "title":"Selector de VC",
+        "title":"Presentació de Credencial",
         "select-cred":"Selecciona una Credencial",
+        "presentation-request":"Sol·licitud de Credencial",
+        "select-instruction":"Prem la credencial que vols presentar",
+        "cancel":"Cancel·lar",
         "send-cred":"Envia Credencial",
         "ok-header": "Credencial enviada correctament",
         "ok-message":"Login correcte",
@@ -103,7 +155,10 @@
         "revoked": "Revocat"
     },
     "scanner":{
-        "initializing": "Inicialitzant escàner..."
+        "initializing": "Inicialitzant escàner...",
+        "manualInput": "O enganxa el contingut del QR manualment:",
+        "manualInputPlaceholder": "Enganxa aquí el contingut del codi QR...",
+        "send": "Enviar"
     },
     "vc-fields": {
         "delete": "Eliminar",
@@ -123,7 +178,10 @@
             "issuerCommonName": "Nom comú de l'emissor",
             "issuerSerialNumber": "Número de sèrie de l'emissor",
             "validFrom": "Vàlid des de",
-            "validUntil": "Vàlid fins a"
+            "validUntil": "Vàlid fins a",
+            "format": "Format",
+            "status": "Estat",
+            "revocationUrl": "URL d'estat de revocació"
         },
         "credentialEncoded": "Credencial",
         "learCredentialEmployee": {
@@ -256,6 +314,53 @@
             "default": "Error inesperat. Comprova els permisos del teu navegador i assegura't que cap altra aplicació estigui utilitzant la càmera. Intenta refrescar la pàgina."
         }
     },
+    "activity": {
+        "title": "Activitat",
+        "empty": "Sense activitat",
+        "empty-hint": "L'activitat de les teves credencials apareixerà aquí",
+        "clear": "Esborrar",
+        "clear-confirm": "Esborrar tota l'activitat?",
+        "type-issued": "Credencial rebuda",
+        "type-presented": "Credencial presentada",
+        "type-deleted": "Credencial eliminada",
+        "time-now": "Ara",
+        "time-minutes": "Fa {{count}}min",
+        "time-hours": "Fa {{count}}h",
+        "time-days": "Fa {{count}}d"
+    },
+    "devices": {
+        "settings-link": "Els Meus Dispositius",
+        "title": "Els Meus Dispositius",
+        "subtitle": "Gestiona les passkeys registrades al teu compte",
+        "rename-header": "Canviar nom de Passkey",
+        "rename-placeholder": "Introdueix un nou nom",
+        "rename-confirm": "Canviar nom",
+        "rename-aria": "Canviar el nom d'aquesta passkey",
+        "delete-header": "Eliminar Passkey",
+        "delete-message": "Estàs segur que vols eliminar aquesta passkey? Si és la passkey del teu dispositiu actual, no podràs iniciar sessió des d'aquest navegador.",
+        "delete-confirm": "Eliminar",
+        "delete-aria": "Eliminar aquesta passkey",
+        "cancel": "Cancel·lar",
+        "ok": "OK",
+        "error-header": "No es pot eliminar",
+        "last-passkey-error": "No pots eliminar la teva última passkey. Registra un nou dispositiu primer.",
+        "load-error": "No s'han pogut carregar els teus dispositius. Torna-ho a provar.",
+        "retry": "Tornar a provar",
+        "no-passkeys": "No hi ha passkeys registrades."
+    },
+    "verification": {
+        "button": "Verificar Credencial",
+        "modal-title": "Verificació de Credencial",
+        "verifying": "Verificant credencial...",
+        "result-valid": "La credencial és vàlida",
+        "result-invalid": "La credencial té problemes",
+        "result-revoked": "Credencial revocada",
+        "result-expired": "Credencial caducada",
+        "check-issuer": "Emissor",
+        "check-issuance": "Data d'emissió",
+        "check-expiration": "Data d'expiració",
+        "check-status": "Estat de revocació"
+    },
     "confirmation":{
         "header":"Enviar credencial?",
         "ok":"Ok",
@@ -271,6 +376,7 @@
         "holder":"Titular: ",
         "powers":"Poders: ",
         "expiration":"Data de caducitat: ",
-        "unknown": "Desconegut"
+        "unknown": "Desconegut",
+        "time-remaining": "Temps restant"
     }
 }

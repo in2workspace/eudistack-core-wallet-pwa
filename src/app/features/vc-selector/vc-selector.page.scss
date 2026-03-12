@@ -1,0 +1,181 @@
+@use 'responsive' as *;
+
+.vc-selector-content {
+  --ion-background-color: var(--surface-page) !important;
+}
+
+.vc-selector-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 20px 8px;
+}
+
+.header-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(44px, 13vw, 56px);
+  height: clamp(44px, 13vw, 56px);
+  border-radius: 50%;
+  background: var(--action-primary, #2563EB);
+  margin-bottom: 14px;
+
+  ion-icon {
+    font-size: 28px;
+    color: #fff;
+  }
+}
+
+.header-title {
+  @include fluid-type(1.1rem, 1.2rem);
+  font-weight: 700;
+  color: var(--text-primary, #1A1A2E);
+  margin: 0 0 6px;
+}
+
+.header-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #6B7280);
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+.requester-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: var(--surface-muted, #E8ECF1);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary, #6B7280);
+
+  ion-icon {
+    font-size: 16px;
+  }
+}
+
+// ── Entrance animation ───────────────────────────────
+
+@keyframes card-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ── Credential list ──────────────────────────────────
+
+.credential-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+
+  .selectable-card {
+    opacity: 0;
+    animation: card-slide-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+
+    @for $i from 1 through 10 {
+      &:nth-child(#{$i}) {
+        animation-delay: #{($i - 1) * 0.07}s;
+      }
+    }
+  }
+}
+
+.selectable-card {
+  // Reset native button styles but keep block layout
+  all: unset;
+  box-sizing: border-box;
+  display: block;
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  cursor: pointer;
+  border-radius: 24px;
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.3s ease;
+
+  // Let the inner card keep its own gradient & styling
+  .credential-card {
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    transition: box-shadow 0.3s ease;
+  }
+
+  &:hover,
+  &:focus-visible {
+    transform: scale(1.03);
+
+    .credential-card {
+      box-shadow:
+        0 16px 48px rgba(0, 0, 0, 0.28),
+        0 0 0 2px rgba(255, 255, 255, 0.4);
+    }
+
+    .card-action-hint {
+      opacity: 1;
+      transform: translateY(-50%) translateX(0);
+    }
+  }
+
+  &:active {
+    transform: scale(0.98);
+    transition:
+      transform 0.1s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.15s ease;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--action-primary, #2563EB);
+    outline-offset: 3px;
+    border-radius: 22px;
+  }
+}
+
+.card-action-hint {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-min);
+  height: var(--touch-min);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease, background 0.25s ease;
+  z-index: 3;
+
+  ion-icon {
+    font-size: 18px;
+  }
+}
+
+// ── Footer ───────────────────────────────────────────
+
+ion-footer ion-toolbar {
+  padding: 8px 16px;
+}
+
+.cancel-button {
+  --border-radius: 8px;
+  font-weight: 600;
+}

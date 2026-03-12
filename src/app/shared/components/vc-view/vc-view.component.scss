@@ -1,0 +1,504 @@
+@use 'responsive' as *;
+
+ion-modal.stack-modal {
+  --color: var(--text-primary);
+}
+
+.button-row {
+  padding-right: 20px;
+}
+
+// ── Card ──────────────────────────────────────────────
+
+.credential-card {
+  position: relative;
+  background: linear-gradient(135deg, var(--primary-color, var(--ion-color-primary)) 0%, var(--secondary-color, var(--ion-color-primary-shade)) 100%);
+  width: 100%;
+  max-width: 400px;
+  min-width: 240px;
+  min-height: clamp(150px, 40vw, 180px);
+  border-radius: clamp(14px, 4vw, 20px);
+  border: none;
+  padding: clamp(14px, 4vw, 20px);
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+
+  &:hover {
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
+    transform: translateY(-3px);
+  }
+
+  &--revoked,
+  &--expired {
+    filter: grayscale(0.85) brightness(0.9);
+    opacity: 0.8;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+    &:hover {
+      filter: grayscale(0.7) brightness(0.92);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    }
+  }
+}
+
+// ── Decorative circles ───────────────────────────────
+
+.card-deco-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.card-deco-1 {
+  width: clamp(140px, 45vw, 200px);
+  height: clamp(140px, 45vw, 200px);
+  top: -60px;
+  right: -40px;
+}
+
+.card-deco-2 {
+  width: clamp(80px, 28vw, 120px);
+  height: clamp(80px, 28vw, 120px);
+  bottom: -30px;
+  left: -20px;
+}
+
+// ── Top row (badge + status) ─────────────────────────
+
+.card-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 2;
+}
+
+.status-pill {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.status-expired {
+  background: rgba(239, 68, 68, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.status-expiring-soon {
+  background: rgba(245, 158, 11, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.status-unsigned {
+  border: none;
+  cursor: pointer;
+  padding: 4px 10px;
+
+  ion-icon {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.8);
+  }
+}
+
+// ── Card body ────────────────────────────────────────
+
+.card-body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-shield-icon {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
+
+.card-title {
+  color: #fff;
+  @include fluid-type(0.8125rem, 0.9375rem);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 28px;
+}
+
+.card-field {
+  color: rgba(255, 255, 255, 0.75);
+  @include fluid-type(0.75rem, 0.8125rem);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ── Privacy blur ─────────────────────────────────────
+
+.card-body {
+  transition: filter 0.3s ease;
+}
+
+.card-blurred {
+  filter: blur(6px);
+  user-select: none;
+}
+
+// ── Detail Modal ──────────────────────────────────────
+
+ion-modal.detail-blurred::part(content) {
+  filter: blur(4px) brightness(0.92);
+  transition: filter 0.3s ease;
+}
+
+.modal-toolbar {
+  --background: var(--surface-card);
+  --color: var(--text-primary);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.modal-title {
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.close-icon {
+  font-size: 20px;
+  color: var(--text-primary);
+}
+
+.modal-content {
+  --padding-bottom: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.modal-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background-color: var(--border-default);
+  border-radius: 20px;
+}
+
+.section {
+  margin-bottom: 20px;
+}
+
+.section-header {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--ion-color-primary);
+  background: transparent;
+}
+
+.field-item {
+  padding: 8px 12px;
+  margin-bottom: 2px;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--surface-muted);
+  }
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+  text-transform: capitalize;
+}
+
+.field-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.compact-item {
+  --inner-padding-end: 0px;
+  --min-height: 36px;
+  margin-bottom: 4px;
+}
+
+.modal-footer {
+  padding: 12px 16px;
+  background: var(--surface-card);
+  border-top: 1px solid var(--border-default);
+}
+
+.delete-button {
+  float: right;
+}
+
+.structured-field { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; }
+.structured-item { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; background: var(--surface-muted); border-radius: 4px; }
+.structured-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); &::after { content: ':'; } }
+.structured-value { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+
+// ── Token display ─────────────────────────────────────
+
+.token-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  width: 100%;
+  gap: 12px;
+}
+
+.token-value {
+  flex: 1;
+  min-width: 0;
+}
+
+.token-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.ellipsis-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+// ── Verify button (in detail modal) ──────────────────
+
+.verification-section {
+  padding: 16px 0 8px;
+}
+
+.verify-button {
+  --border-radius: 12px;
+  --border-color: var(--primary-color, var(--ion-color-primary));
+  --color: var(--primary-color, var(--ion-color-primary));
+  font-weight: 600;
+  font-size: 14px;
+}
+
+// ── Verification Modal ───────────────────────────────
+
+ion-modal.verification-modal {
+  --width: 90%;
+  --max-width: 420px;
+  --height: 55%;
+  --min-height: 380px;
+  --max-height: 480px;
+  --border-radius: 16px;
+  --box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  --backdrop-opacity: 0.4;
+
+  &::part(backdrop) {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+.verify-toolbar {
+  --background: var(--surface-page, #F5F7FA);
+  --color: var(--text-primary);
+  --min-height: 48px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.verify-toolbar-title {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes pulseShield {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+
+@keyframes resultSlide {
+  from { opacity: 0; transform: translateY(16px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.verify-modal-content {
+  --background: var(--surface-page, #F5F7FA);
+}
+
+.verify-modal-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 24px 24px;
+}
+
+.verify-shield {
+  margin-bottom: 8px;
+  animation: pulseShield 1.5s ease-in-out infinite;
+
+  &--done { animation: none; }
+}
+
+.shield-icon {
+  font-size: clamp(36px, 10vw, 48px);
+
+  &--pending { color: var(--text-disabled); }
+  &--valid   { color: #22C55E; animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+  &--invalid { color: #EF4444; animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+}
+
+.verify-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 20px;
+}
+
+.verify-checks {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.verify-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--surface-card, #fff);
+  opacity: 0;
+  transform: translateY(8px);
+
+  &--visible {
+    animation: fadeSlideIn 0.35s ease forwards;
+  }
+}
+
+.verify-row-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon-placeholder {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--border-default);
+  opacity: 0.4;
+}
+
+.check-spinner {
+  width: 22px;
+  height: 22px;
+  color: var(--action-primary);
+}
+
+.check-icon {
+  font-size: 24px;
+  animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+
+  &--pass { color: #22C55E; }
+  &--fail { color: #EF4444; }
+}
+
+.verify-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.verify-row-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.verify-row-detail {
+  font-size: 12px;
+  color: var(--text-secondary);
+  animation: fadeSlideIn 0.3s ease forwards;
+}
+
+.verify-result {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 20px;
+  padding: 14px 20px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  animation: resultSlide 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+
+  ion-icon { font-size: 22px; }
+
+  &--valid {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22C55E;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+  }
+
+  &--invalid {
+    background: rgba(239, 68, 68, 0.1);
+    color: #EF4444;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+  }
+}

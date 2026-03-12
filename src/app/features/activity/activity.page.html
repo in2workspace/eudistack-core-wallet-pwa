@@ -1,0 +1,42 @@
+<ion-content [fullscreen]="true" class="activity-content">
+  <ion-grid class="settings-pages-grid">
+    <div class="activity-header">
+      <b class="settings-pages-title">{{ "activity.title" | translate }}</b>
+      @if (entries.length > 0) {
+        <ion-button fill="clear" size="small" (click)="confirmClear()" class="clear-btn">
+          <ion-icon name="trash-outline" slot="start"></ion-icon>
+          {{ "activity.clear" | translate }}
+        </ion-button>
+      }
+    </div>
+
+    @if (loading) {
+      <div class="state-container">
+        <ion-spinner name="crescent"></ion-spinner>
+      </div>
+    }
+
+    @if (!loading && entries.length === 0) {
+      <div class="state-container">
+        <ion-icon name="time-outline" class="empty-icon"></ion-icon>
+        <ion-text color="medium">{{ "activity.empty" | translate }}</ion-text>
+        <ion-text color="medium" class="empty-hint">{{ "activity.empty-hint" | translate }}</ion-text>
+      </div>
+    }
+
+    @if (!loading && entries.length > 0) {
+      <ion-list class="activity-list">
+        @for (entry of entries; track entry.id) {
+          <ion-item class="activity-item">
+            <span class="activity-dot activity-dot--{{ entry.type }}" slot="start"></span>
+            <ion-label>
+              <h2>{{ "activity.type-" + entry.type | translate }}</h2>
+              <p>{{ entry.credentialName }}{{ entry.counterparty ? ' — ' + entry.counterparty : '' }}</p>
+            </ion-label>
+            <ion-note slot="end" class="activity-time">{{ formatTime(entry.timestamp) }}</ion-note>
+          </ion-item>
+        }
+      </ion-list>
+    }
+  </ion-grid>
+</ion-content>

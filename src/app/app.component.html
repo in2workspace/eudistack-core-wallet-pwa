@@ -1,20 +1,20 @@
 <ion-app [ngClass]="{ 'no-header': isBaseRoute$() }">
   @if(!isBaseRoute$()){
   <ion-header [translucent]="false">
-    <ion-toolbar class="toolbar" [ngClass]="{ 'blurred': isCallbackRoute$() }">
+    <ion-toolbar class="toolbar" [ngClass]="{ 'blurred': isAuthRoute$() }">
       <img alt="Logo" [src]="logoSrc" width="auto" slot="start" height="35px" class="logo"/>
       <ion-button
         slot="end"
+        fill="clear"
         class="toolbar-but"
-        [disabled]="isCallbackRoute$()"
+        [disabled]="isAuthRoute$()"
         (click)="openPopover($event)"
         (keydown)="openPopoverByKeydown($event)"
         >
-        {{userName | async}} 
         <ion-icon
-          slot="end"
-          size="small"
-          name="person"
+          slot="icon-only"
+          name="ellipsis-vertical"
+          style="color: var(--primary-contrast-color)"
         ></ion-icon>
       </ion-button>
     </ion-toolbar>
@@ -23,7 +23,16 @@
   <ion-router-outlet id="main-content" class="main-content"></ion-router-outlet>
   @if(isLoading$()){
   <div class="overlay">
-    <div class="spinner"></div>
+    <div class="overlay-card">
+      <svg class="overlay-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <div class="overlay-dots">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+    </div>
   </div>
   }
 </ion-app>

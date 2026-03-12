@@ -46,13 +46,12 @@ jobs:
       # Step 4: Build the Angular application
       # Compiles the app in production mode and outputs to dist/out directory
       - name: Npm Build
-        run: npm run build -- --output-path=./dist/out --configuration "deployment"
+        run: npm run build -- --output-path=./dist/out --configuration "production"
 
       # Step 4.1: Generate env.js from env.template.js (envsubst)
       # Replicate Docker CMD behaviour at build time
       - name: Generate env.js from env.template.js (envsubst)
         env:
-          IAM_EXTERNAL_URL: ${{ vars.IAM_EXTERNAL_URL }}
           ASSETS_BASE_URL: ${{ vars.ASSETS_BASE_URL }}
           DEFAULT_LANG: ${{ vars.DEFAULT_LANG }}
           LOGO_PATH: ${{ vars.LOGO_PATH }}

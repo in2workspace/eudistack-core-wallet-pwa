@@ -1,5 +1,5 @@
 
-import { AppError } from "src/app/interfaces/error/AppError";
+import { AppError } from "src/app/core/models/error/AppError";
 
 
 export type Oid4vciErrorCode = 'unknown' | 'user_cancelled';

@@ -1,0 +1,243 @@
+@let credentialInput = credentialInput$();
+
+<!-- VC CARD VIEW -->
+<ion-card (click)="openDetailModal()" tabindex="0" (keydown)="handleButtonKeydown($event, 'detail')" class="credential-card" [class.credential-card--revoked]="credentialInput.lifeCycleStatus === 'REVOKED'" [class.credential-card--expired]="credentialInput.lifeCycleStatus === 'EXPIRED' || expiryStatus() === 'expired'">
+  <!-- Decorative circles for visual depth -->
+  <div class="card-deco-circle card-deco-1"></div>
+  <div class="card-deco-circle card-deco-2"></div>
+
+  <div class="card-top-row">
+    @if(credentialInput.lifeCycleStatus == "EXPIRED" || expiryStatus() === 'expired') {
+      <span class="status-pill status-expired">{{ "credentials.expiration" | translate }}</span>
+    } @else if(expiryStatus() === 'expiring-soon') {
+      <span class="status-pill status-expiring-soon">
+        <ion-icon name="time-outline"></ion-icon>
+        @if(daysUntilExpiry() !== null && daysUntilExpiry()! > 0) {
+          {{ daysUntilExpiry() }}d
+        } @else {
+          {{ "credentials.expiring-soon" | translate }}
+        }
+      </span>
+    } @else if(credentialInput.lifeCycleStatus == "REVOKED") {
+      <span class="status-pill status-expired">{{ "vc-view.revoked" | translate }}</span>
+    } @else if(credentialInput.lifeCycleStatus == "ISSUED") {
+      <button (click)="unsignedInfo($event)" (keydown)="handleButtonKeydown($event, 'info')" class="status-pill status-unsigned">
+        <ion-icon name="alert-circle-outline"></ion-icon>
+      </button>
+    }
+  </div>
+
+  <div class="card-body" [class.card-blurred]="blurred()">
+    <div class="card-title-row">
+      <ion-icon name="shield-checkmark-outline" class="card-shield-icon"></ion-icon>
+      <span class="card-title">{{ displayName() || credentialType }}</span>
+    </div>
+    <div class="card-fields">
+      @for(field of cardFields(); track field) {
+        <span class="card-field">{{ field.value }}</span>
+      }
+    </div>
+  </div>
+
+  <ion-alert
+    [isOpen]="isAlertOpenNotFound"
+    class="custom-alert"
+    [header]="'vc-view.warning-header' | translate"
+    [message]="'vc-view.warning-msg' | translate"
+    [buttons]="alertButtons"
+    (didDismiss)="setOpenNotFound(false)"
+  ></ion-alert>
+  <ion-alert
+    [isOpen]="isAlertExpirationOpenNotFound"
+    class="custom-alert"
+    [header]="'credentials.expiredCredential' | translate"
+    [message]="'credentials.expiredText' | translate"
+    [buttons]="[{ text: 'credentials.close' | translate, role: 'confirm' }]"
+    (didDismiss)="setOpenExpirationNotFound(false)"
+  ></ion-alert>
+  <ion-modal
+    [isOpen]="isModalOpen"
+    style="--min-height: 20rem"
+    id="example-modal"
+    #modal
+  >
+    <ng-template>
+      <div class="wrapper">
+        <ion-header>
+          <ion-toolbar>
+            <ion-title>QR</ion-title>
+            <ion-buttons slot="end">
+              <ion-button
+              (click)="setOpen(false)"
+              (keydown)="handleButtonKeydown($event, 'close')"
+              class=".close-button"
+              style="width: 24px; height: 24px"
+            >
+              <ion-img src="assets/icons/close-button.png"></ion-img>
+            </ion-button>
+
+            </ion-buttons>
+          </ion-toolbar>
+        </ion-header>
+        <ion-content style="min-height: 20rem">
+          <qrcode
+            [qrdata]="this.cred_cbor"
+            [width]="315"
+            [errorCorrectionLevel]="'L'"
+            [margin]="5"
+          ></qrcode>
+        </ion-content>
+      </div>
+    </ng-template>
+  </ion-modal>
+
+  <ion-alert
+    [isOpen]="isModalDeleteOpen"
+    class="custom-alert"
+    [header]="'vc-view.delete-header' | translate"
+    [message]="'vc-view.delete-message' | translate"
+    [buttons]="deleteButtons"
+    (didDismiss)="setOpenDeleteNotFound(false)"
+  ></ion-alert>
+
+  <ion-alert
+    [isOpen]="isModalUnsignedOpen"
+    class="custom-alert-unsigned"
+    [header]="'vc-view.unsigned-header' | translate"
+    [message]="'vc-view.unsigned-message' | translate"
+    [buttons]="unsignedButtons"
+  ></ion-alert>
+</ion-card>
+
+<!-- DETAILS MODAL VIEW -->
+<ion-modal [isOpen]="isDetailModalOpen" (didDismiss)="closeDetailModal()" class="credential-detail-modal" [class.detail-blurred]="isVerifyModalOpen">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar class="modal-toolbar">
+        <ion-title class="modal-title">{{ "vc-fields.modal-title" | translate }}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button fill="clear" (keydown)="closeDetailModal()" (click)="closeDetailModal()">
+            <ion-icon name="close-outline" class="close-icon"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+
+    <ion-content class="ion-padding modal-content">
+      <ion-list>
+        @for(section of detailViewSections; track section.section){
+          <div class="section">
+            <div class="section-header">{{ section.section | translate }}</div>
+            @for(field of section.fields; track field.label){
+              @if(field.label === 'vc-fields.credentialEncoded'){
+                <ion-item lines="none" class="field-item compact-item">
+                  <div class="token-container">
+                    <div class="token-value ellipsis-text" [title]="field.value">
+                      {{ field.value }}
+                    </div>
+                    <div class="token-actions">
+                      <ion-button fill="clear" size="small" (click)="copyToClipboard(field.value)" (keydown)="copyToClipboard(field.value)">
+                        <ion-icon name="copy-outline"></ion-icon>
+                      </ion-button>
+                    </div>
+                  </div>
+                </ion-item>
+              } @else if(field.structured?.length) {
+                <div class="structured-field">
+                  @for(item of field.structured; track item.label){
+                    <div class="structured-item">
+                      <span class="structured-label">{{ item.label }}</span>
+                      <span class="structured-value">{{ item.value }}</span>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="field-item">
+                  <div class="field-label">{{ field.label | translate }}</div>
+                  <div class="field-value">{{ field.value }}</div>
+                </div>
+              }
+          }
+          </div>
+        }
+      </ion-list>
+
+      <!-- Verify Button -->
+      <div class="verification-section">
+        <ion-button expand="block" fill="outline" class="verify-button" (click)="verifyCredential()">
+          <ion-icon name="shield-checkmark-outline" slot="start"></ion-icon>
+          {{ "verification.button" | translate }}
+        </ion-button>
+      </div>
+    </ion-content>
+
+    <ion-footer class="modal-footer">
+      <ion-button color="primary" class="delete-button" (keydown)="deleteVC()" (click)="deleteVC()">
+        {{ "vc-fields.delete" | translate }}
+      </ion-button>
+    </ion-footer>
+  </ng-template>
+</ion-modal>
+
+<!-- VERIFICATION MODAL -->
+<ion-modal [isOpen]="isVerifyModalOpen" (didDismiss)="closeVerifyModal()" class="verification-modal">
+  <ng-template>
+    <ion-header>
+      <ion-toolbar class="verify-toolbar">
+        <ion-title class="verify-toolbar-title">{{ "verification.modal-title" | translate }}</ion-title>
+        <ion-buttons slot="end">
+          <ion-button fill="clear" (click)="closeVerifyModal()">
+            <ion-icon name="close-outline" class="close-icon"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="verify-modal-content">
+      <div class="verify-modal-inner">
+        <!-- Animated shield icon -->
+        <div class="verify-shield" [class.verify-shield--done]="verifyOverall !== 'pending'">
+          @if(verifyOverall === 'pending') {
+            <ion-icon name="shield-outline" class="shield-icon shield-icon--pending"></ion-icon>
+          } @else if(verifyOverall === 'valid') {
+            <ion-icon name="shield-checkmark" class="shield-icon shield-icon--valid"></ion-icon>
+          } @else {
+            <ion-icon name="shield" class="shield-icon shield-icon--invalid"></ion-icon>
+          }
+        </div>
+
+        <!-- Check rows -->
+        <div class="verify-checks">
+          @for(check of verificationChecks; track check.key; let i = $index) {
+            <div class="verify-row" [class.verify-row--visible]="check.status !== 'pending'" [style.animation-delay]="(i * 100) + 'ms'">
+              <div class="verify-row-icon">
+                @if(check.status === 'pending') {
+                  <div class="icon-placeholder"></div>
+                } @else if(check.status === 'checking') {
+                  <ion-spinner name="crescent" class="check-spinner"></ion-spinner>
+                } @else if(check.status === 'passed') {
+                  <ion-icon name="checkmark-circle" class="check-icon check-icon--pass"></ion-icon>
+                } @else {
+                  <ion-icon name="close-circle" class="check-icon check-icon--fail"></ion-icon>
+                }
+              </div>
+              <div class="verify-row-info">
+                <span class="verify-row-label">{{ "verification.check-" + check.key | translate }}</span>
+                @if(check.detail && check.status !== 'pending' && check.status !== 'checking') {
+                  <span class="verify-row-detail">{{ check.detail }}</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Overall result banner -->
+        @if(verifyOverall !== 'pending') {
+          <div class="verify-result" [class.verify-result--valid]="verifyOverall === 'valid'" [class.verify-result--invalid]="verifyOverall === 'invalid'">
+            <ion-icon [name]="verifyOverall === 'valid' ? 'checkmark-circle' : 'alert-circle'"></ion-icon>
+            <span>{{ (verifyOverall === 'valid' ? "verification.result-valid" : verifyResultKey) | translate }}</span>
+          </div>
+        }
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>

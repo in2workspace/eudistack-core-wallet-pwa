@@ -31,15 +31,45 @@
 @import "theme/customAlert.scss";
 
 @font-face {
-  font-family: 'Blinker-Regular';
+  font-family: 'Blinker';
+  font-weight: 400;
   src: url('./assets/fonts/Blinker-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Blinker';
+  font-weight: 600;
+  src: url('./assets/fonts/Blinker-SemiBold.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Blinker';
+  font-weight: 700;
+  src: url('./assets/fonts/Blinker-Bold.ttf') format('truetype');
+}
+
+body, ion-app {
+  font-family: 'Blinker', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+// ── Responsive root font-size (all rem values scale automatically) ──
+html {
+  font-size: 16px;
+
+  @media (max-width: 374px) {
+    font-size: 15px;
+  }
+
+  @media (min-width: 768px) {
+    font-size: 17px;
+  }
 }
 
 ion-item-divider:last-of-type{
   display:none;
 }
 app-tabs ion-tab-button {
-  --color-selected: var(--secondary-custom-color);
+  --color-selected: var(--action-primary);
 }
 
 .no-scroll {
@@ -51,7 +81,25 @@ app-tabs ion-tab-button {
 
 .scanner-shell zxing-scanner video{
   display: block;
-  object-fit: contain !important;
+  object-fit: cover !important;
+  width: 100%;
   height: 100%;
-  max-height: calc(100vh - 180px);
+}
+
+// ── Hide scrollbars globally (keep scroll functional) ─
+*,
+*::part(scroll) {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+ion-content {
+  --overflow: auto;
+  --padding-top: env(safe-area-inset-top, 0);
+}
+
+ion-content::part(scroll) {
+  scrollbar-width: none;
+  overflow: -moz-scrollbars-none;
+  &::-webkit-scrollbar { display: none; }
 }

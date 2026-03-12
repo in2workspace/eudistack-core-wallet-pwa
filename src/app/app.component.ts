@@ -1,50 +1,46 @@
-import { CommonModule, DOCUMENT } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, Signal, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { IonicModule, PopoverController } from '@ionic/angular';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { AuthenticationService } from './services/authentication.service';
-import { MenuComponent } from './components/menu/menu.component';
+import { MenuComponent } from './shared/components/menu/menu.component';
 import { Subject, map } from 'rxjs';
-import { CameraService } from './services/camera.service';
-import { environment } from 'src/environments/environment';
-import { LoaderService } from './services/loader.service';
+import { CameraService } from './shared/services/camera.service';
+import { LoaderService } from './shared/services/loader.service';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { LanguageService } from './services/language.service';
-import { ColorService } from './services/color-service.service';
 import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.service';
+import { ThemeService } from './core/services/theme.service';
+import { IssuerMetadataCacheService } from './core/services/issuer-metadata-cache.service';
+import { UserPreferencesService } from './shared/services/user-preferences.service';
 
 @Component({
-  selector: 'app-root',
-  templateUrl: 'app.component.html',
-  styleUrls: ['app.component.scss'],
-  standalone: true,
-  imports: [
-    IonicModule,
-    CommonModule,
-    TranslateModule,
-  ],
+    selector: 'app-root',
+    templateUrl: 'app.component.html',
+    styleUrls: ['app.component.scss'],
+    imports: [
+        IonicModule,
+        CommonModule,
+        TranslateModule,
+    ]
 })
 
 export class AppComponent implements OnInit, OnDestroy {
-  private readonly authenticationService = inject(AuthenticationService);
-  private readonly colorService = inject(ColorService);
-  private readonly document = inject(DOCUMENT);
-  private readonly languageService = inject(LanguageService);
   private readonly loader = inject(LoaderService);
   private readonly oid4vciEngine = inject(Oid4vciEngineService);
   private readonly router = inject(Router);
+  private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
+  private readonly themeService = inject(ThemeService);
+  private readonly _prefs = inject(UserPreferencesService); // eagerly init dark mode
 
-  public userName = this.authenticationService.getName$();
   public routerEvents$ = this.router.events;
   // if the route is "/", don't allow menu popover
   public isBaseRoute$ = toSignal<boolean>(this.routerEvents$.pipe(map(ev => this.router.url === '/')));
-  // if the route is "/callback" blurs the toolbar to give a "transitional effect"
-  public isCallbackRoute$ = toSignal<boolean>(this.routerEvents$.pipe(map(ev => {
+  // if the route is an auth route, blurs the toolbar to give a "transitional effect"
+  public isAuthRoute$ = toSignal<boolean>(this.routerEvents$.pipe(map(ev => {
       const currentUrl = this.router.url.split('?')[0];
-      return currentUrl.startsWith('/callback');
+      return currentUrl.startsWith('/auth') || currentUrl.startsWith('/protocol');
   })));
-  public readonly logoSrc = environment.customizations.assets.base_url + '/' + environment.customizations.assets.logo_path;
+  public logoSrc: string | null = null;
   private readonly destroy$ = new Subject<void>();
   public isLoading$: Signal<boolean>;
 
@@ -57,11 +53,27 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   public ngOnInit() {
-    this.setCustomStyles();
-    this.setFavicon();
-    this.languageService.setLanguages();
+    this.logoSrc = this.themeService.getLogoUrl('light');
     this.initOid4vciEngine();
+    this.issuerMetadataCache.refreshStaleMetadata().catch(console.warn);
     this.alertIncompatibleDevice();
+    this.consumeLaunchQueue();
+  }
+
+  /**
+   * Handles URLs delivered by the Launch Handler API when the PWA is already
+   * open and the browser reuses the existing window instead of opening a new one.
+   * Requires `launch_handler.client_mode: "navigate-existing"` in the manifest.
+   */
+  private consumeLaunchQueue(): void {
+    if ('launchQueue' in window) {
+      (window as any).launchQueue.setConsumer((launchParams: any) => {
+        if (launchParams.targetURL) {
+          const url = new URL(launchParams.targetURL);
+          this.router.navigateByUrl(url.pathname + url.search);
+        }
+      });
+    }
   }
 
   public ngOnDestroy(){
@@ -71,38 +83,6 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private initOid4vciEngine(): void {
     this.oid4vciEngine.init().catch(console.error);
-  }
-
-
-  public setCustomStyles(): void {
-  const cssVarMap = {
-    '--primary-custom-color': environment.customizations.colors.primary,
-    '--primary-contrast-custom-color': environment.customizations.colors.primary_contrast,
-    '--secondary-custom-color': environment.customizations.colors.secondary,
-    '--secondary-contrast-custom-color': environment.customizations.colors.secondary_contrast,
-  };
-
-  this.colorService.applyCustomColors(cssVarMap);
-}
-
-  private setFavicon(): void {
-    const faviconUrl = environment.customizations.assets.base_url + '/' + environment.customizations.assets.favicon_path;
-
-    // load favicon from environment
-    let faviconLink: HTMLLinkElement = this.document.querySelector("link[rel='icon']") || this.document.createElement('link');
-    faviconLink.type = 'image/x-icon';
-    faviconLink.rel = 'icon';
-    faviconLink.href = faviconUrl;
-    
-    this.document.head.appendChild(faviconLink);
-
-    // load apple-touch icon from environment
-    let appleFaviconLink: HTMLLinkElement = this.document.querySelector("link[rel='apple-touch-icon']") || this.document.createElement('link');
-    appleFaviconLink.type = 'image/x-icon';
-    appleFaviconLink.rel = 'apple-touch-icon';
-    appleFaviconLink.href = faviconUrl;
-    
-    this.document.head.appendChild(appleFaviconLink);
   }
 
   //alert for IOs below 14.3
@@ -123,7 +103,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   public async openPopover(ev: Event): Promise<void> {
-    if (this.isCallbackRoute$()) {
+    if (this.isAuthRoute$()) {
       return; 
     }
     const popover = await this.popoverController.create({

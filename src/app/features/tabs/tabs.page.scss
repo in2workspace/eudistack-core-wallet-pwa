@@ -1,0 +1,28 @@
+ion-tab-bar {
+  --background: var(--surface-card);
+  --border: none;
+  box-shadow: 0 -1px 12px rgba(0, 0, 0, 0.06);
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-bottom: env(safe-area-inset-bottom, 4px);
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+}
+
+ion-tab-button {
+  --color: var(--text-disabled);
+  --color-selected: var(--action-primary);
+  font-size: clamp(10px, 2.8vw, 12px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: color 0.2s ease;
+  min-height: var(--touch-min);
+
+  ion-icon {
+    font-size: clamp(20px, 5.5vw, 24px);
+    margin-bottom: 2px;
+  }
+}

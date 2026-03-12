@@ -1,18 +1,19 @@
 import { inject, Injectable } from '@angular/core';
 import { TokenResponse } from '../../models/dto/TokenResponse';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
-import { HttpResponse } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { CredentialResponseWithStatus } from '../../models/CredentialResponseWithStatus';
 import { CredentialRequest } from '../../models/CredentialRequest';
 import { CredentialResponse } from '../../models/dto/CredentialResponse';
-import { JWT_VC_JSON } from 'src/app/constants/jwt.constants';
-import { WalletService } from 'src/app/services/wallet.service';
+import { JWT_VC_JSON, DC_SD_JWT } from 'src/app/core/constants/jwt.constants';
+import { WalletService } from 'src/app/core/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
+import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 
 @Injectable({ providedIn: 'root' })
 export class CredentialService {
+  private readonly http = inject(HttpClient);
   private readonly walletService = inject(WalletService);
 
   public async getCredential(params: {
@@ -21,9 +22,10 @@ export class CredentialService {
     credentialIssuerMetadata: CredentialIssuerMetadata;
     format: string;
     credentialConfigurationId: string;
+    dpopJwt?: string;
   }): Promise<CredentialResponseWithStatus> {
 
-    const request = this.buildCredentialRequest({
+    const request = this.createCredentialRequest({
       jwtProof: params.jwtProof,
       format: params.format,
       credentialConfigurationId: params.credentialConfigurationId,
@@ -43,10 +45,12 @@ export class CredentialService {
       accessToken,
       endpoint,
       body: request,
+      tokenType: params.tokenResponse.token_type,
+      dpopJwt: params.dpopJwt,
     });
   }
 
-  private buildCredentialRequest(params: {
+  private createCredentialRequest(params: {
     jwtProof: string | null;
     format: string;
     credentialConfigurationId: string;
@@ -57,7 +61,8 @@ export class CredentialService {
       });
     }
 
-    if (params.format !== JWT_VC_JSON) {
+    const SUPPORTED_FORMATS = [JWT_VC_JSON, DC_SD_JWT];
+    if (!SUPPORTED_FORMATS.includes(params.format)) {
       throw new Oid4vciError(`Format not supported: ${params.format}`, {
         translationKey: 'errors.unsupported-credential-format',
       });
@@ -82,14 +87,30 @@ export class CredentialService {
     accessToken: string;
     endpoint: string;
     body: unknown;
+    tokenType?: string;
+    dpopJwt?: string;
   }): Promise<CredentialResponseWithStatus> {
 
     let response: HttpResponse<CredentialResponse>;
 
+    const isDpop = params.tokenType?.toLowerCase() === 'dpop' && params.dpopJwt;
+
     try {
-      response = await firstValueFrom(
-        this.walletService.postFromUrlAndObserveResponse(params.endpoint, params.body as {}, params.accessToken)
-      );
+      if (isDpop) {
+        let headers = new HttpHeaders()
+          .set('Content-Type', 'application/json')
+          .set('Accept', 'application/json')
+          .set('Authorization', `DPoP ${params.accessToken}`)
+          .set('DPoP', params.dpopJwt!);
+
+        response = await firstValueFrom(
+          this.http.post<CredentialResponse>(params.endpoint, params.body, { headers, observe: 'response' })
+        );
+      } else {
+        response = await firstValueFrom(
+          this.walletService.postFromUrlAndObserveResponse(params.endpoint, params.body as {}, params.accessToken)
+        );
+      }
     } catch (e: unknown) {
       if (e instanceof Oid4vciError) throw e;
 

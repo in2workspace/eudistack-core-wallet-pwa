@@ -1,7 +1,7 @@
 #################
 # Build the app #
 #################
-FROM node:22.11.0 AS build-stage
+FROM node:22-alpine AS build-stage
 
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -13,7 +13,7 @@ COPY tsconfig.json tsconfig.json
 COPY tsconfig.app.json tsconfig.app.json
 COPY tsconfig.spec.json tsconfig.spec.json
 RUN npm install -g --ignore-scripts @angular/cli 
-RUN ng build --configuration deployment --output-path=/dist
+RUN ng build --configuration production --output-path=/dist
 
 ################
 # Run in NGINX #

@@ -1,0 +1,6 @@
+<ion-list class="menu-list" lines="none">
+  <ion-item button (click)="logout()" (keydown)="logoutOnKeydown($event)">
+    <ion-icon name="log-out-outline" slot="start"></ion-icon>
+    <ion-label>{{ 'menu.logout' | translate }}</ion-label>
+  </ion-item>
+</ion-list>

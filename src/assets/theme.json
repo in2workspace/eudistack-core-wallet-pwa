@@ -1,0 +1,21 @@
+{
+  "branding": {
+    "name": "Altia",
+    "primaryColor": "#001E8C",
+    "primaryContrastColor": "#ffffff",
+    "secondaryColor": "#132153",
+    "secondaryContrastColor": "#ffffff",
+    "logoUrl": "assets/logos/altia-logo.svg",
+    "logoDarkUrl": "assets/logos/altia-logo-dark.svg",
+    "faviconUrl": "assets/icons/altia-favicon.png",
+    "pwaIconUrl": "assets/icons/pwa-altia-512.png"
+  },
+  "content": {
+    "links": [],
+    "footer": null
+  },
+  "i18n": {
+    "defaultLang": "es",
+    "available": ["en","es","ca"]
+  }
+}

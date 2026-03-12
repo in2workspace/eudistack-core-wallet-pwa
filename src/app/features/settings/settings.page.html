@@ -1,0 +1,123 @@
+<ion-content [fullscreen]="true" class="settings-page">
+  <div class="settings-container">
+
+    <h1 class="settings-title">{{"menu.settings" | translate}}</h1>
+
+    <!-- General section -->
+    <div class="settings-group">
+      <ion-list lines="none" class="settings-list">
+        <ion-item [routerLink]="['/tabs/activity']" detail="false" class="settings-item">
+          <div class="icon-badge icon-badge--blue" slot="start">
+            <ion-icon name="time-outline"></ion-icon>
+          </div>
+          <ion-label>{{"activity.title" | translate}}</ion-label>
+          <ion-icon name="chevron-forward-outline" slot="end" class="chevron"></ion-icon>
+        </ion-item>
+
+        <div class="item-divider"></div>
+
+        <ion-item [routerLink]="['/tabs/camera-selector']" detail="false" class="settings-item">
+          <div class="icon-badge icon-badge--purple" slot="start">
+            <ion-icon name="camera"></ion-icon>
+          </div>
+          <ion-label>{{"camera-selector.title" | translate}}</ion-label>
+          <ion-icon name="chevron-forward-outline" slot="end" class="chevron"></ion-icon>
+        </ion-item>
+
+        <div class="item-divider"></div>
+
+        <ion-item [routerLink]="['/tabs/language-selector']" detail="false" class="settings-item">
+          <div class="icon-badge icon-badge--green" slot="start">
+            <ion-icon name="globe-outline"></ion-icon>
+          </div>
+          <ion-label>{{"language-selector.title" | translate}}</ion-label>
+          <ion-icon name="chevron-forward-outline" slot="end" class="chevron"></ion-icon>
+        </ion-item>
+      </ion-list>
+    </div>
+
+    <!-- Preferences section -->
+    <div class="settings-group">
+      <ion-list lines="none" class="settings-list">
+        <ion-item detail="false" class="settings-item">
+          <div class="icon-badge icon-badge--indigo" slot="start">
+            <ion-icon name="eye-off-outline"></ion-icon>
+          </div>
+          <ion-label>
+            <h3>{{"settings.privacy-blur" | translate}}</h3>
+            <p class="settings-desc">{{"settings.privacy-blur-desc" | translate}}</p>
+          </ion-label>
+          <ion-toggle slot="end" [checked]="prefs.privacyBlur()" (ionChange)="prefs.togglePrivacyBlur()" class="settings-toggle"></ion-toggle>
+        </ion-item>
+
+        <div class="item-divider"></div>
+
+        <ion-item detail="false" class="settings-item">
+          <div class="icon-badge icon-badge--dark" slot="start">
+            <ion-icon name="moon-outline"></ion-icon>
+          </div>
+          <ion-label>
+            <h3>{{"settings.dark-mode" | translate}}</h3>
+            <p class="settings-desc">{{"settings.dark-mode-desc" | translate}}</p>
+          </ion-label>
+          <ion-toggle slot="end" [checked]="prefs.darkMode()" (ionChange)="prefs.toggleDarkMode()" class="settings-toggle"></ion-toggle>
+        </ion-item>
+      </ion-list>
+    </div>
+
+    <!-- App section (conditional items) -->
+    @if((canInstall$ | async) || featureLogsEnabled) {
+      <div class="settings-group">
+        <ion-list lines="none" class="settings-list">
+          @if(canInstall$ | async) {
+            <ion-item button detail="false" class="settings-item"
+              (click)="installApp()" (keydown.enter)="installApp()" (keydown.space)="installApp()">
+              <div class="icon-badge icon-badge--orange" slot="start">
+                <ion-icon name="download-outline"></ion-icon>
+              </div>
+              <ion-label>{{"menu.install" | translate}}</ion-label>
+            </ion-item>
+          }
+
+          @if(featureLogsEnabled) {
+            @if(canInstall$ | async) {
+              <div class="item-divider"></div>
+            }
+
+            <ion-item [routerLink]="['/tabs/logs']" detail="false" class="settings-item">
+              <div class="icon-badge icon-badge--gray" slot="start">
+                <ion-icon name="document-text-outline"></ion-icon>
+              </div>
+              <ion-label>{{"logs-selector.title" | translate}}</ion-label>
+              <ion-icon name="chevron-forward-outline" slot="end" class="chevron"></ion-icon>
+            </ion-item>
+
+            <div class="item-divider"></div>
+
+            <ion-item button detail="false" class="settings-item"
+              (click)="sendCameraLogs()" (keydown.enter)="sendCameraLogs()" (keydown.space)="sendCameraLogs()">
+              <div class="icon-badge icon-badge--gray" slot="start">
+                <ion-icon name="paper-plane-outline"></ion-icon>
+              </div>
+              <ion-label>{{"logs-selector.send" | translate}}</ion-label>
+            </ion-item>
+          }
+        </ion-list>
+      </div>
+    }
+
+    <!-- About section -->
+    <div class="settings-group">
+      <ion-list lines="none" class="settings-list">
+        <ion-item detail="false" class="settings-item">
+          <div class="icon-badge icon-badge--blue" slot="start">
+            <ion-icon name="information-circle-outline"></ion-icon>
+          </div>
+          <ion-label>{{"settings.about" | translate}}</ion-label>
+          <span class="settings-value" slot="end">v{{ appVersion }}</span>
+        </ion-item>
+      </ion-list>
+    </div>
+
+  </div>
+</ion-content>

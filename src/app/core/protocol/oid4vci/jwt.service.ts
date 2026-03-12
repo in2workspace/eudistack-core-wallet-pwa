@@ -6,7 +6,7 @@ import { JwtParseError } from '../../models/error/JwtParseError';
 })
 export class JwtService {
 
-  public parseJwtPayload(jwt: string): unknown {
+  public extractJwtPayload(jwt: string): unknown {
     const parts = jwt.split('.');
     if (parts.length < 2) {
       throw new JwtParseError('Invalid JWT format (missing payload).');
@@ -21,6 +21,31 @@ export class JwtService {
     } catch (e: unknown) {
       throw new JwtParseError('JWT payload is not valid JSON.', e);
     }
+  }
+
+  public extractJwtHeader(jwt: string): unknown {
+    const parts = jwt.split('.');
+    if (parts.length < 2) {
+      throw new JwtParseError('Invalid JWT format (missing header).');
+    }
+
+    const headerB64Url = parts[0];
+    const headerBytes = this.base64UrlDecodeToBytes(headerB64Url);
+    const headerJson = new TextDecoder().decode(headerBytes);
+
+    try {
+      return JSON.parse(headerJson);
+    } catch (e: unknown) {
+      throw new JwtParseError('JWT header is not valid JSON.', e);
+    }
+  }
+
+  public extractSigningInput(jwt: string): string {
+    const parts = jwt.split('.');
+    if (parts.length < 3) {
+      throw new JwtParseError('Invalid JWT format (expected header.payload.signature).');
+    }
+    return `${parts[0]}.${parts[1]}`;
   }
 
   public base64UrlDecodeToBytes(b64url: string): Uint8Array {

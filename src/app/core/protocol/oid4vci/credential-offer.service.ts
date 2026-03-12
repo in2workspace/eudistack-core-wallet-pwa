@@ -1,10 +1,10 @@
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CredentialOffer, CredentialOfferCredential, CredentialOfferGrant } from '../../models/dto/CredentialOffer';
-import { PRE_AUTH_CODE_GRANT_TYPE } from 'src/app/constants/credential-offer.constants';
-import { WalletService } from 'src/app/services/wallet.service';
+import { PRE_AUTH_CODE_GRANT_TYPE } from 'src/app/core/constants/credential-offer.constants';
+import { WalletService } from 'src/app/core/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
-import { wrapOid4vciHttpError } from 'src/app/helpers/http-error-message';
+import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 
 @Injectable({ providedIn: 'root' })
 export class CredentialOfferService {
@@ -15,7 +15,7 @@ export class CredentialOfferService {
     try {
       const parsedUri = this.parseCredentialOfferUri(credentialOfferUri);
 
-      const responseText = await this.getCredentialOffer(parsedUri);
+      const responseText = await this.fetchCredentialOffer(parsedUri);
 
       const offer = this.parseAndNormalizeCredentialOffer(responseText);
 
@@ -44,9 +44,9 @@ export class CredentialOfferService {
     }
   }
 
-  private async getCredentialOffer(credentialOfferUri: string): Promise<string> {
+  private async fetchCredentialOffer(credentialOfferUri: string): Promise<string> {
     try {
-      return await firstValueFrom(this.walletService.getTextFromUrl(credentialOfferUri));
+      return await firstValueFrom(this.walletService.fetchTextFromUrl(credentialOfferUri));
     } catch (e: unknown) {
       console.error('Error fetching credential offer:', e);
       wrapOid4vciHttpError(e, 'Could not download the credential offer', {

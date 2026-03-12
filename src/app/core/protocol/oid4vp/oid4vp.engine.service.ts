@@ -1,20 +1,18 @@
 import { inject, Injectable } from '@angular/core';
-import { VCReply } from 'src/app/interfaces/verifiable-credential-reply';
-import { WebCryptoKeyStorageProvider } from '../../spi-impl/web-crypto-key-storage.service';
+import { VCReply } from 'src/app/core/models/verifiable-credential-reply';
+import { KeyStorageProvider } from '../../spi/key-storage.provider.service';
 import { firstValueFrom } from 'rxjs';
 import { JwtService } from '../oid4vci/jwt.service';
+import { SdJwtParserService } from '../oid4vci/sd-jwt-parser.service';
 import { v4 as uuidv4 } from "uuid";
-import { DescriptorMap, PresentationSubmission, VerifiablePresentation } from '../../models/VerifiablePresentation';
-import { LoaderService } from 'src/app/services/loader.service';
-import { AppError } from 'src/app/interfaces/error/AppError';
+import { VerifiablePresentation } from '../../models/VerifiablePresentation';
+import { AppError } from 'src/app/core/models/error/AppError';
 import { Oid4vpError } from '../../models/error/Oid4vpError';
-import { wrapOid4vpHttpError } from 'src/app/helpers/http-error-message';
-import { WalletService } from 'src/app/services/wallet.service';
-import { LoaderHandledFlowService } from 'src/app/services/loader-handled-flow.service';
-
-    const CUSTOMER_PRESENTATION_DEFINITION = "CustomerPresentationDefinition";
-    const CUSTOMER_PRESENTATION_SUBMISSION = "CustomerPresentationSubmission";
-
+import { wrapOid4vpHttpError } from 'src/app/shared/helpers/http-error-message';
+import { WalletService } from 'src/app/core/services/wallet.service';
+import { LoaderHandledFlowService } from 'src/app/shared/services/loader-handled-flow.service';
+import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
+import { ActivityService } from 'src/app/core/services/activity.service';
 
 @Injectable({
   providedIn: 'root'
@@ -22,12 +20,12 @@ import { LoaderHandledFlowService } from 'src/app/services/loader-handled-flow.s
 export class Oid4vpEngineService {
 
   private readonly jwtService = inject(JwtService);
-  private readonly keyStorageProvider = inject(WebCryptoKeyStorageProvider);
-  private readonly loader = inject(LoaderService);
+  private readonly sdJwtParser = inject(SdJwtParserService);
+  private readonly keyStorageProvider = inject(KeyStorageProvider);
   private readonly loaderHandledFlowService = inject(LoaderHandledFlowService);
   private readonly walletService = inject(WalletService);
-
-  //todo move here the logic to get the credentials to select (from vc selector page)
+  private readonly credentialCacheService = inject(CredentialCacheService);
+  private readonly activityService = inject(ActivityService);
 
   public async buildVerifiablePresentationWithSelectedVCs(selectorResponse: VCReply): Promise<void> {
     console.info('Starting OID4VP flow.');
@@ -36,188 +34,207 @@ export class Oid4vpEngineService {
       logPrefix: '[Oid4vpEngine]',
       errorToTranslationKey: (e) => this.errorToTranslationKey(e),
       fn: async () => {
-        const selectedVCs = await this.getVerifiableCredentials(selectorResponse);
-        const selectedVC = selectedVCs[0]; // todo: handle multiple VCs
+        console.debug('[OID4VP] Step 1: Getting signed VC from credential...');
+        const selectedVC = this.extractSignedVcJwt(selectorResponse);
+        console.debug('[OID4VP] Step 1 OK: Got signed VC');
 
-        if (!selectedVC) {
-          throw new Oid4vpError('No VC available for presentation', {
-              translationKey: 'errors.no-credentials-available',
-          });
-        }
+        console.debug('[OID4VP] Step 2: Parsing VC JWT payload...');
+        const credentialPayload = this.extractJwtPayloadOrThrow(selectedVC, 'Selected credential JWT payload could not be parsed');
+        console.debug('[OID4VP] Step 2 OK: Parsed payload. Keys:', Object.keys(credentialPayload));
 
-        let credentialPayload: any;
-        try {
-          credentialPayload = this.parseJwtPayloadOrThrow(selectedVC, 'Selected credential JWT payload could not be parsed');
-        } catch (e: unknown) {
-          throw new Oid4vpError('Selected credential JWT payload could not be parsed', {
-              cause: e,
-              translationKey: 'errors.invalid-jwt',
-          });
-        }
-
+        console.debug('[OID4VP] Step 3: Checking cnf.jwk...');
         const cnf = credentialPayload?.cnf;
         if (!cnf?.jwk) {
+          console.error('[OID4VP] FAIL: Missing cnf.jwk. cnf=', cnf, 'Full payload=', credentialPayload);
           throw new Oid4vpError('Missing cnf.jwk in selected credential', {
               translationKey: 'errors.credential-validation-failed',
           });
         }
+        console.debug('[OID4VP] Step 3 OK: cnf.jwk present');
 
-        const credentialSubjectId = credentialPayload?.vc?.credentialSubject?.id;
-        if (!credentialSubjectId) {
-          throw new Oid4vpError('Missing vc.credentialSubject.id in selected credential', {
-              translationKey: 'errors.credential-validation-failed',
-          });
+        if (this.sdJwtParser.isSdJwt(selectedVC)) {
+          console.debug('[OID4VP] Detected SD-JWT credential, using KB-JWT presentation.');
+          await this.presentSdJwt(selectedVC, cnf.jwk, selectorResponse);
+        } else {
+          console.debug('[OID4VP] Step 4: Checking credentialSubject.id...');
+          const credentialSubjectId = credentialPayload?.vc?.credentialSubject?.id
+            ?? credentialPayload?.sub;
+          if (!credentialSubjectId) {
+            console.error('[OID4VP] FAIL: Missing holder id. vc=', credentialPayload?.vc);
+            throw new Oid4vpError('Missing holder id in selected credential', {
+                translationKey: 'errors.credential-validation-failed',
+            });
+          }
+          console.debug('[OID4VP] Step 4 OK: credentialSubject.id=', credentialSubjectId);
+          await this.presentJwtVc(selectedVC, credentialSubjectId, cnf.jwk, selectorResponse);
         }
 
-        const verifiablePresentation = this.createVerifiablePresentation(selectedVC, cnf);
-
-        const aud = this.generateAudience();
-
-        const issueTime = Math.floor(Date.now() / 1000);
-
-        const vpJwtPayload = {
-          id: verifiablePresentation.id,
-          iss: credentialSubjectId,
-          sub: credentialSubjectId,
-          aud,
-          nbf: issueTime,
-          iat: issueTime,
-          exp: issueTime + (3 * 60),
-          vp: verifiablePresentation,
-          nonce: selectorResponse.nonce,
-        };
-
-        const publicKey = cnf.jwk;
-        const thumbprint = await this.keyStorageProvider.computeJwkThumbprint(publicKey);
-        const keyId = await this.keyStorageProvider.resolveKeyIdByKid(thumbprint);
-
-        if (!keyId) {
-        throw new Oid4vpError(`No local key found for kid=${thumbprint}`, {
-            translationKey: 'errors.key-not-found',
-        });
-        }
-        const signedVpJwt = await this.signVpAsJwt(vpJwtPayload, keyId, thumbprint);
-
-        // todo review format; maybe it should be sent as JWT in Base64URL
-        const compactVpToken = btoa(signedVpJwt);
-
-        const presentationSubmissionJson = this.buildPresentationSubmissionJson(verifiablePresentation, [selectedVC]);
-
-        await this.postAuthorizationResponse(
-            selectorResponse.redirectUri,
-            selectorResponse.state,
-            compactVpToken,
-            presentationSubmissionJson
-        );
+        const selectedVc = selectorResponse.selectedVcList[0];
+        const credName = selectedVc?.name ?? selectedVc?.type?.[0] ?? 'Unknown';
+        const counterparty = selectorResponse.clientId ?? selectorResponse.redirectUri ?? '';
+        this.activityService.log('presented', credName, counterparty);
 
         console.info('OID4VP flow completed successfully.');
       }});
     }
 
-  private errorToTranslationKey(e: unknown): string | null {
-    if (e instanceof AppError) {
-        if (e.code === 'user_cancelled') return null;
-        return e.translationKey ?? 'errors.default';
-    }
-    return 'errors.default';
-    }
+  // ── JWT-VC presentation (existing flow) ────────────────────────────
 
-  private buildDescriptorMapping(vp: VerifiablePresentation, vcJwts: string[]): DescriptorMap {
-  if (!vcJwts.length) {
-    throw new Oid4vpError('No verifiable credentials provided to build descriptor map', {
-      translationKey: 'errors.no-credentials-available',
-    });
-  }
+  private async presentJwtVc(
+    selectedVC: string,
+    credentialSubjectId: string,
+    publicKey: JsonWebKey,
+    selectorResponse: VCReply
+  ): Promise<void> {
+    const verifiablePresentation = this.createVerifiablePresentation(selectedVC, credentialSubjectId);
+    const aud = selectorResponse.clientId ?? selectorResponse.redirectUri;
+    const issueTime = Math.floor(Date.now() / 1000);
 
-  const vcMaps: DescriptorMap[] = vcJwts.map((vcJwt, i) => ({
-    format: 'jwt_vc',
-    path: `$.verifiableCredential[${i}]`,
-    id: this.getVcIdFromJwt(vcJwt),
-    path_nested: null
-  }));
-
-  let chained: DescriptorMap = vcMaps[0];
-  for (let i = 1; i < vcMaps.length; i++) {
-    chained = {
-      ...chained,
-      path_nested: this.appendNested(chained.path_nested ?? null, vcMaps[i])
-    };
-  }
-
-  return {
-    format: 'jwt_vp',
-    path: '$',
-    id: vp.id,
-    path_nested: chained
-  };
-}
-
-private async postAuthorizationResponse(
-  redirectUri: string,
-  state: string,
-  vpJwt: string,
-  presentationSubmissionJson: string
-): Promise<string> {
-
-  try {
-     return await firstValueFrom(
-      this.walletService.postOid4vpAuthorizationResponse(
-        redirectUri,
-        state,
-        vpJwt,
-        presentationSubmissionJson
-      )
-    );
-  } catch (e: unknown) {
-    wrapOid4vpHttpError(e, 'Failed to post authorization response to verifier', {
-      translationKey: 'errors.verifier-post-failed',
-    });
-  }
-}
-
-private buildPresentationSubmissionJson(vp: VerifiablePresentation, vcJwts: string[]): string {
-  const rootMap = this.buildDescriptorMapping(vp, vcJwts);
-
-  const submission: PresentationSubmission = {
-    id: CUSTOMER_PRESENTATION_SUBMISSION,
-    definition_id: CUSTOMER_PRESENTATION_DEFINITION,
-    descriptor_map: [rootMap]
-  };
-
-  return JSON.stringify(submission);
-}
-
-private appendNested(existing: DescriptorMap | null, next: DescriptorMap): DescriptorMap {
-  if (!existing) return next;
-  return {
-    ...existing,
-    path_nested: this.appendNested(existing.path_nested ?? null, next)
-  };
-}
-
-  private getVcIdFromJwt(vcJwt: string): string {
-    let payload: any;
-    payload = this.parseJwtPayloadOrThrow(vcJwt, 'VC JWT payload could not be parsed');
-
-    const vc = payload?.vc;
-    if (!vc?.id) {
-        throw new Oid4vpError('VC JWT payload does not contain vc.id', {
-        translationKey: 'errors.credential-validation-failed',
-        });
-    }
-
-    return vc.id;
-    }
-
-  private async signVpAsJwt(vpJwtPayload: {}, keyId: string, kid: string): Promise<string> {
-    const header = {
-      alg: 'ES256',
-      typ: 'JWT',
-      kid
+    const vpJwtPayload = {
+      id: verifiablePresentation.id,
+      iss: credentialSubjectId,
+      sub: credentialSubjectId,
+      aud,
+      nbf: issueTime,
+      iat: issueTime,
+      exp: issueTime + (3 * 60),
+      vp: verifiablePresentation,
+      nonce: selectorResponse.nonce,
     };
 
+    console.debug('[OID4VP] Step 5: Resolving signing key...');
+    const thumbprint = await this.keyStorageProvider.computeJwkThumbprint(publicKey);
+    const keyId = await this.findKeyIdByThumbprint(thumbprint);
+    console.debug('[OID4VP] Step 5 OK: keyId resolved');
+
+    console.debug('[OID4VP] Step 6: Signing VP JWT...');
+    const signedVpJwt = await this.signJwt({ alg: 'ES256', typ: 'JWT', kid: thumbprint, jwk: publicKey }, vpJwtPayload, keyId);
+    console.debug('[OID4VP] Step 6 OK: VP signed');
+
+    const vpToken = this.createJwtVcVpToken(signedVpJwt, selectorResponse);
+
+    console.debug('[OID4VP] Step 7: Posting auth response to', selectorResponse.redirectUri);
+    await this.postAuthorizationResponse(selectorResponse.redirectUri, selectorResponse.state, vpToken);
+  }
+
+  // ── SD-JWT presentation with KB-JWT ────────────────────────────────
+
+  private async presentSdJwt(
+    sdJwtCompact: string,
+    publicKey: JsonWebKey,
+    selectorResponse: VCReply
+  ): Promise<void> {
+    console.debug('[OID4VP-SDJWT] Resolving signing key...');
+    const thumbprint = await this.keyStorageProvider.computeJwkThumbprint(publicKey);
+    const keyId = await this.findKeyIdByThumbprint(thumbprint);
+
+    console.debug('[OID4VP-SDJWT] Building KB-JWT...');
+    const sdHash = await this.computeSdHash(sdJwtCompact);
+    const aud = selectorResponse.clientId ?? selectorResponse.redirectUri;
+    const iat = Math.floor(Date.now() / 1000);
+
+    const kbJwtHeader = { alg: 'ES256', typ: 'kb+jwt' };
+    const kbJwtPayload = { iat, aud, nonce: selectorResponse.nonce, sd_hash: sdHash };
+
+    const kbJwt = await this.signJwt(kbJwtHeader, kbJwtPayload, keyId);
+    console.debug('[OID4VP-SDJWT] KB-JWT signed');
+
+    // SD-JWT presentation: <issuer-jwt>~<disc1>~...~<kb-jwt>
+    // sdJwtCompact already ends with '~', so just append kbJwt
+    const sdJwtPresentation = sdJwtCompact + kbJwt;
+
+    const vpToken = this.createSdJwtVpToken(sdJwtPresentation, selectorResponse);
+
+    console.debug('[OID4VP-SDJWT] Posting auth response to', selectorResponse.redirectUri);
+    await this.postAuthorizationResponse(selectorResponse.redirectUri, selectorResponse.state, vpToken);
+  }
+
+  private async computeSdHash(sdJwtCompact: string): Promise<string> {
+    const bytes = new TextEncoder().encode(sdJwtCompact);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+    return this.jwtService.base64UrlEncode(new Uint8Array(hashBuffer));
+  }
+
+  // ── VP token building ──────────────────────────────────────────────
+
+  private createJwtVcVpToken(signedVpJwt: string, selectorResponse: VCReply): string {
+    if (selectorResponse.dcqlQuery) {
+      const credQueryId = this.resolveMatchedCredentialQueryId(selectorResponse, 'jwt_vc_json');
+      const dcqlVpToken = { [credQueryId]: [signedVpJwt] };
+      return btoa(JSON.stringify(dcqlVpToken));
+    }
+    return btoa(signedVpJwt);
+  }
+
+  private createSdJwtVpToken(sdJwtPresentation: string, selectorResponse: VCReply): string {
+    if (selectorResponse.dcqlQuery) {
+      const credQueryId = this.resolveMatchedCredentialQueryId(selectorResponse, 'dc+sd-jwt');
+      const dcqlVpToken = { [credQueryId]: sdJwtPresentation };
+      return btoa(JSON.stringify(dcqlVpToken));
+    }
+    return btoa(sdJwtPresentation);
+  }
+
+  private resolveMatchedCredentialQueryId(selectorResponse: VCReply, format: string): string {
+    const dcqlQuery = selectorResponse.dcqlQuery!;
+    const selectedVc = selectorResponse.selectedVcList[0];
+
+    for (const credQuery of dcqlQuery.credentials) {
+      if (credQuery.format !== format) continue;
+
+      if (format === 'jwt_vc_json') {
+        const credDef = credQuery.meta?.['credential_definition'] as Record<string, unknown> | undefined;
+        const requiredTypes = credDef?.['type'] as string[] | undefined;
+        if (!requiredTypes || requiredTypes.every(t => selectedVc?.type?.includes(t as any))) {
+          return credQuery.id;
+        }
+      }
+
+      if (format === 'dc+sd-jwt') {
+        const vctValues = credQuery.meta?.['vct_values'] as string[] | undefined;
+        if (!vctValues || selectedVc?.type?.some((t: string) => vctValues.includes(t))) {
+          return credQuery.id;
+        }
+      }
+    }
+
+    return dcqlQuery.credentials[0]?.id ?? 'default';
+  }
+
+  // ── Shared helpers ─────────────────────────────────────────────────
+
+  private extractSignedVcJwt(selectorResponse: VCReply): string {
+    const selectedVc = selectorResponse.selectedVcList[0];
+
+    if (!selectedVc) {
+      throw new Oid4vpError('No VC available for presentation', {
+          translationKey: 'errors.no-credentials-available',
+      });
+    }
+
+    const signedJwt = this.credentialCacheService.extractSignedJwt(selectedVc);
+    if (!signedJwt) {
+      throw new Oid4vpError('Selected credential does not have a signed JWT (credentialEncoded)', {
+          translationKey: 'errors.credential-validation-failed',
+      });
+    }
+    return signedJwt;
+  }
+
+  private async findKeyIdByThumbprint(thumbprint: string): Promise<string> {
+    const keyId = await this.keyStorageProvider.resolveKeyIdByKid(thumbprint);
+    if (!keyId) {
+      console.error('[OID4VP] FAIL: No local key for thumbprint=', thumbprint);
+      throw new Oid4vpError(`No local key found for kid=${thumbprint}`, {
+        translationKey: 'errors.key-not-found',
+      });
+    }
+    return keyId;
+  }
+
+  private async signJwt(header: Record<string, unknown>, payload: Record<string, unknown>, keyId: string): Promise<string> {
     const encodedHeader = this.jwtService.base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
-    const encodedPayload = this.jwtService.base64UrlEncode(new TextEncoder().encode(JSON.stringify(vpJwtPayload)));
+    const encodedPayload = this.jwtService.base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
 
     const signingInput = `${encodedHeader}.${encodedPayload}`;
     const signingBytes = new TextEncoder().encode(signingInput);
@@ -228,48 +245,58 @@ private appendNested(existing: DescriptorMap | null, next: DescriptorMap): Descr
         throw new Oid4vpError(`Unexpected signature length: ${signature.length}`, {
             translationKey: 'errors.browser-storage-operation-failed',
         });
-        }
+    }
 
     const encodedSignature = this.jwtService.base64UrlEncode(signature);
     return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
-}
-
-
-  private createVerifiablePresentation(credential: any, cnf: any): VerifiablePresentation{
-    return {
-      id: uuidv4(),
-      holder: cnf,
-      '@context': ["https://www.w3.org/2018/credentials/v1"],
-      type: ["VerifiablePresentation"],
-      verifiableCredential: [credential],
-    }
   }
-  
-  private async getVerifiableCredentials(vcReply: VCReply): Promise<string[]> {
+
+  private errorToTranslationKey(e: unknown): string | null {
+    if (e instanceof AppError) {
+        if (e.code === 'user_cancelled') return null;
+        return e.translationKey ?? 'errors.default';
+    }
+    return 'errors.default';
+    }
+
+  private async postAuthorizationResponse(
+    redirectUri: string,
+    state: string,
+    vpToken: string
+  ): Promise<string> {
     try {
-      return await firstValueFrom(
-        this.walletService.getVerifiablePresentationCredentials(vcReply)
+       return await firstValueFrom(
+        this.walletService.postOid4vpAuthorizationResponse(
+          redirectUri,
+          state,
+          vpToken
+        )
       );
     } catch (e: unknown) {
-      wrapOid4vpHttpError(e, 'Failed to obtain verifiable credentials for VP', {
-        translationKey: 'errors.loading-VCs',
+      wrapOid4vpHttpError(e, 'Failed to post authorization response to verifier', {
+        translationKey: 'errors.verifier-post-failed',
       });
     }
   }
 
-  //todo review this
-  private generateAudience(){
-    return "https://self-issued.me/v2";
+  private createVerifiablePresentation(credential: string, holderId: string): VerifiablePresentation {
+    return {
+      id: `urn:uuid:${uuidv4()}`,
+      holder: holderId,
+      '@context': ["https://www.w3.org/2018/credentials/v1"],
+      type: ["VerifiablePresentation"],
+      verifiableCredential: [credential],
+    };
   }
 
-  private parseJwtPayloadOrThrow(jwt: string, contextMsg: string): any {
-  try {
-    return this.jwtService.parseJwtPayload(jwt) as any;
-  } catch (e: unknown) {
-    throw new Oid4vpError(contextMsg, {
-      cause: e,
-      translationKey: 'errors.invalid-jwt',
-    });
+  private extractJwtPayloadOrThrow(jwt: string, contextMsg: string): any {
+    try {
+      return this.jwtService.extractJwtPayload(jwt) as any;
+    } catch (e: unknown) {
+      throw new Oid4vpError(contextMsg, {
+        cause: e,
+        translationKey: 'errors.invalid-jwt',
+      });
+    }
   }
-}
 }

@@ -1,108 +1,169 @@
-// Resources: https://lea.verou.me/blog/2024/css-conditionals-now/
+// Custom alert styles using semantic design tokens
 
 :root{
-  /** custom alert **/
+  /** custom alert — mapped to semantic status tokens **/
   --custom-alert-error-bg: #fdf0f0;
-  --custom-alert-error-text: #7b2531;
+  --custom-alert-error-text: var(--status-error);
   --custom-alert-ok-bg: #e7f8e4;
   --custom-alert-ok-info-bg: #d0efff;
-  --custom-alert-ok-text: #215112;
+  --custom-alert-ok-text: var(--status-success);
 }
 
 ion-alert.custom-alert-error .alert-wrapper {
-    background-color: var(--custom-alert-error-bg) !important;
-    color: white !important;
-    border-radius: 8px;
+  background-color: var(--custom-alert-error-bg) !important;
+  color: var(--surface-card) !important;
+  border-radius: var(--radius-md);
+}
+
+ion-alert.custom-alert-error .alert-message {
+  color: var(--custom-alert-error-text) !important;
+}
+
+ion-alert.custom-alert-error .alert-button.sc-ion-alert-md {
+  color: var(--custom-alert-error-text) !important;
+}
+
+ion-alert.custom-alert-error .alert-message ion-icon {
+  width: 55px;
+  font-size: 38px;
+  color: var(--custom-alert-error-text);
+}
+
+ion-alert.custom-alert-ok .alert-wrapper {
+  background-color: var(--custom-alert-ok-bg) !important;
+  color: var(--surface-card) !important;
+  border-radius: var(--radius-md);
+}
+
+ion-alert.custom-alert-ok-info .alert-wrapper {
+  background-color: var(--custom-alert-ok-info-bg) !important;
+  color: var(--surface-card) !important;
+  border-radius: var(--radius-md);
+}
+
+ion-alert.custom-alert-ok .alert-message {
+  color: var(--custom-alert-ok-text) !important;
+}
+
+ion-alert.custom-alert-ok .alert-message ion-icon {
+  font-size: 38px;
+  color: var(--custom-alert-ok-text);
+}
+
+ion-alert .alert-message div {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Center the button for error alert */
+ion-alert.custom-alert-error .alert-button-group {
+  justify-content: center !important;
+}
+
+ion-alert.custom-alert-unsigned .alert-button-group {
+  justify-content: center !important;
+}
+
+ion-alert .alert-message span {
+  line-height: 1.2;
+}
+
+// For the PIN counter
+ion-alert small.counter{
+  display: block;
+  padding-top: 0.5em;
+  font-weight: bold;
+}
+
+ion-alert .alert-message div.cred-preview {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (min-width: 768px) {
+  ion-alert .alert-message .cred-preview {
+    align-items: flex-start;
   }
-  
-  ion-alert.custom-alert-error .alert-message {
-    color: var(--custom-alert-error-text) !important;
-  }
-  
-  ion-alert.custom-alert-error .alert-button.sc-ion-alert-md {
-    color: var(--custom-alert-error-text) !important;
-  }
-  
-  ion-alert.custom-alert-error .alert-message ion-icon {
-    width: 55px;
-    font-size: 38px;
-    color: var(--custom-alert-error-text);
-  }
-  
-  ion-alert.custom-alert-ok .alert-wrapper {
-    background-color: var(--custom-alert-ok-bg) !important;
-    color: white !important;
-    border-radius: 8px;
+}
+
+ion-alert.custom-alert-credential .cred-row {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 8px;
+  align-items: start;
+}
+
+ion-alert.custom-alert-credential .cred-label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+ion-alert.custom-alert-credential .cred-value {
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+// Credential confirmation modal — transparent wrapper so the component controls its own backdrop
+ion-modal.credential-confirmation-modal {
+  --background: transparent;
+  --box-shadow: none;
+  --width: 100%;
+  --height: 100%;
+  --max-width: 100%;
+  --max-height: 100%;
+  --border-radius: 0;
+}
+
+// Modern credential toast notification
+.credential-toast {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100%);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border-radius: 0 0 var(--radius-md, 8px) var(--radius-md, 8px);
+  font-size: 0.95rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg, 0 10px 15px rgba(0,0,0,0.1));
+  pointer-events: none;
+  opacity: 0;
+  transition: none;
+
+  ion-icon { font-size: 22px; flex-shrink: 0; }
+
+  &[data-variant="success"] {
+    background: var(--status-success, #059669);
+    color: #fff;
   }
 
-  ion-alert.custom-alert-ok-info .alert-wrapper {
-    background-color: var(--custom-alert-ok-info-bg) !important;
-    color: white !important;
-    border-radius: 8px;
-  }
-  
-  ion-alert.custom-alert-ok .alert-message {
-    color: var(--custom-alert-ok-text) !important;
-  }
-  
-  ion-alert.custom-alert-ok .alert-message ion-icon {
-    font-size: 38px;
-    color: var(--custom-alert-ok-text);
-  }
-  
-  ion-alert .alert-message div {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-  }
-  
-  /* Center the button for error alert */
-  ion-alert.custom-alert-error .alert-button-group {
-    justify-content: center !important;
+  &[data-variant="error"] {
+    background: var(--status-error, #DC2626);
+    color: #fff;
   }
 
-  ion-alert.custom-alert-unsigned .alert-button-group {
-    justify-content: center !important;
-  }
-  
-  ion-alert .alert-message span {
-    line-height: 1.2;
+  &.visible {
+    animation: toastSlideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
 
-  // For the PIN counter
-  ion-alert small.counter{
-    display: block;
-    padding-top: 0.5em;
-    font-weight: bold;
+  &.exiting {
+    animation: toastSlideOut 0.35s ease-in forwards;
   }
+}
 
-  ion-alert .alert-message div.cred-preview {
-    margin-top: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-100%); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
 
-  @media (min-width: 768px) {
-    ion-alert .alert-message .cred-preview {
-      align-items: flex-start;
-    }
-  }
-
-  ion-alert.custom-alert-credential .cred-row {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    column-gap: 8px;
-    align-items: start;
-  }
-
-  ion-alert.custom-alert-credential .cred-label {
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  ion-alert.custom-alert-credential .cred-value {
-    min-width: 0;
-    word-break: break-word;
-    overflow-wrap: anywhere;
-  }
+@keyframes toastSlideOut {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(-100%); }
+}

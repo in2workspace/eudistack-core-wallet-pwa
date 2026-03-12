@@ -1,0 +1,45 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button (click)="goBack()" fill="clear">
+        <ion-icon slot="icon-only" name="arrow-back-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>{{ "vc-selector.title" | translate }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="vc-selector-content">
+  <div class="vc-selector-header">
+    <div class="header-icon">
+      <ion-icon name="shield-checkmark-outline"></ion-icon>
+    </div>
+    <h2 class="header-title">{{ "vc-selector.presentation-request" | translate }}</h2>
+    <p class="header-subtitle">{{ "vc-selector.select-instruction" | translate }}</p>
+    @if (requesterDomain) {
+      <div class="requester-badge">
+        <ion-icon name="globe-outline"></ion-icon>
+        <span>{{ requesterDomain }}</span>
+      </div>
+    }
+  </div>
+
+  <div class="credential-list">
+    @for (cred of credList; track cred) {
+      <button class="selectable-card" (click)="sendCred(cred)">
+        <app-vc-view [isDetailViewActive]="false" [credentialInput$]="cred"></app-vc-view>
+        <div class="card-action-hint">
+          <ion-icon name="chevron-forward-outline"></ion-icon>
+        </div>
+      </button>
+    }
+  </div>
+</ion-content>
+
+<ion-footer [translucent]="false">
+  <ion-toolbar>
+    <ion-button expand="block" fill="outline" color="medium" (click)="goBack()" class="cancel-button">
+      {{ "vc-selector.cancel" | translate }}
+    </ion-button>
+  </ion-toolbar>
+</ion-footer>
