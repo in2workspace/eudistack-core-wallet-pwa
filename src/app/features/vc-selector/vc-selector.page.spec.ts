@@ -8,6 +8,7 @@ import { VerifiableCredential, CredentialStatus, Issuer, CredentialSubject, Mand
 import { Oid4vpEngineService } from 'src/app/core/protocol/oid4vp/oid4vp.engine.service';
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
+import { CredentialDecisionService } from 'src/app/core/services/credential-decision.service';
 
 describe('VcSelectorPage', () => {
   let component: VcSelectorPage;
@@ -109,6 +110,7 @@ describe('VcSelectorPage', () => {
     let mockOid4vpEngineService: jest.Mocked<Oid4vpEngineService>;
   let mockLoader: jest.Mocked<LoaderService>;
   let mockToast: jest.Mocked<ToastServiceHandler>;
+  let mockCredentialDecisionService: { showTempMessage: jest.Mock };
 
   beforeEach(async () => {
     // Create mocks with Jest
@@ -148,6 +150,10 @@ describe('VcSelectorPage', () => {
       showErrorAlertByTranslateLabel: jest.fn(),
     } as any;
 
+    mockCredentialDecisionService = {
+      showTempMessage: jest.fn(),
+    };
+
     // Setup default return values
     mockAlert.onDidDismiss.mockResolvedValue({ role: 'ok' });
     mockAlertController.create.mockResolvedValue(mockAlert);
@@ -160,6 +166,7 @@ describe('VcSelectorPage', () => {
         { provide: TranslateService, useValue: mockTranslateService },
         { provide: AlertController, useValue: mockAlertController },
         { provide: Oid4vpEngineService, useValue: mockOid4vpEngineService },
+        { provide: CredentialDecisionService, useValue: mockCredentialDecisionService },
         { provide: LoaderService, useValue: mockLoader },
         { provide: ToastServiceHandler, useValue: mockToast }
       ]
@@ -361,8 +368,6 @@ describe('VcSelectorPage', () => {
     // });
 
     it('should clear selected credentials on completion', async () => {
-      const okMessageSpy = jest.spyOn(component, 'okMessage').mockImplementation();
-      
       await component.sendCred(mockCred);
 
       expect(component.selCredList).toEqual([]);

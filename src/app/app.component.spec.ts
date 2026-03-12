@@ -11,6 +11,8 @@ import { LoaderService } from './shared/services/loader.service';
 import { MenuComponent } from './shared/components/menu/menu.component';
 import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.service';
 import { ThemeService } from './core/services/theme.service';
+import { IssuerMetadataCacheService } from './core/services/issuer-metadata-cache.service';
+import { UserPreferencesService } from './shared/services/user-preferences.service';
 
 describe('AppComponent', () => {
   let component: AppComponent;
@@ -114,6 +116,12 @@ describe('AppComponent', () => {
       init: jest.fn().mockResolvedValue(undefined),
     };
 
+    const issuerMetadataCacheMock = {
+      refreshStaleMetadata: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const userPrefsMock = {};
+
     await TestBed.configureTestingModule({
       imports: [
         AppComponent,
@@ -130,7 +138,9 @@ describe('AppComponent', () => {
         { provide: ActivatedRoute, useValue: activatedRouteMock },
         { provide: NavController, useValue: navControllerMock },
         { provide: ThemeService, useValue: themeServiceMock },
-        { provide: Oid4vciEngineService, useValue: oid4vciEngineMock }
+        { provide: Oid4vciEngineService, useValue: oid4vciEngineMock },
+        { provide: IssuerMetadataCacheService, useValue: issuerMetadataCacheMock },
+        { provide: UserPreferencesService, useValue: userPrefsMock },
       ],
     })
       .overrideComponent(AppComponent, {

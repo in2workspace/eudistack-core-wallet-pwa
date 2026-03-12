@@ -7,6 +7,8 @@ import { TranslateModule } from '@ngx-translate/core';
 import { RouterTestingModule } from '@angular/router/testing';
 import { CallbackPage } from 'src/app/features/callback/callback.page';
 import { ComponentRef } from '@angular/core';
+import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
+import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
 
 class WalletServiceMock {
   getVCinCBOR(credential: VerifiableCredential) {
@@ -15,6 +17,18 @@ class WalletServiceMock {
   requestSignature(credentialId: string): Observable<any> {
     return of({ success: true });
   }
+}
+
+class CredentialDisplayServiceMock {
+  getCardFields = jest.fn().mockResolvedValue([]);
+  getDisplayName = jest.fn().mockResolvedValue('Test Credential');
+  getFormatLabel = jest.fn().mockReturnValue('');
+  getDetailSections = jest.fn().mockResolvedValue([]);
+}
+
+class CredentialVerificationServiceMock {
+  getCheckKeys = jest.fn().mockReturnValue([]);
+  runCheck = jest.fn().mockResolvedValue({ key: 'test', status: 'passed' });
 }
 
 describe('VcViewComponent', () => {
@@ -30,7 +44,11 @@ describe('VcViewComponent', () => {
         TranslateModule.forRoot(),
         VcViewComponent,
       ],
-      providers: [{ provide: WalletService, useClass: WalletServiceMock }],
+      providers: [
+        { provide: WalletService, useClass: WalletServiceMock },
+        { provide: CredentialDisplayService, useClass: CredentialDisplayServiceMock },
+        { provide: CredentialVerificationService, useClass: CredentialVerificationServiceMock },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(VcViewComponent);

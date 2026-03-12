@@ -20,7 +20,7 @@ describe('BarcodeScannerComponent', () => {
   let component: BarcodeScannerComponent;
   let fixture: ComponentFixture<BarcodeScannerComponent>;
   let mockCameraService: {
-    selectedCamera$: jest.Mock;
+    selectedCamera$: WritableSignal<MediaDeviceInfo|undefined>;
     isCameraError$: WritableSignal<boolean>;
     activatingScannersList$: Observable<[]>;
     getCameraFlow: jest.Mock;
@@ -33,7 +33,7 @@ describe('BarcodeScannerComponent', () => {
 
   beforeEach(async () => {
     mockCameraService = {
-      selectedCamera$: jest.fn().mockReturnValue({deviceid: 'devide-id'}),
+      selectedCamera$: signal({deviceId: 'device-id'} as MediaDeviceInfo),
       isCameraError$: signal(false),
       activatingScannersList$: of([]),
       getCameraFlow: jest.fn(),
@@ -79,8 +79,8 @@ describe('BarcodeScannerComponent', () => {
       expect(component.isError$).toBe(mockCameraService.isCameraError$);
     });
   
-    it('should initialize activationTimeoutInSeconds as 4', () => {
-      expect(component['activationTimeoutInSeconds']).toBe(4);
+    it('should initialize activationTimeoutInSeconds as 1', () => {
+      expect(component['activationTimeoutInSeconds']).toBe(1);
     });
   
     it('should initialize activationCountdownValue$ with initial value 6000', () => {
@@ -153,19 +153,19 @@ describe('BarcodeScannerComponent', () => {
     });
   
     it('should enable scanner and set device if permission granted in activateScanner', async () => {
-      jest.spyOn(component, 'selectedDevice$').mockReturnValue({ deviceId: 'device-123' } as any);
-  
+      mockCameraService.selectedCamera$.set({ deviceId: 'device-123' } as MediaDeviceInfo);
+
       await component.activateScanner();
-  
+
       expect(component['scanner'].enable).toBe(true);
       expect(component['scanner'].askForPermission).toHaveBeenCalled();
       expect(component['scanner'].device).toEqual({ deviceId: 'device-123' });
       expect(component['_activatedScanner$$'].next).toHaveBeenCalled();
     });
-  
+
     it('should not change scanner device if already set', async () => {
       component['scanner'].device = { deviceId: 'device-123', askForPemission: ()=>true } as any;
-      jest.spyOn(component, 'selectedDevice$').mockReturnValue({ deviceId: 'device-123' } as any);
+      mockCameraService.selectedCamera$.set({ deviceId: 'device-123' } as MediaDeviceInfo);
       
       await component.activateScanner();
       

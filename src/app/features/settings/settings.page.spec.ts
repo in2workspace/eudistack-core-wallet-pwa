@@ -6,7 +6,9 @@ import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
 import { Observable, of, throwError } from 'rxjs';
 import { IonicModule, NavController } from '@ionic/angular';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { EventEmitter, NO_ERRORS_SCHEMA } from '@angular/core';
+import { EventEmitter, NO_ERRORS_SCHEMA, signal } from '@angular/core';
+import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
+import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 
 
 const translateServiceMock = {
@@ -46,7 +48,6 @@ describe('SettingsPage', () => {
 
     await TestBed.configureTestingModule({
     schemas: [NO_ERRORS_SCHEMA],
-    declarations: [TranslatePipe],
     imports: [
         SettingsPage,
         IonicModule.forRoot(),
@@ -58,7 +59,14 @@ describe('SettingsPage', () => {
         { provide: CameraLogsService, useValue: cameraLogsServiceMock },
         { provide: TranslateService, useValue: translateServiceMock },
         { provide: NavController, useValue: navCtrlMock },
-        { provide: ActivatedRoute, useValue: { snapshot: { data: { data: "" } } } }
+        { provide: ActivatedRoute, useValue: { snapshot: { data: { data: "" } } } },
+        { provide: PwaInstallService, useValue: { installable$: of(false), promptInstall: jest.fn() } },
+        { provide: UserPreferencesService, useValue: {
+          privacyBlur: signal(false),
+          darkMode: signal(false),
+          togglePrivacyBlur: jest.fn(),
+          toggleDarkMode: jest.fn(),
+        } },
     ]
 }).compileComponents();
  

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
 import { RemoteAuthService, TokenPairResponse } from './auth.service';
+import { PasskeyStoreService } from './passkey-store.service';
 import { environment } from 'src/environments/environment';
 
 const AUTH_BASE = `${environment.server_url}/api/v1/auth`;
@@ -20,6 +21,7 @@ describe('RemoteAuthService', () => {
   let service: RemoteAuthService;
   let httpMock: HttpTestingController;
   let routerMock: jest.Mocked<Router>;
+  let passkeyStoreMock: jest.Mocked<Pick<PasskeyStoreService, 'hasPasskey'>>;
 
   beforeAll(() => {
     (globalThis as any).BroadcastChannel = BroadcastChannelMock;
@@ -32,11 +34,16 @@ describe('RemoteAuthService', () => {
       navigate: jest.fn(),
     } as unknown as jest.Mocked<Router>;
 
+    passkeyStoreMock = {
+      hasPasskey: jest.fn().mockReturnValue(false),
+    };
+
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [
         RemoteAuthService,
         { provide: Router, useValue: routerMock },
+        { provide: PasskeyStoreService, useValue: passkeyStoreMock },
       ],
     });
 
@@ -113,9 +120,22 @@ describe('RemoteAuthService', () => {
   });
 
   describe('forceLogout', () => {
-    it('should clear state and navigate to login', () => {
+    it('should clear state and navigate to register when no passkey', () => {
       (service as any).accessToken = 'some-token';
       (service as any).authenticated$.next(true);
+      passkeyStoreMock.hasPasskey.mockReturnValue(false);
+
+      service.forceLogout();
+
+      expect(service.getToken()).toBe('');
+      expect(service.isLoggedIn()).toBe(false);
+      expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/register']);
+    });
+
+    it('should clear state and navigate to login when has passkey', () => {
+      (service as any).accessToken = 'some-token';
+      (service as any).authenticated$.next(true);
+      passkeyStoreMock.hasPasskey.mockReturnValue(true);
 
       service.forceLogout();
 

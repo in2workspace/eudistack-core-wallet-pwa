@@ -1,11 +1,29 @@
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
-import { Router } from '@angular/router';
+import { Router, Routes } from '@angular/router';
 import { Location } from '@angular/common';
-import routes from './tabs.routes';
-import { logsEnabledGuard } from '../../core/guards/logs-enabled.guard';
+import originalRoutes from './tabs.routes';
 import { AuthService } from '../../core/services/auth.service';
+import { PasskeyStoreService } from '../../core/services/passkey-store.service';
 import { of } from 'rxjs';
+
+// Deep-clone routes and remove logsEnabledGuard (it reads environment directly, not injectable)
+function cloneRoutesWithoutLogsGuard(routes: Routes): Routes {
+  return routes.map(route => {
+    const clone = { ...route };
+    if (clone.children) {
+      clone.children = clone.children.map(child => {
+        if (child.path === 'logs') {
+          return { ...child, canActivate: [] };
+        }
+        return { ...child };
+      });
+    }
+    return clone;
+  });
+}
+
+const routes = cloneRoutesWithoutLogsGuard(originalRoutes);
 
 describe('App Routes', () => {
   let router: Router;
@@ -14,17 +32,19 @@ describe('App Routes', () => {
   beforeEach(async () => {
     const mockAuthService = {
       isLoggedIn$: jest.fn().mockReturnValue(of(true)),
+      isInitialized$: jest.fn().mockReturnValue(of(true)),
+      isLoggedIn: jest.fn().mockReturnValue(true),
     };
 
-    const mockLogsEnabledGuard = {
-      canActivate: jest.fn().mockReturnValue(true),
+    const mockPasskeyStore = {
+      hasPasskey: jest.fn().mockReturnValue(false),
     };
 
     await TestBed.configureTestingModule({
       imports: [RouterTestingModule.withRoutes(routes)],
       providers: [
         { provide: AuthService, useValue: mockAuthService },
-        { provide: logsEnabledGuard, useValue: mockLogsEnabledGuard },
+        { provide: PasskeyStoreService, useValue: mockPasskeyStore },
       ],
     }).compileComponents();
 
@@ -89,25 +109,24 @@ describe('App Routes', () => {
   it('should apply authGuard on /', async () => {
     const authService = TestBed.inject(AuthService);
     await router.navigate(['/']);
-    expect(authService.isLoggedIn$).toHaveBeenCalled();
+    expect(authService.isInitialized$).toHaveBeenCalled();
   });
 
   it('should call authGuard when navigating between child routes', async () => {
     const authService = TestBed.inject(AuthService);
 
     await router.navigate(['/home']);
-    const callsAfterHome = (authService.isLoggedIn$ as jest.Mock).mock.calls.length;
+    const callsAfterHome = (authService.isInitialized$ as jest.Mock).mock.calls.length;
 
     await router.navigate(['/credentials']);
-    expect((authService.isLoggedIn$ as jest.Mock).mock.calls.length).toBeGreaterThan(callsAfterHome);
+    expect((authService.isInitialized$ as jest.Mock).mock.calls.length).toBeGreaterThan(callsAfterHome);
   });
 
-  it('should apply logsEnabledGuard on /logs', async () => {
-    const mockLogsGuard = TestBed.inject(logsEnabledGuard);
-
-    jest.spyOn(mockLogsGuard, 'canActivate');
-
-    await router.navigate(['/logs']);
-    expect(mockLogsGuard.canActivate).toHaveBeenCalled();
+  it('should have logsEnabledGuard on /logs route', () => {
+    const tabsRoute = originalRoutes[0];
+    const logsRoute = tabsRoute.children?.find(r => r.path === 'logs');
+    expect(logsRoute).toBeTruthy();
+    expect(logsRoute!.canActivate).toBeTruthy();
+    expect(logsRoute!.canActivate!.length).toBeGreaterThan(0);
   });
 });
