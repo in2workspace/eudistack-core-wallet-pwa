@@ -170,6 +170,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         this.activityService.log('deleted', credName, issuer);
       }),
       switchMap(() => this.loadCredentials()),
+      tap(() => this.toastServiceHandler.showToast('vc-view.delete-success')),
       finalize(() => this.loader.removeLoadingProcess())
     )
     .subscribe(() => {
