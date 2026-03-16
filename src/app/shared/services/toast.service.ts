@@ -67,7 +67,7 @@ export class ToastServiceHandler {
     this.alertController.create({
       message: `
         <div style="display: flex; align-items: center; gap: 50px;">
-          <ion-icon name="checkmark-circle-outline"></ion-icon>
+          <ion-icon name="checkmark-circle"></ion-icon>
           <span>${this.translate.instant(messageKey)}</span>
         </div>
       `,
