@@ -168,9 +168,9 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         const credName = cred.name ?? cred.type?.[0] ?? 'Unknown';
         const issuer = cred.issuer?.organization ?? cred.issuer?.id ?? '';
         this.activityService.log('deleted', credName, issuer);
+        this.toastServiceHandler.showToast('vc-view.delete-success');
       }),
       switchMap(() => this.loadCredentials()),
-      tap(() => this.toastServiceHandler.showToast('vc-view.delete-success')),
       finalize(() => this.loader.removeLoadingProcess())
     )
     .subscribe(() => {
