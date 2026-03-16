@@ -6,14 +6,6 @@
   window["env"]["websocket_url"] = "ws://localhost:8083";
 
   window["env"]["logs_enabled"] = "false";
-  window["env"]["primary"] = "#001E8C";
-  window["env"]["primary_contrast"] = "#ffffff";
-  window["env"]["secondary"] = "#132153";
-  window["env"]["secondary_contrast"] = "#ffffff";
-  window["env"]["assets_base_url"]= "assets";
-  window["env"]["logo_path"]= "logos/altia-logo.svg";
-  window["env"]["favicon_path"]= "icons/altia-favicon.png";
-  window["env"]["default_lang"] =  "es";
   window["env"]["wallet_mode"] = "";
   window["env"]["preferred_grant"] = "auto";
   window["env"]["oid4vci_redirect_uri"] = "http://localhost/callback";

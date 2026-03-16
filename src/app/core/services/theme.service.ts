@@ -78,6 +78,10 @@ export class ThemeService {
     return this.theme$.value;
   }
 
+  get tenantDomain(): string | null {
+    return this.snapshot?.tenantDomain ?? null;
+  }
+
   getLogoUrl(variant: 'light' | 'dark'): string | null {
     const branding = this.snapshot?.branding;
     if (!branding) return null;
