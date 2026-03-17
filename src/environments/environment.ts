@@ -5,7 +5,7 @@ export const environment = {
   production: false,
   server_url: window["env"]?.["server_url"] || 'http://localhost:8083',
   websocket_url: window["env"]?.["websocket_url"] || 'ws://localhost:8083',
-  logs_enabled: window["env"]?.["logs_enabled"] === "true" || false,
+  logs_enabled: window["env"]?.["logs_enabled"] === "true",
   wallet_mode: window["env"]?.["wallet_mode"] || 'browser',
   preferred_grant: window["env"]?.["preferred_grant"] || 'auto',
   oid4vci_redirect_uri: window["env"]?.["oid4vci_redirect_uri"] || 'http://localhost/callback',

@@ -4,7 +4,6 @@
   // Environment variables
   window["env"]["server_url"] = "${WALLET_API_EXTERNAL_URL}";
   window["env"]["websocket_url"] = "${WALLET_API_WEBSOCKET_EXTERNAL_URL}";
-
   window["env"]["logs_enabled"] = "${LOGS_ENABLED}";
   window["env"]["wallet_mode"] = "${WALLET_MODE}";
   window["env"]["preferred_grant"] = "${PREFERRED_GRANT}";
