@@ -129,14 +129,15 @@ ion-item{
   font-size: 14px
 }
 
-.alert-button-role-confirm {
-  color: var(--text-primary) !important;
+.alert-button-role-confirm,
+.alert-button-role-ok {
+  color: var(--action-primary, var(--text-primary)) !important;
   text-transform: none !important;
   font-weight: bold !important;
 }
 
 .alert-button-role-cancel {
-  color: var(--text-primary) !important;
+  color: var(--text-secondary, var(--text-primary)) !important;
   text-transform: none !important;
 }
 
