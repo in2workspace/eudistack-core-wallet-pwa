@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.4](https://github.com/in2workspace/eudistack-core-wallet-pwa/releases/tag/v3.0.4)
+### Fixed
+-  Fix credential detail modal and verification modal closing incorrectly when the browser back button is pressed.       
+
+### Changed
+- Remove unused `QRCodeComponent` import from `CredentialsPage` and `VcSelectorPage`. 
+- Back the primary color for verify button (it changed the contrast color in the commit 46bfd21)
+
 ## [3.0.3](https://github.com/in2workspace/eudistack-core-wallet-pwa/releases/tag/v3.0.3)
 ### Fixed
 - Clean up mixed/incorrect translations across EN/ES/CA.

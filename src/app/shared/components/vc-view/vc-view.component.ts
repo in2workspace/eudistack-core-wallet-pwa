@@ -4,6 +4,7 @@ import {
   Component,
   computed,
   EventEmitter,
+  HostListener,
   Input,
   OnInit,
   Output,
@@ -25,6 +26,7 @@ import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared
 import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
 import { CredentialTypeMap } from 'src/app/core/models/credential-type-map';
 import { CredentialVerificationService, VerificationCheck } from 'src/app/core/services/credential-verification.service';
+import { Router } from '@angular/router';
 
 export type ExpiryStatus = 'valid' | 'expiring-soon' | 'expired';
 
@@ -44,12 +46,18 @@ export class VcViewComponent implements OnInit {
   private readonly displayService = inject(CredentialDisplayService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly verificationService = inject(CredentialVerificationService);
-
+  private readonly router = inject(Router);
+  
   public credentialInput$ = input.required<VerifiableCredential>();
+  public detailViewSections$ = signal<DisplaySection[]>([]);
   public cardFields = signal<DisplayField[]>([]);
   public displayName = signal<string>('');
   public formatLabel = signal<string>('');
+
   public blurred = input(false);
+  public selectedVcId = input<string | null>(null);
+  
+  public isDetailViewActive$ = computed(() => this.selectedVcId() === this.credentialInput$().id);
 
   public expiryStatus = computed<ExpiryStatus>(() => {
     const cred = this.credentialInput$();
@@ -78,7 +86,14 @@ export class VcViewComponent implements OnInit {
     this.formatLabel.set(this.displayService.getFormatLabel(cred));
   });
 
-  @Input() public isDetailViewActive = false;
+  private readonly _loadDetailSectionsEffect = effect(async () => {
+    if (!this.isDetailViewActive$()) {
+      this.detailViewSections$.set([]);
+      return;
+    }
+    await this.updateDetailSections(this.credentialInput$());
+  });
+  
   @Output() public vcEmit: EventEmitter<VerifiableCredential> =
     new EventEmitter();
 
@@ -136,14 +151,33 @@ export class VcViewComponent implements OnInit {
   public verifyResultKey: string = 'verification.result-invalid';
 
   public async openDetailModal(): Promise<void> {
-    if(this.isDetailViewActive){
-      this.isDetailModalOpen = true;
-      await this.getStructuredFields();
+    const vc = this.credentialInput$();
+    if (!vc.id) {     
+      return;
     }
+    this.router.navigate(['/tabs/credentials'], {
+      queryParams: { id: vc.id },
+      queryParamsHandling: 'merge',
+    });
   }
 
   public closeDetailModal(): void {
-    this.isDetailModalOpen = false;
+    if (!this.isDetailViewActive$()) {
+      return;
+    }
+    this.router.navigate(['/tabs/credentials'], {
+      queryParams: { id: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  @HostListener('window:popstate')
+  public onPopstate(): void {
+    if (this.isVerifyModalOpen) {
+      this.isVerifyModalOpen = false;
+      this.cdr.markForCheck();
+    }
   }
 
   public async verifyCredential(): Promise<void> {
@@ -151,6 +185,7 @@ export class VcViewComponent implements OnInit {
     this.verificationChecks = keys.map(key => ({ key, status: 'pending' as const }));
     this.verifyOverall = 'pending';
     this.isVerifyModalOpen = true;
+    history.pushState(null, '');
     this.cdr.markForCheck();
 
     const credential = this.credentialInput$();
@@ -187,7 +222,11 @@ export class VcViewComponent implements OnInit {
   }
 
   public closeVerifyModal(): void {
+    if (!this.isVerifyModalOpen) {
+      return;
+    }
     this.isVerifyModalOpen = false;
+    history.back();
   }
 
   private delay(ms: number): Promise<void> {
@@ -225,8 +264,12 @@ export class VcViewComponent implements OnInit {
   }
 
   public deleteVC(): void {
-    this.isModalDeleteOpen = true;
-    this.isDetailModalOpen = false;
+    this.isModalDeleteOpen = true;  
+    this.router.navigate(['/tabs/credentials'], {
+      queryParams: { id: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    })
   }
 
   public unsignedInfo(event: Event): void {
@@ -280,9 +323,7 @@ export class VcViewComponent implements OnInit {
       : undefined;
   }
 
-  public async getStructuredFields(): Promise<void> {
-    const vc = this.credentialInput$();
-
+  private async updateDetailSections(vc: VerifiableCredential): Promise<void> {
     const formatLabel = this.displayService.getFormatLabel(vc);
     const displayNameValue = await this.displayService.getDisplayName(vc);
 
@@ -310,8 +351,9 @@ export class VcViewComponent implements OnInit {
       });
     }
 
-    this.detailViewSections = [...detailSections, credentialInfo]
-      .filter(section => section.fields.length > 0);
+    this.detailViewSections$.set(
+      [credentialInfo, ...detailSections].filter(section => section.fields.length > 0)
+    );
     this.cdr.markForCheck();
   }
 
