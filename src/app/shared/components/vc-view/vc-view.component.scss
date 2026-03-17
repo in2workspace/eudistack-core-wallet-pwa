@@ -18,7 +18,7 @@ ion-modal.stack-modal {
   min-width: 240px;
   min-height: clamp(150px, 40vw, 180px);
   border-radius: clamp(14px, 4vw, 20px);
-  border: none;
+  border: 1px solid var(--border-default, #D1D5DB);
   padding: clamp(14px, 4vw, 20px);
   cursor: pointer;
   overflow: hidden;
