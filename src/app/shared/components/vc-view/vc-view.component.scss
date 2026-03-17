@@ -82,7 +82,7 @@ ion-modal.stack-modal {
   background: rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  color: #fff;
+  color: var(--primary-contrast-color, #fff);
   font-size: 11px;
   font-weight: 600;
   padding: 4px 12px;
@@ -139,7 +139,7 @@ ion-modal.stack-modal {
 }
 
 .card-title {
-  color: #fff;
+  color: var(--primary-contrast-color, #fff);
   @include fluid-type(0.8125rem, 0.9375rem);
   font-weight: 700;
   overflow: hidden;

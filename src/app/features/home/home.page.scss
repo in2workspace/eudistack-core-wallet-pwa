@@ -145,7 +145,7 @@
 
 .scan-icon {
   font-size: clamp(24px, 7vw, 32px);
-  color: #ffffff;
+  color: var(--primary-contrast-color, #ffffff);
   pointer-events: none;
 }
 

@@ -101,7 +101,7 @@
   background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
 
   ion-icon {
-    color: #fff;
+    color: var(--primary-contrast-color, #fff);
   }
 }
 

@@ -141,12 +141,12 @@ ion-modal.credential-confirmation-modal {
 
   &[data-variant="success"] {
     background: var(--status-success, #059669);
-    color: #fff;
+    color: var(--primary-contrast-color, #fff);
   }
 
   &[data-variant="error"] {
     background: var(--status-error, #DC2626);
-    color: #fff;
+    color: var(--primary-contrast-color, #fff);
   }
 
   &.visible {

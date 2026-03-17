@@ -141,7 +141,7 @@
   height: clamp(56px, 16vw, 72px);
   border-radius: 50%;
   background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-  color: #fff;
+  color: var(--primary-contrast-color, #fff);
   font-size: 32px;
   box-shadow: 0 4px 16px rgb(var(--action-primary-rgb) / 0.3);
 }
