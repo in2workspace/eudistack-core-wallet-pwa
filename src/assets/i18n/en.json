@@ -5,7 +5,7 @@
         "credentials":"Credentials",
         "camera-selector":"Camera Selector",
         "language-selector":"Language Selector",
-        "terms-of-user":"Terms of User",
+        "terms-of-user":"Terms of Use",
         "privacy-policy":"Privacy Policy",
         "faqs":"FAQs",
         "settings":"Settings",
@@ -45,7 +45,8 @@
         "confirmation":"Confirmation",
         "confirmationMessage":"Do you want to choose this credential?",
         "addVC":"Add Credential",
-        "identify": "Identify yourself"    },
+        "identify": "Identify yourself"    
+    },
     "faqs":{
         "title":"Faqs"
     },
@@ -67,7 +68,7 @@
         "title": "Camera logs",
         "no-more-logs": "No more camera logs to load."
     },
-    "mailto_permission_alert": "Si us plau, assegura't que tens els permisos necessaris per enviar correus electrònics amb la teva aplicació de correu predeterminada. Si el servei de correu no s’obre, és probable que sigui a causa de restriccions de permisos.",
+    "mailto_permission_alert": "Please make sure you have the necessary permissions to send emails with your default email application. If the email service doesn't open, it is likely due to permission restrictions.",
     "auth": {
         "login": {
             "title": "Welcome back",
@@ -377,5 +378,4 @@
         "unknown": "Unknown",
         "time-remaining": "Time remaining"
     }
-
 }
