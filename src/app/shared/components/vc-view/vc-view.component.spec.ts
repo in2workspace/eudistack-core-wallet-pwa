@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed, fakeAsync, tick, flushMicrotasks } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { VcViewComponent } from './vc-view.component';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { VerifiableCredential } from 'src/app/core/models/verifiable-credential';
@@ -49,7 +49,6 @@ describe('VcViewComponent', () => {
   let fixture: ComponentFixture<VcViewComponent>;
   let walletService: WalletService;
   let router: Router;
-  let activatedRoute: ActivatedRouteMock;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -71,7 +70,6 @@ describe('VcViewComponent', () => {
     componentRef = fixture.componentRef;
     walletService = TestBed.inject(WalletService);
     router = TestBed.inject(Router);
-    activatedRoute = TestBed.inject(ActivatedRoute) as unknown as ActivatedRouteMock;
 
     componentRef.setInput('credentialInput$', {
       '@context': [],

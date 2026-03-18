@@ -5,7 +5,6 @@ import {
   computed,
   EventEmitter,
   HostListener,
-  Input,
   OnInit,
   Output,
   effect,
@@ -56,7 +55,7 @@ export class VcViewComponent implements OnInit {
 
   public blurred = input(false);
   public selectedVcId = input<string | null>(null);
-  
+
   public isDetailViewActive$ = computed(() => this.selectedVcId() === this.credentialInput$().id);
 
   public expiryStatus = computed<ExpiryStatus>(() => {
@@ -88,7 +87,6 @@ export class VcViewComponent implements OnInit {
 
   private readonly _loadDetailSectionsEffect = effect(async () => {
     if (!this.isDetailViewActive$()) {
-      this.detailViewSections$.set([]);
       return;
     }
     await this.updateDetailSections(this.credentialInput$());
@@ -143,8 +141,6 @@ export class VcViewComponent implements OnInit {
     },
   }];
 
-  public isDetailModalOpen = false;
-  public detailViewSections!: DisplaySection[];
   public isVerifyModalOpen = false;
   public verificationChecks: VerificationCheck[] = [];
   public verifyOverall: 'pending' | 'valid' | 'invalid' = 'pending';
@@ -162,14 +158,14 @@ export class VcViewComponent implements OnInit {
   }
 
   public closeDetailModal(): void {
-    if (!this.isDetailViewActive$()) {
+    if (this.isDetailViewActive$()) { 
+      this.router.navigate(['/tabs/credentials'], {
+        queryParams: { id: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
       return;
     }
-    this.router.navigate(['/tabs/credentials'], {
-      queryParams: { id: null },
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
-    });
   }
 
   @HostListener('window:popstate')
@@ -187,35 +183,40 @@ export class VcViewComponent implements OnInit {
     this.isVerifyModalOpen = true;
     history.pushState(null, '');
     this.cdr.markForCheck();
-
+    
     const credential = this.credentialInput$();
-
-    for (let i = 0; i < keys.length; i++) {
-      await this.delay(400);
-      this.verificationChecks[i] = { ...this.verificationChecks[i], status: 'checking' };
-      this.cdr.markForCheck();
-
-      await this.delay(600);
-      const result = await this.verificationService.runCheck(keys[i], credential);
-      this.verificationChecks[i] = result;
-      this.cdr.markForCheck();
-    }
-
-    await this.delay(400);
-    const allPassed = this.verificationChecks.every(c => c.status === 'passed');
-    this.verifyOverall = allPassed ? 'valid' : 'invalid';
-
-    if (!allPassed) {
-      const statusCheck = this.verificationChecks.find(c => c.key === 'status');
-      const expirationCheck = this.verificationChecks.find(c => c.key === 'expiration');
-
-      if (statusCheck?.status === 'failed' && statusCheck?.detail === 'revoked') {
-        this.verifyResultKey = 'verification.result-revoked';
-      } else if (expirationCheck?.status === 'failed') {
-        this.verifyResultKey = 'verification.result-expired';
-      } else {
-        this.verifyResultKey = 'verification.result-invalid';
+    
+    try {
+      for (let i = 0; i < keys.length; i++) {
+        await this.delay(400);
+        this.verificationChecks[i] = { ...this.verificationChecks[i], status: 'checking' };
+        this.cdr.markForCheck();
+        
+        await this.delay(600);
+        const result = await this.verificationService.runCheck(keys[i], credential);
+        this.verificationChecks[i] = result;
+        this.cdr.markForCheck();
       }
+      
+      await this.delay(400);
+      const allPassed = this.verificationChecks.every(c => c.status === 'passed');
+      this.verifyOverall = allPassed ? 'valid' : 'invalid';
+      
+      if (!allPassed) {
+        const statusCheck = this.verificationChecks.find(c => c.key === 'status');
+        const expirationCheck = this.verificationChecks.find(c => c.key === 'expiration');
+        
+        if (statusCheck?.status === 'failed' && statusCheck?.detail === 'revoked') {
+          this.verifyResultKey = 'verification.result-revoked';
+        } else if (expirationCheck?.status === 'failed') {
+          this.verifyResultKey = 'verification.result-expired';
+        } else {
+          this.verifyResultKey = 'verification.result-invalid';
+        }
+      }
+    } catch {
+      // TODO: gestión de errores
+      this.closeVerifyModal();
     }
 
     this.cdr.markForCheck();
@@ -269,7 +270,7 @@ export class VcViewComponent implements OnInit {
       queryParams: { id: null },
       queryParamsHandling: 'merge',
       replaceUrl: true,
-    })
+    });
   }
 
   public unsignedInfo(event: Event): void {
