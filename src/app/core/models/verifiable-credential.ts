@@ -25,6 +25,7 @@ export const CREDENTIAL_TYPES_ARRAY = [
   'learcredential.machine.w3c.3',
   'learcredential.machine.sd.1',
   'gx.labelcredential.w3c.1',
+  'doctorid.sd.1',
 ] as const;
 export type CredentialType = typeof CREDENTIAL_TYPES_ARRAY[number];
 export type ExtendedCredentialType =  'VerifiableCredential' | CredentialType;
@@ -41,7 +42,8 @@ export interface Issuer {
 export type CredentialSubject =
   | EmployeeCredentialSubject
   | LabelCredentialSubject
-  | MachineCredentialSubject;
+  | MachineCredentialSubject
+  | DoctorIdCredentialSubject;
 
 
 export interface LabelCredentialSubject {
@@ -117,4 +119,15 @@ export const LifeCycleStatuses = [
 ] as const;
 
 export type LifeCycleStatus = typeof LifeCycleStatuses[number];
+
+export interface DoctorIdCredentialSubject {
+  firstName: string;
+  lastName: string;
+  registrationNumber: string;
+  nationalId: string;
+  provincialBoard: string;
+  specialty: string;
+  email: string;
+  country: string;
+}
 

@@ -12,7 +12,7 @@ ion-modal.stack-modal {
 
 .credential-card {
   position: relative;
-  background: linear-gradient(135deg, var(--primary-color, var(--ion-color-primary)) 0%, var(--secondary-color, var(--ion-color-primary-shade)) 100%);
+  background: linear-gradient(135deg, var(--card-background, var(--primary-color, var(--ion-color-primary))) 0%, var(--card-gradient-end, var(--secondary-color, var(--ion-color-primary-shade))) 100%);
   width: 100%;
   max-width: 400px;
   min-width: 240px;
@@ -33,12 +33,17 @@ ion-modal.stack-modal {
 
   &--revoked,
   &--expired {
-    filter: grayscale(0.85) brightness(0.9);
-    opacity: 0.8;
+    filter: grayscale(0.85);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 
+    .card-title,
+    .card-field,
+    .card-shield-icon {
+      opacity: 0.6;
+    }
+
     &:hover {
-      filter: grayscale(0.7) brightness(0.92);
+      filter: grayscale(0.7);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
     }
   }
@@ -82,7 +87,7 @@ ion-modal.stack-modal {
   background: rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  color: var(--primary-contrast-color, #fff);
+  color: var(--card-text, var(--primary-contrast-color, #fff));
   font-size: 11px;
   font-weight: 600;
   padding: 4px 12px;
@@ -134,12 +139,12 @@ ion-modal.stack-modal {
 
 .card-shield-icon {
   font-size: 20px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgb(var(--card-text-rgb, var(--primary-contrast-color-rgb, 255, 255, 255)) / 0.5);
   flex-shrink: 0;
 }
 
 .card-title {
-  color: var(--primary-contrast-color, #fff);
+  color: var(--card-text, var(--primary-contrast-color, #fff));
   @include fluid-type(0.8125rem, 0.9375rem);
   font-weight: 700;
   overflow: hidden;
@@ -155,7 +160,7 @@ ion-modal.stack-modal {
 }
 
 .card-field {
-  color: rgba(255, 255, 255, 0.75);
+  color: rgb(var(--card-text-rgb, var(--primary-contrast-color-rgb, 255, 255, 255)) / 0.75);
   @include fluid-type(0.75rem, 0.8125rem);
   font-weight: 500;
   overflow: hidden;

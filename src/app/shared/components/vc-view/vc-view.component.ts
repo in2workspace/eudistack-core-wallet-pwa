@@ -81,6 +81,7 @@ export class VcViewComponent implements OnInit {
   @Input() public isDetailViewActive = false;
   @Output() public vcEmit: EventEmitter<VerifiableCredential> =
     new EventEmitter();
+  @Output() public statusChanged = new EventEmitter<{ id: string; status: string }>();
 
   credentialType!: ExtendedCredentialType;
 
@@ -176,8 +177,10 @@ export class VcViewComponent implements OnInit {
 
       if (statusCheck?.status === 'failed' && statusCheck?.detail === 'revoked') {
         this.verifyResultKey = 'verification.result-revoked';
+        this.updateLifeCycleStatus('REVOKED');
       } else if (expirationCheck?.status === 'failed') {
         this.verifyResultKey = 'verification.result-expired';
+        this.updateLifeCycleStatus('EXPIRED');
       } else {
         this.verifyResultKey = 'verification.result-invalid';
       }
@@ -188,6 +191,15 @@ export class VcViewComponent implements OnInit {
 
   public closeVerifyModal(): void {
     this.isVerifyModalOpen = false;
+  }
+
+  private updateLifeCycleStatus(status: string): void {
+    const cred = this.credentialInput$();
+    if (cred.lifeCycleStatus === status) return;
+    cred.lifeCycleStatus = status as any;
+    this.walletService.updateCredentialStatus(cred.id, status).subscribe();
+    this.statusChanged.emit({ id: cred.id, status });
+    this.cdr.markForCheck();
   }
 
   private delay(ms: number): Promise<void> {

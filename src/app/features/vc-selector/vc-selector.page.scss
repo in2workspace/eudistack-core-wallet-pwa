@@ -19,7 +19,7 @@
   width: clamp(44px, 13vw, 56px);
   height: clamp(44px, 13vw, 56px);
   border-radius: 50%;
-  background: var(--action-primary, #2563EB);
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
   margin-bottom: 14px;
 
   ion-icon {

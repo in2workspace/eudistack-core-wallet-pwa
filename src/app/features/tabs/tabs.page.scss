@@ -14,7 +14,7 @@ ion-tab-bar {
 
 ion-tab-button {
   --color: var(--text-disabled);
-  --color-selected: var(--action-primary);
+  --color-selected: var(--text-primary);
   font-size: clamp(10px, 2.8vw, 12px);
   font-weight: 600;
   letter-spacing: 0.02em;

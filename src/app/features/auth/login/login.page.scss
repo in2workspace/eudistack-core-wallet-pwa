@@ -1,7 +1,7 @@
 @use 'responsive' as *;
 
 .auth-bg {
-  --background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  --background: linear-gradient(135deg, var(--auth-background, var(--primary-color)) 0%, var(--auth-gradient-end, var(--secondary-color)) 100%);
 }
 
 .auth-wrapper {
@@ -67,7 +67,7 @@
   width: clamp(64px, 18vw, 80px);
   height: clamp(64px, 18vw, 80px);
   border-radius: 50%;
-  background: linear-gradient(135deg, rgb(var(--action-primary-rgb) / 0.1), rgb(var(--action-primary-rgb) / 0.05));
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -75,7 +75,7 @@
 
   ion-icon {
     font-size: 40px;
-    color: var(--action-primary);
+    color: var(--primary-contrast-color, #fff);
   }
 }
 
@@ -87,8 +87,8 @@
 // Authenticating variant
 .fp-circle.fp-authenticating {
   animation: fpAuthPulse 1.2s ease-in-out infinite;
-  box-shadow: 0 0 0 8px rgb(var(--action-primary-rgb) / 0.15),
-              0 0 20px rgb(var(--action-primary-rgb) / 0.1);
+  box-shadow: 0 0 0 8px rgb(var(--secondary-color-rgb) / 0.15),
+              0 0 20px rgb(var(--secondary-color-rgb) / 0.1);
 }
 
 @keyframes fpAuthPulse {
@@ -96,14 +96,7 @@
   50% { transform: scale(1.12); opacity: 0.8; }
 }
 
-// Install variant
-.fp-circle.install-circle {
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-
-  ion-icon {
-    color: var(--primary-contrast-color, #fff);
-  }
-}
+// Install variant (inherits base .fp-circle gradient)
 
 .secondary-button {
   --color: var(--text-secondary);
@@ -131,15 +124,20 @@
 // Buttons
 .auth-button {
   --border-radius: 12px;
-  --background: var(--action-primary);
-  --box-shadow: 0 4px 14px rgb(var(--action-primary-rgb) / 0.35);
+  --background: var(--button-background, var(--primary-color));
+  --color: var(--button-text, var(--primary-contrast-color));
+  --border-color: var(--secondary-color);
+  --border-style: solid;
+  --border-width: 2px;
+  --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
   height: 50px;
   font-weight: 600;
   font-size: 1rem;
   margin-top: 8px;
 
   &[disabled] {
-    --background: var(--action-primary);
+    --background: var(--border-default);
+    --border-color: var(--border-default);
     --box-shadow: none;
     opacity: 0.5;
   }

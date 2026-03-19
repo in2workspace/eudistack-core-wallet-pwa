@@ -1,7 +1,7 @@
 @use 'responsive' as *;
 
 .auth-bg {
-  --background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  --background: linear-gradient(135deg, var(--auth-background, var(--primary-color)) 0%, var(--auth-gradient-end, var(--secondary-color)) 100%);
 }
 
 .auth-wrapper {
@@ -264,8 +264,12 @@
 // Buttons
 .auth-button {
   --border-radius: 12px;
-  --background: var(--action-primary);
-  --box-shadow: 0 4px 14px rgb(var(--action-primary-rgb) / 0.35);
+  --background: var(--button-background, var(--primary-color));
+  --color: var(--button-text, var(--primary-contrast-color));
+  --border-color: var(--secondary-color);
+  --border-style: solid;
+  --border-width: 2px;
+  --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
   height: 50px;
   font-weight: 600;
   font-size: 1rem;
@@ -273,6 +277,7 @@
 
   &[disabled] {
     --background: var(--border-default);
+    --border-color: var(--border-default);
     --box-shadow: none;
   }
 }

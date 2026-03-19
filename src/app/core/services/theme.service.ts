@@ -103,6 +103,9 @@ export class ThemeService {
     // Apply via ColorService (which also sets -rgb, -shade, -tint)
     this.colorService.applyCustomColors(colorMap);
 
+    // ── Layer 1b: Per-context overrides (optional, fallback to Layer 1) ──
+    this.applyContextTokens(theme, root);
+
     // ── Layer 2: Semantic tokens (content area) ──
     const actionPrimary = this.computeActionPrimary(theme.branding.primaryColor);
 
@@ -173,6 +176,37 @@ export class ThemeService {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (meta) {
       meta.content = theme.branding.primaryColor;
+    }
+  }
+
+  /**
+   * Apply optional per-context color overrides from theme.json branding.
+   * Each token falls back to the base brand color if not specified.
+   */
+  private applyContextTokens(theme: Theme, root: HTMLElement): void {
+    const b = theme.branding;
+
+    const contextMap: Record<string, string | undefined> = {
+      // Header
+      '--header-background': b.header?.background,
+      '--header-text': b.header?.text,
+      // Credential card
+      '--card-background': b.card?.background,
+      '--card-gradient-end': b.card?.gradientEnd,
+      '--card-text': b.card?.text,
+      // Buttons
+      '--button-background': b.button?.background,
+      '--button-text': b.button?.text,
+      // Auth screens
+      '--auth-background': b.auth?.background,
+      '--auth-gradient-end': b.auth?.gradientEnd ?? b.auth?.background,
+    };
+
+    for (const [token, value] of Object.entries(contextMap)) {
+      if (value) {
+        root.style.setProperty(token, value);
+        root.style.setProperty(`${token}-rgb`, this.hexToRgbChannels(value));
+      }
     }
   }
 

@@ -160,6 +160,17 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     });
   }
 
+  public onCredentialStatusChanged(event: { id: string; status: string }): void {
+    const cred = this.credList.find(c => c.id === event.id);
+    if (cred) {
+      cred.lifeCycleStatus = event.status as any;
+      if (event.status === 'REVOKED') {
+        this.revokedCredentialIds.add(event.id);
+      }
+      this.cdr.detectChanges();
+    }
+  }
+
   public vcDelete(cred: VerifiableCredential): void {
     this.loader.addLoadingProcess();
     this.walletService.deleteVC(cred.id)
