@@ -3,7 +3,7 @@
     "menu":{
         "scan":"Escàner QR",
         "credentials":"Credencials",
-        "camera-selector":"Selector de Camara",
+        "camera-selector":"Selector de Càmera",
         "language-selector":"Selector d'Idioma",
         "terms-of-user":"Termes d'Us",
         "privacy-policy":"Política de Privacitat",
@@ -30,7 +30,7 @@
         "add":"Afegeix",
         "nocred":"No tens cap credencial carregada",
         "nocred-title":"Sense credencials",
-        "nocred-subtitle":"Escaneja un codi QR o accepta una oferta de credencial per comencar.",
+        "nocred-subtitle":"Escaneja un codi QR o accepta una oferta de credencial per començar.",
         "expiration":"Caducat",
         "expiring-soon":"Caduca aviat",
         "expiredCredential":"Credencial caducada",
@@ -62,9 +62,7 @@
         "title": "Logs de càmera",
         "no-more-logs": "No hi ha més logs de càmera per mostrar."
     },
-    "send-logs": {
-        "mailto_permission_alert": "Assegureu-vos que teniu els permisos necessaris per enviar correus electrònics amb la vostra aplicació de correu predeterminada. Si el servei de correu no s'obre, probablement és a causa de restriccions de permisos."
-    },
+    "mailto_permission_alert": "Assegureu-vos que teniu els permisos necessaris per enviar correus electrònics amb la vostra aplicació de correu predeterminada. Si el servei de correu no s'obre, probablement és a causa de restriccions de permisos.",
     "auth": {
         "login": {
             "title": "Benvingut",
@@ -109,7 +107,7 @@
         "error": "Nom d'usuari o contrasenya incorrectes"
     },
     "privacy-policy":{
-        "title":"Politica de Privacitat"
+        "title":"Política de Privacitat"
     },
     "settings":{
         "title":"Configuració",
@@ -135,7 +133,7 @@
         "unauthorized-message":"La credencial enviada no es vàlida.",
         "bad-request-error-message":"Error en enviar la credencial",
         "server-error-message":"No s'ha pogut processar la petició.<br>Torni a intentar-ho més tard.",
-        "generic-error-message": "Error desconocido",
+        "generic-error-message": "Error desconegut",
         "close": "Tancar",
         "credential-revoke-message":"La credencial proporcionada no és vàlida, ha estat revocada o no és vàlida per a aquesta operació"
     },
@@ -292,9 +290,9 @@
         "failed-qr-process": "Hi ha hagut un problema en processar el QR. Pot ser que sigui invàlid o que ja hagi estat utilitzat abans. Refresqueu-lo. Si el problema persisteix, contacteu <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>",
         "invalid-qr":"El QR presentat és invàlid",
         "no-credentials-available": "No hi ha cap credencial disponible per al login",
-        "expired-credentialOffer":"La oferta de credencial està expirada o ja utilitzada",
+        "expired-credentialOffer":"L'oferta de credencial ha expirat o ja s'ha utilitzat",
         "cannot-get-VC":"No s'ha pogut obtenir la credencial del Issuer",
-        "cannot-save-VC":"No s'ha pogut guardar correctamente la credencial",
+        "cannot-save-VC":"No s'ha pogut guardar correctament la credencial",
         "incorrect-pin":"PIN incorrecte. Si us plau, actualitzeu l'oferta de credencials. Si el problema persisteix, poseu-vos en contacte amb <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>.",
         "pin-expired": "No ha introduït el PIN dins del límit de temps. Si us plau, renoveu l'oferta de credencial. Si el problema persisteix, poseu-vos en contacte amb <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>.",
         "qr-expired": "La sessió QR ha expirat. Si us plau, renoveu l'oferta de credencial.",
@@ -368,11 +366,11 @@
         "cancel":"Cancel·lar",
         "new-credential": "Vols acceptar aquesta credencial?",
         "new-credential-title": "Nova credencial",
-        "accept":"Aceptar",
+        "accept":"Acceptar",    
         "pin":"Introdueix el PIN",
         "description": "S'ha enviat un codi PIN al teu email. Revisa'l i introdueix el PIN.",
         "send": "Enviar",
-        "messageHtml": "{{description}}<br><small class=\"counter\">Temps restant: {{counter}} segundos</small>",
+        "messageHtml": "{{description}}<br><small class=\"counter\">Temps restant: {{counter}} segons</small>",
         "organization":"Organització: ",
         "holder":"Titular: ",
         "powers":"Poders: ",

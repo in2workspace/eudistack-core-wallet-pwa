@@ -4,16 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.0.3](https://github.com/in2workspace/eudistack-core-wallet-pwa/releases/tag/v3.0.3)
+### Fixed
+- Clean up mixed/incorrect translations across EN/ES/CA.
+
+## [3.0.2](https://github.com/in2workspace/eudistack-core-wallet-pwa/releases/tag/v3.0.2)
+### Removed
+- Remove unused environment variables.
 
 ### Changed
-
 - Move branding configuration (colors, logo, favicon, default language) from env.js to theme.json for multi-tenant runtime theming.
 - Remove branding variables from env.template.js, env.js, and global.d.ts Window type.
 
 ### Added
-
 - Add `tenantDomain` field to Theme interface and expose it as a public getter in ThemeService.
+
+## [3.0.1](https://github.com/in2workspace/eudistack-core-wallet-pwa/releases/tag/v3.0.1)
+### Fixed
+- Fixed popup after vc delete.
 
 ## [2.1.1](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.1.1)
 ### Changed
