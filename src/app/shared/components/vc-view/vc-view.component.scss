@@ -139,7 +139,7 @@ ion-modal.stack-modal {
 
 .card-shield-icon {
   font-size: 20px;
-  color: rgb(var(--card-text-rgb, var(--primary-contrast-color-rgb, 255, 255, 255)) / 0.5);
+  color: color-mix(in srgb, var(--primary-contrast-color, #fff) 50%, transparent);  
   flex-shrink: 0;
 }
 
@@ -160,7 +160,7 @@ ion-modal.stack-modal {
 }
 
 .card-field {
-  color: rgb(var(--card-text-rgb, var(--primary-contrast-color-rgb, 255, 255, 255)) / 0.75);
+  color: color-mix(in srgb, var(--primary-contrast-color, #fff) 75%, transparent);  
   @include fluid-type(0.75rem, 0.8125rem);
   font-weight: 500;
   overflow: hidden;
@@ -280,23 +280,23 @@ ion-modal.detail-blurred::part(content) {
 .structured-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); &::after { content: ':'; } }
 .structured-value { font-size: 13px; font-weight: 500; color: var(--text-primary); }
 
-// ── Token display ─────────────────────────────────────
+// ── Copy row ──────────────────────────────────────────
 
-.token-container {
+.copy-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   flex-wrap: nowrap;
   width: 100%;
   gap: 12px;
 }
 
-.token-value {
+.copy-row__text {
   flex: 1;
   min-width: 0;
 }
 
-.token-actions {
+.copy-row__actions {
   display: flex;
   gap: 4px;
   flex-shrink: 0;

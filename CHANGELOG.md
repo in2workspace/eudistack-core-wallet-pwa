@@ -26,11 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix SVG asset path to source from ionicons node_modules.
 - Set default favicon path in index.html (`assets/tenant/favicon.png`).
 - Back the primary color for verify button (it changed the contrast color in the commit 46bfd21).
+- Update style files to apply tenant text color in platform-assets.
 
 ### Fixed
 - Clean up mixed/incorrect translations across EN/ES/CA.
 - Fixed popup after vc delete.
-- Fix credential detail modal and verification modal closing incorrectly when the browser back button is pressed.
+- Fix credential detail modal and verification modal closing incorrectly when the browser back button is pressed. 
+- Translate revoke state URL from vc detail modal to verification detail modal.
 
 ### Security
 - Add hex color validation in ThemeService to prevent CSS injection via theme.json.
