@@ -4,9 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.3](https://github.com/in2workspace/eudistack-core-wallet-pwa/releases/tag/v3.0.3)
-### Fixed
-- Clean up mixed/incorrect translations across EN/ES/CA.
+## [Unreleased]
 
 ### Added
 - Add `tenantDomain` field to Theme interface and expose it as a public getter in ThemeService.
@@ -15,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add credential status propagation via `statusChanged` event in VcViewComponent.
 - Add Dependabot configuration for npm security updates and GitHub Actions.
 - Add PR template with EUDI closing tasks checklist.
+- Align CI/CD workflows: build automatic (with Jest coverage), deploy and release manual.
 
 ### Changed
 - Move branding configuration (colors, logo, favicon, default language) from env.js to theme.json for multi-tenant runtime theming.
@@ -25,16 +24,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix SVG asset path to source from ionicons node_modules.
 - Set default favicon path in index.html (`assets/tenant/favicon.png`).
 
+### Fixed
+
+- Clean up mixed/incorrect translations across EN/ES/CA.
+- Fixed popup after vc delete.
+
 ### Security
 
 - Add hex color validation in ThemeService to prevent CSS injection via theme.json.
 - Add relative path validation for favicon and PWA icon URLs to prevent external URL hijacking.
 - Type `updateCredentialStatus` chain with `LifeCycleStatus` instead of `string`, removing `as any` casts.
 - Remove direct signal input mutation in VcViewComponent; parent now owns state changes.
-
-## [3.0.1](https://github.com/in2workspace/eudistack-core-wallet-pwa/releases/tag/v3.0.1)
-### Fixed
-- Fixed popup after vc delete.
 
 ## [2.1.1](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.1.1)
 ### Changed
