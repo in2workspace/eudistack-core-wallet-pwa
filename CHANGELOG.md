@@ -6,14 +6,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `tenantDomain` field to Theme interface and expose it as a public getter in ThemeService.
+- Add per-context color tokens in ThemeService (header, card, button, auth overrides) for tenant-specific theming.
+- Add DoctorID credential type support (`doctorid.sd.1`) with type registry, schema registry, normalizer, and type map.
+- Add credential status propagation via `statusChanged` event in VcViewComponent.
+- Add Dependabot configuration for npm security updates and GitHub Actions.
+- Add PR template with EUDI closing tasks checklist.
+
 ### Changed
 
 - Move branding configuration (colors, logo, favicon, default language) from env.js to theme.json for multi-tenant runtime theming.
 - Remove branding variables from env.template.js, env.js, and global.d.ts Window type.
+- Replace hardcoded `action-primary` and `rgba(37,99,235,...)` colors with CSS custom properties across auth, home, tabs, vc-selector, and vc-view SCSS files.
+- Move privacy blur from entire card body to card fields only (card title remains visible).
+- Improve revoked/expired credential card styling with per-element opacity instead of whole-card dimming.
+- Fix SVG asset path to source from ionicons node_modules.
+- Set default favicon path in index.html (`assets/tenant/favicon.png`).
 
-### Added
+### Security
 
-- Add `tenantDomain` field to Theme interface and expose it as a public getter in ThemeService.
+- Add hex color validation in ThemeService to prevent CSS injection via theme.json.
+- Add relative path validation for favicon and PWA icon URLs to prevent external URL hijacking.
+- Type `updateCredentialStatus` chain with `LifeCycleStatus` instead of `string`, removing `as any` casts.
+- Remove direct signal input mutation in VcViewComponent; parent now owns state changes.
 
 ## [2.1.1](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.1.1)
 ### Changed

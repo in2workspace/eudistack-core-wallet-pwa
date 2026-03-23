@@ -93,12 +93,20 @@ export class ThemeService {
     const root = document.documentElement;
 
     // ── Layer 1: Brand tokens (header/footer chrome only) ──
-    const colorMap: Record<string, string> = {
+    const brandColors: Record<string, string> = {
       '--primary-color': theme.branding.primaryColor,
       '--primary-contrast-color': theme.branding.primaryContrastColor,
       '--secondary-color': theme.branding.secondaryColor,
       '--secondary-contrast-color': theme.branding.secondaryContrastColor,
     };
+
+    // Filter out invalid color values to prevent CSS injection
+    const colorMap: Record<string, string> = {};
+    for (const [token, value] of Object.entries(brandColors)) {
+      if (this.isValidCssColor(value)) {
+        colorMap[token] = value;
+      }
+    }
 
     // Apply via ColorService (which also sets -rgb, -shade, -tint)
     this.colorService.applyCustomColors(colorMap);
@@ -148,7 +156,7 @@ export class ThemeService {
       scope: `${origin}/`,
       start_url: `${origin}/`,
       orientation: 'portrait',
-      icons: theme.branding.pwaIconUrl
+      icons: theme.branding.pwaIconUrl && this.isRelativeAssetPath(theme.branding.pwaIconUrl)
         ? [
             { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '192x192', type: 'image/png', purpose: 'any' },
             { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '512x512', type: 'image/png', purpose: 'any' },
@@ -183,6 +191,11 @@ export class ThemeService {
    * Apply optional per-context color overrides from theme.json branding.
    * Each token falls back to the base brand color if not specified.
    */
+  /** Returns true if the value is a valid hex color (#RGB, #RRGGBB, #RRGGBBAA). */
+  private isValidCssColor(value: string): boolean {
+    return /^#[0-9a-fA-F]{3,8}$/.test(value.trim());
+  }
+
   private applyContextTokens(theme: Theme, root: HTMLElement): void {
     const b = theme.branding;
 
@@ -203,7 +216,7 @@ export class ThemeService {
     };
 
     for (const [token, value] of Object.entries(contextMap)) {
-      if (value) {
+      if (value && this.isValidCssColor(value)) {
         root.style.setProperty(token, value);
         root.style.setProperty(`${token}-rgb`, this.hexToRgbChannels(value));
       }
@@ -293,7 +306,14 @@ export class ThemeService {
     return undefined;
   }
 
+  /** Returns true if the URL is a safe relative path (no external URLs). */
+  private isRelativeAssetPath(url: string): boolean {
+    return url.startsWith('assets/') || url.startsWith('/assets/');
+  }
+
   private setFavicon(url: string): void {
+    if (!this.isRelativeAssetPath(url)) return;
+
     let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
     if (!link) {
       link = document.createElement('link');

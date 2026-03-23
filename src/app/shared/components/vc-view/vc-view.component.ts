@@ -16,7 +16,7 @@ import { QRCodeComponent } from 'angularx-qrcode';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { ExtendedCredentialType, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
+import { ExtendedCredentialType, LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { IonicModule } from '@ionic/angular';
 import { DisplayField, DisplaySection } from 'src/app/core/models/display-field.model';
 import * as dayjs from 'dayjs';
@@ -81,7 +81,7 @@ export class VcViewComponent implements OnInit {
   @Input() public isDetailViewActive = false;
   @Output() public vcEmit: EventEmitter<VerifiableCredential> =
     new EventEmitter();
-  @Output() public statusChanged = new EventEmitter<{ id: string; status: string }>();
+  @Output() public statusChanged = new EventEmitter<{ id: string; status: LifeCycleStatus }>();
 
   credentialType!: ExtendedCredentialType;
 
@@ -193,11 +193,12 @@ export class VcViewComponent implements OnInit {
     this.isVerifyModalOpen = false;
   }
 
-  private updateLifeCycleStatus(status: string): void {
+  private updateLifeCycleStatus(status: LifeCycleStatus): void {
     const cred = this.credentialInput$();
     if (cred.lifeCycleStatus === status) return;
-    cred.lifeCycleStatus = status as any;
-    this.walletService.updateCredentialStatus(cred.id, status).subscribe();
+    this.walletService.updateCredentialStatus(cred.id, status).subscribe({
+      error: (e) => console.error('Failed to persist credential status', e),
+    });
     this.statusChanged.emit({ id: cred.id, status });
     this.cdr.markForCheck();
   }
