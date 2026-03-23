@@ -9,7 +9,7 @@ import { WalletService } from 'src/app/core/services/wallet.service';
 import { VcViewComponent } from '../../shared/components/vc-view/vc-view.component';
 import { TranslateModule } from '@ngx-translate/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { VerifiableCredential } from 'src/app/core/models/verifiable-credential';
+import { LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { VerifiableCredentialSubjectDataNormalizer } from 'src/app/core/models/verifiable-credential-subject-data-normalizer';
 import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -158,6 +158,17 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       },
       queryParamsHandling: 'merge'
     });
+  }
+
+  public onCredentialStatusChanged(event: { id: string; status: LifeCycleStatus }): void {
+    const cred = this.credList.find(c => c.id === event.id);
+    if (cred) {
+      cred.lifeCycleStatus = event.status;
+      if (event.status === 'REVOKED') {
+        this.revokedCredentialIds.add(event.id);
+      }
+      this.cdr.detectChanges();
+    }
   }
 
   public vcDelete(cred: VerifiableCredential): void {

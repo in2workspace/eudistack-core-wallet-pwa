@@ -10,6 +10,25 @@ export interface Theme {
     logoDarkUrl: string | null;
     faviconUrl: string | null;
     pwaIconUrl: string | null;
+
+    /** Optional per-context color overrides. All fields fallback to primary/secondary when omitted. */
+    header?: {
+      background?: string;
+      text?: string;
+    };
+    card?: {
+      background?: string;
+      gradientEnd?: string;
+      text?: string;
+    };
+    button?: {
+      background?: string;
+      text?: string;
+    };
+    auth?: {
+      background?: string;
+      gradientEnd?: string;
+    };
   };
   content: {
     links: { label: string; url: string }[];

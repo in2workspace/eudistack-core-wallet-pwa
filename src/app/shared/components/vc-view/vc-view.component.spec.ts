@@ -17,6 +17,7 @@ class WalletServiceMock {
   requestSignature(credentialId: string): Observable<any> {
     return of({ success: true });
   }
+  updateCredentialStatus = jest.fn().mockReturnValue(of(undefined));
 }
 
 class CredentialDisplayServiceMock {
@@ -346,6 +347,54 @@ describe('VcViewComponent', () => {
     );
     expect(issuerIdField).toBeTruthy();
     expect(issuerIdField!.value).toBe('did:example:issuer');
+  });
+
+  describe('statusChanged', () => {
+    it('should emit statusChanged and call updateCredentialStatus when status changes', () => {
+      jest.spyOn(component.statusChanged, 'emit');
+
+      // Set credential to VALID so the status change triggers
+      componentRef.setInput('credentialInput$', {
+        ...component.credentialInput$(),
+        lifeCycleStatus: 'VALID',
+      });
+      fixture.detectChanges();
+
+      // Call the private method via bracket notation
+      (component as any).updateLifeCycleStatus('REVOKED');
+
+      expect(walletService.updateCredentialStatus).toHaveBeenCalledWith('testId', 'REVOKED');
+      expect(component.statusChanged.emit).toHaveBeenCalledWith({ id: 'testId', status: 'REVOKED' });
+    });
+
+    it('should NOT emit statusChanged when status is the same', () => {
+      jest.spyOn(component.statusChanged, 'emit');
+
+      componentRef.setInput('credentialInput$', {
+        ...component.credentialInput$(),
+        lifeCycleStatus: 'REVOKED',
+      });
+      fixture.detectChanges();
+
+      (component as any).updateLifeCycleStatus('REVOKED');
+
+      expect(walletService.updateCredentialStatus).not.toHaveBeenCalled();
+      expect(component.statusChanged.emit).not.toHaveBeenCalled();
+    });
+
+    it('should not mutate the credential input directly', () => {
+      componentRef.setInput('credentialInput$', {
+        ...component.credentialInput$(),
+        lifeCycleStatus: 'VALID',
+      });
+      fixture.detectChanges();
+
+      const credBefore = component.credentialInput$();
+      (component as any).updateLifeCycleStatus('EXPIRED');
+
+      // The component should NOT have mutated the input — parent owns that
+      expect(credBefore.lifeCycleStatus).toBe('VALID');
+    });
   });
 
 });

@@ -27,12 +27,12 @@
     }
   </div>
 
-  <div class="card-body" [class.card-blurred]="blurred()">
+  <div class="card-body">
     <div class="card-title-row">
       <ion-icon name="shield-checkmark-outline" class="card-shield-icon"></ion-icon>
       <span class="card-title">{{ displayName() || credentialType }}</span>
     </div>
-    <div class="card-fields">
+    <div class="card-fields" [class.card-blurred]="blurred()">
       @for(field of cardFields(); track field) {
         <span class="card-field">{{ field.value }}</span>
       }

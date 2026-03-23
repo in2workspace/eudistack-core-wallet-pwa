@@ -4,7 +4,7 @@ import { HttpClient, HttpHeaders, HttpParams, HttpResponse} from '@angular/commo
 import { inject, Injectable } from '@angular/core';
 import { from, Observable, of } from 'rxjs';
 import { environment } from 'src/environments/environment';
-import { VerifiableCredential } from '../models/verifiable-credential';
+import { LifeCycleStatus, VerifiableCredential } from '../models/verifiable-credential';
 import { SERVER_PATH } from '../constants/api.constants';
 import { FinalizeIssuancePayload } from '../models/FinalizeIssuancePayload';
 import { CredentialResponse } from '../models/dto/CredentialResponse';
@@ -69,7 +69,7 @@ export class WalletService {
     );
   }
 
-  public updateCredentialStatus(credentialId: string, status: string): Observable<void> {
+  public updateCredentialStatus(credentialId: string, status: LifeCycleStatus): Observable<void> {
     if (isBrowserMode()) {
       return from(this.credentialStorage.updateCredentialStatus(credentialId, status));
     }

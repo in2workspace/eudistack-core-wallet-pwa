@@ -284,4 +284,46 @@ describe('AppComponent', () => {
     expect(component.isLoading$()).toBe(loaderService.isLoading$());
     expect(component.isLoading$()).toBeTruthy();
   });
+
+  describe('consumeLaunchQueue', () => {
+    it('should call setConsumer and navigate when launchQueue exists', () => {
+      const setConsumerMock = jest.fn();
+      (window as any).launchQueue = { setConsumer: setConsumerMock };
+      routerMock.navigateByUrl = jest.fn();
+
+      (component as any).consumeLaunchQueue();
+
+      expect(setConsumerMock).toHaveBeenCalledTimes(1);
+
+      // Simulate the browser calling the consumer with a targetURL
+      const consumer = setConsumerMock.mock.calls[0][0];
+      consumer({ targetURL: 'https://wallet.example.com/protocol/callback?code=abc123' });
+
+      expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/protocol/callback?code=abc123');
+
+      delete (window as any).launchQueue;
+    });
+
+    it('should not navigate when launchParams has no targetURL', () => {
+      const setConsumerMock = jest.fn();
+      (window as any).launchQueue = { setConsumer: setConsumerMock };
+      routerMock.navigateByUrl = jest.fn();
+
+      (component as any).consumeLaunchQueue();
+
+      const consumer = setConsumerMock.mock.calls[0][0];
+      consumer({ targetURL: '' });
+
+      expect(routerMock.navigateByUrl).not.toHaveBeenCalled();
+
+      delete (window as any).launchQueue;
+    });
+
+    it('should do nothing when launchQueue is not in window', () => {
+      delete (window as any).launchQueue;
+
+      // Should not throw
+      expect(() => (component as any).consumeLaunchQueue()).not.toThrow();
+    });
+  });
 });

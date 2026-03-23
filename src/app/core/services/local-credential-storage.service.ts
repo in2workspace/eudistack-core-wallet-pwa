@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AppError } from '../models/error/AppError';
-import { VerifiableCredential } from '../models/verifiable-credential';
+import { LifeCycleStatus, VerifiableCredential } from '../models/verifiable-credential';
 
 /**
  * IndexedDB-backed credential storage for browser-only (PRF) mode.
@@ -53,14 +53,14 @@ export class LocalCredentialStorageService {
     }
   }
 
-  async updateCredentialStatus(id: string, status: string): Promise<void> {
+  async updateCredentialStatus(id: string, status: LifeCycleStatus): Promise<void> {
     const db = await this.openDatabase();
     try {
       const tx = db.transaction(this.STORE_NAME, 'readwrite');
       const store = tx.objectStore(this.STORE_NAME);
       const existing = await this.wrapRequest<VerifiableCredential | undefined>(store.get(id));
       if (existing) {
-        existing.lifeCycleStatus = status as VerifiableCredential['lifeCycleStatus'];
+        existing.lifeCycleStatus = status;
         store.put(existing);
       }
       await this.awaitTx(tx);

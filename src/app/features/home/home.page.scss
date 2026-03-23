@@ -28,7 +28,7 @@
 
 .install-banner-icon {
   font-size: 20px;
-  color: var(--action-primary);
+  color: var(--text-primary);
   flex-shrink: 0;
 }
 
@@ -84,7 +84,7 @@
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 2px solid var(--action-primary);
+  border: 2px solid var(--secondary-color);
   opacity: 0;
   animation: pulse-ring 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
@@ -113,10 +113,10 @@
   border-radius: 50%;
   border: none;
   cursor: pointer;
-  background: linear-gradient(135deg, var(--action-primary) 0%, var(--primary-color) 100%);
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
   box-shadow:
-    0 4px 20px rgba(37, 99, 235, 0.35),
-    0 0 40px rgba(37, 99, 235, 0.1);
+    0 4px 20px rgb(var(--secondary-color-rgb) / 0.35),
+    0 0 40px rgb(var(--secondary-color-rgb) / 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -126,19 +126,19 @@
   &:hover {
     transform: scale(1.06);
     box-shadow:
-      0 6px 28px rgba(37, 99, 235, 0.45),
-      0 0 48px rgba(37, 99, 235, 0.15);
+      0 6px 28px rgb(var(--secondary-color-rgb) / 0.45),
+      0 0 48px rgb(var(--secondary-color-rgb) / 0.15);
   }
 
   &:active {
     transform: scale(0.96);
     box-shadow:
-      0 2px 12px rgba(37, 99, 235, 0.3),
-      0 0 24px rgba(37, 99, 235, 0.08);
+      0 2px 12px rgb(var(--secondary-color-rgb) / 0.3),
+      0 0 24px rgb(var(--secondary-color-rgb) / 0.08);
   }
 
   &:focus-visible {
-    outline: 3px solid var(--action-primary);
+    outline: 3px solid var(--secondary-color);
     outline-offset: 4px;
   }
 }
