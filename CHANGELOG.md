@@ -4,10 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.0.3](https://github.com/in2workspace/eudistack-core-wallet-pwa/releases/tag/v3.0.3)
+### Fixed
+- Clean up mixed/incorrect translations across EN/ES/CA.
 
 ### Added
-
 - Add `tenantDomain` field to Theme interface and expose it as a public getter in ThemeService.
 - Add per-context color tokens in ThemeService (header, card, button, auth overrides) for tenant-specific theming.
 - Add DoctorID credential type support (`doctorid.sd.1`) with type registry, schema registry, normalizer, and type map.
@@ -16,7 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add PR template with EUDI closing tasks checklist.
 
 ### Changed
-
 - Move branding configuration (colors, logo, favicon, default language) from env.js to theme.json for multi-tenant runtime theming.
 - Remove branding variables from env.template.js, env.js, and global.d.ts Window type.
 - Replace hardcoded `action-primary` and `rgba(37,99,235,...)` colors with CSS custom properties across auth, home, tabs, vc-selector, and vc-view SCSS files.
@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add relative path validation for favicon and PWA icon URLs to prevent external URL hijacking.
 - Type `updateCredentialStatus` chain with `LifeCycleStatus` instead of `string`, removing `as any` casts.
 - Remove direct signal input mutation in VcViewComponent; parent now owns state changes.
+
+## [3.0.1](https://github.com/in2workspace/eudistack-core-wallet-pwa/releases/tag/v3.0.1)
+### Fixed
+- Fixed popup after vc delete.
 
 ## [2.1.1](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.1.1)
 ### Changed
