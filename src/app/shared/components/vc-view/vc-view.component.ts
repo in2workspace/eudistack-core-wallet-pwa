@@ -16,7 +16,7 @@ import { QRCodeComponent } from 'angularx-qrcode';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { ExtendedCredentialType, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
+import { ExtendedCredentialType, LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { IonicModule } from '@ionic/angular';
 import { DisplayField, DisplaySection } from 'src/app/core/models/display-field.model';
 import * as dayjs from 'dayjs';
@@ -94,6 +94,7 @@ export class VcViewComponent implements OnInit {
   
   @Output() public vcEmit: EventEmitter<VerifiableCredential> =
     new EventEmitter();
+  @Output() public statusChanged = new EventEmitter<{ id: string; status: LifeCycleStatus }>();
 
   credentialType!: ExtendedCredentialType;
 
@@ -201,21 +202,23 @@ export class VcViewComponent implements OnInit {
       await this.delay(400);
       const allPassed = this.verificationChecks.every(c => c.status === 'passed');
       this.verifyOverall = allPassed ? 'valid' : 'invalid';
-      
+  
       if (!allPassed) {
         const statusCheck = this.verificationChecks.find(c => c.key === 'status');
         const expirationCheck = this.verificationChecks.find(c => c.key === 'expiration');
-        
+  
         if (statusCheck?.status === 'failed' && statusCheck?.detail === 'revoked') {
           this.verifyResultKey = 'verification.result-revoked';
+          this.updateLifeCycleStatus('REVOKED');
         } else if (expirationCheck?.status === 'failed') {
           this.verifyResultKey = 'verification.result-expired';
+          this.updateLifeCycleStatus('EXPIRED');
         } else {
           this.verifyResultKey = 'verification.result-invalid';
         }
       }
     } catch {
-      // TODO: gestión de errores
+      // TODO: Review behavior in case of error
       this.closeVerifyModal();
     }
 
@@ -228,6 +231,16 @@ export class VcViewComponent implements OnInit {
     }
     this.isVerifyModalOpen = false;
     history.back();
+  }
+
+  private updateLifeCycleStatus(status: LifeCycleStatus): void {
+    const cred = this.credentialInput$();
+    if (cred.lifeCycleStatus === status) return;
+    this.walletService.updateCredentialStatus(cred.id, status).subscribe({
+      error: (e) => console.error('Failed to persist credential status', e),
+    });
+    this.statusChanged.emit({ id: cred.id, status });
+    this.cdr.markForCheck();
   }
 
   private delay(ms: number): Promise<void> {

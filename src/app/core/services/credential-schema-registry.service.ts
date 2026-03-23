@@ -21,6 +21,7 @@ const SUPPORTED_SCHEMAS = [
   'learcredential.machine.w3c.1',
   'learcredential.machine.sd.1',
   'gx.labelcredential.w3c.1',
+  'doctorid.sd.1',
 ] as const;
 
 /**

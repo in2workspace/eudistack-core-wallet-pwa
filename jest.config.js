@@ -15,7 +15,7 @@ module.exports = {
   },
   collectCoverage: true,
   coverageDirectory: "./coverage/app",
-  coverageReporters: ["lcov", "text-summary", "cobertura", "html"],
+  coverageReporters: ["lcov", "text-summary", "cobertura", "html", "json-summary", "json"],
   collectCoverageFrom: [   
     "src/app/app.component.ts",
     "src/app/app.routes.ts",

@@ -93,15 +93,26 @@ export class ThemeService {
     const root = document.documentElement;
 
     // ── Layer 1: Brand tokens (header/footer chrome only) ──
-    const colorMap: Record<string, string> = {
+    const brandColors: Record<string, string> = {
       '--primary-color': theme.branding.primaryColor,
       '--primary-contrast-color': theme.branding.primaryContrastColor,
       '--secondary-color': theme.branding.secondaryColor,
       '--secondary-contrast-color': theme.branding.secondaryContrastColor,
     };
 
+    // Filter out invalid color values to prevent CSS injection
+    const colorMap: Record<string, string> = {};
+    for (const [token, value] of Object.entries(brandColors)) {
+      if (this.isValidCssColor(value)) {
+        colorMap[token] = value;
+      }
+    }
+
     // Apply via ColorService (which also sets -rgb, -shade, -tint)
     this.colorService.applyCustomColors(colorMap);
+
+    // ── Layer 1b: Per-context overrides (optional, fallback to Layer 1) ──
+    this.applyContextTokens(theme, root);
 
     // ── Layer 2: Semantic tokens (content area) ──
     const actionPrimary = this.computeActionPrimary(theme.branding.primaryColor);
@@ -145,7 +156,7 @@ export class ThemeService {
       scope: `${origin}/`,
       start_url: `${origin}/`,
       orientation: 'portrait',
-      icons: theme.branding.pwaIconUrl
+      icons: theme.branding.pwaIconUrl && this.isRelativeAssetPath(theme.branding.pwaIconUrl)
         ? [
             { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '192x192', type: 'image/png', purpose: 'any' },
             { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '512x512', type: 'image/png', purpose: 'any' },
@@ -173,6 +184,42 @@ export class ThemeService {
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (meta) {
       meta.content = theme.branding.primaryColor;
+    }
+  }
+
+  /**
+   * Apply optional per-context color overrides from theme.json branding.
+   * Each token falls back to the base brand color if not specified.
+   */
+  /** Returns true if the value is a valid hex color (#RGB, #RRGGBB, #RRGGBBAA). */
+  private isValidCssColor(value: string): boolean {
+    return /^#[0-9a-fA-F]{3,8}$/.test(value.trim());
+  }
+
+  private applyContextTokens(theme: Theme, root: HTMLElement): void {
+    const b = theme.branding;
+
+    const contextMap: Record<string, string | undefined> = {
+      // Header
+      '--header-background': b.header?.background,
+      '--header-text': b.header?.text,
+      // Credential card
+      '--card-background': b.card?.background,
+      '--card-gradient-end': b.card?.gradientEnd,
+      '--card-text': b.card?.text,
+      // Buttons
+      '--button-background': b.button?.background,
+      '--button-text': b.button?.text,
+      // Auth screens
+      '--auth-background': b.auth?.background,
+      '--auth-gradient-end': b.auth?.gradientEnd ?? b.auth?.background,
+    };
+
+    for (const [token, value] of Object.entries(contextMap)) {
+      if (value && this.isValidCssColor(value)) {
+        root.style.setProperty(token, value);
+        root.style.setProperty(`${token}-rgb`, this.hexToRgbChannels(value));
+      }
     }
   }
 
@@ -259,7 +306,14 @@ export class ThemeService {
     return undefined;
   }
 
+  /** Returns true if the URL is a safe relative path (no external URLs). */
+  private isRelativeAssetPath(url: string): boolean {
+    return url.startsWith('assets/') || url.startsWith('/assets/');
+  }
+
   private setFavicon(url: string): void {
+    if (!this.isRelativeAssetPath(url)) return;
+
     let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
     if (!link) {
       link = document.createElement('link');

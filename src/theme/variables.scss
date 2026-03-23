@@ -66,7 +66,7 @@
   --ion-item-background: var(--surface-card);
   --ion-item-color: var(--text-primary);
   --ion-color-step-850: var(--surface-card);
-  --ion-toolbar-color: var(--primary-contrast-color);
+  --ion-toolbar-color: var(--header-text, var(--primary-contrast-color));
   --ion-card-background: var(--surface-card);
   --ion-card-color: var(--text-primary);
 
@@ -165,7 +165,7 @@
   --ion-card-color: var(--text-primary);
   --ion-tab-bar-background: var(--surface-card);
   --ion-tab-bar-color: var(--text-disabled);
-  --ion-tab-bar-color-selected: var(--action-primary);
+  --ion-tab-bar-color-selected: var(--text-primary);
 
   --ion-color-light: var(--surface-muted);
   --ion-color-light-contrast: var(--text-primary);

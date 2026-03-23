@@ -3,32 +3,50 @@ on:
   push:
     branches:
       - main
-      - release/**
   pull_request:
     branches:
       - main
-      - release/**
     types: [opened, synchronize, reopened]
+
+permissions:
+  checks: write
+  pull-requests: write
 
 jobs:
   build:
-    name: Build and Analyze
+    name: Build and Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
+          cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build Angular Project
         run: npm run build -- --configuration=development
 
       - name: Run Tests
         run: npm run test:ci
+
+      - name: Jest Coverage Summary
+        if: always()
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          json-summary-path: coverage/app/coverage-summary.json
+          json-final-path: coverage/app/coverage-final.json
+          name: 'Jest Coverage'
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/app/
