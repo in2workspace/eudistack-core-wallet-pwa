@@ -4,7 +4,7 @@ import {
   Component,
   computed,
   EventEmitter,
-  Input,
+  HostListener,
   OnInit,
   Output,
   effect,
@@ -25,6 +25,7 @@ import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared
 import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
 import { CredentialTypeMap } from 'src/app/core/models/credential-type-map';
 import { CredentialVerificationService, VerificationCheck } from 'src/app/core/services/credential-verification.service';
+import { Router } from '@angular/router';
 
 export type ExpiryStatus = 'valid' | 'expiring-soon' | 'expired';
 
@@ -44,12 +45,18 @@ export class VcViewComponent implements OnInit {
   private readonly displayService = inject(CredentialDisplayService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly verificationService = inject(CredentialVerificationService);
-
+  private readonly router = inject(Router);
+  
   public credentialInput$ = input.required<VerifiableCredential>();
+  public detailViewSections$ = signal<DisplaySection[]>([]);
   public cardFields = signal<DisplayField[]>([]);
   public displayName = signal<string>('');
   public formatLabel = signal<string>('');
+
   public blurred = input(false);
+  public selectedVcId = input<string | null>(null);
+
+  public isDetailViewActive$ = computed(() => this.selectedVcId() === this.credentialInput$().id);
 
   public expiryStatus = computed<ExpiryStatus>(() => {
     const cred = this.credentialInput$();
@@ -78,7 +85,13 @@ export class VcViewComponent implements OnInit {
     this.formatLabel.set(this.displayService.getFormatLabel(cred));
   });
 
-  @Input() public isDetailViewActive = false;
+  private readonly _loadDetailSectionsEffect = effect(async () => {
+    if (!this.isDetailViewActive$()) {
+      return;
+    }
+    await this.updateDetailSections(this.credentialInput$());
+  });
+  
   @Output() public vcEmit: EventEmitter<VerifiableCredential> =
     new EventEmitter();
   @Output() public statusChanged = new EventEmitter<{ id: string; status: LifeCycleStatus }>();
@@ -129,22 +142,39 @@ export class VcViewComponent implements OnInit {
     },
   }];
 
-  public isDetailModalOpen = false;
-  public detailViewSections!: DisplaySection[];
   public isVerifyModalOpen = false;
   public verificationChecks: VerificationCheck[] = [];
   public verifyOverall: 'pending' | 'valid' | 'invalid' = 'pending';
   public verifyResultKey: string = 'verification.result-invalid';
 
   public async openDetailModal(): Promise<void> {
-    if(this.isDetailViewActive){
-      this.isDetailModalOpen = true;
-      await this.getStructuredFields();
+    const vc = this.credentialInput$();
+    if (!vc.id) {     
+      return;
     }
+    this.router.navigate(['/tabs/credentials'], {
+      queryParams: { id: vc.id },
+      queryParamsHandling: 'merge',
+    });
   }
 
   public closeDetailModal(): void {
-    this.isDetailModalOpen = false;
+    if (this.isDetailViewActive$()) { 
+      this.router.navigate(['/tabs/credentials'], {
+        queryParams: { id: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+      return;
+    }
+  }
+
+  @HostListener('window:popstate')
+  public onPopstate(): void {
+    if (this.isVerifyModalOpen) {
+      this.isVerifyModalOpen = false;
+      this.cdr.markForCheck();
+    }
   }
 
   public async verifyCredential(): Promise<void> {
@@ -152,45 +182,55 @@ export class VcViewComponent implements OnInit {
     this.verificationChecks = keys.map(key => ({ key, status: 'pending' as const }));
     this.verifyOverall = 'pending';
     this.isVerifyModalOpen = true;
+    history.pushState(null, '');
     this.cdr.markForCheck();
-
+    
     const credential = this.credentialInput$();
-
-    for (let i = 0; i < keys.length; i++) {
-      await this.delay(400);
-      this.verificationChecks[i] = { ...this.verificationChecks[i], status: 'checking' };
-      this.cdr.markForCheck();
-
-      await this.delay(600);
-      const result = await this.verificationService.runCheck(keys[i], credential);
-      this.verificationChecks[i] = result;
-      this.cdr.markForCheck();
-    }
-
-    await this.delay(400);
-    const allPassed = this.verificationChecks.every(c => c.status === 'passed');
-    this.verifyOverall = allPassed ? 'valid' : 'invalid';
-
-    if (!allPassed) {
-      const statusCheck = this.verificationChecks.find(c => c.key === 'status');
-      const expirationCheck = this.verificationChecks.find(c => c.key === 'expiration');
-
-      if (statusCheck?.status === 'failed' && statusCheck?.detail === 'revoked') {
-        this.verifyResultKey = 'verification.result-revoked';
-        this.updateLifeCycleStatus('REVOKED');
-      } else if (expirationCheck?.status === 'failed') {
-        this.verifyResultKey = 'verification.result-expired';
-        this.updateLifeCycleStatus('EXPIRED');
-      } else {
-        this.verifyResultKey = 'verification.result-invalid';
+    
+    try {
+      for (let i = 0; i < keys.length; i++) {
+        await this.delay(400);
+        this.verificationChecks[i] = { ...this.verificationChecks[i], status: 'checking' };
+        this.cdr.markForCheck();
+        
+        await this.delay(600);
+        const result = await this.verificationService.runCheck(keys[i], credential);
+        this.verificationChecks[i] = result;
+        this.cdr.markForCheck();
       }
+      
+      await this.delay(400);
+      const allPassed = this.verificationChecks.every(c => c.status === 'passed');
+      this.verifyOverall = allPassed ? 'valid' : 'invalid';
+  
+      if (!allPassed) {
+        const statusCheck = this.verificationChecks.find(c => c.key === 'status');
+        const expirationCheck = this.verificationChecks.find(c => c.key === 'expiration');
+  
+        if (statusCheck?.status === 'failed' && statusCheck?.detail === 'revoked') {
+          this.verifyResultKey = 'verification.result-revoked';
+          this.updateLifeCycleStatus('REVOKED');
+        } else if (expirationCheck?.status === 'failed') {
+          this.verifyResultKey = 'verification.result-expired';
+          this.updateLifeCycleStatus('EXPIRED');
+        } else {
+          this.verifyResultKey = 'verification.result-invalid';
+        }
+      }
+    } catch {
+      // TODO: Review behavior in case of error
+      this.closeVerifyModal();
     }
 
     this.cdr.markForCheck();
   }
 
   public closeVerifyModal(): void {
+    if (!this.isVerifyModalOpen) {
+      return;
+    }
     this.isVerifyModalOpen = false;
+    history.back();
   }
 
   private updateLifeCycleStatus(status: LifeCycleStatus): void {
@@ -238,8 +278,12 @@ export class VcViewComponent implements OnInit {
   }
 
   public deleteVC(): void {
-    this.isModalDeleteOpen = true;
-    this.isDetailModalOpen = false;
+    this.isModalDeleteOpen = true;  
+    this.router.navigate(['/tabs/credentials'], {
+      queryParams: { id: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   public unsignedInfo(event: Event): void {
@@ -293,9 +337,7 @@ export class VcViewComponent implements OnInit {
       : undefined;
   }
 
-  public async getStructuredFields(): Promise<void> {
-    const vc = this.credentialInput$();
-
+  private async updateDetailSections(vc: VerifiableCredential): Promise<void> {
     const formatLabel = this.displayService.getFormatLabel(vc);
     const displayNameValue = await this.displayService.getDisplayName(vc);
 
@@ -323,8 +365,9 @@ export class VcViewComponent implements OnInit {
       });
     }
 
-    this.detailViewSections = [...detailSections, credentialInfo]
-      .filter(section => section.fields.length > 0);
+    this.detailViewSections$.set(
+      [credentialInfo, ...detailSections].filter(section => section.fields.length > 0)
+    );
     this.cdr.markForCheck();
   }
 

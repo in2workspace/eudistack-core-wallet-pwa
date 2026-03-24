@@ -9,6 +9,9 @@ import { CallbackPage } from 'src/app/features/callback/callback.page';
 import { ComponentRef } from '@angular/core';
 import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
+import { convertToParamMap, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 
 class WalletServiceMock {
   getVCinCBOR(credential: VerifiableCredential) {
@@ -32,11 +35,21 @@ class CredentialVerificationServiceMock {
   runCheck = jest.fn().mockResolvedValue({ key: 'test', status: 'passed' });
 }
 
+class ActivatedRouteMock {
+  private readonly _queryParamMap$ = new BehaviorSubject(convertToParamMap({}));
+  public readonly queryParamMap = this._queryParamMap$.asObservable();
+
+  public setQueryParams(params: Record<string, any>): void {
+    this._queryParamMap$.next(convertToParamMap(params));
+  }
+}
+
 describe('VcViewComponent', () => {
   let component: VcViewComponent;
   let componentRef: ComponentRef<VcViewComponent>;
   let fixture: ComponentFixture<VcViewComponent>;
   let walletService: WalletService;
+  let router: Router;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -49,6 +62,7 @@ describe('VcViewComponent', () => {
         { provide: WalletService, useClass: WalletServiceMock },
         { provide: CredentialDisplayService, useClass: CredentialDisplayServiceMock },
         { provide: CredentialVerificationService, useClass: CredentialVerificationServiceMock },
+        { provide: ActivatedRoute, useClass: ActivatedRouteMock },
       ],
     }).compileComponents();
 
@@ -56,6 +70,7 @@ describe('VcViewComponent', () => {
     component = fixture.componentInstance;
     componentRef = fixture.componentRef;
     walletService = TestBed.inject(WalletService);
+    router = TestBed.inject(Router);
 
     componentRef.setInput('credentialInput$', {
       '@context': [],
@@ -227,23 +242,27 @@ describe('VcViewComponent', () => {
     expect(event.preventDefault).toHaveBeenCalled();
   }));
 
-  it('openDetailModal should set isDetailModalOpen to true and call getStructuredFields', () => {
-    jest.spyOn(component, 'getStructuredFields');
-    component.isDetailModalOpen = false;
-
-    component.isDetailViewActive = true;
-    component.openDetailModal();
-
-    expect(component.isDetailModalOpen).toBeTruthy();
-    expect(component.getStructuredFields).toHaveBeenCalled();
+  it('openDetailModal should navigate to credentials with id query param', async () => {
+    const navigateSpy = jest.spyOn(router, 'navigate').mockResolvedValue(true);
+    await component.openDetailModal();
+    expect(navigateSpy).toHaveBeenCalledWith(['/tabs/credentials'], {
+      queryParams: { id: 'testId' },
+      queryParamsHandling: 'merge',
+    });
   });
 
-  it('closeDetailModal should set isDetailModalOpen to false', () => {
-    component.isDetailModalOpen = true;
+  it('closeDetailModal should navigate clearing id query param when detail view is active', () => {
+    const navigateSpy = jest.spyOn(router, 'navigate').mockResolvedValue(true);
+    componentRef.setInput('selectedVcId', component.credentialInput$().id);
+    fixture.detectChanges();
 
     component.closeDetailModal();
 
-    expect(component.isDetailModalOpen).toBeFalsy();
+    expect(navigateSpy).toHaveBeenCalledWith(['/tabs/credentials'], {
+      queryParams: { id: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   });
 
   describe('expiryStatus', () => {
@@ -312,13 +331,19 @@ describe('VcViewComponent', () => {
     });
   });
 
-  it('getStructuredFields should add credentialEncoded section for machine credential type', async () => {
-    component.credentialType = 'learcredential.machine.w3c.3';
-    (component.credentialInput$() as any).credentialEncoded = 'encoded_value';
+  it('should add credentialEncoded section for machine credential type when building detail sections', async () => {
+    const current = component.credentialInput$();
+    component.credentialType = 'learcredential.machine.w3c.3' as any;
+    const machineVc = {
+      ...current,
+      type: ['learcredential.machine.w3c.3'],
+      credentialEncoded: 'encoded_value' as any,
+    } as any;
+    componentRef.setInput('credentialInput$', machineVc);
+    fixture.detectChanges();
+    await (component as any).updateDetailSections(machineVc);
 
-    await component.getStructuredFields();
-
-    const encodedSection = component.detailViewSections.find(
+    const encodedSection = component.detailViewSections$().find(
       s => s.section === 'vc-fields.credentialEncoded'
     );
     expect(encodedSection).toBeTruthy();
@@ -327,17 +352,16 @@ describe('VcViewComponent', () => {
     expect(encodedSection?.fields[0].value).toBe('encoded_value');
   });
 
-  it('getStructuredFields should use issuer string when issuer is a plain string', async () => {
+  it('should use issuer string when issuer is a plain string when building detail sections', async () => {
     const current = component.credentialInput$();
     componentRef.setInput('credentialInput$', {
       ...current,
       issuer: 'did:example:issuer'
     });
     fixture.detectChanges();
+    await (component as any).updateDetailSections(component.credentialInput$());
 
-    await component.getStructuredFields();
-
-    const credentialInfoSection = component.detailViewSections.find(
+    const credentialInfoSection = component.detailViewSections$().find(
       s => s.section === 'vc-fields.title'
     );
     expect(credentialInfoSection).toBeTruthy();

@@ -2,7 +2,6 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AlertController, IonicModule } from '@ionic/angular';
-import { QRCodeComponent } from 'angularx-qrcode';
 import { ActivatedRoute, Params, Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { VcViewComponent } from '../../shared/components/vc-view/vc-view.component';
@@ -26,7 +25,6 @@ import { CredentialDecisionService } from 'src/app/core/services/credential-deci
         IonicModule,
         CommonModule,
         FormsModule,
-        QRCodeComponent,
         TranslateModule,
         VcViewComponent,
     ]

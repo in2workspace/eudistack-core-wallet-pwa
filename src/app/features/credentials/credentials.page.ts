@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { IonicModule, ViewWillLeave } from '@ionic/angular';
 import { StorageService } from 'src/app/shared/services/storage.service';
 import { BarcodeScannerComponent } from 'src/app/shared/components/barcode-scanner/barcode-scanner.component';
-import { QRCodeComponent } from 'angularx-qrcode';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { VcViewComponent } from '../../shared/components/vc-view/vc-view.component';
 import { TranslateModule } from '@ngx-translate/core';
@@ -46,7 +45,6 @@ import * as dayjs from 'dayjs';
         IonicModule,
         CommonModule,
         FormsModule,
-        QRCodeComponent,
         VcViewComponent,
         TranslateModule,
         BarcodeScannerComponent,
@@ -63,6 +61,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   public credentialOfferUri = '';
   public manualQrValue = '';
   readonly prefs = inject(UserPreferencesService);
+  public selectedCredentialId: string | null = null;
 
   private readonly authorizationRequestService = inject(AuthorizationRequestService);
   private readonly cameraLogsService = inject(CameraLogsService);
@@ -95,6 +94,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         this.showScanner = params['showScanner']     === 'true';
         this.credentialOfferUri = params['credentialOfferUri'];
         this.authorizationRequest = params['authorizationRequest'] ?? '';
+        this.selectedCredentialId = params['id'] ?? null;
         this.cdr.detectChanges();
       });
   }

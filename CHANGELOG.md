@@ -23,14 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve revoked/expired credential card styling with per-element opacity instead of whole-card dimming.
 - Fix SVG asset path to source from ionicons node_modules.
 - Set default favicon path in index.html (`assets/tenant/favicon.png`).
+- Back the primary color for verify button (it changed the contrast color in the commit 46bfd21).
 
 ### Fixed
-
 - Clean up mixed/incorrect translations across EN/ES/CA.
 - Fixed popup after vc delete.
+- Fix credential detail modal and verification modal closing incorrectly when the browser back button is pressed. 
 
 ### Security
-
 - Add hex color validation in ThemeService to prevent CSS injection via theme.json.
 - Add relative path validation for favicon and PWA icon URLs to prevent external URL hijacking.
 - Type `updateCredentialStatus` chain with `LifeCycleStatus` instead of `string`, removing `as any` casts.
