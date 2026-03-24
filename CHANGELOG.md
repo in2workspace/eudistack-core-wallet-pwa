@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-03-24
+
 ### Added
 - Add `tenantDomain` field to Theme interface and expose it as a public getter in ThemeService.
 - Add per-context color tokens in ThemeService (header, card, button, auth overrides) for tenant-specific theming.
@@ -28,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Clean up mixed/incorrect translations across EN/ES/CA.
 - Fixed popup after vc delete.
-- Fix credential detail modal and verification modal closing incorrectly when the browser back button is pressed. 
+- Fix credential detail modal and verification modal closing incorrectly when the browser back button is pressed.
 
 ### Security
 - Add hex color validation in ThemeService to prevent CSS injection via theme.json.

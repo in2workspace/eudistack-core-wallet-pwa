@@ -1,52 +1,53 @@
-name: Build
+name: CI
+
 on:
-  push:
-    branches:
-      - main
   pull_request:
-    branches:
-      - main
+    branches: [main]
     types: [opened, synchronize, reopened]
 
 permissions:
+  contents: read
   checks: write
   pull-requests: write
 
+concurrency:
+  group: ci-${{ github.head_ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-    name: Build and Test
+    name: Build & Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: 22
           cache: 'npm'
+          cache-dependency-path: package-lock.json
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: Build Angular Project
+      - name: Build
         run: npm run build -- --configuration=development
 
-      - name: Run Tests
+      - name: Test
         run: npm run test:ci
 
-      - name: Jest Coverage Summary
+      - name: Publish Coverage
         if: always()
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           json-summary-path: coverage/app/coverage-summary.json
           json-final-path: coverage/app/coverage-final.json
-          name: 'Jest Coverage'
 
-      - name: Upload coverage report
+      - name: Upload Coverage Report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage/app/
