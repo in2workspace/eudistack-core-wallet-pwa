@@ -1,43 +1,39 @@
 name: Release
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
-  tag-create:
-    name: Validate & Create Tag
+  release:
+    name: Create Release
     runs-on: ubuntu-latest
     steps:
-
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
-      - name: Get Project Version
+      - name: Get Version
         run: echo "VERSION=$(jq -r '.version' package.json)" >> $GITHUB_ENV
 
-      - name: Check for existing release tag
+      - name: Check if release exists
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ env.VERSION }}
         run: |
-          TAG_EXISTS=$(curl -H "Authorization: token $GITHUB_TOKEN" -s https://api.github.com/repos/${{ github.repository }}/releases | jq -r ".[] | select(.tag_name == \"v$VERSION\") | .tag_name")
-          if [ "$TAG_EXISTS" == "v$VERSION" ]; then
-            echo "::error::Release tag v$VERSION already exists."
-            exit 1
-          else
-            echo "No existing release with tag v$VERSION found. Proceeding."
+          TAG_EXISTS=$(gh release view "v${{ env.VERSION }}" --json tagName --jq '.tagName' 2>/dev/null || echo "")
+          if [ "$TAG_EXISTS" = "v${{ env.VERSION }}" ]; then
+            echo "::notice::Release v${{ env.VERSION }} already exists — skipping."
+            echo "SKIP_RELEASE=true" >> $GITHUB_ENV
           fi
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
+        if: env.SKIP_RELEASE != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: "v${{ env.VERSION }}"
-          release_name: "v${{ env.VERSION }}"
-          body: "Release of version v${{ env.VERSION }}"
-          draft: false
-          prerelease: false
+        run: |
+          gh release create "v${{ env.VERSION }}" \
+            --title "v${{ env.VERSION }}" \
+            --notes "Release of version v${{ env.VERSION }}" \
+            --target main
