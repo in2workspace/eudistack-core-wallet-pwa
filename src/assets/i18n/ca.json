@@ -5,7 +5,7 @@
         "credentials":"Credencials",
         "camera-selector":"Selector de Càmera",
         "language-selector":"Selector d'Idioma",
-        "terms-of-user":"Termes d'Us",
+        "terms-of-user":"Termes d'Ús",
         "privacy-policy":"Política de Privacitat",
         "faqs":"FAQs",
         "settings":"Configuració",
@@ -119,10 +119,9 @@
         "version": "Versió"
     },
     "terms-of-use":{
-        "title":"Termes d'Us"
+        "title":"Termes d'Ús"
     },
     "vc-selector":{
-        "title":"Presentació de Credencial",
         "select-cred":"Selecciona una Credencial",
         "presentation-request":"Sol·licitud de Credencial",
         "select-instruction":"Prem la credencial que vols presentar",
@@ -130,7 +129,7 @@
         "send-cred":"Envia Credencial",
         "ok-header": "Credencial enviada correctament",
         "ok-message":"Login correcte",
-        "unauthorized-message":"La credencial enviada no es vàlida.",
+        "unauthorized-message":"La credencial enviada no és vàlida.",
         "bad-request-error-message":"Error en enviar la credencial",
         "server-error-message":"No s'ha pogut processar la petició.<br>Torni a intentar-ho més tard.",
         "generic-error-message": "Error desconegut",
@@ -196,7 +195,7 @@
             "mandator": {
                 "id": "ID",
                 "title": "Mandant",
-                "organizationIdentifier": "Identificador d'Organizació",
+                "organizationIdentifier": "Identificador d'Organització",
                 "organization": "Organització",
                 "commonName": "Nom comú",
                 "serialNumber": "Número de sèrie",
@@ -215,7 +214,7 @@
             "mandator": {
                 "id": "ID",
                 "title": "Mandant",
-                "organizationIdentifier": "Identificador d'Organizació",
+                "organizationIdentifier": "Identificador d'Organització",
                 "organization": "Organització",
                 "commonName": "Nom comú",
                 "serialNumber": "Número de sèrie",

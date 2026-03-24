@@ -20,6 +20,8 @@ ion-modal.stack-modal {
   border-radius: clamp(14px, 4vw, 20px);
   border: 1px solid var(--border-default, #D1D5DB);
   padding: clamp(14px, 4vw, 20px);
+  margin-right: 0;
+  margin-left: 0;
   cursor: pointer;
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.12);
@@ -139,7 +141,7 @@ ion-modal.stack-modal {
 
 .card-shield-icon {
   font-size: 20px;
-  color: color-mix(in srgb, var(--primary-contrast-color, #fff) 50%, transparent);  
+  color: color-mix(in srgb, var(--primary-contrast-color, #fff) 80%, transparent);  
   flex-shrink: 0;
 }
 
@@ -160,7 +162,7 @@ ion-modal.stack-modal {
 }
 
 .card-field {
-  color: color-mix(in srgb, var(--primary-contrast-color, #fff) 75%, transparent);  
+  color: color-mix(in srgb, var(--primary-contrast-color, #fff) 80%, transparent);  
   @include fluid-type(0.75rem, 0.8125rem);
   font-weight: 500;
   overflow: hidden;
