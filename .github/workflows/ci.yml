@@ -42,11 +42,12 @@ jobs:
         if: always()
         uses: davelosert/vitest-coverage-report-action@v2
         with:
-          json-summary-path: coverage/coverage-summary.json
+          json-summary-path: coverage/app/coverage-summary.json
+          json-final-path: coverage/app/coverage-final.json
 
       - name: Upload Coverage Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage/
+          path: coverage/app/
