@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed popup after vc delete.
 - Fix credential detail modal and verification modal closing incorrectly when the browser back button is pressed. 
 - Translate revoke state URL from vc detail modal to verification detail modal.
+- Fix minor spelling issues in es/ca/en.
+- Remove unnecessary white bar from the `vc-selector`.
+- Fix asymmetric spacing on credential card in the vc-view for mobile display.
 
 ### Security
 - Add hex color validation in ThemeService to prevent CSS injection via theme.json.
