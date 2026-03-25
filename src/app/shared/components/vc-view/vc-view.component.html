@@ -131,11 +131,11 @@
             @for(field of section.fields; track field.label){
               @if(field.label === 'vc-fields.credentialEncoded'){
                 <ion-item lines="none" class="field-item compact-item">
-                  <div class="token-container">
-                    <div class="token-value ellipsis-text" [title]="field.value">
+                  <div class="copy-row">
+                    <div class="copy-row__text ellipsis-text" [title]="field.value">
                       {{ field.value }}
                     </div>
-                    <div class="token-actions">
+                    <div class="copy-row__actions">
                       <ion-button fill="clear" size="small" (click)="copyToClipboard(field.value)" (keydown)="copyToClipboard(field.value)">
                         <ion-icon name="copy-outline"></ion-icon>
                       </ion-button>
@@ -222,8 +222,18 @@
               </div>
               <div class="verify-row-info">
                 <span class="verify-row-label">{{ "verification.check-" + check.key | translate }}</span>
-                @if(check.detail && check.status !== 'pending' && check.status !== 'checking') {
+                @if(check.detail && check.status !== 'pending' && check.status !== 'checking' && !(check.status === 'failed' && check.detail === 'revoked')) {
                   <span class="verify-row-detail">{{ check.detail }}</span>
+                }
+                @if(check.key === 'status' && credentialInput.credentialStatus.id) {
+                  <div class="copy-row">
+                    <span class="copy-row__text ellipsis-text verify-row-detail" [title]="credentialInput.credentialStatus.id">{{ credentialInput.credentialStatus.id }}</span>
+                    <div class="copy-row__actions">
+                      <ion-button fill="clear" size="small" (click)="copyToClipboard(credentialInput.credentialStatus.id)" (keydown)="copyToClipboard(credentialInput.credentialStatus.id)">
+                        <ion-icon name="copy-outline"></ion-icon>
+                      </ion-button>
+                    </div>
+                  </div>
                 }
               </div>
             </div>

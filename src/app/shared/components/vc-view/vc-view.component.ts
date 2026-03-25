@@ -351,7 +351,6 @@ export class VcViewComponent implements OnInit {
         { label: 'vc-fields.credentialInfo.validFrom', value: this.formatDate(vc.validFrom) },
         { label: 'vc-fields.credentialInfo.validUntil', value: this.formatDate(vc.validUntil) },
         { label: 'vc-fields.credentialInfo.status', value: vc.lifeCycleStatus ?? '' },
-        { label: 'vc-fields.credentialInfo.revocationUrl', value: vc.credentialStatus?.id ?? '' },
       ].filter(field => !!field.value && field.value !== ''),
     };
 
