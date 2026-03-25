@@ -16,7 +16,7 @@
   <div class="credential-list">
     @for (cred of credList; track cred) {
       <button class="selectable-card" (click)="sendCred(cred)">
-        <app-vc-view [credentialInput$]="cred" [enableDetailView]="false"></app-vc-view>
+        <app-vc-view [credentialInput$]="cred" [enableDetailView$]="false"></app-vc-view>
         <div class="card-action-hint">
           <ion-icon name="chevron-forward-outline"></ion-icon>
         </div>

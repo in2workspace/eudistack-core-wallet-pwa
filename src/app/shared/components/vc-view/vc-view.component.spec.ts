@@ -251,6 +251,8 @@ describe('VcViewComponent', () => {
     });
   });
 
+  
+
   it('closeDetailModal should navigate clearing id query param when detail view is active', () => {
     const navigateSpy = jest.spyOn(router, 'navigate').mockResolvedValue(true);
     componentRef.setInput('selectedVcId', component.credentialInput$().id);
