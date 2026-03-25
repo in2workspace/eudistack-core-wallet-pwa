@@ -45,8 +45,8 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y gettext-base
 
-          if [ -f dist/out/browser/assets/env.template.js ]; then
-            envsubst < dist/out/browser/assets/env.template.js > dist/out/browser/assets/env.js
+          if [ -f dist/out/assets/env.template.js ]; then
+            envsubst < dist/out/assets/env.template.js > dist/out/assets/env.js
             echo "Generated env.js"
           else
             echo "env.template.js not found" >&2
@@ -55,8 +55,8 @@ jobs:
 
       - name: Create Zip
         run: |
-          cd dist/out/browser
-          zip -r ../../out.zip .
+          cd dist/out
+          zip -r ../out.zip .
           echo "ZIP_FILE=dist/out.zip" >> $GITHUB_ENV
 
       - name: Configure AWS Credentials
