@@ -98,6 +98,7 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
       width: 100%; max-width: 420px; max-height: 90vh;
       overflow-y: auto; scrollbar-width: none; background: var(--surface-page, #F5F7FA);
       border-radius: 16px; padding: 32px 24px 24px;
+      border: 1px solid var(--surface-card, #FFF);
       opacity: 0; transform: translateY(24px);
       &.enter { animation: fadeIn 0.4s ease-out forwards; }
       &::-webkit-scrollbar { display: none; }

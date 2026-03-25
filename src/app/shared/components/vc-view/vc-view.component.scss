@@ -205,6 +205,7 @@ ion-modal.detail-blurred::part(content) {
 }
 
 .modal-content {
+  --background: var(--surface-card);
   --padding-bottom: 16px;
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
