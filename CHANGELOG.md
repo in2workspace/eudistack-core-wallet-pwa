@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix minor spelling issues in es/ca/en.
 - Remove unnecessary white bar from the `vc-selector`.
 - Fix asymmetric spacing on credential card in the vc-view for mobile display.
+- Don't open VC details when selecting one to login.
 
 ### Security
 - Add hex color validation in ThemeService to prevent CSS injection via theme.json.

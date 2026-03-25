@@ -55,6 +55,7 @@ export class VcViewComponent implements OnInit {
 
   public blurred = input(false);
   public selectedVcId = input<string | null>(null);
+  public enableDetailView = input(true);
 
   public isDetailViewActive$ = computed(() => this.selectedVcId() === this.credentialInput$().id);
 
@@ -148,6 +149,10 @@ export class VcViewComponent implements OnInit {
   public verifyResultKey: string = 'verification.result-invalid';
 
   public async openDetailModal(): Promise<void> {
+    if (!this.enableDetailView()) {
+      return;
+    }
+    
     const vc = this.credentialInput$();
     if (!vc.id) {     
       return;
