@@ -61,9 +61,7 @@ export class ThemeService {
     private translate: TranslateService,
     private colorService: ColorService,
     private storageService: StorageService
-  ) {
-    console.log("ThemeService initialized");
-  }
+  ) {}
 
   async load(): Promise<void> {
     const theme = await firstValueFrom(this.http.get<Theme>('/assets/theme.json'));
