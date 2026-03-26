@@ -321,8 +321,7 @@ ion-modal.detail-blurred::part(content) {
 .verify-button {
   --border-radius: 12px;
   --border-color: var(--primary-color, var(--ion-color-primary));
-  // TODO --color: var(--primary-color, var(--ion-color-primary));
-  --color: green;
+  --color: var(--primary-color, var(--ion-color-primary));
   font-weight: 600;
   font-size: 14px;
 }
