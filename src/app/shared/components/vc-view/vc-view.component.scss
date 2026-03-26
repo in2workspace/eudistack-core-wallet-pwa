@@ -35,7 +35,11 @@ ion-modal.stack-modal {
 
   &--revoked,
   &--expired {
-    filter: grayscale(0.85);
+    background: linear-gradient(
+      135deg,
+      color-mix(in hsl, var(--card-background, var(--primary-color, var(--ion-color-primary))) 10%, var(--status-neutral, #6b7280)) 0%,
+      color-mix(in hsl, var(--card-gradient-end, var(--secondary-color, var(--ion-color-primary-shade))) 10%, var(--status-neutral, #6b7280)) 100%       
+    );  
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 
     .card-title,
