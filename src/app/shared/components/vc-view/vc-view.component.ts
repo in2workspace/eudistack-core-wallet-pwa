@@ -55,8 +55,11 @@ export class VcViewComponent implements OnInit {
 
   public blurred = input(false);
   public selectedVcId = input<string | null>(null);
+  public enableDetailView$ = input(true);
 
-  public isDetailViewActive$ = computed(() => this.selectedVcId() === this.credentialInput$().id);
+  public isDetailViewActive$ = computed(
+    () => this.enableDetailView$() && (this.selectedVcId() === this.credentialInput$().id)
+  );
 
   public expiryStatus = computed<ExpiryStatus>(() => {
     const cred = this.credentialInput$();
@@ -148,8 +151,12 @@ export class VcViewComponent implements OnInit {
   public verifyResultKey: string = 'verification.result-invalid';
 
   public async openDetailModal(): Promise<void> {
+    if (!this.enableDetailView$()) {
+      return;
+    }
+    
     const vc = this.credentialInput$();
-    if (!vc.id) {     
+    if (!vc.id) {
       return;
     }
     this.router.navigate(['/tabs/credentials'], {

@@ -251,8 +251,23 @@ describe('VcViewComponent', () => {
     });
   });
 
-  it('closeDetailModal should navigate clearing id query param when detail view is active', () => {
+   it('openDetailModal should not navigate when detail view is disabled', async () => {
+      const navigateSpy = jest.spyOn(router, 'navigate').mockResolvedValue(true);
+
+      componentRef.setInput('enableDetailView$', false);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      await component.openDetailModal();
+
+      expect(navigateSpy).not.toHaveBeenCalled();
+    });
+  
+
+  it('closeDetailModal should navigate clearing id query param when detail view is active and enabled', () => {
     const navigateSpy = jest.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    componentRef.setInput('enableDetailView$', true);
     componentRef.setInput('selectedVcId', component.credentialInput$().id);
     fixture.detectChanges();
 
@@ -321,6 +336,7 @@ describe('VcViewComponent', () => {
     afterEach(() => {
       (navigator as any).clipboard = originalClipboard;
       showToastSpy.mockRestore();
+      jest.clearAllMocks();
     });
 
     it('should copy text to clipboard and show toast on success', async () => {
