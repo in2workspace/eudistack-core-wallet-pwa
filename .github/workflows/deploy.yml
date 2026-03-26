@@ -51,7 +51,14 @@ jobs:
 
       - name: Generate env.js
         env:
-          API_BASE_URL: ${{ vars.API_BASE_URL }}
+          WALLET_API_EXTERNAL_URL: ""
+          WALLET_API_WEBSOCKET_EXTERNAL_URL: ""
+          WALLET_MODE: "browser"
+          PREFERRED_GRANT: "auto"
+          OID4VCI_REDIRECT_URI: "${{ vars.OID4VCI_REDIRECT_URI }}"
+          LOGS_ENABLED: "false"
+          WIA: ${{ secrets.WIA }}
+          WIA_INSTANCE_KEY_JWK: ${{ secrets.WIA_INSTANCE_KEY_JWK }}
         run: |
           sudo apt-get update && sudo apt-get install -y gettext-base
 
