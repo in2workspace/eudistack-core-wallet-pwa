@@ -103,3 +103,8 @@ ion-content::part(scroll) {
   overflow: -moz-scrollbars-none;
   &::-webkit-scrollbar { display: none; }
 }
+
+.dark-theme ion-modal.credential-verify-modal .verify-button {
+  --background: var(--primary-color);
+  --color: var(--text-primary);
+}
