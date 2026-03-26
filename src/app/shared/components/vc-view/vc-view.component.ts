@@ -57,7 +57,9 @@ export class VcViewComponent implements OnInit {
   public selectedVcId = input<string | null>(null);
   public enableDetailView$ = input(true);
 
-  public isDetailViewActive$ = computed(() => this.selectedVcId() === this.credentialInput$().id);
+  public isDetailViewActive$ = computed(
+    () => this.enableDetailView$() && (this.selectedVcId() === this.credentialInput$().id)
+  );
 
   public expiryStatus = computed<ExpiryStatus>(() => {
     const cred = this.credentialInput$();
@@ -154,7 +156,7 @@ export class VcViewComponent implements OnInit {
     }
     
     const vc = this.credentialInput$();
-    if (!vc.id) {     
+    if (!vc.id) {
       return;
     }
     this.router.navigate(['/tabs/credentials'], {

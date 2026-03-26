@@ -264,8 +264,10 @@ describe('VcViewComponent', () => {
     });
   
 
-  it('closeDetailModal should navigate clearing id query param when detail view is active', () => {
+  it('closeDetailModal should navigate clearing id query param when detail view is active and enabled', () => {
     const navigateSpy = jest.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    componentRef.setInput('enableDetailView$', true);
     componentRef.setInput('selectedVcId', component.credentialInput$().id);
     fixture.detectChanges();
 
