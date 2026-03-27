@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clean up mixed/incorrect translations across EN/ES/CA.
 - Fixed popup after vc delete.
 - Fix credential detail modal and verification modal closing incorrectly when the browser back button is pressed. 
+- Dark theme.
 - Translate revoke state URL from vc detail modal to verification detail modal.
 - Fix minor spelling issues in es/ca/en.
 - Remove unnecessary white bar from the `vc-selector`.

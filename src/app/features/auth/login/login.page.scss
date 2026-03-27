@@ -4,7 +4,11 @@
   --background: linear-gradient(135deg, var(--auth-background, var(--primary-color)) 0%, var(--auth-gradient-end, var(--secondary-color)) 100%);
 }
 
-.auth-wrapper {
+:host-context(.dark-theme) .auth-bg {
+  --background: linear-gradient(135deg, var(--surface-card) 0%, var(--auth-gradient-end, var(--secondary-color)) 100%);
+}
+
+.auth-wrapper { 
   display: flex;
   align-items: center;
   justify-content: center;
@@ -15,7 +19,7 @@
 .auth-card {
   width: 100%;
   max-width: 420px;
-  background: rgba(255, 255, 255, 0.97);
+  background: #D6DAE1;
   border-radius: 24px;
   padding: clamp(24px, 8vw, 40px) clamp(20px, 6vw, 32px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -109,7 +113,7 @@
   text-align: center;
   @include fluid-type(1.25rem, 1.5rem);
   font-weight: 700;
-  color: var(--text-primary);
+  color: #3F4856;
   margin: 0 0 6px;
 }
 

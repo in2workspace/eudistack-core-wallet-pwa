@@ -117,10 +117,6 @@ export class ThemeService {
     // ── Layer 2: Semantic tokens (content area) ──
     const actionPrimary = this.computeActionPrimary(theme.branding.primaryColor);
 
-    for (const [token, value] of Object.entries(SEMANTIC_DEFAULTS)) {
-      root.style.setProperty(token, value);
-    }
-
     // Override action-primary if the brand hue is "safe" (blue range)
     root.style.setProperty('--action-primary', actionPrimary);
     root.style.setProperty('--action-primary-rgb', this.hexToRgbChannels(actionPrimary));
