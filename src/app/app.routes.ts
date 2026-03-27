@@ -41,13 +41,6 @@ export const routes: Routes = [
     ]
   },
   {
-    path: 'callback',
-    loadComponent: () =>
-      import('./features/oid4vci-callback/oid4vci-callback.page').then(
-        m => m.Oid4vciCallbackPage
-      ),
-  },
-  {
     path: 'protocol/callback',
     canActivate: [authGuard],
     loadComponent: () =>

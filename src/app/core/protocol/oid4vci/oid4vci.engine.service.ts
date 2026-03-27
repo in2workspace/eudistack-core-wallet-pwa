@@ -24,14 +24,12 @@ import { NonceService } from './nonce.service';
 import { DpopService } from './dpop.service';
 import { TokenResponse } from '../../models/dto/TokenResponse';
 import { environment } from 'src/environments/environment';
-import { Oid4vciFlowStateService } from './oid4vci-flow-state.service';
 
 @Injectable({ providedIn: 'root' })
 export class Oid4vciEngineService {
   private readonly authorizationCodeTokenService = inject(AuthorizationCodeTokenService);
   private readonly authorisationServerMetadataService = inject(AuthorisationServerMetadataService);
   private readonly dpopService = inject(DpopService);
-  private readonly flowStateService = inject(Oid4vciFlowStateService);
   private readonly credentialIssuerMetadataService = inject(CredentialIssuerMetadataService);
   private readonly credentialOfferService = inject(CredentialOfferService);
   private readonly credentialService = inject(CredentialService);
@@ -80,16 +78,9 @@ export class Oid4vciEngineService {
           credentialOffer, authorisationServerMetadata
         );
       } else {
-        // Browser redirects to the issuer's /authorize endpoint.
-        // This promise never resolves — the page navigates away.
-        // The flow resumes in the callback page via resumeAuthorizationCodeFlow().
-        await this.authorizationCodeTokenService.initiateAuthorizationFlow(
-          credentialOfferUri, credentialOffer, authorisationServerMetadata, profile
+        tokenResponse = await this.authorizationCodeTokenService.getToken(
+          credentialOffer, authorisationServerMetadata, profile
         );
-        // Unreachable — browser has navigated away
-        throw new Oid4vciError('Unexpected: authorization redirect did not navigate', {
-          translationKey: 'errors.authorization-failed',
-        });
       }
 
       this.loader.addLoadingProcess();
@@ -158,102 +149,6 @@ export class Oid4vciEngineService {
       };
     }});
 
-  }
-
-  /**
-   * Resumes the OID4VCI authorization_code flow after the browser returns
-   * from the issuer's /authorize endpoint with an authorization code.
-   */
-  public async resumeAuthorizationCodeFlow(authCode: string): Promise<FinalizeIssuancePayload> {
-    await this.init();
-
-    return this.loaderHandledFlowService.run({
-    logPrefix: '[Oid4vciEngine]',
-    errorToTranslationKey: (e) => this.errorToTranslationKey(e),
-    fn: async () => {
-      const flowState = this.flowStateService.restore();
-      if (!flowState) {
-        throw new Oid4vciError('Authorization callback received but no pending flow state found', {
-          translationKey: 'errors.authorization-failed',
-        });
-      }
-
-      // Re-fetch metadata (lightweight, cached by browser)
-      const credentialOffer = await this.credentialOfferService.getCredentialOfferFromCredentialOfferUri(flowState.credentialOfferUri);
-      const credentialIssuerMetadata = await this.credentialIssuerMetadataService.getCredentialIssuerMetadataFromCredentialOffer(credentialOffer);
-      const authorisationServerMetadata = await this.authorisationServerMetadataService.getAuthorizationServerMetadataFromCredentialIssuerMetadata(credentialIssuerMetadata);
-
-      // Exchange code for token
-      const tokenResponse = await this.authorizationCodeTokenService.exchangeCodeForToken({
-        metadata: authorisationServerMetadata,
-        authCode,
-        redirectUri: flowState.redirectUri,
-        codeVerifier: flowState.codeVerifier,
-        profile: flowState.profile,
-      });
-
-      const cfg = this.findCredentialConfigurationContext(credentialOffer, credentialIssuerMetadata);
-
-      const nonceEndpoint = credentialIssuerMetadata.nonceEndpoint
-        ?? authorisationServerMetadata.nonceEndpoint;
-
-      const nonce = nonceEndpoint
-        ? await this.nonceService.fetchNonce(nonceEndpoint)
-        : '';
-
-      let jwtProof = null;
-      let proofPublicJwk: JsonWebKey | null = null;
-
-      if (cfg.isCryptographicBindingSupported && credentialIssuerMetadata.credentialIssuer) {
-        const proofContext = await this.issueProofJwt({
-          nonce,
-          credentialIssuer: credentialIssuerMetadata.credentialIssuer,
-          credentialConfigurationId: cfg.credentialConfigurationId,
-        });
-        jwtProof = proofContext.jwt;
-        proofPublicJwk = proofContext.publicKeyJwk;
-      }
-
-      const format = cfg.format;
-      const credentialConfigurationId = cfg.credentialConfigurationId;
-
-      let credentialDpopJwt: string | undefined;
-      if (tokenResponse.token_type?.toLowerCase() === 'dpop' && credentialIssuerMetadata.credentialEndpoint) {
-        const dpopProof = await this.dpopService.issueProof('POST', credentialIssuerMetadata.credentialEndpoint);
-        credentialDpopJwt = dpopProof.jwt;
-      }
-
-      const credentialResponseWithStatus = await this.credentialService.getCredential({
-        jwtProof,
-        tokenResponse,
-        credentialIssuerMetadata,
-        format,
-        credentialConfigurationId,
-        dpopJwt: credentialDpopJwt,
-      });
-
-      if (jwtProof && proofPublicJwk) {
-        await this.validateCredentialCnf(credentialResponseWithStatus, jwtProof, proofPublicJwk);
-      } else {
-        console.warn("Skipping cnf validation since no proof JWT was generated.");
-      }
-
-      const credentialResponseWithStatusCode: CredentialResponseWithStatusCode = {
-        statusCode: credentialResponseWithStatus.status, ...credentialResponseWithStatus
-      };
-
-      const tokenObtainedAt = Math.floor(Date.now() / 1000);
-
-      return {
-        credentialResponseWithStatus: credentialResponseWithStatusCode,
-        tokenResponse,
-        issuerMetadata: credentialIssuerMetadata,
-        authorisationServerMetadata,
-        tokenObtainedAt,
-        format,
-        credentialConfigurationId
-      };
-    }});
   }
 
   private shouldUsePreAuthorizedGrant(credentialOffer: CredentialOffer): boolean {

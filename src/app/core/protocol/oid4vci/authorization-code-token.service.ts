@@ -12,7 +12,6 @@ import { Oid4vciError } from '../../models/error/Oid4vciError';
 import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 import { CONTENT_TYPE_URL_ENCODED_FORM } from 'src/app/core/constants/content-type.constants';
 import { environment } from 'src/environments/environment';
-import { Oid4vciFlowStateService } from './oid4vci-flow-state.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthorizationCodeTokenService {
@@ -20,21 +19,12 @@ export class AuthorizationCodeTokenService {
   private readonly pkceService = inject(PkceService);
   private readonly dpopService = inject(DpopService);
   private readonly wiaService = inject(WiaService);
-  private readonly flowStateService = inject(Oid4vciFlowStateService);
 
-  /**
-   * Initiates the authorization_code flow. For HAIP, sends the PAR request first.
-   * Then redirects the browser to the authorization endpoint.
-   *
-   * This method NEVER returns — it navigates the browser away.
-   * The flow resumes in the callback page after the issuer redirects back.
-   */
-  async initiateAuthorizationFlow(
-    credentialOfferUri: string,
+  async getToken(
     credentialOffer: CredentialOffer,
     metadata: AuthorisationServerMetadata,
     profile: IssuanceProfile
-  ): Promise<never> {
+  ): Promise<TokenResponse> {
     this.dpopService.reset();
     this.wiaService.reset();
 
@@ -46,85 +36,24 @@ export class AuthorizationCodeTokenService {
     const redirectUri = environment.oid4vci_redirect_uri;
     const state = globalThis.crypto.randomUUID();
 
-    let requestUri: string | undefined;
+    let authCode: string;
 
     if (profile === 'haip') {
-      requestUri = await this.performPar({
+      authCode = await this.performHaipFlow({
+        metadata, codeChallenge, scope, redirectUri, state, issuerState,
+      });
+    } else {
+      authCode = await this.performPlainFlow({
         metadata, codeChallenge, scope, redirectUri, state, issuerState,
       });
     }
 
-    // Persist state before navigating away
-    this.flowStateService.save({
-      credentialOfferUri,
-      codeVerifier,
-      state,
-      redirectUri,
-      profile,
+    return await this.exchangeCodeForToken({
+      metadata, authCode, redirectUri, codeVerifier, profile,
     });
-
-    // Build authorize URL and redirect the browser
-    this.redirectToAuthorize({
-      metadata,
-      requestUri,
-      codeChallenge: profile !== 'haip' ? codeChallenge : undefined,
-      scope: profile !== 'haip' ? scope : undefined,
-      redirectUri: profile !== 'haip' ? redirectUri : undefined,
-      state,
-      issuerState: profile !== 'haip' ? issuerState : undefined,
-    });
-
-    // This never resolves — browser navigates away
-    return new Promise<never>(() => {});
   }
 
-  /**
-   * Completes the authorization_code flow after the browser returns from the issuer.
-   * Called from the callback page with the authorization code.
-   */
-  async exchangeCodeForToken(params: {
-    metadata: AuthorisationServerMetadata;
-    authCode: string;
-    redirectUri: string;
-    codeVerifier: string;
-    profile: IssuanceProfile;
-  }): Promise<TokenResponse> {
-    const tokenEndpoint = params.metadata.tokenEndpoint;
-    if (!tokenEndpoint) {
-      throw new Oid4vciError('Token endpoint missing in metadata', {
-        translationKey: 'errors.invalid-auth-server-metadata',
-      });
-    }
-
-    this.dpopService.reset();
-
-    const body = new URLSearchParams();
-    body.set('grant_type', 'authorization_code');
-    body.set('code', params.authCode);
-    body.set('redirect_uri', params.redirectUri);
-    body.set('code_verifier', params.codeVerifier);
-
-    let headers = new HttpHeaders()
-      .set('Content-Type', CONTENT_TYPE_URL_ENCODED_FORM);
-
-    if (params.profile === 'haip') {
-      const dpopProof = await this.dpopService.issueProof('POST', tokenEndpoint);
-      headers = headers.set('DPoP', dpopProof.jwt);
-    }
-
-    try {
-      const response = await firstValueFrom(
-        this.http.post<TokenResponse>(tokenEndpoint, body.toString(), { headers })
-      );
-      return response;
-    } catch (e: unknown) {
-      wrapOid4vciHttpError(e, 'Token exchange failed', {
-        translationKey: 'errors.cannot-get-access-token',
-      });
-    }
-  }
-
-  private async performPar(params: {
+  private async performHaipFlow(params: {
     metadata: AuthorisationServerMetadata;
     codeChallenge: string;
     scope: string;
@@ -159,21 +88,46 @@ export class AuthorizationCodeTokenService {
       .set('OAuth-Client-Attestation', attestation.wia)
       .set('OAuth-Client-Attestation-PoP', attestation.pop);
 
+    let requestUri: string;
     try {
       const parResponse = await firstValueFrom(
         this.http.post<{ request_uri: string; expires_in: number }>(
           parEndpoint, parBody.toString(), { headers: parHeaders }
         )
       );
-      return parResponse.request_uri;
+      requestUri = parResponse.request_uri;
     } catch (e: unknown) {
       wrapOid4vciHttpError(e, 'PAR request failed', {
         translationKey: 'errors.par-failed',
       });
     }
+
+    return await this.callAuthorizeEndpoint({
+      metadata: params.metadata,
+      requestUri: requestUri!,
+      state: params.state,
+    });
   }
 
-  private redirectToAuthorize(params: {
+  private async performPlainFlow(params: {
+    metadata: AuthorisationServerMetadata;
+    codeChallenge: string;
+    scope: string;
+    redirectUri: string;
+    state: string;
+    issuerState?: string;
+  }): Promise<string> {
+    return await this.callAuthorizeEndpoint({
+      metadata: params.metadata,
+      codeChallenge: params.codeChallenge,
+      scope: params.scope,
+      redirectUri: params.redirectUri,
+      state: params.state,
+      issuerState: params.issuerState,
+    });
+  }
+
+  private async callAuthorizeEndpoint(params: {
     metadata: AuthorisationServerMetadata;
     requestUri?: string;
     codeChallenge?: string;
@@ -181,7 +135,7 @@ export class AuthorizationCodeTokenService {
     redirectUri?: string;
     state: string;
     issuerState?: string;
-  }): void {
+  }): Promise<string> {
     const authEndpoint = params.metadata.authorizationEndpoint;
     if (!authEndpoint) {
       throw new Oid4vciError('Authorization endpoint missing in metadata', {
@@ -204,6 +158,75 @@ export class AuthorizationCodeTokenService {
     }
     queryParams.set('state', params.state);
 
-    window.location.href = `${authEndpoint}?${queryParams.toString()}`;
+    const authorizeUrl = `${authEndpoint}?${queryParams.toString()}`;
+
+    try {
+      const response = await firstValueFrom(
+        this.http.get(authorizeUrl, { observe: 'response', responseType: 'text' })
+      );
+
+      const locationUrl = response.url ?? response.headers.get('Location');
+      if (!locationUrl) {
+        throw new Oid4vciError('Authorization response missing redirect URL', {
+          translationKey: 'errors.authorization-failed',
+        });
+      }
+
+      const redirectParams = new URL(locationUrl).searchParams;
+      const code = redirectParams.get('code');
+      if (!code) {
+        const error = redirectParams.get('error');
+        throw new Oid4vciError(`Authorization failed: ${error ?? 'missing code'}`, {
+          translationKey: 'errors.authorization-failed',
+        });
+      }
+
+      return code;
+    } catch (e: unknown) {
+      if (e instanceof Oid4vciError) throw e;
+      wrapOid4vciHttpError(e, 'Authorization request failed', {
+        translationKey: 'errors.authorization-failed',
+      });
+    }
+  }
+
+  private async exchangeCodeForToken(params: {
+    metadata: AuthorisationServerMetadata;
+    authCode: string;
+    redirectUri: string;
+    codeVerifier: string;
+    profile: IssuanceProfile;
+  }): Promise<TokenResponse> {
+    const tokenEndpoint = params.metadata.tokenEndpoint;
+    if (!tokenEndpoint) {
+      throw new Oid4vciError('Token endpoint missing in metadata', {
+        translationKey: 'errors.invalid-auth-server-metadata',
+      });
+    }
+
+    const body = new URLSearchParams();
+    body.set('grant_type', 'authorization_code');
+    body.set('code', params.authCode);
+    body.set('redirect_uri', params.redirectUri);
+    body.set('code_verifier', params.codeVerifier);
+
+    let headers = new HttpHeaders()
+      .set('Content-Type', CONTENT_TYPE_URL_ENCODED_FORM);
+
+    if (params.profile === 'haip') {
+      const dpopProof = await this.dpopService.issueProof('POST', tokenEndpoint);
+      headers = headers.set('DPoP', dpopProof.jwt);
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.http.post<TokenResponse>(tokenEndpoint, body.toString(), { headers })
+      );
+      return response;
+    } catch (e: unknown) {
+      wrapOid4vciHttpError(e, 'Token exchange failed', {
+        translationKey: 'errors.cannot-get-access-token',
+      });
+    }
   }
 }

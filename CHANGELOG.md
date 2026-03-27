@@ -6,15 +6,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- **OID4VCI authorization_code flow uses browser redirect** — Replace XHR-based `/authorize` call with standard `window.location.href` redirect per OID4VCI 1.0 §5. Flow state (PKCE verifier, state nonce) is persisted to `sessionStorage` and restored on callback. Fixes CORS failures when wallet and issuer are on different domains (AWS STG).
-
-### Added
-
-- **`/callback` route** — New `Oid4vciCallbackPage` handles the authorization response, validates state, and redirects to credentials page to complete issuance.
-- **`Oid4vciFlowStateService`** — Manages `sessionStorage` persistence of authorization flow state across browser redirects.
-
 ## [3.0.0] - 2026-03-24
 
 ### Added
