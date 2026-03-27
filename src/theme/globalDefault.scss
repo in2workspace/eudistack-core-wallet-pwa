@@ -219,6 +219,10 @@ input[type="number"] {
   box-shadow: none;
 }
 
+.dark-theme .copy-row__actions ion-button {
+  --color: var(--text-secondary);
+}
+
 // tx_code modal — sized and centered by Ionic, matching verification-modal style
 .tx-code-modal-wrapper {
   --width: 90%;
