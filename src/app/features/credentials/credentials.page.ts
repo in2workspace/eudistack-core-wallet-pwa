@@ -83,6 +83,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   private readonly verificationService = inject(CredentialVerificationService);
 
   private authorizationRequest = '';
+  private authCode = '';
   private revokedCredentialIds = new Set<string>();
 
   public constructor(){
@@ -94,6 +95,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         this.showScanner = params['showScanner']     === 'true';
         this.credentialOfferUri = params['credentialOfferUri'];
         this.authorizationRequest = params['authorizationRequest'] ?? '';
+        this.authCode = params['authCode'] ?? '';
         this.selectedCredentialId = params['id'] ?? null;
         this.cdr.detectChanges();
       });
@@ -107,7 +109,10 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     )
     .subscribe(() => {
       // Protocol flows run after credentials are loaded so the cache is populated
-      if (this.credentialOfferUri) {
+      if (this.authCode) {
+        console.info('Resuming OID4VCI authorization_code flow from callback.');
+        this.resumeAuthorizationCodeFlow(this.authCode);
+      } else if (this.credentialOfferUri) {
         this.sameDeviceVcActivationFlow(this.credentialOfferUri);
       } else if (this.authorizationRequest) {
         console.info('Processing authorization request via same-device flow.');
@@ -228,6 +233,47 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   private sameDeviceVcActivationFlow(credentialOfferUri: string): void {
     console.info('Requesting Credential Offer via same-device flow.')
     this.credentialActivationFlow(credentialOfferUri);
+  }
+
+  private resumeAuthorizationCodeFlow(authCode: string): void {
+    from(this.oid4vciEngineService.resumeAuthorizationCodeFlow(authCode))
+      .pipe(
+        switchMap((flowResult: FinalizeIssuancePayload) => {
+          if (flowResult.credentialResponseWithStatus.statusCode === 202) {
+            return this.walletService.finalizeCredentialIssuance(flowResult)
+              .pipe(switchMap(() => this.handleActivationSuccess()));
+          }
+
+          const configId = flowResult.credentialConfigurationId;
+          const config = flowResult.issuerMetadata.credential_configurations_supported?.[configId];
+          const credentialMetadata = config?.credential_metadata;
+
+          const preview = this.credentialPreviewBuilder.buildPreview(
+            flowResult.credentialResponseWithStatus.credentialResponse,
+            credentialMetadata,
+            flowResult.format
+          );
+
+          return from(this.credentialDecisionService.showDecisionDialog(preview))
+            .pipe(
+              switchMap((decision) => {
+                if (decision === 'ACCEPTED') {
+                  return this.handleCredentialAccepted(flowResult);
+                }
+                return this.handleCredentialRejected(flowResult, decision);
+              })
+            );
+        }),
+
+        catchError((err: ExtendedHttpErrorResponse) => {
+          console.error(err);
+          this.handleContentExecutionError(err);
+          return of(null);
+        }),
+
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
   }
 
   private credentialActivationFlow(credentialOfferUri: string): void{
