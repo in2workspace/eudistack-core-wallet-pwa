@@ -52,7 +52,6 @@ export class VcViewComponent implements OnInit {
   public cardFields = signal<DisplayField[]>([]);
   public displayName = signal<string>('');
   public formatLabel = signal<string>('');
-  public isDarkMode = signal(document.documentElement.classList.contains('dark-theme'));
 
   public blurred = input(false);
   public selectedVcId = input<string | null>(null);

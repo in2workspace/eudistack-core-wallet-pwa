@@ -219,10 +219,6 @@ input[type="number"] {
   box-shadow: none;
 }
 
-.dark-theme .copy-row__actions ion-button {
-  --color: var(--text-secondary);
-}
-
 // tx_code modal — sized and centered by Ionic, matching verification-modal style
 .tx-code-modal-wrapper {
   --width: 90%;
@@ -238,3 +234,17 @@ input[type="number"] {
     -webkit-backdrop-filter: blur(8px);
   }
 }
+
+// Dark mode   
+.dark-theme {
+  .copy-row__actions ion-button {
+    --color: var(--text-secondary);
+  }
+
+  ion-button.verify-button::part(native) {
+    background: var(--primary-color, var(--ion-color-primary));
+    color: var(--primary-contrast-color, var(--ion-color-primary-contrast));
+    border-color: var(--primary-color, var(--ion-color-primary));
+  }
+}
+

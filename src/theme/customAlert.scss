@@ -3,7 +3,7 @@
 :root{
   /** custom alert — mapped to semantic status tokens **/
   --custom-alert-error-bg: #fdf0f0;
-  --custom-alert-error-border: 1px solid var(--custom-alert-alert-bg);
+  --custom-alert-error-border: 1px solid var(--status-error);
   --custom-alert-error-text: var(--status-error);
   --custom-alert-ok-bg: #e7f8e4;
   --custom-alert-ok-info-bg: #d0efff;
@@ -25,7 +25,7 @@ ion-alert{
 
 ion-alert.custom-alert-error .alert-wrapper {
   background-color: var(--custom-alert-error-bg) !important;
-  color: var(--surface-card) !important;
+  color: var(--custom-alert-error-text);
   border-radius: var(--radius-md);
   border: var(--custom-alert-error-border);
 }
@@ -34,14 +34,15 @@ ion-alert.custom-alert-error .alert-message {
   color: var(--custom-alert-error-text) !important;
 }
 
-ion-alert.custom-alert-error .alert-button.sc-ion-alert-md {
+ion-alert.custom-alert-error .alert-button.sc-ion-alert-md,
+ion-alert.custom-alert-error .alert-button.sc-ion-alert-ios {
   color: var(--custom-alert-error-text) !important;
 }
 
 ion-alert.custom-alert-error .alert-message ion-icon {
   width: 55px;
   font-size: 38px;
-  color: var(--custom-alert-error-border);
+  color: var(--custom-alert-error-text);
 }
 
 ion-alert.custom-alert-ok .alert-wrapper {
