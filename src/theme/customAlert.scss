@@ -3,23 +3,39 @@
 :root{
   /** custom alert — mapped to semantic status tokens **/
   --custom-alert-error-bg: #fdf0f0;
+  --custom-alert-error-border: 1px solid var(--status-error);
   --custom-alert-error-text: var(--status-error);
   --custom-alert-ok-bg: #e7f8e4;
   --custom-alert-ok-info-bg: #d0efff;
   --custom-alert-ok-text: var(--status-success);
 }
 
+.dark-theme{
+  --custom-alert-error-bg: #9c2b2e;
+  --custom-alert-error-border: 1px solid #e84e4f;
+  --custom-alert-error-text: White;
+  --custom-alert-ok-bg: #e7f8e4;
+  --custom-alert-ok-info-bg: #d0efff;
+  --custom-alert-ok-text: var(--status-success);
+}
+
+ion-alert{
+  --ion-background-color: var(--surface-card);
+}
+
 ion-alert.custom-alert-error .alert-wrapper {
   background-color: var(--custom-alert-error-bg) !important;
-  color: var(--surface-card) !important;
+  color: var(--custom-alert-error-text);
   border-radius: var(--radius-md);
+  border: var(--custom-alert-error-border);
 }
 
 ion-alert.custom-alert-error .alert-message {
   color: var(--custom-alert-error-text) !important;
 }
 
-ion-alert.custom-alert-error .alert-button.sc-ion-alert-md {
+ion-alert.custom-alert-error .alert-button.sc-ion-alert-md,
+ion-alert.custom-alert-error .alert-button.sc-ion-alert-ios {
   color: var(--custom-alert-error-text) !important;
 }
 
@@ -67,6 +83,11 @@ ion-alert.custom-alert-unsigned .alert-button-group {
 
 ion-alert .alert-message span {
   line-height: 1.2;
+}
+
+// Justify the text for alert
+ion-alert {
+  text-align: justify;
 }
 
 // For the PIN counter

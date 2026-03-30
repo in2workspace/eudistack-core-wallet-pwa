@@ -43,7 +43,6 @@ export class ToastServiceHandler {
         const alert = await this.alertController.create({
           message: `
             <div style="display: flex; align-items: center; gap: 50px;">
-              <ion-icon name="alert-circle-outline"></ion-icon>
               <span>${translatedMessage}</span>
             </div>
           `,
