@@ -2,7 +2,7 @@
 {
     "menu":{
         "scan":"QR Scan",
-        "credentials":"Credentials",
+        "credentials":"My credentials",
         "camera-selector":"Camera Selector",
         "language-selector":"Language Selector",
         "terms-of-user":"Terms of Use",

@@ -2,9 +2,9 @@
 {
     "menu":{
         "scan":"Escàner QR",
-        "credentials":"Credencials",
-        "camera-selector":"Selector de Càmera",
-        "language-selector":"Selector d'Idioma",
+        "credentials":"Meves credencials",
+        "camera-selector":"Selecciona Càmera",
+        "language-selector":"Selecciona l'Idioma",
         "terms-of-user":"Termes d'Ús",
         "privacy-policy":"Política de Privacitat",
         "faqs":"FAQs",
@@ -31,7 +31,7 @@
         "nocred":"No tens cap credencial carregada",
         "nocred-title":"Sense credencials",
         "nocred-subtitle":"Escaneja un codi QR o accepta una oferta de credencial per començar.",
-        "expiration":"Caducat",
+        "expiration":"Caducada",
         "expiring-soon":"Caduca aviat",
         "expiredCredential":"Credencial caducada",
         "expiredText":"Aquesta credencial està caducada i ja no la pots fer servir.",
@@ -47,7 +47,7 @@
     "home":{
         "ok-msg": "S'ha afegit la credencial",
         "rejected-msg": "S'ha rebutjat l'oferta de credencial",
-        "scan": "Escanejar QR",
+        "scan": "Afegeix una credencial nova",
         "install-hint": "Instal\u00b7la l'app per a una millor experi\u00e8ncia"
     },
     "language-selector":{

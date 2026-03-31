@@ -1,7 +1,7 @@
 {
     "menu":{
         "scan":"Escáner QR",
-        "credentials":"Credenciales",
+        "credentials":"Mis credenciales",
         "camera-selector":"Selector de Cámara",
         "language-selector":"Selector de Idioma",
         "terms-of-user":"Términos de Uso",
