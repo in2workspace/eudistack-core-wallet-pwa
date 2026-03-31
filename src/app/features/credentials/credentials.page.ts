@@ -32,6 +32,7 @@ import { UserPreferencesService } from 'src/app/shared/services/user-preferences
 import { HapticService } from 'src/app/shared/services/haptic.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
 import * as dayjs from 'dayjs';
+import {credentialsListMock} from "../../shared/mocks/credentials-list.mock";
 //todo restore tests
 
 // TODO separate scan in another component/ page
@@ -374,7 +375,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     .subscribe();
   }
 
-  
+
   private handleActivationSuccess(): Observable<boolean> {
     console.log("Handling successful credential activation...");
     this.loader.addLoadingProcess();
@@ -388,7 +389,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       )
   }
 
-  
+
   private loadCredentials(): Observable<VerifiableCredential[]> {
     // todo this conditional should be removed when scanner is moved to another page
     const isScannerOpen = this.isScannerOpen();
@@ -398,7 +399,8 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
 
     const normalizer = new VerifiableCredentialSubjectDataNormalizer();
 
-    return this.walletService.getAllVCs().pipe(
+    //return this.walletService.getAllVCs().pipe(
+    return of(credentialsListMock).pipe(
       takeUntilDestroyed(this.destroyRef),
       tap((credentialListResponse: VerifiableCredential[]) => {
         // Sync credential cache for OID4VP credential filtering
@@ -491,11 +493,11 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     const pendingCredentials = this.credList.filter(
       (credential) => credential.lifeCycleStatus === 'ISSUED'
     );
-    
+
     if (pendingCredentials.length === 0) {
       return;
     }
-    
+
     console.log('Requesting signatures for pending credentials...');
 
     const requests = pendingCredentials.map((credential) =>
@@ -506,11 +508,11 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         })
       )
     );
-  
+
     forkJoin(requests).subscribe({
       next: (responses: (HttpResponse<string> | { status: number })[]) => {
         const successfulResponses = responses.filter(response => response.status === 204);
-    
+
         if (successfulResponses.length > 0) {
           console.log('Signed credentials:', successfulResponses.length);
           this.reloadCredentials();
