@@ -14,7 +14,7 @@ import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
-import { catchError, finalize, forkJoin, from, Observable, of, switchMap, tap } from 'rxjs';
+import { catchError, finalize, forkJoin, from, Observable, of, switchMap, take, tap } from 'rxjs';
 import { ExtendedHttpErrorResponse } from 'src/app/core/models/errors';
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
@@ -342,6 +342,16 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
           selectableVcList = this.credentialCacheService.findCredentialsByScope(authRequest.scope);
         } else {
           selectableVcList = this.credentialCacheService.getAll().filter(c => c.lifeCycleStatus === 'VALID');
+        }
+
+        const validVcList = selectableVcList.filter(c => c.lifeCycleStatus === 'VALID');
+        if (validVcList.length === 0) {
+          this.router.navigate(['/tabs/credentials']).then(() => {
+            this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.no-credentials-available')
+              .pipe(take(1))
+              .subscribe();
+          });
+          return of(false);
         }
 
         const executionResponse = {
