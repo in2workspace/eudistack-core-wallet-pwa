@@ -67,12 +67,12 @@
 // Scan button container (holds pulse ring + button)
 .scan-button-wrapper {
   position: relative;
-  width: clamp(96px, 28vw, 120px);
-  height: clamp(96px, 28vw, 120px);
+  width: clamp(100px, 40vw, 120px);
+  height: clamp(100px, 40vw, 120px);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2.5rem;
 
   @include landscape {
     margin-bottom: 0;
@@ -108,12 +108,12 @@
 .scan-button {
   position: relative;
   z-index: 1;
-  width: clamp(64px, 18vw, 80px);
-  height: clamp(64px, 18vw, 80px);
+  width: clamp(100px, 20vw, 100px);
+  height: clamp(100px, 20vw, 100px);
   border-radius: 50%;
   border: none;
   cursor: pointer;
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background: linear-gradient(135deg, var(--secondary-color), lightpink);
   box-shadow:
     0 4px 20px rgb(var(--secondary-color-rgb) / 0.35),
     0 0 40px rgb(var(--secondary-color-rgb) / 0.1);

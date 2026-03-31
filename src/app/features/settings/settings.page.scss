@@ -27,7 +27,7 @@
   @include fluid-type(1.375rem, 1.75rem);
   font-weight: 700;
   color: var(--text-primary);
-  margin: 12px 4px 20px;
+  margin: 50px 4px 40px;
   line-height: 1.2;
 }
 
@@ -36,7 +36,7 @@
 .settings-group {
   background: var(--surface-card);
   border-radius: var(--radius-lg);
-  margin-bottom: 24px;
+  margin-bottom: 40px;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
