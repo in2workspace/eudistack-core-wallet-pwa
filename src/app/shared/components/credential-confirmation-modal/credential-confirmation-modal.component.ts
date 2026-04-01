@@ -110,7 +110,7 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
     .icon-wrapper {
       display: inline-flex; align-items: center; justify-content: center;
       width: 64px; height: 64px; border-radius: 50%;
-      background: var(--action-primary, #2563EB);
+      background: var(--primary-color);
       margin-bottom: 16px; opacity: 0; transform: scale(0.5);
       ion-icon { font-size: 32px; color: #fff; }
       &.icon-enter { animation: pop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.15s forwards; }
@@ -138,7 +138,7 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
     .format-badge {
       font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
       padding: 3px 8px; border-radius: 4px;
-      background: var(--action-primary, #2563EB); color: #fff;
+      background: var(--primary-color); color: #fff;
     }
     .card-divider { height: 1px; background: var(--border-default, #D1D5DB); margin: 14px 0; opacity: 0.6; }
 
@@ -146,7 +146,7 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
     .section-block { display: flex; flex-direction: column; gap: 8px; }
     .section-title {
       font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.05em; color: var(--action-primary, #2563EB);
+      letter-spacing: 0.05em; color: var(--text-primary);
       padding-bottom: 4px; border-bottom: 1px solid var(--border-default, #D1D5DB);
     }
     .section-fields { display: flex; flex-direction: column; gap: 8px; }
@@ -179,7 +179,7 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
 
     .countdown-section { margin-bottom: 20px; text-align: center; }
     .countdown-bar-track { height: 4px; border-radius: 2px; background: var(--surface-muted, #E8ECF1); overflow: hidden; margin-bottom: 8px; }
-    .countdown-bar-fill { height: 100%; border-radius: 2px; background: var(--action-primary, #2563EB); transition: width 1s linear; }
+    .countdown-bar-fill { height: 100%; border-radius: 2px; background: var(--primary-color); transition: width 1s linear; }
     .countdown-text { font-size: 0.8rem; color: var(--text-secondary); }
 
     .modal-actions { display: flex; gap: 12px; }
@@ -194,7 +194,7 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
       background: var(--surface-card, #FFF); color: #374151;
       border: 1px solid var(--border-default, #D1D5DB);
     }
-    .btn-primary { background: var(--action-primary, #2563EB); color: #fff; }
+    .btn-primary { background: var(--action-primary); color: #fff; }
   `],
 })
 export class CredentialConfirmationModalComponent {

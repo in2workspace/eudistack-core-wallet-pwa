@@ -50,7 +50,7 @@ import { OtpInputComponent } from '../otp-input/otp-input.component';
 
       ion-icon.tx-code-icon {
         font-size: 40px;
-        color: var(--action-primary, #2563EB);
+        color: var(--action-primary);
         margin-bottom: 8px;
       }
 
