@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { Router, ActivatedRoute } from '@angular/router';
 import { EMPTY, of } from 'rxjs';
 import { CredentialsPage } from './credentials.page';
@@ -95,35 +95,52 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     component = fixture.componentInstance;
   });
 
-  describe('when no valid VCs are found (validVcList.length === 0)', () => {
+  describe('when no valid VCs are found (selectableVcList.length === 0 after filter)', () => {
     beforeEach(() => {
-      // Only REVOKED VC → after filter, validVcList.length === 0
+      // Only REVOKED VC → after filter, selectableVcList.length === 0
       mockCredentialCacheService.getAll.mockReturnValue([mockRevokedVc]);
     });
 
-    it('should navigate to /tabs/credentials', async () => {
+    it('should navigate to /tabs/credentials', fakeAsync(() => {
       component.qrCodeEmit(vpQrCode);
-      await new Promise(resolve => setTimeout(resolve, 0));
+      tick();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
-    });
+    }));
 
-    it('should show error alert after navigation completes', async () => {
+    it('should show error alert after navigation completes', fakeAsync(() => {
       component.qrCodeEmit(vpQrCode);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      tick();
 
       expect(mockToastServiceHandler.showErrorAlertByTranslateLabel)
         .toHaveBeenCalledWith('errors.no-credentials-available');
-    });
+    }));
 
-    it('should not navigate to /tabs/vc-selector', async () => {
+    it('should not navigate to /tabs/vc-selector', fakeAsync(() => {
       component.qrCodeEmit(vpQrCode);
-      await new Promise(resolve => setTimeout(resolve, 0));
+      tick();
 
       expect(mockRouter.navigate).not.toHaveBeenCalledWith(
         ['/tabs/vc-selector/'],
         expect.any(Object)
       );
+    }));
+  });
+
+  describe('when at least one valid VC is found', () => {
+    beforeEach(() => {
+      // One VALID VC → selectableVcList.length === 1 after filter
+      mockCredentialCacheService.getAll.mockReturnValue([mockValidVc]);
     });
+
+    it('should navigate to /tabs/vc-selector', fakeAsync(() => {
+      component.qrCodeEmit(vpQrCode);
+      tick();
+
+      expect(mockRouter.navigate).toHaveBeenCalledWith(
+        ['/tabs/vc-selector/'],
+        expect.objectContaining({ queryParams: expect.any(Object) })
+      );
+    }));
   });
 });
