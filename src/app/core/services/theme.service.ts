@@ -220,18 +220,29 @@ export class ThemeService {
   }
 
   /**
-   * If the tenant's primaryColor hue falls in a "safe" blue range (200–280)
-   * AND has sufficient lightness (35–65%), use it as action-primary.
-   * Otherwise keep the neutral default (#2563EB).
+   * Adjusts the tenant's primaryColor lightness to a "safe" range (35–65%)
+   * so it is always usable as action-primary regardless of the brand color.
    */
   private computeActionPrimary(brandHex: string): string {
     const hsl = this.hexToHsl(brandHex);
     if (!hsl) return SEMANTIC_DEFAULTS['--action-primary'];
 
-    const hueOk = hsl.h >= 200 && hsl.h <= 280;
-    const lightnessOk = hsl.l >= 0.35 && hsl.l <= 0.65;
+    const minLightness = 0.35;
+    const maxLightness = 0.65;
 
-    return hueOk && lightnessOk ? brandHex : SEMANTIC_DEFAULTS['--action-primary'];
+    const adjustedLightness = Math.min(maxLightness, Math.max(minLightness, hsl.l));
+
+    return this.hslToHex(hsl.h, hsl.s, adjustedLightness);
+  }
+
+  private hslToHex(h: number, s: number, l: number): string {
+    const a = s * Math.min(l, 1 - l);
+    const f = (n: number) => {
+      const k = (n + h / 30) % 12;
+      const color = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+      return Math.round(255 * color).toString(16).padStart(2, '0');
+    };
+    return `#${f(0)}${f(8)}${f(4)}`;
   }
 
   private hexToHsl(hex: string): { h: number; s: number; l: number } | null {
