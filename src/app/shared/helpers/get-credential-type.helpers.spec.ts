@@ -22,8 +22,8 @@ describe('credential type helpers', () => {
 
   describe('isValidCredentialType', () => {
     it('returns true for a known credential type', () => {
-      expect(isValidCredentialType('learcredential.employee.w3c.4' as any)).toBe(true);
-      expect(isValidCredentialType('learcredential.machine.w3c.3' as any)).toBe(true);
+      expect(isValidCredentialType('learcredential.employee.w3c.1' as any)).toBe(true);
+      expect(isValidCredentialType('learcredential.machine.w3c.1' as any)).toBe(true);
       expect(isValidCredentialType('gx.labelcredential.w3c.1' as any)).toBe(true);
     });
 
@@ -35,17 +35,17 @@ describe('credential type helpers', () => {
 
   describe('getExtendedCredentialType', () => {
     it('Returns type when order is [VerifiableCredential, type]', () => {
-      const vc = { type: ['VerifiableCredential', 'learcredential.employee.w3c.4'] } as any;
+      const vc = { type: ['VerifiableCredential', 'learcredential.employee.w3c.1'] } as any;
       const result = getExtendedCredentialType(vc);
-      expect(result).toBe('learcredential.employee.w3c.4');
+      expect(result).toBe('learcredential.employee.w3c.1');
       expect(errorSpy).not.toHaveBeenCalled();
       expect(warnSpy).not.toHaveBeenCalled();
     });
 
     it('Returns type when order is [Type, VerifiableCredential]', () => {
-      const vc = { type: ['learcredential.employee.w3c.4', 'VerifiableCredential'] } as any;
+      const vc = { type: ['learcredential.employee.w3c.1', 'VerifiableCredential'] } as any;
       const result = getExtendedCredentialType(vc);
-      expect(result).toBe('learcredential.employee.w3c.4');
+      expect(result).toBe('learcredential.employee.w3c.1');
       expect(errorSpy).not.toHaveBeenCalled();
       expect(warnSpy).not.toHaveBeenCalled();
     });

@@ -75,7 +75,7 @@ describe('VcViewComponent', () => {
     componentRef.setInput('credentialInput$', {
       '@context': [],
       id: 'testId',
-      type: ['learcredential.employee.w3c.4'],
+      type: ['learcredential.employee.w3c.1'],
       issuer: { id: 'issuerId' },
       validFrom: '',
       validUntil: new Date(Date.now() + 86400000).toISOString(),
@@ -349,10 +349,10 @@ describe('VcViewComponent', () => {
 
   it('should add credentialEncoded section for machine credential type when building detail sections', async () => {
     const current = component.credentialInput$();
-    component.credentialType = 'learcredential.machine.w3c.3' as any;
+    component.credentialType = 'learcredential.machine.w3c.1' as any;
     const machineVc = {
       ...current,
-      type: ['learcredential.machine.w3c.3'],
+      type: ['learcredential.machine.w3c.1'],
       credentialEncoded: 'encoded_value' as any,
     } as any;
     componentRef.setInput('credentialInput$', machineVc);

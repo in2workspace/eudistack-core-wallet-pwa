@@ -16,7 +16,7 @@ import { CredentialParserService } from '../utils/credential-parser.util';
 const mockCredential: VerifiableCredential = {
   '@context': ['https://www.w3.org/ns/credentials/v1'],
   id: 'test-credential-id',
-  type: ['VerifiableCredential', 'learcredential.employee.w3c.4'],
+  type: ['VerifiableCredential', 'learcredential.employee.w3c.1'],
   issuer: {
     id: 'did:web:provider.dome.fiware.dev',
   },

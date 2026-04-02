@@ -16,13 +16,11 @@ export interface VerifiableCredential {
   credentialFormat?: string;
 }
 
-// NOTE: W3C versions (w3c.4, w3c.3) differ from the JSON schema profiles in
-// src/assets/schemas/ and credential-schema-registry.service.ts which use w3c.1.
-// See credential-type-map.ts for details on this version mismatch.
+// Must match credential_configuration_id in assets/schemas/*.json
 export const CREDENTIAL_TYPES_ARRAY = [
-  'learcredential.employee.w3c.4',
+  'learcredential.employee.w3c.1',
   'learcredential.employee.sd.1',
-  'learcredential.machine.w3c.3',
+  'learcredential.machine.w3c.1',
   'learcredential.machine.sd.1',
   'gx.labelcredential.w3c.1',
   'doctorid.sd.1',

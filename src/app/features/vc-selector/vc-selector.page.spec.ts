@@ -65,7 +65,7 @@ describe('VcSelectorPage', () => {
       {
         '@context': ['https://www.w3.org/2018/credentials/v1'],
         id: 'vc1',
-        type: ['VerifiableCredential', 'learcredential.employee.w3c.4'],
+        type: ['VerifiableCredential', 'learcredential.employee.w3c.1'],
         issuer: mockIssuer,
         issuanceDate: '2024-01-01T00:00:00Z',
         validFrom: '2024-01-01T00:00:00Z',
@@ -78,7 +78,7 @@ describe('VcSelectorPage', () => {
       {
         '@context': ['https://www.w3.org/2018/credentials/v1'],
         id: 'vc2',
-        type: ['VerifiableCredential', 'learcredential.employee.w3c.4'],
+        type: ['VerifiableCredential', 'learcredential.employee.w3c.1'],
         issuer: mockIssuer,
         validFrom: '2024-02-01T00:00:00Z',
         validUntil: '2025-02-01T00:00:00Z',
@@ -235,7 +235,7 @@ describe('VcSelectorPage', () => {
           { 
             '@context': ['https://www.w3.org/2018/credentials/v1'],
             id: 'vc1', 
-            type: ['VerifiableCredential', 'learcredential.employee.w3c.4'],
+            type: ['VerifiableCredential', 'learcredential.employee.w3c.1'],
             issuer: mockIssuer,
             validFrom: '2024-01-01T00:00:00Z',
             validUntil: '2025-01-01T00:00:00Z',
