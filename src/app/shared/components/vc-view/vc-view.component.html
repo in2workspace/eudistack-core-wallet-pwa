@@ -222,18 +222,8 @@
               </div>
               <div class="verify-row-info">
                 <span class="verify-row-label">{{ "verification.check-" + check.key | translate }}</span>
-                @if(check.detail && check.status !== 'pending' && check.status !== 'checking' && !(check.status === 'failed' && check.detail === 'revoked')) {
-                  <span class="verify-row-detail">{{ check.detail }}</span>
-                }
-                @if(check.key === 'status' && credentialInput.credentialStatus.id) {
-                  <div class="copy-row">
-                    <span class="copy-row__text ellipsis-text verify-row-detail" [title]="credentialInput.credentialStatus.id">{{ credentialInput.credentialStatus.id }}</span>
-                    <div class="copy-row__actions">
-                      <ion-button fill="clear" size="small" (click)="copyToClipboard(credentialInput.credentialStatus.id)" (keydown)="copyToClipboard(credentialInput.credentialStatus.id)">
-                        <ion-icon name="copy-outline"></ion-icon>
-                      </ion-button>
-                    </div>
-                  </div>
+                @if(check.detail && check.status !== 'pending' && check.status !== 'checking') {
+                  <span class="verify-row-detail">{{ check.detail | translate }}</span>
                 }
               </div>
             </div>

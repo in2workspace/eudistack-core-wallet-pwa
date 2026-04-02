@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Don't open VC details when selecting one to login.
 - Show error alert and navigate to credentials page when no valid credentials are available in vc-selector.
 - Fix textarea highlight overflow and align padding with manual send button.
-
+- Remove the revoke URL text and button from the verification modal.
+- Use translation labels for verification text.
 
 ## [3.0.0] - 2026-03-24
 
