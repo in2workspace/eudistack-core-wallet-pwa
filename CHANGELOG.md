@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **RFC 9901 compliant SD-JWT parser** — Rewrite `SdJwtParserService` with digest-based disclosure resolution at any nesting depth. Synchronous pure-JS SHA-256. (EUDI-012)
 - **Mandate wrapper SD-JWT schemas** — Updated `learcredential.employee.sd.1.json` and `learcredential.machine.sd.1.json` with nested mandate structure. (EUDI-012)
 
+### Fixed
+
+- **Credential card showing mandator instead of mandatee** — Aligned W3C credential type versions from `.w3c.4`/`.w3c.3` to `.w3c.1` matching the schema `credential_configuration_id`. Fixes schema registry lookup failure that caused `summary_claims` to be ignored.
+
 ### Changed
 - Update style files to apply tenant text color in platform-assets.
 - Back the primary color for verify button (it changed the contrast color in the commit 46bfd21).
