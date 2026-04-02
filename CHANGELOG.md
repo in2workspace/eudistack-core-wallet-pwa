@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Added
+
+- **RFC 9901 compliant SD-JWT parser** — Rewrite `SdJwtParserService` with digest-based disclosure resolution at any nesting depth. Synchronous pure-JS SHA-256. (EUDI-012)
+- **Mandate wrapper SD-JWT schemas** — Updated `learcredential.employee.sd.1.json` and `learcredential.machine.sd.1.json` with nested mandate structure. (EUDI-012)
+
 ### Changed
 - Update style files to apply tenant text color in platform-assets.
 - Back the primary color for verify button (it changed the contrast color in the commit 46bfd21).
