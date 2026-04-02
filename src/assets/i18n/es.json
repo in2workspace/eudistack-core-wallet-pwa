@@ -357,7 +357,10 @@
         "check-issuer": "Emisor",
         "check-issuance": "Fecha de emisión",
         "check-expiration": "Fecha de expiración",
-        "check-status": "Estado de revocación"
+        "check-status": "Estado de revocación",
+        "detail-revoked": "Revocada",
+        "detail-no-status-list": "Sin lista de estado",
+        "detail-no-expiry": "Sin fecha de caducidad"
     },
     "confirmation":{
         "header":"¿Enviar Credencial?",

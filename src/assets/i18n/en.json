@@ -357,7 +357,10 @@
         "check-issuer": "Issuer",
         "check-issuance": "Issuance date",
         "check-expiration": "Expiration date",
-        "check-status": "Revocation status"
+        "check-status": "Revocation status",
+        "detail-revoked": "Revoked",
+        "detail-no-status-list": "No status list",
+        "detail-no-expiry": "No expiry"
     },
     "confirmation":{
         "header":"Send credential?",

@@ -357,7 +357,10 @@
         "check-issuer": "Emissor",
         "check-issuance": "Data d'emissió",
         "check-expiration": "Data d'expiració",
-        "check-status": "Estat de revocació"
+        "check-status": "Estat de revocació",
+        "detail-revoked": "Revocada",
+        "detail-no-status-list": "Sense llista d'estat",
+        "detail-no-expiry": "Sense data de caducitat"
     },
     "confirmation":{
         "header":"Enviar credencial?",

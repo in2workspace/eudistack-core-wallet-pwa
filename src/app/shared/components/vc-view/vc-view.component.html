@@ -223,7 +223,7 @@
               <div class="verify-row-info">
                 <span class="verify-row-label">{{ "verification.check-" + check.key | translate }}</span>
                 @if(check.detail && check.status !== 'pending' && check.status !== 'checking') {
-                  <span class="verify-row-detail">{{ check.detail }}</span>
+                  <span class="verify-row-detail">{{ check.detail | translate }}</span>
                 }
               </div>
             </div>

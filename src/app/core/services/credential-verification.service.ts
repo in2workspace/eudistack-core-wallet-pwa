@@ -79,7 +79,7 @@ export class CredentialVerificationService {
 
   private checkExpirationDate(credential: VerifiableCredential): VerificationCheck {
     if (!credential.validUntil) {
-      return { key: 'expiration', status: 'passed', detail: 'No expiry' };
+      return { key: 'expiration', status: 'passed', detail: 'verification.detail-no-expiry' };
     }
     const expiry = dayjs(credential.validUntil);
     if (!expiry.isValid()) {
@@ -99,7 +99,7 @@ export class CredentialVerificationService {
       if (credential.lifeCycleStatus === 'REVOKED') {
         return { key: 'status', status: 'failed' };
       }
-      return { key: 'status', status: 'passed', detail: 'No status list' };
+      return { key: 'status', status: 'passed', detail: 'verification.detail-no-status-list' };
     }
 
     try {
@@ -107,10 +107,10 @@ export class CredentialVerificationService {
         this.http.get(status.statusListCredential, { responseType: 'text' })
       );
       const revoked = this.checkBitInStatusList(jwt, status.statusListIndex);
-      return { key: 'status', status: revoked ? 'failed' : 'passed', ...(revoked && { detail: 'Revoked' }) };
+      return { key: 'status', status: revoked ? 'failed' : 'passed', ...(revoked && { detail: 'verification.detail-revoked' }) };
     } catch {
       const fallbackRevoked = credential.lifeCycleStatus === 'REVOKED';
-      return { key: 'status', status: fallbackRevoked ? 'failed' : 'passed', ...(fallbackRevoked && { detail: 'Revoked' }) };
+      return { key: 'status', status: fallbackRevoked ? 'failed' : 'passed', ...(fallbackRevoked && { detail: 'verification.detail-revoked' }) };
     }
   }
 
