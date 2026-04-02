@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix asymmetric spacing on credential card in the vc-view for mobile display.
 - Don't open VC details when selecting one to login.
 - Show error alert and navigate to credentials page when no valid credentials are available in vc-selector.
+- Fix textarea highlight overflow and align padding with manual send button.
 
 
 ## [3.0.0] - 2026-03-24
