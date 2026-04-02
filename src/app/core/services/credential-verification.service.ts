@@ -107,10 +107,10 @@ export class CredentialVerificationService {
         this.http.get(status.statusListCredential, { responseType: 'text' })
       );
       const revoked = this.checkBitInStatusList(jwt, status.statusListIndex);
-      return { key: 'status', status: revoked ? 'failed' : 'passed', ...(revoked && { detail: 'revoked' }) };
+      return { key: 'status', status: revoked ? 'failed' : 'passed', ...(revoked && { detail: 'Revoked' }) };
     } catch {
       const fallbackRevoked = credential.lifeCycleStatus === 'REVOKED';
-      return { key: 'status', status: fallbackRevoked ? 'failed' : 'passed', ...(fallbackRevoked && { detail: 'revoked' }) };
+      return { key: 'status', status: fallbackRevoked ? 'failed' : 'passed', ...(fallbackRevoked && { detail: 'Revoked' }) };
     }
   }
 
