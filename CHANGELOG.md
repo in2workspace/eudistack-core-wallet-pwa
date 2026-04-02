@@ -5,6 +5,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Update style files to apply tenant text color in platform-assets.
+- Back the primary color for verify button (it changed the contrast color in the commit 46bfd21).
+
+### Fixed
+- Clean up mixed/incorrect translations across EN/ES/CA.
+- Fixed popup after vc delete.
+- Fix credential detail modal and verification modal closing incorrectly when the browser back button is pressed. 
+- Dark theme.
+- Translate revoke state URL from vc detail modal to verification detail modal.
+- Fix minor spelling issues in es/ca/en.
+- Remove unnecessary white bar from the `vc-selector`.
+- Fix asymmetric spacing on credential card in the vc-view for mobile display.
+- Don't open VC details when selecting one to login.
+- Show error alert and navigate to credentials page when no valid credentials are available in vc-selector.
+
 
 ## [3.0.0] - 2026-03-24
 
@@ -25,19 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve revoked/expired credential card styling with per-element opacity instead of whole-card dimming.
 - Fix SVG asset path to source from ionicons node_modules.
 - Set default favicon path in index.html (`assets/tenant/favicon.png`).
-- Back the primary color for verify button (it changed the contrast color in the commit 46bfd21).
-- Update style files to apply tenant text color in platform-assets.
 
 ### Fixed
-- Clean up mixed/incorrect translations across EN/ES/CA.
-- Fixed popup after vc delete.
-- Fix credential detail modal and verification modal closing incorrectly when the browser back button is pressed. 
-- Dark theme.
-- Translate revoke state URL from vc detail modal to verification detail modal.
-- Fix minor spelling issues in es/ca/en.
-- Remove unnecessary white bar from the `vc-selector`.
-- Fix asymmetric spacing on credential card in the vc-view for mobile display.
-- Don't open VC details when selecting one to login.
 
 ### Security
 - Add hex color validation in ThemeService to prevent CSS injection via theme.json.
