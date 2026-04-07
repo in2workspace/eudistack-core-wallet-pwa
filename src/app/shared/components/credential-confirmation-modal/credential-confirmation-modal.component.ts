@@ -194,7 +194,10 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
       background: var(--surface-card, #FFF); color: #374151;
       border: 1px solid var(--border-default, #D1D5DB);
     }
-    .btn-primary { background: var(--action-primary); color: #fff; }
+    .btn-primary { 
+      background: var(--action-primary);
+      color: var(--primary-contrast-color);
+    }
   `],
 })
 export class CredentialConfirmationModalComponent {

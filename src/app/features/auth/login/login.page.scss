@@ -128,8 +128,8 @@
 // Buttons
 .auth-button {
   --border-radius: 12px;
-  --background: var(--button-background, var(--primary-color));
-  --color: var(--button-text, var(--primary-contrast-color));
+  --background: var(--primary-color);
+  --color: var(--primary-contrast-color);
   --border-color: var(--secondary-color);
   --border-style: solid;
   --border-width: 2px;
