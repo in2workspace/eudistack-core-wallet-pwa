@@ -12,6 +12,9 @@ import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.ser
 import { ThemeService } from './core/services/theme.service';
 import { IssuerMetadataCacheService } from './core/services/issuer-metadata-cache.service';
 import { UserPreferencesService } from './shared/services/user-preferences.service';
+import { App, URLOpenListenerEvent } from '@capacitor/app';
+import { AuthService } from './core/services/auth.service';
+import { STEPUP_ACTION_KEY } from './core/constants/deep-link.constants';
 
 @Component({
     selector: 'app-root',
@@ -31,6 +34,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
   private readonly themeService = inject(ThemeService);
   private readonly _prefs = inject(UserPreferencesService); // eagerly init dark mode
+  private readonly authService = inject(AuthService);
 
   public routerEvents$ = this.router.events;
   // if the route is "/", don't allow menu popover
@@ -58,6 +62,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.issuerMetadataCache.refreshStaleMetadata().catch(console.warn);
     this.alertIncompatibleDevice();
     this.consumeLaunchQueue();
+    this.registerNativeDeepLinkListener();
   }
 
   /**
@@ -76,9 +81,31 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
+  private registerNativeDeepLinkListener(): void {
+    App.addListener('appUrlOpen', (event: URLOpenListenerEvent) => {
+      const incomingUrl = event.url;
+      if (!incomingUrl) { return; }
+
+      if (this.authService.isLoggedIn()) {
+        // Session is active → store URL and force step-up re-authentication
+        localStorage.setItem(STEPUP_ACTION_KEY, incomingUrl);
+        this.router.navigate(['/auth/login']);
+      } else {
+        // No session → treat as a normal cold-start deep link via sessionStorage
+        try {
+          const parsed = new URL(incomingUrl);
+          this.router.navigateByUrl(parsed.pathname + parsed.search);
+        } catch {
+          // Malformed URL — ignore silently
+        }
+      }
+    }).catch(console.error);
+  }
+
   public ngOnDestroy(){
     this.destroy$.next();
     this.destroy$.complete();
+    App.removeAllListeners().catch(console.error);
   }
 
   private initOid4vciEngine(): void {
