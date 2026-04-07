@@ -6,7 +6,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.service';
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
 import { base64UrlDecode } from 'src/app/core/utils/base64url';
-import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
+import { PENDING_DEEP_LINK_KEY, STEPUP_ACTION_KEY } from 'src/app/core/constants/deep-link.constants';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { LocalAuthService } from 'src/app/core/services/local-auth.service';
@@ -134,9 +134,22 @@ export class LoginPage {
         (this.authService as LocalAuthService).markAuthenticated();
       }
 
+      // Step-up action (native deep link while session was active) takes priority
+      const stepUpUrl = localStorage.getItem(STEPUP_ACTION_KEY);
+      if (stepUpUrl) {
+        localStorage.removeItem(STEPUP_ACTION_KEY);
+        try {
+          const parsed = new URL(stepUpUrl);
+          await this.router.navigateByUrl(parsed.pathname + parsed.search);
+        } catch {
+          await this.router.navigateByUrl('/tabs/home');
+        }
+        return;
+      }
+
       const pendingLink = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
       sessionStorage.removeItem(PENDING_DEEP_LINK_KEY);
-      this.router.navigateByUrl(pendingLink || '/tabs/home');
+      await this.router.navigateByUrl(pendingLink || '/tabs/home');
     } catch (err: any) {
       this.errorMessage = err?.message || 'Login failed';
     } finally {
