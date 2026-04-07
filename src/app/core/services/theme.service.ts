@@ -115,7 +115,7 @@ export class ThemeService {
     this.applyContextTokens(theme, root);
 
     // ── Layer 2: Semantic tokens (content area) ──
-    const actionPrimary = this.computeActionPrimary(theme.branding.primaryColor);
+    const actionPrimary = theme.branding.primaryColor;
 
     // Override action-primary if the brand hue is "safe" (blue range)
     root.style.setProperty('--action-primary', actionPrimary);
@@ -196,16 +196,10 @@ export class ThemeService {
     const b = theme.branding;
 
     const contextMap: Record<string, string | undefined> = {
-      // Header
-      '--header-background': b.header?.background,
-      '--header-text': b.header?.text,
       // Credential card
       '--card-background': b.card?.background,
       '--card-gradient-end': b.card?.gradientEnd,
       '--card-text': b.card?.text,
-      // Buttons
-      '--button-background': b.button?.background,
-      '--button-text': b.button?.text,
       // Auth screens
       '--auth-background': b.auth?.background,
       '--auth-gradient-end': b.auth?.gradientEnd ?? b.auth?.background,
@@ -217,63 +211,6 @@ export class ThemeService {
         root.style.setProperty(`${token}-rgb`, this.hexToRgbChannels(value));
       }
     }
-  }
-
-  /**
-   * Adjusts the tenant's primaryColor lightness to a "safe" range (35–65%)
-   * so it is always usable as action-primary regardless of the brand color.
-   */
-  private computeActionPrimary(brandHex: string): string {
-    const hsl = this.hexToHsl(brandHex);
-    if (!hsl) return SEMANTIC_DEFAULTS['--action-primary'];
-
-    const minLightness = 0.35;
-    const maxLightness = 0.65;
-
-    const adjustedLightness = Math.min(maxLightness, Math.max(minLightness, hsl.l));
-
-    return this.hslToHex(hsl.h, hsl.s, adjustedLightness);
-  }
-
-  private hslToHex(h: number, s: number, l: number): string {
-    const a = s * Math.min(l, 1 - l);
-    const f = (n: number) => {
-      const k = (n + h / 30) % 12;
-      const color = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
-      return Math.round(255 * color).toString(16).padStart(2, '0');
-    };
-    return `#${f(0)}${f(8)}${f(4)}`;
-  }
-
-  private hexToHsl(hex: string): { h: number; s: number; l: number } | null {
-    const raw = hex.replace('#', '').trim();
-    const full = raw.length === 3 ? raw.split('').map(c => c + c).join('') : raw;
-    const value = Number.parseInt(full, 16);
-    if (Number.isNaN(value)) return null;
-
-    const r = ((value >> 16) & 255) / 255;
-    const g = ((value >> 8) & 255) / 255;
-    const b = (value & 255) / 255;
-
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const d = max - min;
-    const l = (max + min) / 2;
-
-    if (d === 0) return { h: 0, s: 0, l };
-
-    const s = d / (1 - Math.abs(2 * l - 1));
-
-    let h = 0;
-    switch (max) {
-      case r: h = ((g - b) / d) % 6; break;
-      case g: h = (b - r) / d + 2; break;
-      default: h = (r - g) / d + 4; break;
-    }
-    h *= 60;
-    if (h < 0) h += 360;
-
-    return { h, s, l };
   }
 
   private hexToRgbChannels(hex: string): string {

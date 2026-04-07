@@ -192,9 +192,9 @@ ion-button.toolbar-but {
   color: var(--text-secondary);
 }
 
-.language-radio {
-  color: var(--text-secondary);
-  --color-checked: var(--text-secondary);
+ion-radio {
+  --color: var(--text-secondary);
+  --color-checked: var(--action-primary);
   width: 15px;
   height: 15px;
   min-width: var(--touch-min);
