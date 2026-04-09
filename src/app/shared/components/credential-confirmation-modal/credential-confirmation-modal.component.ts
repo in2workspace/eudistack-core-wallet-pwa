@@ -111,8 +111,13 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
       display: inline-flex; align-items: center; justify-content: center;
       width: 64px; height: 64px; border-radius: 50%;
       background: var(--primary-color);
+      border: 1px solid var(--primary-contrast-color);
+      box-sizing: content-box;
       margin-bottom: 16px; opacity: 0; transform: scale(0.5);
-      ion-icon { font-size: 32px; color: #fff; }
+      ion-icon { 
+        font-size: 32px; 
+        color: var(--primary-contrast-color);
+      }
       &.icon-enter { animation: pop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.15s forwards; }
     }
     @keyframes pop { to { opacity: 1; transform: scale(1); } }
@@ -136,9 +141,14 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
     }
     .credential-name { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); }
     .format-badge {
-      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
-      padding: 3px 8px; border-radius: 4px;
-      background: var(--primary-color); color: #fff;
+      font-size: 0.65rem;
+      font-weight: 600; 
+      text-transform: uppercase;
+      padding: 3px 8px; 
+      border-radius: 4px;
+      background: var(--primary-color); 
+      color: var(--primary-contrast-color);
+      border: 1px solid var(--primary-contrast-color);
     }
     .card-divider { height: 1px; background: var(--border-default, #D1D5DB); margin: 14px 0; opacity: 0.6; }
 
@@ -179,7 +189,7 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
 
     .countdown-section { margin-bottom: 20px; text-align: center; }
     .countdown-bar-track { height: 4px; border-radius: 2px; background: var(--surface-muted, #E8ECF1); overflow: hidden; margin-bottom: 8px; }
-    .countdown-bar-fill { height: 100%; border-radius: 2px; background: var(--primary-color); transition: width 1s linear; }
+    .countdown-bar-fill { height: 100%; border-radius: 2px; background: var(--neutral-medium); transition: width 1s linear; }
     .countdown-text { font-size: 0.8rem; color: var(--text-secondary); }
 
     .modal-actions { display: flex; gap: 12px; }
@@ -195,8 +205,9 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
       border: 1px solid var(--border-default, #D1D5DB);
     }
     .btn-primary { 
-      background: var(--action-primary);
+      background: var(--primary-color);
       color: var(--primary-contrast-color);
+      border: 1px solid var(--border-default, #D1D5DB);
     }
   `],
 })

@@ -52,16 +52,16 @@ import { CommonModule } from '@angular/common';
       color: var(--text-primary, #1A1A2E);
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-      caret-color: var(--action-primary, ---primary-color);
+      caret-color: var(---primary-color);
 
       &:focus {
-        border-color: var(--action-primary);
-        box-shadow: 0 0 0 3px rgb(var(--action-primary-rgb, 37, 99, 235) / 0.12);
+        border-color: var(--neutral-medium);
+        box-shadow: 0 0 0 3px rgb(var(--primary-color-rgb, 37, 99, 235), 0.12);
         background: var(--surface-card, #FFFFFF);
       }
 
       &.filled {
-        border-color: var(--action-primary);
+        border-color: var(--primary-color);
         background: var(--surface-card, #FFFFFF);
       }
 

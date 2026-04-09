@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Update style files to apply tenant text color in platform-assets.
 - Back the primary color for verify button (it changed the contrast color in the commit 46bfd21).
+- Remove --action-primary CSS variable and its hue/lightness computation function, using --primary-color instead.
+- Remove color variables from theme.service.ts that duplicated values already defined in variables.scss.
+- Add brand-independent neutral color variables　to variables.scss.
 
 ### Fixed
 - Clean up mixed/incorrect translations across EN/ES/CA.

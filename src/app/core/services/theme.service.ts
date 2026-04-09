@@ -6,52 +6,6 @@ import { Theme } from '../models/theme.model';
 import { ColorService } from '../../shared/services/color-service.service';
 import { StorageService } from '../../shared/services/storage.service';
 
-/**
- * Semantic design tokens — neutral, brand-independent values for the content area.
- * Brand colors (from theme.json) only apply to header/footer chrome.
- */
-const SEMANTIC_DEFAULTS: Record<string, string> = {
-  // Surfaces
-  '--surface-page': '#F5F7FA',
-  '--surface-card': '#FFFFFF',
-  '--surface-muted': '#E8ECF1',
-
-  // Text
-  '--text-primary': '#1A1A2E',
-  '--text-secondary': '#6B7280',
-  '--text-disabled': '#9CA3AF',
-
-  // Borders
-  '--border-default': '#D1D5DB',
-  '--border-strong': '#9CA3AF',
-
-  // Actions — always neutral, NEVER derived from tenant brand
-  '--action-primary': '#2563EB',
-  '--action-primary-hover': '#1D4ED8',
-  '--action-primary-contrast': '#FFFFFF',
-  '--action-secondary': '#F3F4F6',
-  '--action-secondary-hover': '#E5E7EB',
-  '--action-secondary-text': '#374151',
-
-  // Status
-  '--status-success': '#059669',
-  '--status-warning': '#D97706',
-  '--status-error': '#DC2626',
-  '--status-info': '#2563EB',
-  '--status-neutral': '#6B7280',
-
-  // Radii
-  '--radius-sm': '4px',
-  '--radius-md': '8px',
-  '--radius-lg': '16px',
-  '--radius-full': '9999px',
-
-  // Shadows
-  '--shadow-sm': '0 1px 2px rgba(0,0,0,0.05)',
-  '--shadow-md': '0 4px 6px rgba(0,0,0,0.07)',
-  '--shadow-lg': '0 10px 15px rgba(0,0,0,0.1)',
-};
-
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private theme$ = new BehaviorSubject<Theme | null>(null);
@@ -114,17 +68,10 @@ export class ThemeService {
     // ── Layer 1b: Per-context overrides (optional, fallback to Layer 1) ──
     this.applyContextTokens(theme, root);
 
-    // ── Layer 2: Semantic tokens (content area) ──
-    const actionPrimary = theme.branding.primaryColor;
-
-    // Override action-primary if the brand hue is "safe" (blue range)
-    root.style.setProperty('--action-primary', actionPrimary);
-    root.style.setProperty('--action-primary-rgb', this.hexToRgbChannels(actionPrimary));
-
     // Set RGB channels for status tokens (useful for rgba() usage)
-    const rgbTokens = ['--status-error', '--status-success', '--status-warning', '--action-primary'];
+    const rgbTokens = ['--status-error', '--status-success', '--status-warning'];
     for (const token of rgbTokens) {
-      const value = root.style.getPropertyValue(token) || SEMANTIC_DEFAULTS[token];
+      const value = root.style.getPropertyValue(token);
       if (value) {
         root.style.setProperty(`${token}-rgb`, this.hexToRgbChannels(value));
       }
@@ -147,7 +94,7 @@ export class ThemeService {
       name: `${theme.branding.name || 'EUDI'} Wallet`,
       short_name: theme.branding.name || 'Wallet',
       theme_color: theme.branding.primaryColor,
-      background_color: SEMANTIC_DEFAULTS['--surface-page'],
+      background_color: getComputedStyle(document.documentElement).getPropertyValue('--surface-page').trim(),
       display: 'standalone',
       scope: `${origin}/`,
       start_url: `${origin}/`,

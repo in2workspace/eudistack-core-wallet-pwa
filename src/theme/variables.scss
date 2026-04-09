@@ -9,9 +9,15 @@
   --secondary-color: #132153;
   --secondary-contrast-color: #ffffff;
 
+  /** Static, brand-independent neutral color palette　(not overridden by ThemeService)  **/
+  --neutral-strong: #333333;
+  --neutral-medium: #6B7280;
+  --neutral-light: #9CA3AF;
+  --neutral-white: #ffffff;
+  
   /** Semantic design tokens — neutral, brand-independent **/
   --surface-page: #F5F7FA;
-  --surface-card: #FFFFFF;
+  --surface-card: #FFFFFF;  // this variable is used in theme.service.ts
   --surface-muted: #E8ECF1;
 
   --text-primary: #1A1A2E;
@@ -21,13 +27,11 @@
   --border-default: #D1D5DB;
   --border-strong: #9CA3AF;
 
-  --action-primary: #2563EB;
-  --action-primary-hover: #1D4ED8;
-  --action-primary-contrast: #FFFFFF;
   --action-secondary: #F3F4F6;
   --action-secondary-hover: #E5E7EB;
   --action-secondary-text: #374151;
 
+  // These variables are used in theme.service.ts
   --status-success: #059669;
   --status-warning: #D97706;
   --status-error: #DC2626;
