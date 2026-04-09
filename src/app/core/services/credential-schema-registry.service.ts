@@ -16,9 +16,9 @@ interface CredentialSchemaProfile {
 }
 
 const SUPPORTED_SCHEMAS = [
-  'learcredential.employee.w3c.1',
+  'learcredential.employee.w3c.4',
   'learcredential.employee.sd.1',
-  'learcredential.machine.w3c.1',
+  'learcredential.machine.w3c.3',
   'learcredential.machine.sd.1',
   'gx.labelcredential.w3c.1',
   'doctorid.sd.1',

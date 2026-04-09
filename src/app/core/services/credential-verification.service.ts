@@ -121,7 +121,8 @@ export class CredentialVerificationService {
     const payload = this.decodeJwtPayload(jwt);
 
     let encodedList: string | undefined =
-      payload?.vc?.credentialSubject?.encodedList;
+      payload?.vc?.credentialSubject?.encodedList
+      ?? payload?.credentialSubject?.encodedList;
 
     if (!encodedList && payload?.status_list?.lst) {
       return this.checkTokenStatusList(payload.status_list.lst, payload.status_list.bits ?? 1, bitIndex);

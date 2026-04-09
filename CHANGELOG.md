@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Credential card showing mandator instead of mandatee** — Aligned W3C credential type versions from `.w3c.4`/`.w3c.3` to `.w3c.1` matching the schema `credential_configuration_id`. Fixes schema registry lookup failure that caused `summary_claims` to be ignored.
 
 ### Changed
+
+- **EUDI-013:** Rename credential type IDs: `learcredential.employee.w3c.1` → `.w3c.4`, `learcredential.machine.w3c.1` → `.w3c.3`
+- **EUDI-013:** Update asset schema files to match new credential type IDs
 - Update style files to apply tenant text color in platform-assets.
 - Back the primary color for verify button (it changed the contrast color in the commit 46bfd21).
 
