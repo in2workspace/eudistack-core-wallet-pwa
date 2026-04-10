@@ -234,7 +234,7 @@ ion-modal.detail-blurred::part(content) {
   font-size: 14px;
   padding: 8px 12px;
   margin-bottom: 12px;
-  border-bottom: 2px solid var(--ion-color-primary);
+  border-bottom: 2px solid var(--border-strong);
   background: transparent;
 }
 
@@ -303,6 +303,9 @@ ion-modal.detail-blurred::part(content) {
   display: flex;
   gap: 4px;
   flex-shrink: 0;
+  ion-button {
+    --color: var(--text-primary);
+  }
 }
 
 .ellipsis-text {
@@ -320,12 +323,12 @@ ion-modal.detail-blurred::part(content) {
 
 .verify-button {
   --border-radius: 12px;
-  --color: var(--primary-color, var(--ion-color-primary));
+  --color: var(--text-primary);
   --background: transparent;
   font-weight: 600;
   font-size: 14px;
   &::part(native) {
-    border: 2px solid var(--primary-color, var(--ion-color-primary));
+    border: 2px solid var(--border-strong);
   } 
 }
 
@@ -456,7 +459,7 @@ ion-modal.verification-modal {
 .check-spinner {
   width: 22px;
   height: 22px;
-  color: var(--action-primary);
+  color: var(--primary-color);
 }
 
 .check-icon {

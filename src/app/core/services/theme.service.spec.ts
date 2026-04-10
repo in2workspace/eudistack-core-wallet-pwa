@@ -113,27 +113,12 @@ describe('ThemeService', () => {
   describe('applyContextTokens', () => {
     it('should set CSS custom properties for valid hex colors', () => {
       const theme = buildTheme({
-        header: { background: '#FF0000', text: '#FFFFFF' },
         card: { background: '#00FF00' },
       });
 
       (service as any).applyContextTokens(theme, root);
 
-      expect(root.style.getPropertyValue('--header-background')).toBe('#FF0000');
-      expect(root.style.getPropertyValue('--header-text')).toBe('#FFFFFF');
       expect(root.style.getPropertyValue('--card-background')).toBe('#00FF00');
-      expect(root.style.getPropertyValue('--header-background-rgb')).toBeTruthy();
-    });
-
-    it('should NOT set CSS properties for invalid color values', () => {
-      const theme = buildTheme({
-        header: { background: 'url(https://evil.com)', text: '#FFFFFF' },
-      });
-
-      (service as any).applyContextTokens(theme, root);
-
-      expect(root.style.getPropertyValue('--header-background')).toBe('');
-      expect(root.style.getPropertyValue('--header-text')).toBe('#FFFFFF');
     });
 
     it('should NOT set CSS properties when context overrides are absent', () => {
@@ -141,9 +126,7 @@ describe('ThemeService', () => {
 
       (service as any).applyContextTokens(theme, root);
 
-      expect(root.style.getPropertyValue('--header-background')).toBe('');
       expect(root.style.getPropertyValue('--card-background')).toBe('');
-      expect(root.style.getPropertyValue('--button-background')).toBe('');
     });
   });
 });

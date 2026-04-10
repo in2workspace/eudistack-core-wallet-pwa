@@ -66,7 +66,7 @@ ion-modal#example-modal .wrapper {
 
 .item-trns {
   --ion-item-background: transparent;
-  color: var(--action-primary-contrast);
+  color: var(--primary-contrast-color);
 }
 
 ion-item{
@@ -81,8 +81,8 @@ ion-item{
 }
 
 .ion-button-custom{
-  --ion-color-base: var(--action-primary) !important;
-  --ion-color-contrast: var(--action-primary-contrast) !important;
+  --ion-color-base: var(--primary-color) !important;
+  --ion-color-contrast: var(--primary-contrast-color) !important;
 }
 
 .ion-button-custom[disabled]{
@@ -131,7 +131,7 @@ ion-item{
 
 .alert-button-role-confirm,
 .alert-button-role-ok {
-  color: var(--action-primary, var(--text-primary)) !important;
+  color: var(--status-error, var(--text-primary)) !important;
   text-transform: none !important;
   font-weight: bold !important;
 }
@@ -192,9 +192,9 @@ ion-button.toolbar-but {
   color: var(--text-secondary);
 }
 
-.language-radio {
-  color: var(--text-secondary);
-  --color-checked: var(--text-secondary);
+ion-radio {
+  --color: var(--neutral-medium);
+  --color-checked:  var(--neutral-medium);
   width: 15px;
   height: 15px;
   min-width: var(--touch-min);
@@ -245,6 +245,14 @@ input[type="number"] {
     background: var(--primary-color, var(--ion-color-primary));
     color: var(--primary-contrast-color, var(--ion-color-primary-contrast));
     border-color: var(--primary-color, var(--ion-color-primary));
+  }
+
+  ion-app .overlay-icon {
+    color: var(--text-primary) !important;
+  }
+
+  ion-app .overlay-dots .dot {
+    background: var(--text-primary) !important;
   }
 }
 

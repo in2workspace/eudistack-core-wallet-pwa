@@ -104,10 +104,10 @@
 
   ion-icon {
     font-size: 18px;
-    color: var(--primary-contrast-color, #ffffff);
+    color: var(--neutral-white);
   }
 
-  &--blue   { background-color: var(--action-primary); }
+  &--blue   { background-color: var(--status-info); }
   &--purple { background-color: #8B5CF6; }
   &--green  { background-color: var(--status-success); }
   &--orange { background-color: var(--status-warning); }
@@ -128,7 +128,8 @@
 
 .settings-toggle {
   --track-background: var(--border-default);
-  --track-background-checked: var(--action-primary);
+  --track-background-checked: var(--border-default);
+  --handle-background-checked: var(--status-neutral);
   padding-inline-end: 16px;
 }
 
