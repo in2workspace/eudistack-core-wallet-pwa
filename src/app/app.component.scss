@@ -166,7 +166,7 @@ ion-app .overlay-card {
 ion-app .overlay-icon {
   width: 36px;
   height: 36px;
-  color: var(--action-primary);
+  color: var(--neutral-strong);
   animation: icon-pulse 1.8s ease-in-out infinite;
 }
 
@@ -179,7 +179,7 @@ ion-app .overlay-dots .dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--text-secondary);
+  background: var(--neutral-medium);
   animation: dot-bounce 1.2s ease-in-out infinite;
 }
 
