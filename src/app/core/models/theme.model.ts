@@ -12,17 +12,9 @@ export interface Theme {
     pwaIconUrl: string | null;
 
     /** Optional per-context color overrides. All fields fallback to primary/secondary when omitted. */
-    header?: {
-      background?: string;
-      text?: string;
-    };
     card?: {
       background?: string;
       gradientEnd?: string;
-      text?: string;
-    };
-    button?: {
-      background?: string;
       text?: string;
     };
     auth?: {
