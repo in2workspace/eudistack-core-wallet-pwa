@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix textarea highlight overflow and align padding with manual send button.
 - Remove the revoke URL text and button from the verification modal.
 - Use translation labels for verification text.
+- Enable touch scroll in settings page.
 
 ## [3.0.0] - 2026-03-24
 
