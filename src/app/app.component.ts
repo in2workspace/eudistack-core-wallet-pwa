@@ -15,7 +15,6 @@ import { UserPreferencesService } from './shared/services/user-preferences.servi
 import { SingleInstanceService } from './core/services/single-instance.service';
 import { SwUpdateService } from './core/services/sw-update.service';
 import { AuthService } from './core/services/auth.service';
-import { PENDING_DEEP_LINK_KEY } from './core/constants/deep-link.constants';
 
 @Component({
     selector: 'app-root',
@@ -70,27 +69,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.initOid4vciEngine();
       this.issuerMetadataCache.refreshStaleMetadata().catch(console.warn);
       this.alertIncompatibleDevice();
-      this.consumeLaunchQueue();
     });
-  }
-
-  /**
-   * Handles URLs delivered by the Launch Handler API (installed PWA, Chromium).
-   * Requires `launch_handler.client_mode: "focus-existing"` in the manifest.
-   */
-  private consumeLaunchQueue(): void {
-    if ('launchQueue' in window) {
-      (window as any).launchQueue.setConsumer((launchParams: any) => {
-        if (launchParams.targetURL) {
-          const url = new URL(launchParams.targetURL);
-          const path = url.pathname + url.search;
-          if (path && path !== '/' && !path.startsWith('/auth')) {
-            sessionStorage.setItem(PENDING_DEEP_LINK_KEY, path);
-          }
-          this.authService.forceLogout();
-        }
-      });
-    }
   }
 
   public ngOnDestroy(){

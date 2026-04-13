@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **RFC 9901 compliant SD-JWT parser** — Rewrite `SdJwtParserService` with digest-based disclosure resolution at any nesting depth. Synchronous pure-JS SHA-256. (EUDI-012)
 - **Mandate wrapper SD-JWT schemas** — Updated `learcredential.employee.sd.1.json` and `learcredential.machine.sd.1.json` with nested mandate structure. (EUDI-012)
-- **Single-instance PWA** — `SingleInstanceService` (BroadcastChannel leader election) + `launch_handler: focus-existing` in manifest. Subsequent tab opens are absorbed by the existing tab; the user is always re-authenticated before any protocol flow.
+- **Single-instance PWA** — `SingleInstanceService` (BroadcastChannel leader election) + `launch_handler: navigate-existing` in manifest. Subsequent tab opens are absorbed by the existing tab; the user is always re-authenticated before any protocol flow.
 - **SW auto-update** — `SwUpdateService` activates new Service Worker versions immediately on `VERSION_READY` to prevent zombie workers.
 - **Nginx no-cache headers** — `index.html`, `manifest.webmanifest`, `ngsw.json` and `ngsw-worker.js` served with `Cache-Control: no-store` to prevent stale asset serving after deployments.
 
