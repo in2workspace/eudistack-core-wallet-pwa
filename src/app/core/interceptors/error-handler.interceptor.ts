@@ -11,12 +11,10 @@ import { catchError } from 'rxjs/operators';
 import { ToastServiceHandler } from '../../shared/services/toast.service';
 import { SERVER_PATH } from '../constants/api.constants';
 import { environment } from 'src/environments/environment';
-import { AuthService } from '../services/auth.service';
 
 @Injectable()
 export class HttpErrorInterceptor implements HttpInterceptor {
   private readonly toastServiceHandler = inject(ToastServiceHandler);
-  private readonly authService = inject(AuthService);
 
   private logHandledSilentlyErrorMsg(errMsg: string) {
     console.error('Handled silently:', errMsg);
@@ -39,12 +37,6 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         let errMessage =
           errorResp.error?.message || errorResp.message || 'Unknown Http error';
         const errStatus = errorResp.status ?? errorResp.error?.status;
-
-        // Handle 401 Unauthorized — force logout
-        if (errStatus === 401 && !pathname.startsWith('/api/v1/auth/')) {
-          console.warn('401: Credential unauthorized');
-          return throwError(() => errorResp);
-        }
 
         if (!isOwnBackend) {
           // Do not toast for 3rd party endpoints (issuers, well-known, etc.)
