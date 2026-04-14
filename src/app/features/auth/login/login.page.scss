@@ -176,6 +176,153 @@
   40% { transform: scale(1); opacity: 1; }
 }
 
+// Steps bar
+.steps-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 24px;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.step-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--action-secondary-hover);
+  color: var(--text-disabled);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+
+  .step.active & {
+    background: var(--primary-color);
+    color: var(--primary-contrast-color);
+    box-sizing: content-box;
+    border: 1px solid var(--primary-contrast-color);
+    box-shadow: 0 2px 8px rgb(var(--primary-color-rgb), 0.3);
+  }
+
+  .step.done & {
+    background: var(--status-success);
+    color: var(--primary-contrast-color);
+  }
+
+  ion-icon {
+    font-size: 16px;
+  }
+}
+
+.step-label {
+  font-size: 0.7rem;
+  color: var(--text-disabled);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  .step.active &,
+  .step.done & {
+    color: var(--text-primary);
+  }
+}
+
+.step-line {
+  width: clamp(24px, 8vw, 48px);
+  height: 2px;
+  background: var(--action-secondary-hover);
+  margin: 0 clamp(4px, 2vw, 12px);
+  margin-bottom: 20px;
+  transition: background 0.3s ease;
+
+  &.filled {
+    background: var(--status-success);
+  }
+}
+
+// Form
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+// Email badge (step 2)
+.email-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  color: var(--status-info);
+
+  ion-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    color: var(--status-info);
+  }
+
+  span {
+    font-weight: 500;
+    word-break: break-all;
+  }
+}
+
+// Input group
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--surface-page);
+  border: 1.5px solid var(--action-secondary-hover);
+  border-radius: 12px;
+  padding: 0 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus-within {
+    border-color: var(--neutral-medium);
+    box-shadow: 0 0 0 3px rgb(var(--primary-color-rgb), 0.1);
+  }
+
+  ion-input {
+    --highlight-color: transparent;
+  }
+}
+
+.input-icon {
+  color: var(--text-disabled);
+  font-size: 20px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.modern-input {
+  --background: transparent;
+  --padding-start: 0;
+  --padding-end: 0;
+  --padding-top: 14px;
+  --padding-bottom: 14px;
+  --border-style: none;
+  font-size: 0.95rem;
+}
+
+.btn-spinner {
+  width: 22px;
+  height: 22px;
+}
+
 // Error box
 .error-box {
   display: flex;

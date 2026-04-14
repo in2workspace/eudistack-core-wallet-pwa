@@ -36,6 +36,21 @@
       </ion-list>
     </div>
 
+    <!-- Devices section (only in server mode) -->
+    @if(isServerMode) {
+      <div class="settings-group">
+        <ion-list lines="none" class="settings-list">
+          <ion-item [routerLink]="['/tabs/devices']" detail="false" class="settings-item">
+            <div class="icon-badge icon-badge--indigo" slot="start">
+              <ion-icon name="key-outline"></ion-icon>
+            </div>
+            <ion-label>{{ 'devices.settings-link' | translate }}</ion-label>
+            <ion-icon name="chevron-forward-outline" slot="end" class="chevron"></ion-icon>
+          </ion-item>
+        </ion-list>
+      </div>
+    }
+
     <!-- Preferences section -->
     <div class="settings-group">
       <ion-list lines="none" class="settings-list">

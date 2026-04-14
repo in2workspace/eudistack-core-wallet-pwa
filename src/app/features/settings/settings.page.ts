@@ -26,6 +26,7 @@ export class SettingsPage {
   public userName = '';
   public featureLogsEnabled = environment.logs_enabled;
   public readonly appVersion = environment.appVersion;
+  public readonly isServerMode = (environment as any).wallet_mode === 'server';
   private readonly pwaInstallService = inject(PwaInstallService);
   readonly canInstall$ = this.pwaInstallService.installable$;
   readonly prefs = inject(UserPreferencesService);

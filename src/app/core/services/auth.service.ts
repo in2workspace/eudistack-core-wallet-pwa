@@ -64,7 +64,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   constructor() {
     super();
-    this.loadStoredTokens();
+    Promise.resolve().then(() => this.loadStoredTokens());
     this.listenToCrossTabLogout();
   }
 

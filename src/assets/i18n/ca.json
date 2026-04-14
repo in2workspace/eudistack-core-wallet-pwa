@@ -67,7 +67,9 @@
         "login": {
             "title": "Benvingut",
             "subtitle": "Usa la teva passkey per accedir de forma segura",
-            "passkey-button": "Iniciar sessió amb Passkey"
+            "passkey-button": "Iniciar sessió amb Passkey",
+            "enter-email": "Introdueix el teu email per continuar",
+            "verify-passkey": "Verifica la teva identitat amb la teva passkey"
         },
         "register": {
             "title": "Crear compte",
@@ -221,7 +223,7 @@
                 "country": "País",
                 "email":"Correu electrònic"
             },
-            "powers": "Poders"            
+            "powers": "Poders"
         },
         "gaia-x-label-credential": {
             "label-info": {
@@ -285,7 +287,7 @@
 
         "verifier-post-failed": "No hem pogut enviar la resposta de login. Torna-ho a provar.",
         "signature-failed": "No hem pogut signar la presentació. Torna-ho a provar.",
-        
+
         "failed-qr-process": "Hi ha hagut un problema en processar el QR. Pot ser que sigui invàlid o que ja hagi estat utilitzat abans. Refresqueu-lo. Si el problema persisteix, contacteu <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>",
         "invalid-qr":"El QR presentat és invàlid",
         "no-credentials-available": "No hi ha cap credencial disponible per al login",
@@ -368,7 +370,7 @@
         "cancel":"Cancel·lar",
         "new-credential": "Vols acceptar aquesta credencial?",
         "new-credential-title": "Nova credencial",
-        "accept":"Acceptar",    
+        "accept":"Acceptar",
         "pin":"Introdueix el PIN",
         "description": "S'ha enviat un codi PIN al teu email. Revisa'l i introdueix el PIN.",
         "send": "Enviar",
