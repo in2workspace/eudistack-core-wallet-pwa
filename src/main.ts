@@ -33,7 +33,7 @@ function initializePasskeyStore(store: PasskeyStoreService): () => Promise<void>
 }
 
 disableTouchScrollOnPaths(
-  ['/tabs/settings', '/tabs/home']
+  ['/tabs/home']
 );
 
 if (environment.production) {
