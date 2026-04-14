@@ -1,5 +1,4 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
-import { Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
 
@@ -14,7 +13,6 @@ const ELECTION_TIMEOUT_MS = 300;
 
 @Injectable({ providedIn: 'root' })
 export class SingleInstanceService implements OnDestroy {
-  private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
 
   private channel: BroadcastChannel | null = null;

@@ -3,7 +3,10 @@ import { setupZoneTestEnv } from 'jest-preset-angular/setup-env/zone';
 setupZoneTestEnv();
 
 // Polyfill crypto.randomUUID for Jest/jsdom environment (not available by default)
-if (!crypto.randomUUID) {
+if (!globalThis.crypto) {
+  Object.defineProperty(globalThis, 'crypto', { value: {}, writable: true });
+}
+if (!globalThis.crypto.randomUUID) {
   Object.defineProperty(globalThis.crypto, 'randomUUID', {
     value: () => {
       return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {

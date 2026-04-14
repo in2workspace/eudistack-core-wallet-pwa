@@ -106,6 +106,7 @@ describe('AppComponent', () => {
 
     authServiceMock = {
       getName$: jest.fn().mockReturnValue(of('John Doe')),
+      forceLogout: jest.fn(),
     } as unknown as jest.Mocked<AuthService>;
 
     storageServiceMock = {

@@ -24,6 +24,8 @@ export class SwUpdateService implements OnDestroy {
       .subscribe(() => {
         this.swUpdate.activateUpdate().then(() => {
           document.location.reload();
+        }).catch(err => {
+          console.error('Failed to activate SW update', err);
         });
       });
 
