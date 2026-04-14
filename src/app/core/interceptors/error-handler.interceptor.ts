@@ -27,7 +27,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
     next: HttpHandler
   ): Observable<HttpEvent<unknown>> {
     //todo refactor this handler (conditional structure)
-    
+
     return next.handle(request).pipe(
       catchError((errorResp: HttpErrorResponse) => {
         // Normalize URL to ensure request params are not included in the conditionals below
@@ -42,7 +42,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
 
         // Handle 401 Unauthorized — force logout
         if (errStatus === 401 && !pathname.startsWith('/api/v1/auth/')) {
-          this.authService.forceLogout();
+          console.warn('401: Credential unauthorized');
           return throwError(() => errorResp);
         }
 
