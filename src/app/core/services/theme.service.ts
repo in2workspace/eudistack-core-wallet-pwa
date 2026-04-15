@@ -18,7 +18,7 @@ export class ThemeService {
   ) {}
 
   async load(): Promise<void> {
-    const theme = await firstValueFrom(this.http.get<Theme>('/assets/theme.json'));
+    const theme = await firstValueFrom(this.http.get<Theme>('assets/theme.json'));
     this.theme$.next(theme);
     this.applyTheme(theme);
     await this.setupI18n(theme);
