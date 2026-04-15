@@ -6,7 +6,7 @@ import {
   ViewChildren,
   QueryList,
   ElementRef,
-  AfterViewInit, OnChanges, SimpleChanges,
+  AfterViewInit, OnChanges, OnInit, SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
@@ -135,7 +135,7 @@ export class OtpInputComponent implements OnInit, OnChanges, AfterViewInit {
       input.value = val;
 
       if (index < this.length - 1) {
-        this.focusBox(index + 1);
+        setTimeout (() => this.focusBox(index + 1), 0);
       }
     } else {
       this.digits[index] = '';
@@ -207,10 +207,11 @@ export class OtpInputComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   private focusBox(index: number): void {
-   const el = this.boxes.toArray()[index]?.nativeElement;
-   if (el) {
+   const boxes = this.boxes?.toArray();
+   if (boxes && boxes[index]) {
+     const el = boxes[index].nativeElement;
      el.focus();
-     el.setSelectionRange(0, 1);
+     setTimeout(() => el.select(), 0);
    }
   }
 
