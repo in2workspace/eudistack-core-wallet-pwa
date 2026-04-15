@@ -12,6 +12,9 @@ import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.ser
 import { ThemeService } from './core/services/theme.service';
 import { IssuerMetadataCacheService } from './core/services/issuer-metadata-cache.service';
 import { UserPreferencesService } from './shared/services/user-preferences.service';
+import { SingleInstanceService } from './core/services/single-instance.service';
+import { SwUpdateService } from './core/services/sw-update.service';
+import { AuthService } from './core/services/auth.service';
 
 @Component({
     selector: 'app-root',
@@ -31,6 +34,9 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
   private readonly themeService = inject(ThemeService);
   private readonly _prefs = inject(UserPreferencesService); // eagerly init dark mode
+  private readonly singleInstance = inject(SingleInstanceService);
+  private readonly swUpdate = inject(SwUpdateService);
+  private readonly authService = inject(AuthService);
 
   public routerEvents$ = this.router.events;
   // if the route is "/", don't allow menu popover
@@ -54,26 +60,16 @@ export class AppComponent implements OnInit, OnDestroy {
 
   public ngOnInit() {
     this.logoSrc = this.themeService.getLogoUrl('light');
-    this.initOid4vciEngine();
-    this.issuerMetadataCache.refreshStaleMetadata().catch(console.warn);
-    this.alertIncompatibleDevice();
-    this.consumeLaunchQueue();
-  }
-
-  /**
-   * Handles URLs delivered by the Launch Handler API when the PWA is already
-   * open and the browser reuses the existing window instead of opening a new one.
-   * Requires `launch_handler.client_mode: "navigate-existing"` in the manifest.
-   */
-  private consumeLaunchQueue(): void {
-    if ('launchQueue' in window) {
-      (window as any).launchQueue.setConsumer((launchParams: any) => {
-        if (launchParams.targetURL) {
-          const url = new URL(launchParams.targetURL);
-          this.router.navigateByUrl(url.pathname + url.search);
-        }
-      });
-    }
+    this.swUpdate.init();
+    this.singleInstance.elect().then((isLeader) => {
+      if (!isLeader) {
+        return;
+      }
+      this.authService.forceLogout();
+      this.initOid4vciEngine();
+      this.issuerMetadataCache.refreshStaleMetadata().catch(console.warn);
+      this.alertIncompatibleDevice();
+    });
   }
 
   public ngOnDestroy(){

@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { CanActivateFn, Router } from '@angular/router';
 import { PENDING_DEEP_LINK_KEY } from './core/constants/deep-link.constants';
 import { authGuard } from './core/guards/auth.guard';
 import { PasskeyStoreService } from './core/services/passkey-store.service';
@@ -10,12 +10,12 @@ import { PasskeyStoreService } from './core/services/passkey-store.service';
  * device, otherwise to /auth/register.
  * Saves the original URL (with query params) so it can be restored after auth.
  */
-const authLandingGuard = () => {
+const authLandingGuard: CanActivateFn = (_route, state) => {
   const router = inject(Router);
   const passkeyStore = inject(PasskeyStoreService);
-  const currentUrl = window.location.pathname + window.location.search;
-  if (currentUrl && currentUrl !== '/') {
-    sessionStorage.setItem(PENDING_DEEP_LINK_KEY, currentUrl);
+  const targetUrl = state.url;
+  if (targetUrl && targetUrl !== '/' && !targetUrl.startsWith('/auth')) {
+    sessionStorage.setItem(PENDING_DEEP_LINK_KEY, targetUrl);
   }
   const hasPasskey = passkeyStore.hasPasskey();
   return router.createUrlTree([hasPasskey ? '/auth/login' : '/auth/register']);

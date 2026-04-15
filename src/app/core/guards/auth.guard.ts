@@ -1,11 +1,11 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateFn, Router, RouterStateSnapshot } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { PasskeyStoreService } from '../services/passkey-store.service';
 import { filter, map, take } from 'rxjs/operators';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
 
-export const authGuard: CanActivateFn = () => {
+export const authGuard: CanActivateFn = (_route, state: RouterStateSnapshot) => {
   const authService = inject(AuthService);
   const passkeyStore = inject(PasskeyStoreService);
   const router = inject(Router);
@@ -18,9 +18,9 @@ export const authGuard: CanActivateFn = () => {
         return true;
       }
 
-      const currentUrl = window.location.pathname + window.location.search;
-      if (currentUrl && currentUrl !== '/') {
-        sessionStorage.setItem(PENDING_DEEP_LINK_KEY, currentUrl);
+      const targetUrl = state.url;
+      if (targetUrl && targetUrl !== '/') {
+        sessionStorage.setItem(PENDING_DEEP_LINK_KEY, targetUrl);
       }
 
       const hasPasskey = passkeyStore.hasPasskey();
