@@ -39,7 +39,7 @@ export class SingleInstanceService implements OnDestroy {
         tabId: this.tabId,
         url: currentUrl,
       } satisfies SingleInstanceMessage);
-
+// TODO: There is a potential race condition here. This should be improved in a future update.
       const timeout = setTimeout(() => {
         this.becomeLeader();
         resolve(true);
