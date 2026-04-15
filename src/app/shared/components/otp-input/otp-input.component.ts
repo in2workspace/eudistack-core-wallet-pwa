@@ -6,7 +6,7 @@ import {
   ViewChildren,
   QueryList,
   ElementRef,
-  AfterViewInit,
+  AfterViewInit, OnChanges, SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
@@ -17,7 +17,7 @@ import { CommonModule } from '@angular/common';
   template: `
     <div class="otp-container">
       <input
-        *ngFor="let d of digits; let i = index"
+        *ngFor="let d of digits; let i = index; trackBy: trackByFn"
         #otpBox
         type="text"
         inputmode="numeric"
@@ -78,7 +78,7 @@ import { CommonModule } from '@angular/common';
     }
   `],
 })
-export class OtpInputComponent implements AfterViewInit {
+export class OtpInputComponent implements OnInit, OnChanges, AfterViewInit {
   @ViewChildren('otpBox') boxes!: QueryList<ElementRef<HTMLInputElement>>;
 
   /** Number of digit boxes (4 for PIN, 6 for email OTP) */
@@ -98,14 +98,13 @@ export class OtpInputComponent implements AfterViewInit {
 
   digits: string[] = [];
 
-  ngOnChanges(): void {
+  ngOnInit() { this.initDigits(); }
+  ngOnChanges(): void { this.initDigits(); }
+
+  private initDigits(): void {
     if (this.digits.length !== this.length) {
       this.digits = Array(this.length).fill('');
     }
-  }
-
-  ngOnInit(): void {
-    this.digits = Array(this.length).fill('');
   }
 
   ngAfterViewInit(): void {
@@ -118,53 +117,63 @@ export class OtpInputComponent implements AfterViewInit {
     return this.digits.join('');
   }
 
-  /** Programmatic reset */
+  trackByFn(index: number) { return index; }
+
+  /** Programmatic reset
   reset(): void {
     this.digits = Array(this.length).fill('');
     this.focusBox(0);
-  }
+  }*/
 
   onInput(event: Event, index: number): void {
     const input = event.target as HTMLInputElement;
-    const val = input.value.replace(/\D/g, '');
+    let val = input.value.replace(/\D/g, '');
 
-    if (val) {
-      this.digits[index] = val[0];
-      input.value = val[0];
+    if (val.length > 0) {
+      val = val.substring(val.length - 1);
+      this.digits[index] = val;
+      input.value = val;
 
       if (index < this.length - 1) {
         this.focusBox(index + 1);
       }
-
-      this.changed.emit(this.value);
-
-      if (this.value.length === this.length) {
-        this.completed.emit(this.value);
-      }
     } else {
       this.digits[index] = '';
-      input.value = '';
-      this.changed.emit(this.value);
     }
+    this.emitChanges();
   }
 
   onKeydown(event: KeyboardEvent, index: number): void {
+    const input = event.target as HTMLInputElement;
+
+    // Manejo de Backspace
     if (event.key === 'Backspace') {
-      if (this.digits[index] === '' && index > 0) {
+      event.preventDefault();
+
+      if (this.digits[index] !== '') {
+        this.digits[index] = '';
+        input.value = '';
+      }
+      else if (index > 0) {
         this.digits[index - 1] = '';
         this.focusBox(index - 1);
-        event.preventDefault();
-      } else {
-        this.digits[index] = '';
       }
-      this.changed.emit(this.value);
-    } else if (event.key === 'ArrowLeft' && index > 0) {
+      this.emitChanges();
+    }
+    // Bloquear letras y símbolos
+    else if (event.key.length === 1 && !/\d/.test(event.key)) {
+      event.preventDefault();
+    }
+    // Navegación
+    else if (event.key === 'ArrowLeft' && index > 0) {
       this.focusBox(index - 1);
       event.preventDefault();
-    } else if (event.key === 'ArrowRight' && index < this.length - 1) {
+    }
+    else if (event.key === 'ArrowRight' && index < this.length - 1) {
       this.focusBox(index + 1);
       event.preventDefault();
-    } else if (event.key === 'Enter' && this.value.length === this.length) {
+    }
+    else if (event.key === 'Enter' && this.value.length === this.length) {
       this.completed.emit(this.value);
     }
   }
@@ -198,9 +207,17 @@ export class OtpInputComponent implements AfterViewInit {
   }
 
   private focusBox(index: number): void {
-    const boxes = this.boxes?.toArray();
-    if (boxes?.[index]) {
-      boxes[index].nativeElement.focus();
+   const el = this.boxes.toArray()[index]?.nativeElement;
+   if (el) {
+     el.focus();
+     el.setSelectionRange(0, 1);
+   }
+  }
+
+  private emitChanges(): void {
+    this.changed.emit(this.value);
+    if (this.value.length === this.length) {
+      this.completed.emit(this.value);
     }
   }
 }
