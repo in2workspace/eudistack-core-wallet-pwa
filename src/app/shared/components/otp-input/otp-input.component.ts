@@ -119,26 +119,24 @@ export class OtpInputComponent implements OnInit, OnChanges, AfterViewInit {
 
   trackByFn(index: number) { return index; }
 
-  /** Programmatic reset
-  reset(): void {
-    this.digits = Array(this.length).fill('');
-    this.focusBox(0);
-  }*/
-
   onInput(event: Event, index: number): void {
     const input = event.target as HTMLInputElement;
     let val = input.value.replace(/\D/g, '');
 
+    const newDigits = [...this.digits];
+
     if (val.length > 0) {
       val = val.substring(val.length - 1);
-      this.digits[index] = val;
+      newDigits[index] = val
+      this.digits = newDigits;
       input.value = val;
 
       if (index < this.length - 1) {
         setTimeout (() => this.focusBox(index + 1), 0);
       }
     } else {
-      this.digits[index] = '';
+      newDigits[index] = '';
+      this.digits = newDigits;
     }
     this.emitChanges();
   }
@@ -149,21 +147,23 @@ export class OtpInputComponent implements OnInit, OnChanges, AfterViewInit {
     // Manejo de Backspace
     if (event.key === 'Backspace') {
       event.preventDefault();
+      const newDigits = [...this.digits];
 
-      if (this.digits[index] !== '') {
-        this.digits[index] = '';
+      if (newDigits[index] !== '') {
+        newDigits[index] = '';
         input.value = '';
       }
       else if (index > 0) {
-        this.digits[index - 1] = '';
+        newDigits[index - 1] = '';
         this.focusBox(index - 1);
       }
+      this.digits = newDigits;
       this.emitChanges();
     }
     // Bloquear letras y símbolos
-    else if (event.key.length === 1 && !/\d/.test(event.key)) {
-      event.preventDefault();
-    }
+    //else if (event.key.length === 1 && !/\d/.test(event.key)) {
+    //  event.preventDefault();
+    //}
     // Navegación
     else if (event.key === 'ArrowLeft' && index > 0) {
       this.focusBox(index - 1);
@@ -183,20 +183,19 @@ export class OtpInputComponent implements OnInit, OnChanges, AfterViewInit {
     const pasted = (event.clipboardData?.getData('text') || '')
       .replace(/\D/g, '')
       .slice(0, this.length);
+
     if (!pasted) return;
 
-    for (let i = 0; i < this.length; i++) {
-      this.digits[i] = pasted[i] || '';
-    }
+    // LA CLAVE: Creamos un array completamente nuevo con los datos pegados.
+    // Esto obliga a Angular a actualizar todos los inputs visuales instantáneamente.
+    this.digits = Array(this.length).fill('').map((_, i) => pasted[i] || '');
 
-    const nextEmpty = this.digits.findIndex(d => d === '');
-    this.focusBox(nextEmpty >= 0 ? nextEmpty : this.length - 1);
-
-    this.changed.emit(this.value);
-
-    if (this.value.length === this.length) {
-      this.completed.emit(this.value);
-    }
+    // Usamos setTimeout para dejar que Angular repinte antes de mover el foco
+    setTimeout(() => {
+      const nextEmpty = this.digits.findIndex(d => d === '');
+      this.focusBox(nextEmpty >= 0 ? nextEmpty : this.length - 1);
+      this.emitChanges();
+    }, 0);
   }
 
   onFocus(index: number): void {
