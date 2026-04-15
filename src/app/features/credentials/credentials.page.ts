@@ -208,8 +208,12 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
 
   public qrCodeEmit(qrCode: string): void {
     this.hapticService.notification();
+    if (!this.isSupportedQrContent(qrCode)) {
+      this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.invalid-qr').pipe(take(1)).subscribe();
+      return;
+    }
+
     const isCredentialOffer = qrCode.includes('credential_offer_uri');
-    //todo don't accept qrs that are not to login or get VC
     if(isCredentialOffer){
       //CROSS-DEVICE VC OFFER
       //show VCs list
@@ -223,6 +227,13 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       console.info('Processing QR code for verifiable presentation.');
       this.verifiablePresentationFlow(qrCode);
       }
+  }
+
+  private isSupportedQrContent(qrCode: string): boolean {
+    return qrCode.includes('credential_offer_uri')
+      || qrCode.startsWith('openid4vp://')
+      || qrCode.includes('request_uri=')
+      || qrCode.includes('request=');
   }
 
   private sameDeviceVcActivationFlow(credentialOfferUri: string): void {
