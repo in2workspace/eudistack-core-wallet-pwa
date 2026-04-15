@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove the revoke URL text and button from the verification modal.
 - Use translation labels for verification text.
 - Enable touch scroll in settings page.
+- Fixed keyboard input and navigation logic to prevent character duplication and improved state synchronization for pasting.
 
 ## [3.0.0] - 2026-03-24
 
