@@ -20,9 +20,32 @@ export class ThemeService {
   async load(): Promise<void> {
     const tenant = window.location.hostname.split('.')[0];
     const theme = await firstValueFrom(this.http.get<Theme>(`assets/tenants/${tenant}/theme.json`));
+    this.rewriteAssetPaths(theme, tenant);
     this.theme$.next(theme);
     this.applyTheme(theme);
     await this.setupI18n(theme);
+  }
+
+  /**
+   * Rewrite legacy absolute asset paths (/assets/tenant/logo.svg)
+   * to tenant-specific relative paths (assets/tenants/{tenant}/logo.svg).
+   */
+  private rewriteAssetPaths(theme: Theme, tenant: string): void {
+    const rewrite = (path: string | null | undefined): string | null => {
+      if (!path) return null;
+      if (path.startsWith('/assets/tenant/')) {
+        return `assets/tenants/${tenant}/${path.replace('/assets/tenant/', '')}`;
+      }
+      return path;
+    };
+    if (theme.branding) {
+      theme.branding.logoUrl = rewrite(theme.branding.logoUrl) as string;
+      theme.branding.logoDarkUrl = rewrite(theme.branding.logoDarkUrl) as string;
+      theme.branding.faviconUrl = rewrite(theme.branding.faviconUrl) as string;
+      if (theme.branding.pwaIconUrl) {
+        theme.branding.pwaIconUrl = rewrite(theme.branding.pwaIconUrl) as string;
+      }
+    }
   }
 
   getTheme(): Observable<Theme | null> {
