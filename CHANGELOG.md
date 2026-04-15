@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Use translation labels for verification text.
 - Enable touch scroll in settings page.
 - Fixed an issue causing double login prompts when submitting invalid credentials to the verifier by preventing unintended logout on error.
+- Show error alert when scanning unsupported or invalid QR content, preventing processing of unrelated data.
 
 ## [3.0.0] - 2026-03-24
 
