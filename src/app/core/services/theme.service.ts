@@ -19,8 +19,17 @@ export class ThemeService {
 
   async load(): Promise<void> {
     const tenant = window.location.hostname.split('.')[0];
-    const theme = await firstValueFrom(this.http.get<Theme>(`assets/tenants/${tenant}/theme.json`));
-    this.rewriteAssetPaths(theme, tenant);
+    let theme: Theme;
+    let effectiveTenant = tenant;
+    try {
+      theme = await firstValueFrom(this.http.get<Theme>(`assets/tenants/${tenant}/theme.json`));
+    } catch {
+      // Fallback to EUDIStack product branding if tenant has no theme
+      console.warn(`[ThemeService] No theme for tenant '${tenant}', using EUDIStack default`);
+      effectiveTenant = 'eudistack';
+      theme = await firstValueFrom(this.http.get<Theme>(`assets/tenants/eudistack/theme.json`));
+    }
+    this.rewriteAssetPaths(theme, effectiveTenant);
     this.theme$.next(theme);
     this.applyTheme(theme);
     await this.setupI18n(theme);
