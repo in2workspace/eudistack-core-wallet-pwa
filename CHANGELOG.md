@@ -29,7 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add brand-independent neutral color variables	to variables.scss.
 
 ### Removed
-- Removed several unused dependencies from the repository (cleaned up `package.json` and removed unused libraries).
+- Removed several unused dependencies from the repository (cleaned up `package.json` and removed unused libraries):
+	- `@simplewebauthn/browser`
+	- `@zxing/browser`
+	- `wallet-ui`
+	- `@babel/plugin-proposal-decorators`
+	- `jasmine-spec-reporter`
+	- `ng-mocks`
 
 ### Fixed
 - Clean up mixed/incorrect translations across EN/ES/CA.
