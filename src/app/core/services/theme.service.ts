@@ -114,29 +114,31 @@ export class ThemeService {
 
   private updateManifest(theme: Theme): void {
     const origin = window.location.origin;
+    const base = document.querySelector('base')?.getAttribute('href') || '/';
+    const baseUrl = `${origin}${base}`;
     const manifest = {
       name: `${theme.branding.name || 'EUDI'} Wallet`,
       short_name: theme.branding.name || 'Wallet',
       theme_color: theme.branding.primaryColor,
       background_color: getComputedStyle(document.documentElement).getPropertyValue('--surface-page').trim(),
       display: 'standalone',
-      scope: `${origin}/`,
-      start_url: `${origin}/`,
+      scope: baseUrl,
+      start_url: baseUrl,
       orientation: 'portrait',
       icons: theme.branding.pwaIconUrl && this.isRelativeAssetPath(theme.branding.pwaIconUrl)
         ? [
-            { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '192x192', type: 'image/png', purpose: 'any' },
-            { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '512x512', type: 'image/png', purpose: 'any' },
-            { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            { src: `${baseUrl}${theme.branding.pwaIconUrl}`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: `${baseUrl}${theme.branding.pwaIconUrl}`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: `${baseUrl}${theme.branding.pwaIconUrl}`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ]
         : [
-            { src: `${origin}/assets/icons/pwa-192x192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
-            { src: `${origin}/assets/icons/pwa-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
-            { src: `${origin}/assets/icons/pwa-maskable-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            { src: `${baseUrl}assets/icons/pwa-192x192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: `${baseUrl}assets/icons/pwa-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: `${baseUrl}assets/icons/pwa-maskable-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ],
       screenshots: [
-        { src: `${origin}/assets/screenshots/screenshot-wide.png`, sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: `${theme.branding.name || 'EUDI'} Wallet` },
-        { src: `${origin}/assets/screenshots/screenshot-mobile.png`, sizes: '540x720', type: 'image/png', label: `${theme.branding.name || 'EUDI'} Wallet` },
+        { src: `${baseUrl}assets/screenshots/screenshot-wide.png`, sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: `${theme.branding.name || 'EUDI'} Wallet` },
+        { src: `${baseUrl}assets/screenshots/screenshot-mobile.png`, sizes: '540x720', type: 'image/png', label: `${theme.branding.name || 'EUDI'} Wallet` },
       ],
     };
 
