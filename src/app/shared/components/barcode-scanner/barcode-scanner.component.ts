@@ -252,25 +252,37 @@ export class BarcodeScannerComponent implements OnInit {
   }
 
   private startScanPerformanceTracking(): void {
-    if (typeof performance === 'undefined') {
+    const perf = globalThis.performance;
+    if (!perf || typeof perf.mark !== 'function') {
       return;
     }
 
-    performance.clearMarks(this.scanStartMark);
-    performance.clearMarks(this.scanDetectedMark);
-    performance.clearMeasures(this.scanMeasureName);
-    performance.mark(this.scanStartMark);
+    if (typeof perf.clearMarks === 'function') {
+      perf.clearMarks(this.scanStartMark);
+      perf.clearMarks(this.scanDetectedMark);
+    }
+    if (typeof perf.clearMeasures === 'function') {
+      perf.clearMeasures(this.scanMeasureName);
+    }
+    perf.mark(this.scanStartMark);
   }
 
   private recordScanDetectionPerformance(): void {
-    if (typeof performance === 'undefined') {
+    const perf = globalThis.performance;
+    if (!perf || typeof perf.mark !== 'function' || typeof perf.measure !== 'function') {
       return;
     }
 
-    performance.mark(this.scanDetectedMark);
-    performance.measure(this.scanMeasureName, this.scanStartMark, this.scanDetectedMark);
+    try {
+      perf.mark(this.scanDetectedMark);
+      perf.measure(this.scanMeasureName, this.scanStartMark, this.scanDetectedMark);
+    } catch {
+      return;
+    }
 
-    const measures = performance.getEntriesByName(this.scanMeasureName);
+    const measures = typeof perf.getEntriesByName === 'function'
+      ? perf.getEntriesByName(this.scanMeasureName)
+      : [];
     const measure = measures[measures.length - 1];
     if (measure) {
       console.log(`QR detected in ${measure.duration} ms`);
