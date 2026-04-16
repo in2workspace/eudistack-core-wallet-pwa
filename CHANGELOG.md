@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed keyboard input and navigation logic to prevent character duplication and improved state synchronization for pasting.
 - Fixed an issue causing double login prompts when submitting invalid credentials to the verifier by preventing unintended logout on error.
 - Show error alert when scanning unsupported or invalid QR content, preventing processing of unrelated data.
+- Improve language selector reliability: selecting a language now works consistently when clicking anywhere on the row, not only on the radio circle.
 
 ## [3.0.0] - 2026-03-24
 
