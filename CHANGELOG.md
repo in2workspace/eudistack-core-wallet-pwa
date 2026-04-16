@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Single-instance PWA** — `SingleInstanceService` (BroadcastChannel leader election) + `launch_handler: navigate-existing` in manifest. Subsequent tab opens are absorbed by the existing tab; the user is always re-authenticated before any protocol flow.
 - **SW auto-update** — `SwUpdateService` activates new Service Worker versions immediately on `VERSION_READY` to prevent zombie workers.
 - **Nginx no-cache headers** — `index.html`, `manifest.webmanifest`, `ngsw.json` and `ngsw-worker.js` served with `Cache-Control: no-store` to prevent stale asset serving after deployments.
+- **Scanner performance timing logs** — Added performance marks/measures to track time from scanner activation to QR detection, with console output for scan latency diagnostics.
 
 ### Fixed
 
