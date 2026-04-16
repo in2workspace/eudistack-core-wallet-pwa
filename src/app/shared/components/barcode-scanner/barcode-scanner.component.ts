@@ -53,6 +53,9 @@ export class BarcodeScannerComponent implements OnInit {
   public allowedFormats = [BarcodeFormat.QR_CODE];
   firstActivationCompleted = false;
   private readonly scannerId = uuidv4();
+  private readonly scanStartMark = 'scan-start';
+  private readonly scanDetectedMark = 'scan-detected';
+  private readonly scanMeasureName = 'scan-time';
 
   //COUNTDOWN
   public readonly isError$ = this.cameraService.isCameraError$;
@@ -184,10 +187,12 @@ export class BarcodeScannerComponent implements OnInit {
 
   public async activateScannerInitially(): Promise<void>{
     await this.activateScanner();
+    this.startScanPerformanceTracking();
     this.firstActivationCompleted = true;  
   }
 
   public onCodeResult(resultString: string): void {
+    this.recordScanDetectionPerformance();
     this.qrCode.emit(resultString);
   }
 
@@ -246,6 +251,31 @@ export class BarcodeScannerComponent implements OnInit {
     }
   }
 
+  private startScanPerformanceTracking(): void {
+    if (typeof performance === 'undefined') {
+      return;
+    }
+
+    performance.clearMarks(this.scanStartMark);
+    performance.clearMarks(this.scanDetectedMark);
+    performance.clearMeasures(this.scanMeasureName);
+    performance.mark(this.scanStartMark);
+  }
+
+  private recordScanDetectionPerformance(): void {
+    if (typeof performance === 'undefined') {
+      return;
+    }
+
+    performance.mark(this.scanDetectedMark);
+    performance.measure(this.scanMeasureName, this.scanStartMark, this.scanDetectedMark);
+
+    const measures = performance.getEntriesByName(this.scanMeasureName);
+    const measure = measures[measures.length - 1];
+    if (measure) {
+      console.log(`QR detected in ${measure.duration} ms`);
+    }
+  }
 }
 
 export function formatLogMessage(message: any, optionalParams: any[]): string {
