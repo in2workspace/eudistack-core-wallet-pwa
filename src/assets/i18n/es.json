@@ -380,5 +380,10 @@
         "expiration":"Fecha de caducidad: ",
         "unknown": "Desconocido",
         "time-remaining": "Tiempo restante"
+    },
+    "tenantNotFound": {
+        "title": "Tenant no encontrado",
+        "message": "El subdominio «{{hostname}}» no corresponde a ningún tenant válido.",
+        "cta": "Ir al entorno sandbox"
     }
 }

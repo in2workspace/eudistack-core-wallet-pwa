@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (EUDI-064: Tenant validation)
+
+- **`tenantGuard`** — Angular route guard that validates tenant exists before rendering protected routes.
+- **`TenantNotFoundPage`** — user-friendly error page for unknown tenant subdomains.
+- **`tenants.constants`** — central registry of valid tenants.
+- `error-handler.interceptor`: redirect to tenant-not-found on tenant 404.
+- `theme.service`: handle tenant-not-found theme state.
+- i18n keys for tenant-not-found page (ca/en/es).
+
 ### Added
 
 - **RFC 9901 compliant SD-JWT parser** — Rewrite `SdJwtParserService` with digest-based disclosure resolution at any nesting depth. Synchronous pure-JS SHA-256. (EUDI-012)

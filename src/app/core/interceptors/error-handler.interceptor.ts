@@ -46,6 +46,8 @@ export class HttpErrorInterceptor implements HttpInterceptor {
 
         // DON'T SHOW POPUP CASES
         const shouldHandleSilently =
+          // static assets (theme.json, i18n, etc.) — not real backend errors
+          pathname.startsWith('/assets/') ||
           // get credentials endpoint
           (pathname.endsWith(SERVER_PATH.CREDENTIALS) &&
             errMessage?.startsWith('The credentials list is empty')) ||

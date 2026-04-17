@@ -380,5 +380,10 @@
         "expiration":"Data de caducitat: ",
         "unknown": "Desconegut",
         "time-remaining": "Temps restant"
+    },
+    "tenantNotFound": {
+        "title": "Tenant no trobat",
+        "message": "El subdomini «{{hostname}}» no correspon a cap tenant vàlid.",
+        "cta": "Anar a l'entorn sandbox"
     }
 }

@@ -5,6 +5,7 @@ import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { Theme } from '../models/theme.model';
 import { ColorService } from '../../shared/services/color-service.service';
 import { StorageService } from '../../shared/services/storage.service';
+import { isKnownTenant } from '../constants/tenants.constants';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -18,7 +19,8 @@ export class ThemeService {
   ) {}
 
   async load(): Promise<void> {
-    const tenant = window.location.hostname.split('.')[0];
+    const hostname = window.location.hostname;
+    const tenant = isKnownTenant(hostname) ? hostname.split('.')[0] : 'eudistack';
     let theme: Theme;
     let effectiveTenant = tenant;
     try {

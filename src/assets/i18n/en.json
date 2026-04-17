@@ -380,5 +380,10 @@
         "expiration":"Expiration date: ",
         "unknown": "Unknown",
         "time-remaining": "Time remaining"
+    },
+    "tenantNotFound": {
+        "title": "Tenant not found",
+        "message": "The subdomain \"{{hostname}}\" does not match any valid tenant.",
+        "cta": "Go to sandbox environment"
     }
 }

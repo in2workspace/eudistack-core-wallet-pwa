@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { PENDING_DEEP_LINK_KEY } from './core/constants/deep-link.constants';
 import { authGuard } from './core/guards/auth.guard';
+import { tenantGuard } from './core/guards/tenant.guard';
 import { PasskeyStoreService } from './core/services/passkey-store.service';
 
 /**
@@ -23,12 +24,17 @@ const authLandingGuard: CanActivateFn = (_route, state) => {
 
 export const routes: Routes = [
   {
+    path: 'tenant-not-found',
+    loadComponent: () => import('./features/tenant-not-found/tenant-not-found.page').then(m => m.TenantNotFoundPage),
+  },
+  {
     path: '',
-    canActivate: [authLandingGuard],
+    canActivate: [tenantGuard, authLandingGuard],
     children: [],
   },
   {
     path: 'auth',
+    canActivate: [tenantGuard],
     children: [
       {
         path: 'login',
@@ -42,7 +48,7 @@ export const routes: Routes = [
   },
   {
     path: 'protocol/callback',
-    canActivate: [authGuard],
+    canActivate: [tenantGuard, authGuard],
     loadComponent: () =>
       import('./features/protocol-callback/protocol-callback.page').then(
         m => m.ProtocolCallbackPage
@@ -50,11 +56,12 @@ export const routes: Routes = [
   },
   {
     path: 'tabs',
+    canActivate: [tenantGuard],
     loadChildren: () => import('./features/tabs/tabs.routes').then(m => m.default),
   },
   {
     path: '**',
-    canActivate: [authLandingGuard],
+    canActivate: [tenantGuard, authLandingGuard],
     children: [],
   },
 ];
