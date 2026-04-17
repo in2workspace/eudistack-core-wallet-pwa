@@ -291,6 +291,7 @@
         "no-credentials-available": "There are no credentials available to login",
         "expired-credentialOffer":"The credential offer is expired or already used. Please refresh and try again later, or contact your company's LEAR to get a new credential.",
         "cannot-get-VC":"Issuer credential could not be obtained",
+        "signing-failed": "We're experiencing a temporary technical issue. Please close this screen and try again in a few minutes using the link in the email you received.",
         "cannot-save-VC":"The credential could not be saved successfully",
         "incorrect-pin": "Incorrect PIN. Please refresh the credential offer. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
         "pin-expired": "You didn't enter the PIN within the time limit. Please refresh the credential offer. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",

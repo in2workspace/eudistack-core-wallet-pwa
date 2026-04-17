@@ -291,6 +291,7 @@
         "no-credentials-available": "No hay ninguna credencial disponible para el login",
         "expired-credentialOffer":"La oferta de credencial está expirada o ya utilizada",
         "cannot-get-VC":"No se pudo obtener la credencial del Issuer",
+        "signing-failed": "Estamos teniendo dificultades t\u00e9cnicas puntuales. Cierra esta pantalla e int\u00e9ntalo de nuevo en unos minutos desde el enlace del correo que recibiste.",
         "cannot-save-VC":"No se pudo guardar correctamente la credencial",
         "incorrect-pin":"PIN incorrecto. Por favor, renueve la oferta de credencial. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
         "pin-expired": "No ha introducido el PIN dentro del límite de tiempo. Por favor, renueve la oferta de credencial. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
