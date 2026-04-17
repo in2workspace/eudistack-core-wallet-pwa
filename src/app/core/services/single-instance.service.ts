@@ -126,12 +126,23 @@ export class SingleInstanceService implements OnDestroy {
         <p style="margin:0;font-size:.9rem;color:#555;max-width:320px;">
           Tu solicitud se ha enviado a la pestaña activa. Puedes cerrar esta pestaña.
         </p>
-        <button onclick="window.close()" style="
+        <button id="__wallet_close_btn" style="
           margin-top:8px;padding:10px 24px;border:none;border-radius:8px;
           background:#001E8C;color:#fff;font-size:.9rem;cursor:pointer;">
           Cerrar esta pestaña
         </button>
       </div>`;
+
+    const btn = document.getElementById('__wallet_close_btn') as HTMLButtonElement;
+    btn.addEventListener('click', () => {
+      window.close();
+      setTimeout(() => {
+        btn.textContent = 'Cierra esta pestaña con Ctrl+W (⌘+W en Mac)';
+        btn.style.background = '#555';
+        btn.style.cursor = 'default';
+        btn.disabled = true;
+      }, 300);
+    });
   }
 
   public ngOnDestroy(): void {
