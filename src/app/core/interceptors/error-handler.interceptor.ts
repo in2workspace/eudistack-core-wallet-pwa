@@ -29,7 +29,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
     return next.handle(request).pipe(
       catchError((errorResp: HttpErrorResponse) => {
         // Normalize URL to ensure request params are not included in the conditionals below
-        const urlObj = new URL(request.url);
+        const urlObj = new URL(request.url, window.location.origin);
         const href = urlObj.href;
         const isOwnBackend = href.startsWith(environment.server_url);
         const pathname = urlObj.pathname;
