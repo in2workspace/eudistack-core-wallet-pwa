@@ -21,8 +21,15 @@ import { LocalAuthService } from 'src/app/core/services/local-auth.service';
             <img [src]="logoSrc" alt="Logo" class="logo-img" />
           </div>
 
-          <!-- PWA Install screen -->
-          <ng-container *ngIf="showInstallScreen && (pwaInstall.installable$ | async)">
+          <!-- Pending install decision -->
+          <ng-container *ngIf="(pwaInstall.installDecision$ | async) === null">
+            <div class="auth-checking">
+              <ion-spinner name="crescent"></ion-spinner>
+            </div>
+          </ng-container>
+
+          <!-- Install screen -->
+          <ng-container *ngIf="(pwaInstall.installDecision$ | async) === true && showInstallScreen">
             <div class="fingerprint-hero">
               <div class="fp-circle install-circle">
                 <ion-icon name="download-outline"></ion-icon>
@@ -52,7 +59,7 @@ import { LocalAuthService } from 'src/app/core/services/local-auth.service';
           </ng-container>
 
           <!-- Login form -->
-          <ng-container *ngIf="!showInstallScreen || !(pwaInstall.installable$ | async)">
+          <ng-container *ngIf="(pwaInstall.installDecision$ | async) === false || !showInstallScreen">
             <div class="fingerprint-hero">
               <div class="fp-circle" [class.fp-authenticating]="loading">
                 <ion-icon name="finger-print-outline"></ion-icon>
@@ -105,6 +112,7 @@ export class LoginPage {
 
   async installApp(): Promise<void> {
     await this.pwaInstall.promptInstall();
+    this.showInstallScreen = false;
   }
 
   skipInstall(): void {

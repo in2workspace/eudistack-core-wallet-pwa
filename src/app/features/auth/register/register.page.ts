@@ -22,8 +22,15 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
             <img [src]="logoSrc" alt="Logo" class="logo-img" />
           </div>
 
-          <!-- PWA Install screen (shown before registration when installable) -->
-          <ng-container *ngIf="showInstallScreen && (pwaInstall.installable$ | async)">
+          <!-- Pending install decision -->
+          <ng-container *ngIf="(pwaInstall.installDecision$ | async) === null">
+            <div class="auth-checking">
+              <ion-spinner name="crescent"></ion-spinner>
+            </div>
+          </ng-container>
+
+          <!-- Install screen -->
+          <ng-container *ngIf="(pwaInstall.installDecision$ | async) === true && showInstallScreen">
             <div class="install-hero">
               <div class="install-icon-circle">
                 <ion-icon name="download-outline"></ion-icon>
@@ -53,7 +60,7 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
           </ng-container>
 
           <!-- Browser mode: simple passkey creation -->
-          <ng-container *ngIf="isBrowserMode && (!showInstallScreen || !(pwaInstall.installable$ | async))">
+          <ng-container *ngIf="isBrowserMode && ((pwaInstall.installDecision$ | async) === false || !showInstallScreen)">
             <h2 class="auth-title">{{ 'auth.register.title' | translate }}</h2>
             <p class="auth-subtitle">{{ 'auth.register.passkey-subtitle' | translate }}</p>
 
@@ -70,7 +77,7 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
           </ng-container>
 
           <!-- Server mode: email + OTP flow, then local passkey creation -->
-          <ng-container *ngIf="!isBrowserMode && (!showInstallScreen || !(pwaInstall.installable$ | async))">
+          <ng-container *ngIf="!isBrowserMode && ((pwaInstall.installDecision$ | async) === false || !showInstallScreen)">
             <div class="steps-bar">
               <div class="step" [class.active]="step === 'email'" [class.done]="step !== 'email'">
                 <div class="step-dot">
@@ -200,6 +207,7 @@ export class RegisterPage {
 
   async installApp(): Promise<void> {
     await this.pwaInstall.promptInstall();
+    this.showInstallScreen = false;
   }
 
   skipInstall(): void {
