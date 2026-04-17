@@ -92,7 +92,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       .subscribe((params) => {
         this.showScannerView = params['showScannerView'] === 'true';
         this.showScanner = params['showScanner']     === 'true';
-        this.credentialOfferUri = params['credentialOfferUri'];
+        this.credentialOfferUri = params['credentialOfferUri'] || params['credential_offer_uri'];
         this.authorizationRequest = params['authorizationRequest'] ?? '';
         this.selectedCredentialId = params['id'] ?? null;
         this.cdr.detectChanges();
@@ -397,7 +397,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     .subscribe();
   }
 
-  
+
   private handleActivationSuccess(): Observable<boolean> {
     console.log("Handling successful credential activation...");
     this.loader.addLoadingProcess();
@@ -411,7 +411,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       )
   }
 
-  
+
   private loadCredentials(): Observable<VerifiableCredential[]> {
     // todo this conditional should be removed when scanner is moved to another page
     const isScannerOpen = this.isScannerOpen();
@@ -514,11 +514,11 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     const pendingCredentials = this.credList.filter(
       (credential) => credential.lifeCycleStatus === 'ISSUED'
     );
-    
+
     if (pendingCredentials.length === 0) {
       return;
     }
-    
+
     console.log('Requesting signatures for pending credentials...');
 
     const requests = pendingCredentials.map((credential) =>
@@ -529,11 +529,11 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         })
       )
     );
-  
+
     forkJoin(requests).subscribe({
       next: (responses: (HttpResponse<string> | { status: number })[]) => {
         const successfulResponses = responses.filter(response => response.status === 204);
-    
+
         if (successfulResponses.length > 0) {
           console.log('Signed credentials:', successfulResponses.length);
           this.reloadCredentials();
