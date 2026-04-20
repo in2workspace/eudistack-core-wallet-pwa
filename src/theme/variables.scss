@@ -64,6 +64,7 @@
    * focus rings and text selection — not brand colors.
    */
   --ui-caret: #1A1A2E;
+  --ui-caret-on-dark: #FFFFFF;
   --ui-focus-ring: #2563EB;
   --ui-focus-ring-rgb: 37, 99, 235;
   --ui-selection-bg: #2563EB;
@@ -173,6 +174,7 @@
 
   // Interaction tokens — dark-mode variants (still brand-independent)
   --ui-caret: #F0F1F4;
+  --ui-caret-on-dark: #F0F1F4;
   --ui-focus-ring: #60A5FA;
   --ui-focus-ring-rgb: 96, 165, 250;
   --ui-selection-bg: #60A5FA;

@@ -19,7 +19,7 @@ import { ExtendedHttpErrorResponse } from 'src/app/core/models/errors';
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
 import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engine.service';
-import { AuthorizationRequestService } from 'src/app/core/protocol/oid4vp/authorization-request.service';
+import { AuthorizationRequestService, InvalidQrError } from 'src/app/core/protocol/oid4vp/authorization-request.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 import { CredentialPreviewBuilderService } from 'src/app/core/services/credential-preview-builder.service';
 import { CredentialDecisionService } from 'src/app/core/services/credential-decision.service';
@@ -542,16 +542,25 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   }
 
   //todo review this (it is storing camera logs, but is used after API calls)
-  private handleContentExecutionError(errorResponse: ExtendedHttpErrorResponse): void{
-    const httpErr = errorResponse?.error;
-    const message = httpErr?.message || errorResponse?.message || 'No error message';
-    const title = httpErr?.title || errorResponse?.title || '(No title)';
-    const path = httpErr?.path || errorResponse?.path || '(No path)';
+  private handleContentExecutionError(errorResponse: ExtendedHttpErrorResponse | Error): void{
+    const httpErr = (errorResponse as ExtendedHttpErrorResponse)?.error;
+    const message = httpErr?.message || (errorResponse as ExtendedHttpErrorResponse)?.message || errorResponse?.message || 'No error message';
+    const title = httpErr?.title || (errorResponse as ExtendedHttpErrorResponse)?.title || '(No title)';
+    const path = httpErr?.path || (errorResponse as ExtendedHttpErrorResponse)?.path || '(No path)';
 
     const error = title + ' . ' + message + ' . ' + path;
     this.cameraLogsService.addCameraLog(new Error(error), 'httpError');
 
     console.error(errorResponse);
+
+    const translationKey = errorResponse instanceof InvalidQrError
+      ? 'errors.invalid-qr'
+      : 'errors.failed-qr-process';
+    this.toastServiceHandler
+      .showErrorAlertByTranslateLabel(translationKey)
+      .pipe(take(1))
+      .subscribe();
+
     setTimeout(()=>{
       this.router.navigate(['/tabs/home'])
     }, 1000);
