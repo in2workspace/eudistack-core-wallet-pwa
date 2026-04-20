@@ -19,3 +19,19 @@ if (!globalThis.crypto.randomUUID) {
     writable: true,
   });
 }
+
+// JSDOM does not implement window.matchMedia; mock it so PwaInstallService
+// (and any component that injects it) can instantiate in tests.
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    dispatchEvent: () => false,
+  }),
+});
