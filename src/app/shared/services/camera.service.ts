@@ -82,8 +82,8 @@ export class CameraService {
       return true;
     }catch(e: any){
       throw e;
+    }
   }
-}
 
 //should be called only after permission is granted
 public async updateAvailableCameras(): Promise<MediaDeviceInfo[]> {
@@ -130,13 +130,41 @@ public async getCameraFromAvailables(): Promise<MediaDeviceInfo|'NO_CAMERA_AVAIL
     return undefined;
   }
 
-  public async getDefaultAvailableCamera(){
-    const defaultBackCamera = this.availableDevices$().find((device) => /back|rear|environment/gi.test(device.label));
-    const defaultAvailableCamera = defaultBackCamera ?? this.availableDevices$()[0];
-    console.info('Getting default camera: ');
-    console.info(defaultAvailableCamera);
+  public async getDefaultAvailableCamera(): Promise<MediaDeviceInfo | undefined> {
+    const labelMatch = this.availableDevices$().find((device) => /back|rear|environment/gi.test(device.label));
+    if (labelMatch) {
+      console.info('Getting default camera by label: ', labelMatch);
+      return labelMatch;
+    }
 
-    return defaultAvailableCamera;
+    const envCamera = await this.getEnvironmentCameraByFacingMode();
+    if (envCamera) {
+      console.info('Getting default camera by facingMode: ', envCamera);
+      return envCamera;
+    }
+
+    const fallback = this.availableDevices$()[0];
+    console.info('Getting default camera (fallback): ', fallback);
+    return fallback;
+  }
+
+  private async getEnvironmentCameraByFacingMode(): Promise<MediaDeviceInfo | undefined> {
+    const constraints: MediaStreamConstraints[] = [
+      {video: {facingMode: {exact: 'environment'}}},
+      {video: {facingMode: 'environment'}},
+    ];
+    for (const constraint of constraints) {
+      const stream = await navigator.mediaDevices.getUserMedia(constraint).catch(() => undefined);
+      if (!stream) {
+        continue;
+      }
+      const settings = stream.getVideoTracks()[0]?.getSettings();
+      this.stopMediaTracks(stream);
+      if (settings?.deviceId && settings.facingMode === 'environment') {
+        return this.availableDevices$().find(d => d.deviceId === settings.deviceId);
+      }
+    }
+    return undefined;
   }
 
   public isCameraAvailableById(cameraId: string): boolean {

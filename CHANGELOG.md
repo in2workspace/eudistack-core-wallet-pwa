@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `httpTranslateLoader` spec expected absolute `/assets/i18n/en.json` but the loader was changed to relative (`assets/i18n/`) in 11366b3 for `base-href=/wallet/` compatibility. Updated the spec assertion to match.
 - `sync-schemas` script exits with error when canonical schemas are missing instead of falling back silently to stale bundled copies.
+- Improved rear camera detection for iOS and now the rear camera is selected by default.
 
 ### Removed
 
