@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-04-20
+
+### Added (Interaction tokens)
+
+- Brand-independent CSS tokens `--ui-caret`, `--ui-focus-ring`, `--ui-focus-ring-rgb`, `--ui-selection-bg`, `--ui-selection-fg` in `variables.scss`. Guarantee WCAG AA contrast regardless of tenant branding.
+- Global `::selection` rule in `globalDefault.scss` using the new interaction tokens.
+
+### Fixed (Interaction tokens)
+
+- Replace broken `caret-color: var(---primary-color)` (triple-dash typo) with `var(--ui-caret)` in `OtpInputComponent` and the register page.
+
 ### Added (EUDI-064: Tenant validation)
 
 - **`tenantGuard`** — Angular route guard that validates tenant exists before rendering protected routes.
