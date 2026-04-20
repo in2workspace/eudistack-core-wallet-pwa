@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { AsyncPipe } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
@@ -21,8 +21,15 @@ import { LocalAuthService } from 'src/app/core/services/local-auth.service';
             <img [src]="logoSrc" alt="Logo" class="logo-img" />
           </div>
 
-          <!-- PWA Install screen -->
-          <ng-container *ngIf="showInstallScreen && (pwaInstall.installable$ | async)">
+          <!-- Pending install decision -->
+          @if ((pwaInstall.installDecision$ | async) === null) {
+            <div class="auth-checking">
+              <ion-spinner name="crescent"></ion-spinner>
+            </div>
+          }
+
+          <!-- Install screen -->
+          @if ((pwaInstall.installDecision$ | async) === true && showInstallScreen) {
             <div class="fingerprint-hero">
               <div class="fp-circle install-circle">
                 <ion-icon name="download-outline"></ion-icon>
@@ -49,10 +56,10 @@ import { LocalAuthService } from 'src/app/core/services/local-auth.service';
             >
               {{ 'auth.register.continue-browser' | translate }}
             </ion-button>
-          </ng-container>
+          }
 
           <!-- Login form -->
-          <ng-container *ngIf="!showInstallScreen || !(pwaInstall.installable$ | async)">
+          @if ((pwaInstall.installDecision$ | async) === false || !showInstallScreen) {
             <div class="fingerprint-hero">
               <div class="fp-circle" [class.fp-authenticating]="loading">
                 <ion-icon name="finger-print-outline"></ion-icon>
@@ -72,23 +79,27 @@ import { LocalAuthService } from 'src/app/core/services/local-auth.service';
               {{ 'auth.login.passkey-button' | translate }}
             </ion-button>
 
-            <div *ngIf="loading" class="auth-status">
-              <span class="status-dot"></span>
-              <span class="status-dot"></span>
-              <span class="status-dot"></span>
-            </div>
+            @if (loading) {
+              <div class="auth-status">
+                <span class="status-dot"></span>
+                <span class="status-dot"></span>
+                <span class="status-dot"></span>
+              </div>
+            }
 
-            <div *ngIf="errorMessage" class="error-box">
-              <ion-icon name="alert-circle-outline"></ion-icon>
-              <span>{{ errorMessage }}</span>
-            </div>
-          </ng-container>
+            @if (errorMessage) {
+              <div class="error-box">
+                <ion-icon name="alert-circle-outline"></ion-icon>
+                <span>{{ errorMessage }}</span>
+              </div>
+            }
+          }
         </div>
       </div>
     </ion-content>
   `,
     styleUrl: './login.page.scss',
-    imports: [IonicModule, CommonModule, TranslateModule]
+    imports: [IonicModule, AsyncPipe, TranslateModule]
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class LoginPage {
@@ -105,6 +116,7 @@ export class LoginPage {
 
   async installApp(): Promise<void> {
     await this.pwaInstall.promptInstall();
+    this.showInstallScreen = false;
   }
 
   skipInstall(): void {
