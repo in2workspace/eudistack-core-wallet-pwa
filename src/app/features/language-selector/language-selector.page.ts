@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { TranslateModule,TranslateService } from '@ngx-translate/core';
 import { StorageService } from 'src/app/shared/services/storage.service';
-import { BehaviorSubject, distinctUntilChanged, map, shareReplay } from 'rxjs';
+import { BehaviorSubject, distinctUntilChanged, shareReplay } from 'rxjs';
 
 @Component({
     selector: 'app-language-selector',
@@ -18,7 +18,7 @@ export class LanguageSelectorPage implements OnInit {
 
   public selected = { name: '', code: '' };
   public language = { name: '', code: '' };
-  public languages = new BehaviorSubject<unknown>('');
+  public languages = new BehaviorSubject<string>('');
 
   public languageList = [
     {
@@ -36,15 +36,6 @@ export class LanguageSelectorPage implements OnInit {
   ];
 
   public languageSelected = this.languages.pipe(
-    map((device) => {
-      let lang = {};
-      this.languageList.forEach((language) => {
-        if (language.code === device) {
-          lang = language;
-        }
-      });
-      return lang;
-    }),
     distinctUntilChanged(),
     shareReplay(1)
   );
@@ -54,7 +45,7 @@ export class LanguageSelectorPage implements OnInit {
 
   public ngOnInit() {
     this.storageService.get('language').then((datos) => {
-      this.languages.next(datos);
+      this.languages.next((datos as string) ?? this.translate.currentLang ?? this.languageList[2].code);
     });
     const lang = this.languageList.forEach((language) => {
       if (language.code === this.translate.currentLang) {
@@ -66,9 +57,11 @@ export class LanguageSelectorPage implements OnInit {
       this.selected = this.languageList[2];
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public languageChange(code: any) {
-    this.translate.use(code.code);
-    this.storageService.set('language', code.code);
+  public languageChange(code: string) {
+    if (!code) return;
+
+    this.languages.next(code);
+    this.translate.use(code);
+    this.storageService.set('language', code);
   }
 }

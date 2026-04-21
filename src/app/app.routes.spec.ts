@@ -69,23 +69,11 @@ describe('App Routing', () => {
   });
 
   it('should save deep link to sessionStorage when pathname is not /', async () => {
-    // The guard reads window.location directly. In jsdom we must override
-    // the property before the guard executes.
-    const originalLocation = window.location;
-    Object.defineProperty(window, 'location', {
-      value: { ...originalLocation, pathname: '/protocol/callback', search: '?code=abc' },
-      writable: true,
-      configurable: true,
-    });
-
-    await router.navigate(['']);
-    expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBe('/protocol/callback?code=abc');
-
-    Object.defineProperty(window, 'location', {
-      value: originalLocation,
-      writable: true,
-      configurable: true,
-    });
+    // The authLandingGuard reads state.url provided by Angular Router.
+    // Navigate to any non-auth path so the wildcard route fires the guard
+    // with state.url set to the actual target URL.
+    await router.navigate(['/protocol/callback/deep-link'], { queryParams: { code: 'abc' } });
+    expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBe('/protocol/callback/deep-link?code=abc');
   });
 
   it('should NOT save deep link to sessionStorage when pathname is /', async () => {

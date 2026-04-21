@@ -92,7 +92,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       .subscribe((params) => {
         this.showScannerView = params['showScannerView'] === 'true';
         this.showScanner = params['showScanner']     === 'true';
-        this.credentialOfferUri = params['credentialOfferUri'];
+        this.credentialOfferUri = params['credentialOfferUri'] || params['credential_offer_uri'];
         this.authorizationRequest = params['authorizationRequest'] ?? '';
         this.selectedCredentialId = params['id'] ?? null;
         this.cdr.detectChanges();
@@ -208,8 +208,12 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
 
   public qrCodeEmit(qrCode: string): void {
     this.hapticService.notification();
+    if (!this.isSupportedQrContent(qrCode)) {
+      this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.invalid-qr').pipe(take(1)).subscribe();
+      return;
+    }
+
     const isCredentialOffer = qrCode.includes('credential_offer_uri');
-    //todo don't accept qrs that are not to login or get VC
     if(isCredentialOffer){
       //CROSS-DEVICE VC OFFER
       //show VCs list
@@ -223,6 +227,13 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       console.info('Processing QR code for verifiable presentation.');
       this.verifiablePresentationFlow(qrCode);
       }
+  }
+
+  private isSupportedQrContent(qrCode: string): boolean {
+    return qrCode.includes('credential_offer_uri')
+      || qrCode.startsWith('openid4vp://')
+      || qrCode.includes('request_uri=')
+      || qrCode.includes('request=');
   }
 
   private sameDeviceVcActivationFlow(credentialOfferUri: string): void {
@@ -386,7 +397,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     .subscribe();
   }
 
-  
+
   private handleActivationSuccess(): Observable<boolean> {
     console.log("Handling successful credential activation...");
     this.loader.addLoadingProcess();
@@ -400,7 +411,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       )
   }
 
-  
+
   private loadCredentials(): Observable<VerifiableCredential[]> {
     // todo this conditional should be removed when scanner is moved to another page
     const isScannerOpen = this.isScannerOpen();
@@ -503,11 +514,11 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     const pendingCredentials = this.credList.filter(
       (credential) => credential.lifeCycleStatus === 'ISSUED'
     );
-    
+
     if (pendingCredentials.length === 0) {
       return;
     }
-    
+
     console.log('Requesting signatures for pending credentials...');
 
     const requests = pendingCredentials.map((credential) =>
@@ -518,11 +529,11 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         })
       )
     );
-  
+
     forkJoin(requests).subscribe({
       next: (responses: (HttpResponse<string> | { status: number })[]) => {
         const successfulResponses = responses.filter(response => response.status === 204);
-    
+
         if (successfulResponses.length > 0) {
           console.log('Signed credentials:', successfulResponses.length);
           this.reloadCredentials();

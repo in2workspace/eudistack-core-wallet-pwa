@@ -4,16 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.0.2] - 2026-04-20
+### Changed
+- Standardize query parameter detection to `credential_offer_uri` to align with OIDC4VCI standards.
+- Integrate `CredentialOfferService` to correctly parse and decode nested/double-encoded offer URIs.
+
+## [3.0.1] - 2026-04-17
 
 ### Added
 
 - **RFC 9901 compliant SD-JWT parser** — Rewrite `SdJwtParserService` with digest-based disclosure resolution at any nesting depth. Synchronous pure-JS SHA-256. (EUDI-012)
 - **Mandate wrapper SD-JWT schemas** — Updated `learcredential.employee.sd.1.json` and `learcredential.machine.sd.1.json` with nested mandate structure. (EUDI-012)
+- **Single-instance PWA** — `SingleInstanceService` (BroadcastChannel leader election) + `launch_handler: navigate-existing` in manifest. Subsequent tab opens are absorbed by the existing tab; the user is always re-authenticated before any protocol flow.
+- **SW auto-update** — `SwUpdateService` activates new Service Worker versions immediately on `VERSION_READY` to prevent zombie workers.
+- **Nginx no-cache headers** — `index.html`, `manifest.webmanifest`, `ngsw.json` and `ngsw-worker.js` served with `Cache-Control: no-store` to prevent stale asset serving after deployments.
 
 ### Fixed
 
 - **Credential card showing mandator instead of mandatee** — Aligned W3C credential type versions from `.w3c.4`/`.w3c.3` to `.w3c.1` matching the schema `credential_configuration_id`. Fixes schema registry lookup failure that caused `summary_claims` to be ignored.
+- **PWA install race condition (EUDI-402)** — Deterministic `installDecision$` observable prevents the install screen from being skipped on first load in STG.
+- **"Close tab" button non-functional** — Duplicate-tab UI close button now works; falls back to keyboard shortcut hint if the browser blocks `window.close()`.
 
 ### Changed
 
@@ -23,7 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Back the primary color for verify button (it changed the contrast color in the commit 46bfd21).
 - Remove --action-primary CSS variable and its hue/lightness computation function, using --primary-color instead.
 - Remove color variables from theme.service.ts that duplicated values already defined in variables.scss.
-- Add brand-independent neutral color variables　to variables.scss.
+- Add brand-independent neutral color variables	to variables.scss.
+
+### Removed
+- Removed several unused dependencies from the repository (cleaned up `package.json` and removed unused libraries):
+	- `@simplewebauthn/browser`
+	- `@zxing/browser`
+	- `wallet-ui`
+	- `@babel/plugin-proposal-decorators`
+	- `jasmine-spec-reporter`
+	- `ng-mocks`
 
 ### Fixed
 - Clean up mixed/incorrect translations across EN/ES/CA.
@@ -40,6 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove the revoke URL text and button from the verification modal.
 - Use translation labels for verification text.
 - Enable touch scroll in settings page.
+- Fixed keyboard input and navigation logic to prevent character duplication and improved state synchronization for pasting.
+- Fixed an issue causing double login prompts when submitting invalid credentials to the verifier by preventing unintended logout on error.
+- Show error alert when scanning unsupported or invalid QR content, preventing processing of unrelated data.
+- Improve language selector reliability: selecting a language now works consistently when clicking anywhere on the row, not only on the radio circle.
 
 ## [3.0.0] - 2026-03-24
 

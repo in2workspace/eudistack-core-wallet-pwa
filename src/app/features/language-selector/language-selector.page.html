@@ -3,11 +3,11 @@
     <div class="settings-box">
       <div class="settings-pages-title">{{"language-selector.title"|translate}}</div>
       <ion-list class="list">
-        <ion-radio-group class="radio-group" [ngModel]="languageSelected | async" (ionChange)="languageChange($any($event).target?.value)">
+        <ion-radio-group class="radio-group" [ngModel]="languageSelected | async" (ionChange)="languageChange($event.detail.value)">
           @for (language of languageList; track language) {
-            <ion-item class="item">
+            <ion-item class="item" button="true" detail="false" (click)="languageChange(language.code)">
               <ion-label>{{ language.name }}</ion-label>
-              <ion-radio [value]="language" mode="md" slot="start"></ion-radio>
+              <ion-radio [value]="language.code" mode="md" slot="start"></ion-radio>
             </ion-item>
           }
         </ion-radio-group>

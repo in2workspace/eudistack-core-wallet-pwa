@@ -1,6 +1,7 @@
 import { Component, inject, ViewChild, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AsyncPipe } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
@@ -23,8 +24,15 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
             <img [src]="logoSrc" alt="Logo" class="logo-img" />
           </div>
 
-          <!-- PWA Install screen -->
-          <ng-container *ngIf="showInstallScreen && (pwaInstall.installable$ | async)">
+          <!-- Pending install decision -->
+          @if ((pwaInstall.installDecision$ | async) === null) {
+            <div class="auth-checking">
+              <ion-spinner name="crescent"></ion-spinner>
+            </div>
+          }
+
+          <!-- Install screen -->
+          @if ((pwaInstall.installDecision$ | async) === true && showInstallScreen) {
             <div class="fingerprint-hero">
               <div class="fp-circle install-circle">
                 <ion-icon name="download-outline"></ion-icon>
@@ -51,10 +59,10 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
             >
               {{ 'auth.register.continue-browser' | translate }}
             </ion-button>
-          </ng-container>
+          }
 
-          <!-- Browser mode: simple passkey login -->
-          <ng-container *ngIf="isBrowserMode && (!showInstallScreen || !(pwaInstall.installable$ | async))">
+          <!-- Login form -->
+          @if (isBrowserMode && ((pwaInstall.installDecision$ | async) === false || !showInstallScreen)) {
             <div class="fingerprint-hero">
               <div class="fp-circle" [class.fp-authenticating]="loading">
                 <ion-icon name="finger-print-outline"></ion-icon>
@@ -74,121 +82,125 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
               {{ 'auth.login.passkey-button' | translate }}
             </ion-button>
 
-            <div *ngIf="loading" class="auth-status">
-              <span class="status-dot"></span>
-              <span class="status-dot"></span>
-              <span class="status-dot"></span>
-            </div>
-          </ng-container>
+            @if (loading) {
+              <div class="auth-status">
+                <span class="status-dot"></span>
+                <span class="status-dot"></span>
+                <span class="status-dot"></span>
+              </div>
+            }
 
-          <!-- Server mode: email + OTP + passkey flow -->
-          <ng-container *ngIf="!isBrowserMode && (!showInstallScreen || !(pwaInstall.installable$ | async))">
-            <!-- Steps bar -->
-            <div class="steps-bar">
-              <div class="step" [class.active]="step === 'email'" [class.done]="step !== 'email'">
-                <div class="step-dot">
-                  <ion-icon *ngIf="step !== 'email'" name="checkmark"></ion-icon>
-                  <span *ngIf="step === 'email'">1</span>
+            <!-- Server mode: email + OTP + passkey flow -->
+            <ng-container *ngIf="!isBrowserMode && (!showInstallScreen || !(pwaInstall.installable$ | async))">
+              <!-- Steps bar -->
+              <div class="steps-bar">
+                <div class="step" [class.active]="step === 'email'" [class.done]="step !== 'email'">
+                  <div class="step-dot">
+                    <ion-icon *ngIf="step !== 'email'" name="checkmark"></ion-icon>
+                    <span *ngIf="step === 'email'">1</span>
+                  </div>
+                  <span class="step-label">{{ 'auth.register.step-email' | translate }}</span>
                 </div>
-                <span class="step-label">{{ 'auth.register.step-email' | translate }}</span>
-              </div>
-              <div class="step-line" [class.filled]="step !== 'email'"></div>
-              <div class="step" [class.active]="step === 'code'" [class.done]="step === 'passkey'">
-                <div class="step-dot">
-                  <ion-icon *ngIf="step === 'passkey'" name="checkmark"></ion-icon>
-                  <span *ngIf="step !== 'passkey'">2</span>
+                <div class="step-line" [class.filled]="step !== 'email'"></div>
+                <div class="step" [class.active]="step === 'code'" [class.done]="step === 'passkey'">
+                  <div class="step-dot">
+                    <ion-icon *ngIf="step === 'passkey'" name="checkmark"></ion-icon>
+                    <span *ngIf="step !== 'passkey'">2</span>
+                  </div>
+                  <span class="step-label">{{ 'auth.register.step-verify' | translate }}</span>
                 </div>
-                <span class="step-label">{{ 'auth.register.step-verify' | translate }}</span>
-              </div>
-              <div class="step-line" [class.filled]="step === 'passkey'"></div>
-              <div class="step" [class.active]="step === 'passkey'">
-                <div class="step-dot"><span>3</span></div>
-                <span class="step-label">{{ 'auth.passkey.title' | translate }}</span>
-              </div>
-            </div>
-
-            <h2 class="auth-title">{{ 'auth.login.title' | translate }}</h2>
-            <p class="auth-subtitle">
-              <span *ngIf="step === 'email'">{{ 'auth.login.enter-email' | translate }}</span>
-              <span *ngIf="step === 'code'">{{ 'auth.register.code-sent' | translate }}</span>
-              <span *ngIf="step === 'passkey'">{{ 'auth.login.verify-passkey' | translate }}</span>
-            </p>
-
-            <!-- Step 1: Email -->
-            <div *ngIf="step === 'email'" class="auth-form">
-              <div class="input-group">
-                <ion-icon name="mail-outline" class="input-icon"></ion-icon>
-                <ion-input
-                  [(ngModel)]="email"
-                  type="email"
-                  [placeholder]="'auth.register.email-placeholder' | translate"
-                  class="modern-input"
-                  (keyup.enter)="email && !loading && sendCode()"
-                ></ion-input>
-              </div>
-
-              <ion-button expand="block" (click)="sendCode()" [disabled]="!email || loading" class="auth-button">
-                <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
-                <ion-icon *ngIf="!loading" name="paper-plane-outline" slot="start"></ion-icon>
-                <span *ngIf="!loading">{{ 'auth.register.send-code' | translate }}</span>
-              </ion-button>
-            </div>
-
-            <!-- Step 2: OTP code -->
-            <div *ngIf="step === 'code'" class="auth-form">
-              <div class="email-badge">
-                <ion-icon name="mail-outline"></ion-icon>
-                <span>{{ email }}</span>
-              </div>
-
-              <app-otp-input
-                #otpRef
-                [length]="6"
-                [autofocus]="true"
-                [error]="!!errorMessage"
-                (completed)="onOtpCompleted($event)"
-                (changed)="otpValue = $event; errorMessage = ''"
-              ></app-otp-input>
-
-              <ion-button expand="block" (click)="verifyCode()" [disabled]="otpValue.length < 6 || loading" class="auth-button">
-                <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
-                <ion-icon *ngIf="!loading" name="shield-checkmark-outline" slot="start"></ion-icon>
-                <span *ngIf="!loading">{{ 'auth.register.verify' | translate }}</span>
-              </ion-button>
-
-              <ion-button expand="block" fill="clear" (click)="goBackToEmail()" class="secondary-button">
-                <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
-                {{ 'auth.register.change-email' | translate }}
-              </ion-button>
-            </div>
-
-            <!-- Step 3: Passkey verification -->
-            <div *ngIf="step === 'passkey'" class="auth-form">
-              <div class="fingerprint-hero">
-                <div class="fp-circle" [class.fp-authenticating]="loading">
-                  <ion-icon name="finger-print-outline"></ion-icon>
+                <div class="step-line" [class.filled]="step === 'passkey'"></div>
+                <div class="step" [class.active]="step === 'passkey'">
+                  <div class="step-dot"><span>3</span></div>
+                  <span class="step-label">{{ 'auth.passkey.title' | translate }}</span>
                 </div>
               </div>
 
-              <ion-button expand="block" (click)="verifyPasskey()" [disabled]="loading" class="auth-button">
-                <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
-                <ion-icon *ngIf="!loading" name="finger-print-outline" slot="start"></ion-icon>
-                <span *ngIf="!loading">{{ 'auth.login.passkey-button' | translate }}</span>
-              </ion-button>
+              <h2 class="auth-title">{{ 'auth.login.title' | translate }}</h2>
+              <p class="auth-subtitle">
+                <span *ngIf="step === 'email'">{{ 'auth.login.enter-email' | translate }}</span>
+                <span *ngIf="step === 'code'">{{ 'auth.register.code-sent' | translate }}</span>
+                <span *ngIf="step === 'passkey'">{{ 'auth.login.verify-passkey' | translate }}</span>
+              </p>
 
-            </div>
-          </ng-container>
+              <!-- Step 1: Email -->
+              <div *ngIf="step === 'email'" class="auth-form">
+                <div class="input-group">
+                  <ion-icon name="mail-outline" class="input-icon"></ion-icon>
+                  <ion-input
+                    [(ngModel)]="email"
+                    type="email"
+                    [placeholder]="'auth.register.email-placeholder' | translate"
+                    class="modern-input"
+                    (keyup.enter)="email && !loading && sendCode()"
+                  ></ion-input>
+                </div>
 
-          <div *ngIf="errorMessage" class="error-box">
-            <ion-icon name="alert-circle-outline"></ion-icon>
-            <span>{{ errorMessage }}</span>
-          </div>
+                <ion-button expand="block" (click)="sendCode()" [disabled]="!email || loading" class="auth-button">
+                  <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
+                  <ion-icon *ngIf="!loading" name="paper-plane-outline" slot="start"></ion-icon>
+                  <span *ngIf="!loading">{{ 'auth.register.send-code' | translate }}</span>
+                </ion-button>
+              </div>
+
+              <!-- Step 2: OTP code -->
+              <div *ngIf="step === 'code'" class="auth-form">
+                <div class="email-badge">
+                  <ion-icon name="mail-outline"></ion-icon>
+                  <span>{{ email }}</span>
+                </div>
+
+                <app-otp-input
+                  #otpRef
+                  [length]="6"
+                  [autofocus]="true"
+                  [error]="!!errorMessage"
+                  (completed)="onOtpCompleted($event)"
+                  (changed)="otpValue = $event; errorMessage = ''"
+                ></app-otp-input>
+
+                <ion-button expand="block" (click)="verifyCode()" [disabled]="otpValue.length < 6 || loading" class="auth-button">
+                  <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
+                  <ion-icon *ngIf="!loading" name="shield-checkmark-outline" slot="start"></ion-icon>
+                  <span *ngIf="!loading">{{ 'auth.register.verify' | translate }}</span>
+                </ion-button>
+
+                <ion-button expand="block" fill="clear" (click)="goBackToEmail()" class="secondary-button">
+                  <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+                  {{ 'auth.register.change-email' | translate }}
+                </ion-button>
+              </div>
+
+              <!-- Step 3: Passkey verification -->
+              <div *ngIf="step === 'passkey'" class="auth-form">
+                <div class="fingerprint-hero">
+                  <div class="fp-circle" [class.fp-authenticating]="loading">
+                    <ion-icon name="finger-print-outline"></ion-icon>
+                  </div>
+                </div>
+
+                <ion-button expand="block" (click)="verifyPasskey()" [disabled]="loading" class="auth-button">
+                  <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
+                  <ion-icon *ngIf="!loading" name="finger-print-outline" slot="start"></ion-icon>
+                  <span *ngIf="!loading">{{ 'auth.login.passkey-button' | translate }}</span>
+                </ion-button>
+
+              </div>
+            </ng-container>
+
+            @if (errorMessage) {
+              <div class="error-box">
+                <ion-icon name="alert-circle-outline"></ion-icon>
+                <span>{{ errorMessage }}</span>
+              </div>
+            }
+          }
         </div>
       </div>
     </ion-content>
   `,
     styleUrl: './login.page.scss',
-    imports: [IonicModule, CommonModule, FormsModule, TranslateModule, OtpInputComponent]
+  imports: [AsyncPipe, CommonModule, FormsModule, IonicModule, OtpInputComponent, TranslateModule]
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class LoginPage implements OnInit {
@@ -235,6 +247,7 @@ export class LoginPage implements OnInit {
 
   async installApp(): Promise<void> {
     await this.pwaInstall.promptInstall();
+    this.showInstallScreen = false;
   }
 
   skipInstall(): void {
@@ -313,7 +326,7 @@ export class LoginPage implements OnInit {
 
     try {
       const credentialId = this.prfService.getCredentialId();
-      
+
       if (!credentialId) {
         // No hay passkey local registrado, redirigir a register para crear uno
         this.router.navigate(['/auth/register'], {
