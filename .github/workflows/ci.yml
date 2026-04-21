@@ -54,8 +54,9 @@ jobs:
         if: always()
         uses: davelosert/vitest-coverage-report-action@v2
         with:
-          json-summary-path: eudistack-core-wallet-pwa/coverage/app/coverage-summary.json
-          json-final-path: eudistack-core-wallet-pwa/coverage/app/coverage-final.json
+          working-directory: eudistack-core-wallet-pwa
+          json-summary-path: coverage/app/coverage-summary.json
+          json-final-path: coverage/app/coverage-final.json
 
       - name: Upload Coverage Report
         if: always()
