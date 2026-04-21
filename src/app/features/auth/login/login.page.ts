@@ -13,7 +13,7 @@ import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { LocalAuthService } from 'src/app/core/services/local-auth.service';
 import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input.component';
-
+// Move html template into login.page.html
 @Component({
     selector: 'app-login',
     template: `
@@ -88,6 +88,7 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
                 <span class="status-dot"></span>
                 <span class="status-dot"></span>
               </div>
+            }
             }
 
             <!-- Server mode: email + OTP + passkey flow -->
@@ -194,7 +195,6 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
                 <span>{{ errorMessage }}</span>
               </div>
             }
-          }
         </div>
       </div>
     </ion-content>
@@ -225,8 +225,8 @@ export class LoginPage implements OnInit {
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
 
   ngOnInit(): void {
-    // En server mode, si ya hay una sesión válida (refresh token válido),
-    // podemos saltar directamente al paso de passkey
+    // In server mode, if a valid session already exists (valid refresh token),
+    // we can skip directly to the passkey step
     if (!this.isBrowserMode) {
       const hasRefreshToken = !!localStorage.getItem('wallet_refresh_token');
       if (hasRefreshToken) {
