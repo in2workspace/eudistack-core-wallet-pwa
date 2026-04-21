@@ -2,8 +2,8 @@
   window.env = window.env || {};
 
   // Environment variables
-  window["env"]["server_url"] = "http://localhost:8083";
-  window["env"]["websocket_url"] = "ws://localhost:8083";
+  window["env"]["server_url"] = "http://localhost:8083/wallet";
+  window["env"]["websocket_url"] = "ws://localhost:8083/wallet";
 
   window["env"]["logs_enabled"] = "false";
   window["env"]["wallet_mode"] = "";
