@@ -6,9 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.1] - 2026-04-21
+
+### Changed
+
+- Credential schemas (`src/assets/schemas/*.json`) are now synced from `eudistack-platform-dev/dev-tools/schemas/` on every `prestart`/`prebuild` via `scripts/sync-schemas.js` (extracted from inline `package.json` one-liner). Platform-dev is the single source of truth; the directory is git-ignored.
+- CI and Deploy workflows sparse-checkout `eudistack-platform-dev` as a sibling so the sync step has a real source on every build.
+
 ### Fixed
 
 - `httpTranslateLoader` spec expected absolute `/assets/i18n/en.json` but the loader was changed to relative (`assets/i18n/`) in 11366b3 for `base-href=/wallet/` compatibility. Updated the spec assertion to match.
+- `sync-schemas` script exits with error when canonical schemas are missing instead of falling back silently to stale bundled copies.
+
+### Removed
+
+- 8 legacy schemas absent from canonical source: `eu.europa.ec.eudi.{employee,pid,por}.1.{json,profile.json}` and orphan `learcredential.{employee,machine}.w3c.1.profile.json`.
 
 ## [3.0.2] - 2026-04-20
 ### Changed

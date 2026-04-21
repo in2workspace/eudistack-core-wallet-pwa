@@ -19,19 +19,32 @@ jobs:
     name: Deploy to ${{ inputs.environment }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    defaults:
+      run:
+        working-directory: eudistack-core-wallet-pwa
     env:
       AMPLIFY_APP_NAME: wallet-ui
       BRANCH_NAME: main
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          path: eudistack-core-wallet-pwa
+
+      - name: Checkout platform-dev (canonical schemas)
+        uses: actions/checkout@v4
+        with:
+          repository: in2workspace/eudistack-platform-dev
+          token: ${{ secrets.PLATFORM_DEV_READ_TOKEN }}
+          path: eudistack-platform-dev
+          sparse-checkout: dev-tools/schemas
 
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: package-lock.json
+          cache-dependency-path: eudistack-core-wallet-pwa/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -74,7 +87,7 @@ jobs:
         run: |
           cd dist/out
           zip -r ../out.zip .
-          echo "ZIP_FILE=dist/out.zip" >> $GITHUB_ENV
+          echo "ZIP_FILE=eudistack-core-wallet-pwa/dist/out.zip" >> $GITHUB_ENV
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -84,6 +97,7 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy to Amplify
+        working-directory: ${{ github.workspace }}
         run: |
           set -euo pipefail
           AMPLIFY_APP_ID=$(aws amplify list-apps --query "apps[?name=='${{ env.AMPLIFY_APP_NAME }}'] | [0].appId" --output text)
@@ -100,6 +114,7 @@ jobs:
           echo "- **App:** ${{ env.AMPLIFY_APP_NAME }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Smoke test
+        working-directory: ${{ github.workspace }}
         run: |
           SITE_URL="https://wallet-${{ inputs.environment }}.altia.eudistack.net"
           sleep 30
