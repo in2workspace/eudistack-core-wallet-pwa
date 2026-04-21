@@ -5,6 +5,7 @@ import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { Theme } from '../models/theme.model';
 import { ColorService } from '../../shared/services/color-service.service';
 import { StorageService } from '../../shared/services/storage.service';
+import { isKnownTenant } from '../constants/tenants.constants';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -18,10 +19,44 @@ export class ThemeService {
   ) {}
 
   async load(): Promise<void> {
-    const theme = await firstValueFrom(this.http.get<Theme>('/assets/theme.json'));
+    const hostname = window.location.hostname;
+    const tenant = isKnownTenant(hostname) ? hostname.split('.')[0] : 'eudistack';
+    let theme: Theme;
+    let effectiveTenant = tenant;
+    try {
+      theme = await firstValueFrom(this.http.get<Theme>(`assets/tenants/${tenant}/theme.json`));
+    } catch {
+      // Fallback to EUDIStack product branding if tenant has no theme
+      console.warn(`[ThemeService] No theme for tenant '${tenant}', using EUDIStack default`);
+      effectiveTenant = 'eudistack';
+      theme = await firstValueFrom(this.http.get<Theme>(`assets/tenants/eudistack/theme.json`));
+    }
+    this.rewriteAssetPaths(theme, effectiveTenant);
     this.theme$.next(theme);
     this.applyTheme(theme);
     await this.setupI18n(theme);
+  }
+
+  /**
+   * Rewrite legacy absolute asset paths (/assets/tenant/logo.svg)
+   * to tenant-specific relative paths (assets/tenants/{tenant}/logo.svg).
+   */
+  private rewriteAssetPaths(theme: Theme, tenant: string): void {
+    const rewrite = (path: string | null | undefined): string | null => {
+      if (!path) return null;
+      if (path.startsWith('/assets/tenant/')) {
+        return `assets/tenants/${tenant}/${path.replace('/assets/tenant/', '')}`;
+      }
+      return path;
+    };
+    if (theme.branding) {
+      theme.branding.logoUrl = rewrite(theme.branding.logoUrl) as string;
+      theme.branding.logoDarkUrl = rewrite(theme.branding.logoDarkUrl) as string;
+      theme.branding.faviconUrl = rewrite(theme.branding.faviconUrl) as string;
+      if (theme.branding.pwaIconUrl) {
+        theme.branding.pwaIconUrl = rewrite(theme.branding.pwaIconUrl) as string;
+      }
+    }
   }
 
   getTheme(): Observable<Theme | null> {
@@ -90,29 +125,31 @@ export class ThemeService {
 
   private updateManifest(theme: Theme): void {
     const origin = window.location.origin;
+    const base = document.querySelector('base')?.getAttribute('href') || '/';
+    const baseUrl = `${origin}${base}`;
     const manifest = {
       name: `${theme.branding.name || 'EUDI'} Wallet`,
       short_name: theme.branding.name || 'Wallet',
       theme_color: theme.branding.primaryColor,
       background_color: getComputedStyle(document.documentElement).getPropertyValue('--surface-page').trim(),
       display: 'standalone',
-      scope: `${origin}/`,
-      start_url: `${origin}/`,
+      scope: baseUrl,
+      start_url: baseUrl,
       orientation: 'portrait',
       icons: theme.branding.pwaIconUrl && this.isRelativeAssetPath(theme.branding.pwaIconUrl)
         ? [
-            { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '192x192', type: 'image/png', purpose: 'any' },
-            { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '512x512', type: 'image/png', purpose: 'any' },
-            { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            { src: `${baseUrl}${theme.branding.pwaIconUrl}`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: `${baseUrl}${theme.branding.pwaIconUrl}`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: `${baseUrl}${theme.branding.pwaIconUrl}`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ]
         : [
-            { src: `${origin}/assets/icons/pwa-192x192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
-            { src: `${origin}/assets/icons/pwa-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
-            { src: `${origin}/assets/icons/pwa-maskable-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            { src: `${baseUrl}assets/icons/pwa-192x192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: `${baseUrl}assets/icons/pwa-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: `${baseUrl}assets/icons/pwa-maskable-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ],
       screenshots: [
-        { src: `${origin}/assets/screenshots/screenshot-wide.png`, sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: `${theme.branding.name || 'EUDI'} Wallet` },
-        { src: `${origin}/assets/screenshots/screenshot-mobile.png`, sizes: '540x720', type: 'image/png', label: `${theme.branding.name || 'EUDI'} Wallet` },
+        { src: `${baseUrl}assets/screenshots/screenshot-wide.png`, sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: `${theme.branding.name || 'EUDI'} Wallet` },
+        { src: `${baseUrl}assets/screenshots/screenshot-mobile.png`, sizes: '540x720', type: 'image/png', label: `${theme.branding.name || 'EUDI'} Wallet` },
       ],
     };
 

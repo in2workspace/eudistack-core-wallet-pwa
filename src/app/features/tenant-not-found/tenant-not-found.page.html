@@ -1,0 +1,9 @@
+<ion-content [fullscreen]="true" class="ion-padding tenant-not-found">
+  <div class="content">
+    <h1>{{ 'tenantNotFound.title' | translate }}</h1>
+    <p>{{ 'tenantNotFound.message' | translate: { hostname: hostname } }}</p>
+    <ion-button expand="block" (click)="goToFallback()">
+      {{ 'tenantNotFound.cta' | translate }}
+    </ion-button>
+  </div>
+</ion-content>

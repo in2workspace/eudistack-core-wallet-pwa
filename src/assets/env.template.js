@@ -1,7 +1,7 @@
 (function (window) {
   window.env = window.env || {};
 
-  // Environment variables
+  // Wallet API: empty = same-origin proxy mode (Atlassian-style)
   window["env"]["server_url"] = "${WALLET_API_EXTERNAL_URL}";
   window["env"]["websocket_url"] = "${WALLET_API_WEBSOCKET_EXTERNAL_URL}";
   window["env"]["logs_enabled"] = "${LOGS_ENABLED}";

@@ -20,7 +20,7 @@ describe('httpTranslateLoader', () => {
   it('should use provided HttpClient to load translation files with default prefix and suffix', (done) => {
     const loader = httpTranslateLoader(httpClientMock);
     loader.getTranslation('en').subscribe(result => {
-      expect(httpClientMock.get).toHaveBeenCalledWith('/assets/i18n/en.json');
+      expect(httpClientMock.get).toHaveBeenCalledWith('assets/i18n/en.json');
       expect(result).toEqual({});
       done();
     });

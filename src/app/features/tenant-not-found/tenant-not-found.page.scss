@@ -1,0 +1,24 @@
+.tenant-not-found {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .content {
+    max-width: 480px;
+    margin: auto;
+    text-align: center;
+    padding: 32px 16px;
+
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 16px;
+      color: var(--ion-color-dark);
+    }
+
+    p {
+      color: var(--ion-color-medium);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+  }
+}
