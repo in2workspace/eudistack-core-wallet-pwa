@@ -31,6 +31,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: in2workspace/eudistack-platform-dev
+          token: ${{ secrets.PLATFORM_DEV_READ_TOKEN }}
           path: eudistack-platform-dev
           sparse-checkout: dev-tools/schemas
 
@@ -54,9 +55,8 @@ jobs:
         if: always()
         uses: davelosert/vitest-coverage-report-action@v2
         with:
-          working-directory: eudistack-core-wallet-pwa
-          json-summary-path: coverage/app/coverage-summary.json
-          json-final-path: coverage/app/coverage-final.json
+          json-summary-path: ${{ github.workspace }}/eudistack-core-wallet-pwa/coverage/app/coverage-summary.json
+          json-final-path: ${{ github.workspace }}/eudistack-core-wallet-pwa/coverage/app/coverage-final.json
 
       - name: Upload Coverage Report
         if: always()
