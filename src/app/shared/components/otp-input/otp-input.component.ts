@@ -56,7 +56,7 @@ import { CommonModule } from '@angular/common';
       color: var(--text-primary, #1A1A2E);
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-      caret-color: var(---primary-color);
+      caret-color: var(--ui-caret);
 
       &:focus {
         border-color: var(--neutral-medium);

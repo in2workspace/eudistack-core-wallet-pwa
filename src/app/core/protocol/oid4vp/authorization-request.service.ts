@@ -5,6 +5,13 @@ import { JwtService } from '../oid4vci/jwt.service';
 import { VerifierValidationService } from './verifier-validation.service';
 import { AuthorizationRequestOID4VP, DcqlQuery } from './authorization-request.model';
 
+export class InvalidQrError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidQrError';
+  }
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -28,7 +35,13 @@ export class AuthorizationRequestService {
       urlString = urlString.replace('openid4vp://', 'https://openid4vp/');
     }
 
-    const url = new URL(urlString);
+    let url: URL;
+    try {
+      url = new URL(urlString);
+    } catch {
+      throw new InvalidQrError('QR content is not a valid URL');
+    }
+
     const params = new Map<string, string>();
     url.searchParams.forEach((value, key) => {
       params.set(key, value);

@@ -293,6 +293,7 @@
         "no-credentials-available": "No hi ha cap credencial disponible per al login",
         "expired-credentialOffer":"L'oferta de credencial ha expirat o ja s'ha utilitzat",
         "cannot-get-VC":"No s'ha pogut obtenir la credencial del Issuer",
+        "signing-failed": "Estem tenint dificultats t\u00e8cniques puntuals. Tanca aquesta pantalla i torna-ho a provar d'aqu\u00ed uns minuts des de l'enlla\u00e7 del correu que vas rebre.",
         "cannot-save-VC":"No s'ha pogut guardar correctament la credencial",
         "incorrect-pin":"PIN incorrecte. Si us plau, actualitzeu l'oferta de credencials. Si el problema persisteix, poseu-vos en contacte amb <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>.",
         "pin-expired": "No ha introduït el PIN dins del límit de temps. Si us plau, renoveu l'oferta de credencial. Si el problema persisteix, poseu-vos en contacte amb <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>.",
@@ -381,5 +382,10 @@
         "expiration":"Data de caducitat: ",
         "unknown": "Desconegut",
         "time-remaining": "Temps restant"
+    },
+    "tenantNotFound": {
+        "title": "Tenant no trobat",
+        "message": "El subdomini «{{hostname}}» no correspon a cap tenant vàlid.",
+        "cta": "Anar a l'entorn sandbox"
     }
 }

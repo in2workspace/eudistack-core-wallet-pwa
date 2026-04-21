@@ -4,12 +4,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [3.1.1] - 2026-04-21
+
+### Changed
+
+- Credential schemas (`src/assets/schemas/*.json`) are now synced from `eudistack-platform-dev/dev-tools/schemas/` on every `prestart`/`prebuild` via `scripts/sync-schemas.js` (extracted from inline `package.json` one-liner). Platform-dev is the single source of truth; the directory is git-ignored.
+- CI and Deploy workflows sparse-checkout `eudistack-platform-dev` as a sibling so the sync step has a real source on every build.
+
+### Fixed
+
+- `httpTranslateLoader` spec expected absolute `/assets/i18n/en.json` but the loader was changed to relative (`assets/i18n/`) in 11366b3 for `base-href=/wallet/` compatibility. Updated the spec assertion to match.
+- `sync-schemas` script exits with error when canonical schemas are missing instead of falling back silently to stale bundled copies.
+
+### Removed
+
+- 8 legacy schemas absent from canonical source: `eu.europa.ec.eudi.{employee,pid,por}.1.{json,profile.json}` and orphan `learcredential.{employee,machine}.w3c.1.profile.json`.
+
 ## [3.0.2] - 2026-04-20
 ### Changed
 - Standardize query parameter detection to `credential_offer_uri` to align with OIDC4VCI standards.
 - Integrate `CredentialOfferService` to correctly parse and decode nested/double-encoded offer URIs.
 
 ## [3.0.1] - 2026-04-17
+
+## [3.1.0] - 2026-04-20
+
+### Added (Interaction tokens)
+
+- Brand-independent CSS tokens `--ui-caret`, `--ui-focus-ring`, `--ui-focus-ring-rgb`, `--ui-selection-bg`, `--ui-selection-fg` in `variables.scss`. Guarantee WCAG AA contrast regardless of tenant branding.
+- Global `::selection` rule in `globalDefault.scss` using the new interaction tokens.
+
+### Fixed (Interaction tokens)
+
+- Replace broken `caret-color: var(---primary-color)` (triple-dash typo) with `var(--ui-caret)` in `OtpInputComponent` and the register page.
+
+### Added (EUDI-064: Tenant validation)
+
+- **`tenantGuard`** — Angular route guard that validates tenant exists before rendering protected routes.
+- **`TenantNotFoundPage`** — user-friendly error page for unknown tenant subdomains.
+- **`tenants.constants`** — central registry of valid tenants.
+- `error-handler.interceptor`: redirect to tenant-not-found on tenant 404.
+- `theme.service`: handle tenant-not-found theme state.
+- i18n keys for tenant-not-found page (ca/en/es).
 
 ### Added
 
