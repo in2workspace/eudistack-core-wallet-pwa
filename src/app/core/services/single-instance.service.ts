@@ -1,4 +1,5 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
+import { APP_BASE_HREF } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
@@ -16,6 +17,7 @@ const ELECTION_TIMEOUT_MS = 300;
 export class SingleInstanceService implements OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly baseHref = inject(APP_BASE_HREF, { optional: true }) ?? '/';
 
   private channel: BroadcastChannel | null = null;
   private readonly tabId = crypto.randomUUID();
@@ -92,16 +94,24 @@ export class SingleInstanceService implements OnDestroy {
         } satisfies SingleInstanceMessage);
         break;
 
-      case 'NAVIGATE':
+      case 'NAVIGATE': {
         window.focus();
-        if (msg.url?.startsWith('/protocol/')) {
+        // Normalize to an app-relative path by stripping the configured base
+        // href so that the check works correctly when the app is served under
+        // a non-root base path (e.g. /wallet/protocol/callback → /protocol/callback).
+        const base = this.baseHref.replace(/\/$/, '');
+        const appRelative = (msg.url ?? '').startsWith(base)
+          ? (msg.url ?? '').slice(base.length) || '/'
+          : (msg.url ?? '');
+        if (appRelative.startsWith('/protocol/')) {
           if (this.authService.isLoggedIn()) {
-            this.router.navigateByUrl(msg.url);
+            this.router.navigateByUrl(msg.url!);
           } else {
-            sessionStorage.setItem(PENDING_DEEP_LINK_KEY, msg.url);
+            sessionStorage.setItem(PENDING_DEEP_LINK_KEY, msg.url!);
           }
         }
         break;
+      }
 
       default:
         break;
@@ -111,6 +121,8 @@ export class SingleInstanceService implements OnDestroy {
   private renderDuplicateTabMessage(): void {
     // Cancel any pending auth operations so this follower tab cannot corrupt shared
     this.authService.dispose();
+    this.channel?.close();
+    this.channel = null;
 
     try {
       window.close();
