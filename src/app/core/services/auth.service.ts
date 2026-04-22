@@ -25,6 +25,7 @@ export abstract class AuthService {
   abstract getToken(): string;
   abstract logout(): Observable<void>;
   abstract forceLogout(): void;
+  dispose(): void {}
 }
 
 /** DI provider that selects the right AuthService based on wallet_mode. */
@@ -57,6 +58,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private readonly broadcastChannel = new BroadcastChannel('auth');
   private static readonly BROADCAST_FORCE_LOGOUT = 'forceWalletLogout';
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private disposed = false;
 
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
@@ -145,7 +147,16 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   // --- Private helpers ---
 
+  override dispose(): void {
+    this.disposed = true;
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+  }
+
   private handleTokenResponse(response: TokenPairResponse): void {
+    if (this.disposed) return; 
     this.accessToken = response.accessToken;
     this.refreshTokenValue = response.refreshToken;
     localStorage.setItem('wallet_refresh_token', response.refreshToken);
@@ -192,6 +203,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   private listenToCrossTabLogout(): void {
     this.broadcastChannel.onmessage = (event) => {
+      if (this.disposed) return; 
       if (event.data === RemoteAuthService.BROADCAST_FORCE_LOGOUT) {
         console.warn('Detected logout from another tab');
         this.clearState();

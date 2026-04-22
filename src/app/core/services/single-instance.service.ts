@@ -1,4 +1,5 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
 
@@ -14,6 +15,7 @@ const ELECTION_TIMEOUT_MS = 300;
 @Injectable({ providedIn: 'root' })
 export class SingleInstanceService implements OnDestroy {
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   private channel: BroadcastChannel | null = null;
   private readonly tabId = crypto.randomUUID();
@@ -91,12 +93,13 @@ export class SingleInstanceService implements OnDestroy {
         break;
 
       case 'NAVIGATE':
-        if (msg.url) {
-          if (msg.url !== '/') {
+        window.focus();
+        if (msg.url?.startsWith('/protocol/')) {
+          if (this.authService.isLoggedIn()) {
+            this.router.navigateByUrl(msg.url);
+          } else {
             sessionStorage.setItem(PENDING_DEEP_LINK_KEY, msg.url);
           }
-          this.authService.forceLogout();
-          window.focus();
         }
         break;
 
@@ -106,6 +109,9 @@ export class SingleInstanceService implements OnDestroy {
   }
 
   private renderDuplicateTabMessage(): void {
+    // Cancel any pending auth operations so this follower tab cannot corrupt shared
+    this.authService.dispose();
+
     try {
       window.close();
     } catch {
