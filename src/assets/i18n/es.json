@@ -66,7 +66,9 @@
         "login": {
             "title": "Bienvenido",
             "subtitle": "Usa tu passkey para acceder de forma segura",
-            "passkey-button": "Iniciar sesión con Passkey"
+            "passkey-button": "Iniciar sesión con Passkey",
+            "enter-email": "Introduce tu email para continuar",
+            "verify-passkey": "Verifica tu identidad con tu passkey"
         },
         "register": {
             "title": "Crear cuenta",
@@ -97,6 +99,10 @@
             "status-connecting": "Preparando...",
             "status-verifying": "Esperando tu dispositivo...",
             "retry": "Reintentar"
+        },
+        "reauth": {
+            "subtitle": "Verifica tu email para restaurar tu sesión",
+            "back-to-login": "Volver al login"
         }
     },
     "login":{
@@ -158,7 +164,7 @@
         "send": "Enviar"
     },
     "vc-fields": {
-        "delete": "Eliminar",        
+        "delete": "Eliminar",
         "copy-success": "Copiado al portapapeles",
         "modal-title": "Detalles de credencial",
         "title": "Información de credenciales",
@@ -180,7 +186,7 @@
             "status": "Estado",
             "revocationUrl": "URL de estado de revocación"
         },
-        
+
         "credentialEncoded": "Credencial",
         "learCredentialEmployee": {
             "mandatee": {
@@ -285,7 +291,7 @@
 
         "verifier-post-failed": "No hemos podido enviar la respuesta de login. Inténtalo de nuevo.",
         "signature-failed": "No hemos podido firmar la presentación. Inténtalo de nuevo.",
-       
+
         "failed-qr-process": "Ha habido un error al procesar QR. Puede que sea inválido o que ya haya sido usado antes. Refrésquelo, por favor. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>",
         "invalid-qr":"El QR presentado es inválido",
         "no-credentials-available": "No hay ninguna credencial disponible para el login",
@@ -300,7 +306,7 @@
         "loading-VCs": "Ha habido un error al cargar las credenciales. Vuélvalo a intentar más tarde. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
         "Errunsigned": "No se pudo obtener la credencial",
         "no-connection": "Se perdió la conexión. Compruebe su conexión a internet e inténtelo de nuevo.",
-        "navigation": "Error inesperado al intentar acceder a la página. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>", 
+        "navigation": "Error inesperado al intentar acceder a la página. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>",
         "camera": {
             "not-readable": "No se puede acceder a la cámara. Asegúrate de que ninguna otra aplicación la esté utilizando. Es posible que necesites actualizar la página.",
             "not-allowed": "El acceso a la cámara está denegado. Revisa los permisos de tu navegador. Si el problema persiste, intenta actualizar la página.",

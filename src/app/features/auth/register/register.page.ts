@@ -1,8 +1,8 @@
-import { Component, inject, ViewChild } from '@angular/core';
+import { Component, inject, ViewChild, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.service';
 import { LocalAuthService } from 'src/app/core/services/local-auth.service';
@@ -10,6 +10,8 @@ import { ThemeService } from 'src/app/core/services/theme.service';
 import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input.component';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
+import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
+import { PasskeyApiService } from 'src/app/core/services/passkey-api.service';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 
 @Component({
@@ -78,6 +80,7 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
 
           <!-- Server mode: email + OTP flow, then local passkey creation -->
           <ng-container *ngIf="!isBrowserMode && ((pwaInstall.installDecision$ | async) === false || !showInstallScreen)">
+            <!-- Steps bar: hide step 3 if in reauth mode (passkey already exists) -->
             <div class="steps-bar">
               <div class="step" [class.active]="step === 'email'" [class.done]="step !== 'email'">
                 <div class="step-dot">
@@ -87,23 +90,29 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
                 <span class="step-label">{{ 'auth.register.step-email' | translate }}</span>
               </div>
               <div class="step-line" [class.filled]="step !== 'email'"></div>
-              <div class="step" [class.active]="step === 'code'" [class.done]="step === 'passkey'">
+              <div class="step" [class.active]="step === 'code'" [class.done]="step === 'passkey' || (isReauthMode && step === 'code')">
                 <div class="step-dot">
-                  <ion-icon *ngIf="step === 'passkey'" name="checkmark"></ion-icon>
-                  <span *ngIf="step !== 'passkey'">2</span>
+                  <ion-icon *ngIf="step === 'passkey' || (isReauthMode && verifiedEmail)" name="checkmark"></ion-icon>
+                  <span *ngIf="step !== 'passkey' && !(isReauthMode && verifiedEmail)">2</span>
                 </div>
                 <span class="step-label">{{ 'auth.register.step-verify' | translate }}</span>
               </div>
-              <div class="step-line" [class.filled]="step === 'passkey'"></div>
-              <div class="step" [class.active]="step === 'passkey'">
-                <div class="step-dot"><span>3</span></div>
-                <span class="step-label">{{ 'auth.passkey.title' | translate }}</span>
-              </div>
+              <ng-container *ngIf="!isReauthMode">
+                <div class="step-line" [class.filled]="step === 'passkey'"></div>
+                <div class="step" [class.active]="step === 'passkey'">
+                  <div class="step-dot"><span>3</span></div>
+                  <span class="step-label">{{ 'auth.passkey.title' | translate }}</span>
+                </div>
+              </ng-container>
             </div>
 
-            <h2 class="auth-title">{{ 'auth.register.title' | translate }}</h2>
+            <h2 class="auth-title">
+              {{ isReauthMode ? ('auth.login.title' | translate) : ('auth.register.title' | translate) }}
+            </h2>
             <p class="auth-subtitle">
-              <span *ngIf="step === 'email'">{{ 'auth.register.subtitle' | translate }}</span>
+              <span *ngIf="step === 'email'">
+                {{ isReauthMode ? ('auth.reauth.subtitle' | translate) : ('auth.register.subtitle' | translate) }}
+              </span>
               <span *ngIf="step === 'code'">{{ 'auth.register.code-sent' | translate }}</span>
               <span *ngIf="step === 'passkey'">{{ 'auth.passkey.description' | translate }}</span>
             </p>
@@ -125,6 +134,12 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
                 <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
                 <ion-icon *ngIf="!loading" name="paper-plane-outline" slot="start"></ion-icon>
                 <span *ngIf="!loading">{{ 'auth.register.send-code' | translate }}</span>
+              </ion-button>
+
+              <!-- Back to login button in reauth mode -->
+              <ion-button *ngIf="isReauthMode" expand="block" fill="clear" (click)="goBackToLogin()" class="secondary-button">
+                <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+                {{ 'auth.reauth.back-to-login' | translate }}
               </ion-button>
             </div>
 
@@ -159,7 +174,7 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
             <!-- Step 3: Passkey creation -->
             <div *ngIf="step === 'passkey'" class="auth-form">
               <div class="fingerprint-hero">
-                <div class="fp-circle">
+                <div class="fp-circle" [class.fp-authenticating]="loading">
                   <ion-icon name="finger-print-outline"></ion-icon>
                 </div>
               </div>
@@ -184,24 +199,39 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
     imports: [IonicModule, CommonModule, FormsModule, TranslateModule, OtpInputComponent]
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
-export class RegisterPage {
+export class RegisterPage implements OnInit {
   @ViewChild('otpRef') otpInput!: OtpInputComponent;
 
   private readonly themeService = inject(ThemeService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly passkeyStore = inject(PasskeyStoreService);
+  private readonly passkeyApi = inject(PasskeyApiService);
+
   readonly pwaInstall = inject(PwaInstallService);
   readonly logoSrc = this.themeService.getLogoUrl('dark');
+
   email = '';
   otpValue = '';
   step: 'email' | 'code' | 'passkey' = 'email';
   loading = false;
   errorMessage = '';
   showInstallScreen = !this.pwaInstall.isStandalone;
+  verifiedEmail = false;
+
+  /** True if user has a passkey but needs to re-authenticate (session expired) */
+  isReauthMode = false;
 
   private readonly authService = inject(AuthService);
   private readonly prfService = inject(PasskeyPrfService);
   private readonly router = inject(Router);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
+
+  ngOnInit(): void {
+    // Check if we're in re-authentication mode (passkey exists but session expired)
+    const reauth = this.route.snapshot.queryParamMap.get('reauth');
+    this.isReauthMode = reauth === 'true' && this.passkeyStore.hasPasskey();
+  }
 
   // --- PWA Install ---
 
@@ -245,6 +275,10 @@ export class RegisterPage {
     this.otpValue = '';
   }
 
+  goBackToLogin(): void {
+    this.router.navigate(['/auth/login']);
+  }
+
   sendCode(): void {
     this.loading = true;
     this.errorMessage = '';
@@ -269,7 +303,15 @@ export class RegisterPage {
     (this.authService as RemoteAuthService).verifyEmail(this.email, this.otpValue).subscribe({
       next: () => {
         this.loading = false;
-        this.step = 'passkey';
+        this.verifiedEmail = true;
+
+        if (this.isReauthMode) {
+          // User already has a passkey, skip to home
+          this.navigateHome();
+        } else {
+          // New registration, proceed to passkey creation
+          this.step = 'passkey';
+        }
       },
       error: (err) => {
         this.errorMessage = err?.error?.message || 'Invalid verification code';
@@ -283,11 +325,29 @@ export class RegisterPage {
     this.errorMessage = '';
 
     try {
+      // Create passkey locally
       await this.prfService.createPasskey(this.email || 'Wallet User');
-      this.navigateHome();
+
+      // Register passkey on the server (US-005)
+      const credentialId = this.passkeyStore.getCredentialId();
+      if (credentialId) {
+        this.passkeyApi.registerPasskey({
+          credentialId,
+          displayName: this.getDeviceName(),
+          userAgent: navigator.userAgent
+        }).subscribe({
+          next: () => this.navigateHome(),
+          error: (err: any) => {
+            // Log but don't block - passkey is already created locally
+            console.warn('Failed to register passkey on server:', err);
+            this.navigateHome();
+          }
+        });
+      } else {
+        this.navigateHome();
+      }
     } catch (err: any) {
       this.errorMessage = err?.message || 'Failed to create passkey';
-    } finally {
       this.loading = false;
     }
   }
@@ -296,5 +356,16 @@ export class RegisterPage {
     const pendingLink = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
     sessionStorage.removeItem(PENDING_DEEP_LINK_KEY);
     this.router.navigateByUrl(pendingLink || '/tabs/home');
+  }
+
+  private getDeviceName(): string {
+    const ua = navigator.userAgent;
+    if (/iPhone/.test(ua)) return 'iPhone';
+    if (/iPad/.test(ua)) return 'iPad';
+    if (/Android/.test(ua)) return 'Android Device';
+    if (/Mac/.test(ua)) return 'Mac';
+    if (/Windows/.test(ua)) return 'Windows PC';
+    if (/Linux/.test(ua)) return 'Linux';
+    return 'Unknown Device';
   }
 }

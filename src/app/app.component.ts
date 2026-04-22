@@ -65,7 +65,7 @@ export class AppComponent implements OnInit, OnDestroy {
       if (!isLeader) {
         return;
       }
-      this.authService.forceLogout();
+
       this.initOid4vciEngine();
       this.issuerMetadataCache.refreshStaleMetadata().catch(console.warn);
       this.alertIncompatibleDevice();
@@ -100,7 +100,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   public async openPopover(ev: Event): Promise<void> {
     if (this.isAuthRoute$()) {
-      return; 
+      return;
     }
     const popover = await this.popoverController.create({
       component: MenuComponent,

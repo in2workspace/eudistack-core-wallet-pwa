@@ -45,7 +45,7 @@
         "confirmation":"Confirmation",
         "confirmationMessage":"Do you want to choose this credential?",
         "addVC":"Add Credential",
-        "identify": "Identify yourself"    
+        "identify": "Identify yourself"
     },
     "faqs":{
         "title":"Faqs"
@@ -73,7 +73,9 @@
         "login": {
             "title": "Welcome back",
             "subtitle": "Use your passkey to sign in securely",
-            "passkey-button": "Sign in with Passkey"
+            "passkey-button": "Sign in with Passkey",
+            "enter-email": "Enter your email to continue",
+            "verify-passkey": "Verify your identity with your passkey"
         },
         "register": {
             "title": "Create account",
@@ -104,6 +106,10 @@
             "status-connecting": "Preparing...",
             "status-verifying": "Waiting for your device...",
             "retry": "Try again"
+        },
+        "reauth": {
+            "subtitle": "Verify your email to restore your session",
+            "back-to-login": "Back to login"
         }
     },
     "login":{

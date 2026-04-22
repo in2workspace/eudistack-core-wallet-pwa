@@ -73,3 +73,5 @@ android/
 
 # Schemas copied from platform-dev at build time
 src/assets/schemas/*.json
+/.claude/
+/docs/
