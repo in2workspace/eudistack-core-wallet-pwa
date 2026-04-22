@@ -136,7 +136,11 @@
         "server-error-message":"No s'ha pogut processar la petició.<br>Torni a intentar-ho més tard.",
         "generic-error-message": "Error desconegut",
         "close": "Tancar",
-        "credential-revoke-message":"La credencial proporcionada no és vàlida, ha estat revocada o no és vàlida per a aquesta operació"
+        "credential-revoke-message":"La credencial proporcionada no és vàlida, ha estat revocada o no és vàlida per a aquesta operació",
+        "requests-you": "Et sol·licita:",
+        "privacy-policy": "Política de privacitat",
+        "tds": "TdS",
+        "select": "Seleccionar"
     },
     "vc-view":{
         "warning-header": "Credencial",

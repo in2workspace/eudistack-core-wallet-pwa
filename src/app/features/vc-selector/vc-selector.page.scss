@@ -179,3 +179,119 @@ ion-footer ion-toolbar {
   --border-radius: 8px;
   font-weight: 600;
 }
+
+// ── Consent page ──────────────────────────────────
+.consent-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 20px;
+  background-color: #F9FAFB;
+}
+
+.consent-card {
+  width: 100%;
+  max-width: 400px;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  padding: 32px 24px;
+  animation: card-slide-up 0.5s ease-out;
+}
+
+.consent-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.rp-logo {
+  height: 50px;
+  object-fit: contain;
+}
+
+.rp-info {
+  text-align: center;
+  .rp-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 4px;
+  }
+  .rp-request-text {
+    color: #6B7280;
+    font-size: 0.95rem;
+  }
+}
+
+.requested-list {
+  width: 100%;
+  background: #F3F4F6;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 16px;
+
+  .requested-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .bullet {
+      width: 8px;
+      height: 8px;
+      background: #D9A404; // Tu color dorado de Figma
+      border-radius: 50%;
+    }
+
+    p {
+      margin: 0;
+      font-weight: 500;
+      color: #374151;
+    }
+  }
+}
+
+.legal-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+
+  .legal-link {
+    color: #D9A404;
+    text-decoration: underline;
+  }
+  .divider { color: #D1D5DB; }
+}
+
+.action-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  button {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.2s;
+  }
+
+  .btn-confirm {
+    background: #D9A404;
+    color: white;
+    border: none;
+    &:active { transform: scale(0.98); background: #C29303; }
+  }
+
+  .btn-cancel {
+    background: white;
+    color: #4B5563;
+    border: 1px solid #D1D5DB;
+    &:active { background: #F9FAFB; }
+  }
+}

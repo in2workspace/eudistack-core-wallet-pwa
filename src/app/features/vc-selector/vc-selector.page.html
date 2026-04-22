@@ -1,34 +1,79 @@
 <ion-content [fullscreen]="true" class="vc-selector-content">
-  <div class="vc-selector-header">
-    <div class="header-icon">
-      <ion-icon name="shield-checkmark-outline"></ion-icon>
-    </div>
-    <h2 class="header-title">{{ "vc-selector.presentation-request" | translate }}</h2>
-    <p class="header-subtitle">{{ "vc-selector.select-instruction" | translate }}</p>
-    @if (requesterDomain) {
-      <div class="requester-badge">
-        <ion-icon name="globe-outline"></ion-icon>
-        <span>{{ requesterDomain }}</span>
-      </div>
-    }
-  </div>
-
-  <div class="credential-list">
-    @for (cred of credList; track cred) {
-      <button class="selectable-card" (click)="sendCred(cred)">
-        <app-vc-view [credentialInput$]="cred" [enableDetailView$]="false"></app-vc-view>
-        <div class="card-action-hint">
-          <ion-icon name="chevron-forward-outline"></ion-icon>
+  @if (showConsentScreen) {
+    <div class="consent-wrapper">
+      <div class="consent-card">
+        <div class="consent-body">
+          <img [src]="clientLogo"
+               class="rp-logo"
+               (error)="clientLogo = 'assets/img/altia-logo.svg'"
+               alt="RP Logo">
+          <div class="rp-info">
+            <h1 class="rp-name">{{ clientName }}</h1>
+            <p class="rp-request-text">{{ "vc-selector.requests-you" | translate }}</p>
+          </div>
+          <div class="requested-list">
+            @for (reqCred of requestedCredentials; track reqCred) {
+              <div class="requested-item">
+                <div class="bullet"></div>
+                <p>{{ reqCred }}</p>
+              </div>
+            }
+          </div>
+          <div class="legal-links">
+            @if (policyUri) {
+              <a [href]="policyUri" target="_blank" class="legal-links">{{ "vc-selector.privacy-policy" | translate }}</a>
+            }
+            @if (policyUri && tosUri) { <span class="divider">|</span> }
+            @if (tosUri) {
+              <a [href]="tosUri" target="_blank" class="legal-links">{{ "vc-selector.tds" | translate }}</a>
+            }
+          </div>
+          <div class="action-group">
+            <button class="btn-confirm" (click)="continueToSelection()">
+              {{ "vc-selector.select" | translate }}
+            </button>
+            <button class="btn-cancel" (click)="goBack()">
+              {{ "vc-selector.cancel" | translate }}
+            </button>
+          </div>
         </div>
-      </button>
-    }
-  </div>
+      </div>
+    </div>
+  }
+  @else {
+    <div class="vc-selector-header">
+      <div class="header-icon">
+        <ion-icon name="shield-checkmark-outline"></ion-icon>
+      </div>
+      <h2 class="header-title">{{ "vc-selector.presentation-request" | translate }}</h2>
+      <p class="header-subtitle">{{ "vc-selector.select-instruction" | translate }}</p>
+      @if (requesterDomain) {
+        <div class="requester-badge">
+          <ion-icon name="globe-outline"></ion-icon>
+          <span>{{ requesterDomain }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="credential-list">
+      @for (cred of credList; track cred) {
+        <button class="selectable-card" (click)="sendCred(cred)">
+          <app-vc-view [credentialInput$]="cred" [enableDetailView$]="false"></app-vc-view>
+          <div class="card-action-hint">
+            <ion-icon name="chevron-forward-outline"></ion-icon>
+          </div>
+        </button>
+      }
+    </div>
+  }
 </ion-content>
 
-<ion-footer [translucent]="false">
-  <ion-toolbar>
-    <ion-button expand="block" fill="outline" color="medium" (click)="goBack()" class="cancel-button">
-      {{ "vc-selector.cancel" | translate }}
-    </ion-button>
-  </ion-toolbar>
-</ion-footer>
+@if (!showConsentScreen) {
+  <ion-footer [translucent]="false">
+    <ion-toolbar>
+      <ion-button expand="block" fill="outline" color="medium" (click)="goBack()" class="cancel-button">
+        {{ "vc-selector.cancel" | translate }}
+      </ion-button>
+    </ion-toolbar>
+  </ion-footer>
+}

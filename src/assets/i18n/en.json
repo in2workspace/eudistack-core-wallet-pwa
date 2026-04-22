@@ -146,7 +146,11 @@
         "server-error-message":"We couldn't process your request.<br>Please try again later.",
         "generic-error-message": "Unknown error",
         "credential-revoke-message":"The credential provided is invalid, it has been revoked or is not valid for this operation",
-        "close": "Close"
+        "close": "Close",
+        "requests-you": "Requests you:",
+        "privacy-policy": "Privacy policy",
+        "tds": "TdS",
+        "select": "Select"
     },
     "vc-view":{
         "warning-header": "Credential",

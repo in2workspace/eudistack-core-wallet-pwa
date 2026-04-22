@@ -41,6 +41,12 @@ export class VcSelectorPage {
   public isAlertOpen = false;
   public errorAlertOpen = false;
   public sendCredentialAlert = false;
+  public showConsentScreen = true;
+  public clientName = '';
+  public clientLogo = '';
+  public policyUri = '';
+  public tosUri = '';
+  public requestedCredentials: string[] = []
 
   public _VCReply: VCReply = {
     selectedVcList: [],
@@ -76,6 +82,35 @@ export class VcSelectorPage {
       this._VCReply.clientId = this.executionResponse['clientId'];
       this._VCReply.dcqlQuery = this.executionResponse['dcqlQuery'];
       this.requesterDomain = this.extractDomain(this.executionResponse['clientId'] || this.executionResponse['redirectUri'] || '');
+      this.extractConsentData();
+  }
+
+  private extractConsentData(): void {
+    const metadata = this.executionResponse['clientMetadata'];
+    const currentLocale = this.translate.currentLang || navigator.language || 'es';
+
+    this.clientName = this.getMetadataValue(metadata, 'client_name', currentLocale, '');
+    this.clientLogo = this.getMetadataValue(metadata, 'logo_uri', currentLocale, '');
+    this.policyUri = this.getMetadataValue(metadata, 'policy_uri', currentLocale, '');
+    this.tosUri = this.getMetadataValue(metadata, 'tos_uri', currentLocale, '');
+
+    if (this._VCReply.dcqlQuery?.credentials) {
+      this.requestedCredentials = this._VCReply.dcqlQuery.credentials.map(c => c.id || c.format);
+    }
+  }
+
+  private getMetadataValue(metadata: any, field: string, locale: string, fallback: string): string {
+    if (!metadata) return fallback;
+    const language = locale.split('-')[0];
+
+    return metadata[`${field}#${locale}`] ||
+      metadata[`${field}#${language}`] ||
+      metadata[`${field}`] ||
+      fallback;
+  }
+
+  public continueToSelection(): void {
+    this.showConsentScreen = false;
   }
 
   public goBack(): void {
