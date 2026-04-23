@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Pending (EUDI-094 multi-tenant rollout)
+
+- E2E OID4VCI flow against same-origin Issuer (`/issuer/*`) still to be
+  validated on STG with real tenant (scheduled 2026-04-24). No code
+  change anticipated; expected to be green post verifier redeploy.
+
 ## [3.3.0] - 2026-04-23
 
 ### Changed (EUDI-094 — runtime per-tenant theme from shared bucket)
