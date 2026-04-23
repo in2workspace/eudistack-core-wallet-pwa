@@ -28,12 +28,12 @@ jobs:
       CF_COMMENT_PREFIX: eudistack-${{ inputs.environment }}-cdn-ew1-
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: eudistack-core-wallet-pwa
 
       - name: Checkout platform-dev (canonical schemas)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: in2workspace/eudistack-platform-dev
           token: ${{ secrets.PLATFORM_DEV_READ_TOKEN }}
