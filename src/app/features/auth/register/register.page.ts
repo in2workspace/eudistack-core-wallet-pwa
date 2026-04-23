@@ -80,32 +80,6 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
 
           <!-- Server mode: email + OTP flow, then local passkey creation -->
           <ng-container *ngIf="!isBrowserMode && ((pwaInstall.installDecision$ | async) === false || !showInstallScreen)">
-            <!-- Steps bar: hide step 3 if in reauth mode (passkey already exists) -->
-            <div class="steps-bar">
-              <div class="step" [class.active]="step === 'email'" [class.done]="step !== 'email'">
-                <div class="step-dot">
-                  <ion-icon *ngIf="step !== 'email'" name="checkmark"></ion-icon>
-                  <span *ngIf="step === 'email'">1</span>
-                </div>
-                <span class="step-label">{{ 'auth.register.step-email' | translate }}</span>
-              </div>
-              <div class="step-line" [class.filled]="step !== 'email'"></div>
-              <div class="step" [class.active]="step === 'code'" [class.done]="step === 'passkey' || (isReauthMode && step === 'code')">
-                <div class="step-dot">
-                  <ion-icon *ngIf="step === 'passkey' || (isReauthMode && verifiedEmail)" name="checkmark"></ion-icon>
-                  <span *ngIf="step !== 'passkey' && !(isReauthMode && verifiedEmail)">2</span>
-                </div>
-                <span class="step-label">{{ 'auth.register.step-verify' | translate }}</span>
-              </div>
-              <ng-container *ngIf="!isReauthMode">
-                <div class="step-line" [class.filled]="step === 'passkey'"></div>
-                <div class="step" [class.active]="step === 'passkey'">
-                  <div class="step-dot"><span>3</span></div>
-                  <span class="step-label">{{ 'auth.passkey.title' | translate }}</span>
-                </div>
-              </ng-container>
-            </div>
-
             <h2 class="auth-title">
               {{ isReauthMode ? ('auth.login.title' | translate) : ('auth.register.title' | translate) }}
             </h2>
@@ -130,7 +104,7 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
                 ></ion-input>
               </div>
 
-              <ion-button expand="block" (click)="sendCode()" [disabled]="!email || loading" class="auth-button">
+              <ion-button expand="block" (click)="email && !loading && sendCode()" [disabled]="loading" [class.inactive-email]="!email && !loading" class="auth-button">
                 <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
                 <ion-icon *ngIf="!loading" name="paper-plane-outline" slot="start"></ion-icon>
                 <span *ngIf="!loading">{{ 'auth.register.send-code' | translate }}</span>
@@ -146,7 +120,6 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
             <!-- Step 2: OTP code -->
             <div *ngIf="step === 'code'" class="auth-form">
               <div class="email-badge">
-                <ion-icon name="mail-outline"></ion-icon>
                 <span>{{ email }}</span>
               </div>
 
@@ -155,18 +128,16 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
                 [length]="6"
                 [autofocus]="true"
                 [error]="!!errorMessage"
-                (completed)="onOtpCompleted($event)"
                 (changed)="otpValue = $event; errorMessage = ''"
               ></app-otp-input>
 
-              <ion-button expand="block" (click)="verifyCode()" [disabled]="otpValue.length < 6 || loading" class="auth-button">
+              <ion-button expand="block" (click)="otpValue.length >= 6 && !loading && verifyCode()" [disabled]="loading" [class.inactive-email]="otpValue.length < 6 && !loading" class="auth-button">
                 <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
                 <ion-icon *ngIf="!loading" name="shield-checkmark-outline" slot="start"></ion-icon>
                 <span *ngIf="!loading">{{ 'auth.register.verify' | translate }}</span>
               </ion-button>
 
               <ion-button expand="block" fill="clear" (click)="goBackToEmail()" class="secondary-button">
-                <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
                 {{ 'auth.register.change-email' | translate }}
               </ion-button>
             </div>
@@ -305,11 +276,9 @@ export class RegisterPage implements OnInit {
         this.loading = false;
         this.verifiedEmail = true;
 
-        if (this.isReauthMode) {
-          // User already has a passkey, skip to home
+        if (this.isReauthMode || this.passkeyStore.hasPasskey()) {
           this.navigateHome();
         } else {
-          // New registration, proceed to passkey creation
           this.step = 'passkey';
         }
       },

@@ -176,79 +176,6 @@
   40% { transform: scale(1); opacity: 1; }
 }
 
-// Steps bar
-.steps-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  margin-bottom: 24px;
-}
-
-.step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.step-dot {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--action-secondary-hover);
-  color: var(--text-disabled);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  font-weight: 600;
-  transition: all 0.3s ease;
-
-  .step.active & {
-    background: var(--primary-color);
-    color: var(--primary-contrast-color);
-    box-sizing: content-box;
-    border: 1px solid var(--primary-contrast-color);
-    box-shadow: 0 2px 8px rgb(var(--primary-color-rgb), 0.3);
-  }
-
-  .step.done & {
-    background: var(--status-success);
-    color: var(--primary-contrast-color);
-  }
-
-  ion-icon {
-    font-size: 16px;
-  }
-}
-
-.step-label {
-  font-size: 0.7rem;
-  color: var(--text-disabled);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-
-  .step.active &,
-  .step.done & {
-    color: var(--text-primary);
-  }
-}
-
-.step-line {
-  width: clamp(24px, 8vw, 48px);
-  height: 2px;
-  background: var(--action-secondary-hover);
-  margin: 0 clamp(4px, 2vw, 12px);
-  margin-bottom: 20px;
-  transition: background 0.3s ease;
-
-  &.filled {
-    background: var(--status-success);
-  }
-}
-
 // Form
 .auth-form {
   display: flex;
@@ -261,17 +188,20 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 10px;
+  align-self: center;
+  width: fit-content;
+  max-width: 100%;
+  background: var(--action-secondary-hover, #F3F4F6);
+  border: 1px solid var(--border-default, #D1D5DB);
+  border-radius: 20px;
   padding: 10px 14px;
   font-size: 0.875rem;
-  color: var(--status-info);
+  color: var(--text-secondary);
 
   ion-icon {
     font-size: 18px;
     flex-shrink: 0;
-    color: var(--status-info);
+    color: var(--text-secondary);
   }
 
   span {
@@ -316,6 +246,10 @@
   --padding-bottom: 14px;
   --border-style: none;
   font-size: 0.95rem;
+}
+
+.inactive-email::part(native) {
+  cursor: not-allowed;
 }
 
 .btn-spinner {

@@ -5,6 +5,7 @@ import { AsyncPipe } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
 import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.service';
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
 import { base64UrlDecode } from 'src/app/core/utils/base64url';
@@ -93,30 +94,6 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
 
             <!-- Server mode: email + OTP + passkey flow -->
             <ng-container *ngIf="!isBrowserMode && (!showInstallScreen || !(pwaInstall.installable$ | async))">
-              <!-- Steps bar -->
-              <div class="steps-bar">
-                <div class="step" [class.active]="step === 'email'" [class.done]="step !== 'email'">
-                  <div class="step-dot">
-                    <ion-icon *ngIf="step !== 'email'" name="checkmark"></ion-icon>
-                    <span *ngIf="step === 'email'">1</span>
-                  </div>
-                  <span class="step-label">{{ 'auth.register.step-email' | translate }}</span>
-                </div>
-                <div class="step-line" [class.filled]="step !== 'email'"></div>
-                <div class="step" [class.active]="step === 'code'" [class.done]="step === 'passkey'">
-                  <div class="step-dot">
-                    <ion-icon *ngIf="step === 'passkey'" name="checkmark"></ion-icon>
-                    <span *ngIf="step !== 'passkey'">2</span>
-                  </div>
-                  <span class="step-label">{{ 'auth.register.step-verify' | translate }}</span>
-                </div>
-                <div class="step-line" [class.filled]="step === 'passkey'"></div>
-                <div class="step" [class.active]="step === 'passkey'">
-                  <div class="step-dot"><span>3</span></div>
-                  <span class="step-label">{{ 'auth.passkey.title' | translate }}</span>
-                </div>
-              </div>
-
               <h2 class="auth-title">{{ 'auth.login.title' | translate }}</h2>
               <p class="auth-subtitle">
                 <span *ngIf="step === 'email'">{{ 'auth.login.enter-email' | translate }}</span>
@@ -137,7 +114,7 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
                   ></ion-input>
                 </div>
 
-                <ion-button expand="block" (click)="sendCode()" [disabled]="!email || loading" class="auth-button">
+                <ion-button expand="block" (click)="email && !loading && sendCode()" [disabled]="loading" [class.inactive-email]="!email && !loading" class="auth-button">
                   <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
                   <ion-icon *ngIf="!loading" name="paper-plane-outline" slot="start"></ion-icon>
                   <span *ngIf="!loading">{{ 'auth.register.send-code' | translate }}</span>
@@ -147,7 +124,6 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
               <!-- Step 2: OTP code -->
               <div *ngIf="step === 'code'" class="auth-form">
                 <div class="email-badge">
-                  <ion-icon name="mail-outline"></ion-icon>
                   <span>{{ email }}</span>
                 </div>
 
@@ -156,18 +132,16 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
                   [length]="6"
                   [autofocus]="true"
                   [error]="!!errorMessage"
-                  (completed)="onOtpCompleted($event)"
                   (changed)="otpValue = $event; errorMessage = ''"
                 ></app-otp-input>
 
-                <ion-button expand="block" (click)="verifyCode()" [disabled]="otpValue.length < 6 || loading" class="auth-button">
+                <ion-button expand="block" (click)="otpValue.length >= 6 && !loading && verifyCode()" [disabled]="loading" [class.inactive-email]="otpValue.length < 6 && !loading" class="auth-button">
                   <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
                   <ion-icon *ngIf="!loading" name="shield-checkmark-outline" slot="start"></ion-icon>
                   <span *ngIf="!loading">{{ 'auth.register.verify' | translate }}</span>
                 </ion-button>
 
                 <ion-button expand="block" fill="clear" (click)="goBackToEmail()" class="secondary-button">
-                  <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
                   {{ 'auth.register.change-email' | translate }}
                 </ion-button>
               </div>
@@ -217,6 +191,7 @@ export class LoginPage implements OnInit {
   email = '';
   otpValue = '';
   step: 'email' | 'code' | 'passkey' = 'email';
+  private passkeyFromRefreshToken = false;
 
   private readonly authService = inject(AuthService);
   private readonly prfService = inject(PasskeyPrfService);
@@ -225,23 +200,9 @@ export class LoginPage implements OnInit {
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
 
   ngOnInit(): void {
-    // In server mode, if a valid session already exists (valid refresh token),
-    // we can skip directly to the passkey step
-    if (!this.isBrowserMode) {
-      const hasRefreshToken = !!localStorage.getItem('wallet_refresh_token');
-      if (hasRefreshToken) {
-        // Intentar refrescar el token silenciosamente
-        (this.authService as RemoteAuthService).refreshAccessToken().subscribe({
-          next: () => {
-            // Sesión válida, ir directamente al paso de passkey
-            this.step = 'passkey';
-          },
-          error: () => {
-            // Token expirado, empezar desde email
-            this.step = 'email';
-          }
-        });
-      }
+    if (!this.isBrowserMode && localStorage.getItem('wallet_refresh_token')) {
+      this.step = 'passkey';
+      this.passkeyFromRefreshToken = true;
     }
   }
 
@@ -310,7 +271,7 @@ export class LoginPage implements OnInit {
     (this.authService as RemoteAuthService).verifyEmail(this.email, this.otpValue).subscribe({
       next: () => {
         this.loading = false;
-        // Email verified, ahora verificar passkey local
+        this.passkeyFromRefreshToken = false;
         this.step = 'passkey';
       },
       error: (err) => {
@@ -328,17 +289,28 @@ export class LoginPage implements OnInit {
       const credentialId = this.prfService.getCredentialId();
 
       if (!credentialId) {
-        // No hay passkey local registrado, redirigir a register para crear uno
-        this.router.navigate(['/auth/register'], {
-          queryParams: { reauth: 'true' }
-        });
+        this.router.navigate(['/auth/register'], { queryParams: { reauth: 'true' } });
         return;
       }
 
       await this.authenticateLocally();
+
+      if (this.passkeyFromRefreshToken) {
+        // Exchange the stored refresh token for a fresh access token.
+        await firstValueFrom((this.authService as RemoteAuthService).refreshAccessToken());
+      }
+
       this.navigateHome();
     } catch (err: any) {
-      this.errorMessage = err?.message || 'Passkey verification failed';
+      if (this.passkeyFromRefreshToken) {
+        // Refresh token expired — clear it and fall back to the full email flow.
+        localStorage.removeItem('wallet_refresh_token');
+        this.passkeyFromRefreshToken = false;
+        this.step = 'email';
+        this.errorMessage = 'Your session has expired. Please sign in again.';
+      } else {
+        this.errorMessage = err?.message || 'Passkey verification failed';
+      }
       this.loading = false;
     }
   }
