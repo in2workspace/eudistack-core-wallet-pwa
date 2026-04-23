@@ -89,7 +89,8 @@
             "install-title": "Instal·lar l'App",
             "install-subtitle": "Per a la millor experiència i accés offline, instal·la l'app del wallet al teu dispositiu.",
             "install-button": "Instal·lar App",
-            "continue-browser": "Continuar al navegador"
+            "continue-browser": "Continuar al navegador",
+            "already-registered": "Ja tens un compte? Inicia sessió"
         },
         "passkey": {
             "title": "Configurar Passkey",
@@ -100,6 +101,10 @@
             "status-connecting": "Preparant...",
             "status-verifying": "Esperant el teu dispositiu...",
             "retry": "Tornar-ho a provar"
+        },
+        "errors": {
+            "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",
+            "too-many-attempts-otp": "Massa intents incorrectes. Si us plau, sol·licita un nou codi."
         }
     },
     "login":{
@@ -107,6 +112,10 @@
         "login":"Login",
         "register":"No estàs registrat? Registra't",
         "error": "Nom d'usuari o contrasenya incorrectes"
+    },
+    "errors": {
+        "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",
+        "too-many-attempts-otp": "Massa intents incorrectes. Si us plau, sol·licita un nou codi."
     },
     "privacy-policy":{
         "title":"Política de Privacitat"

@@ -71,8 +71,8 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   // --- Registration flow (email + OTP → JWT tokens) ---
 
-  register(email: string): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${AUTH_BASE}/register`, { email });
+  register(email: string, mode: 'register' | 'login' = 'register'): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${AUTH_BASE}/register`, { email, mode });
   }
 
   verifyEmail(email: string, code: string): Observable<TokenPairResponse> {

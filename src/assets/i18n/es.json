@@ -88,7 +88,8 @@
             "install-title": "Instalar la App",
             "install-subtitle": "Para la mejor experiencia y acceso offline, instala la app del wallet en tu dispositivo.",
             "install-button": "Instalar App",
-            "continue-browser": "Continuar en el navegador"
+            "continue-browser": "Continuar en el navegador",
+            "already-registered": "¿Ya tienes una cuenta? Inicia sesión"
         },
         "passkey": {
             "title": "Configurar Passkey",
@@ -103,6 +104,10 @@
         "reauth": {
             "subtitle": "Verifica tu email para restaurar tu sesión",
             "back-to-login": "Volver al login"
+        },
+        "errors": {
+            "too-many-attempts": "Demasiados intentos. Por favor, inténtalo más tarde.",
+            "too-many-attempts-otp": "Demasiados intentos incorrectos. Por favor, solicita un nuevo código."
         }
     },
     "login":{
