@@ -1,5 +1,6 @@
 <ion-content [fullscreen]="true" class="ion-padding tenant-not-found">
   <div class="content">
+    <img class="logo" src="assets/tenant/favicon.png" alt="EUDIStack" />
     <h1>{{ 'tenantNotFound.title' | translate }}</h1>
     <p>{{ 'tenantNotFound.message' | translate: { hostname: hostname } }}</p>
     <ion-button expand="block" (click)="goToFallback()">
