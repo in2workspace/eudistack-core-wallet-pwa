@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-04-23
+
+### Changed (EUDI-094 — theme loaded from single deploy-time asset)
+
+- **`theme.service.ts`** — `load()` ahora carga un único `assets/theme.json` y elimina el fallback runtime (`isKnownTenant` + `resolveTenant`). La personalización per-tenant se resuelve en CI: `.github/workflows/deploy.yml` copia `eudistack-platform-assets/tenants/<TENANT>/theme.json` a `assets/theme.json` y `tenants/<TENANT>/*` a `assets/tenant/` antes del upload a S3. `rewriteAssetPaths()` se simplifica a normalizar rutas absolutas `/assets/...` a relativas (sin tenant interpolation).
+- **`index.html`** y **`tenant-not-found.page.html`** — favicon default migrado de `favicon.png` a `favicon.svg`, alineado con la estructura de `eudistack-platform-assets` (todos los tenants exponen `favicon.svg`).
+
 ## [3.1.2] - 2026-04-23
 
 ### Fixed (EUDI-064 post-release — env suffix in tenant resolution)
