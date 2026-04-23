@@ -2,6 +2,7 @@ import { TestBed, fakeAsync, tick, flush } from '@angular/core/testing';
 import { CameraService } from './camera.service';
 import { StorageService } from './storage.service';
 import { ToastServiceHandler } from './toast.service';
+import { CameraOrientation } from '../../core/models/camera';
 import { signal } from '@angular/core';
 import { EMPTY, of } from 'rxjs';
 
@@ -109,7 +110,7 @@ describe('CameraService', () => {
 
   describe('CameraService - removeActivatingScanner', () => {
   
-    it('hauria d’eliminar un scanner existent de activatingScannerListSubj', () => {
+    it('should remove an existing scanner from activatingScannerListSubj', () => {
       const scanner1 = '123ABC';
       const scanner2 = 'XYZ789';
   
@@ -123,34 +124,34 @@ describe('CameraService', () => {
       expect(cameraService.activatingScannersListSubj.getValue()).toEqual([scanner2]);
     });
   
-    it('hauria de no canviar la llista si el scanner no existeix', () => {
+    it('should not change the list if the scanner does not exist', () => {
       const scanner1 = '123ABC';
-  
+
       cameraService.addActivatingScanner(scanner1);
-  
-      // Intentem eliminar un Scanner que no existeix
+
+      // Try to remove a Scanner that does not exist
       cameraService.removeActivatingScanner('NO-EXISTEIX');
-  
-      // Comprovem que la llista segueix igual
+
+      // Verify that the list remains unchanged
       expect(cameraService.activatingScannersListSubj.getValue()).toEqual([scanner1]);
     });
   
-    it('hauria de deixar la llista buida si s’eliminen tots els scanners', () => {
+    it('should leave the list empty when all scanners are removed', () => {
       const scanner1 = '123ABC';
       const scanner2 = 'XYZ789';
-  
+
       cameraService.addActivatingScanner(scanner1);
       cameraService.addActivatingScanner(scanner2);
-  
-      // Eliminem els dos Scanners
+
+      // Remove both Scanners
       cameraService.removeActivatingScanner(scanner1);
       cameraService.removeActivatingScanner(scanner2);
-  
-      // Comprovem que la llista està buida
+
+      // Verify that the list is empty
       expect(cameraService.activatingScannersListSubj.getValue()).toEqual([]);
     });
   
-    it('hauria d’emetre correctament els valors actualitzats a activatingScannersList$', (done) => {
+    it('should correctly emit the updated values to activatingScannersList$', (done) => {
       const scanner1 = '123ABC';
       const scanner2 = 'XYZ789';
   
@@ -170,7 +171,7 @@ describe('CameraService', () => {
   
   describe('CameraService - setCamera', () => {
   
-    it('hauria de canviar la càmera seleccionada i guardar-la a StorageService', async () => {
+    it('should change the selected camera and save it to StorageService', async () => {
       const mockCamera: MediaDeviceInfo = {
         deviceId: '123',
         label: 'Mock Camera',
@@ -181,10 +182,10 @@ describe('CameraService', () => {
   
       cameraService.setCamera(mockCamera);
   
-      // Verifiquem que la càmera seleccionada s'ha actualitzat
+      // Verify that the selected camera has been updated
       expect(cameraService.selectedCamera$()).toEqual(mockCamera);
-  
-      // Verifiquem que la càmera s'ha emmagatzemat correctament
+
+      // Verify that the camera has been stored correctly
       const storedCamera = await mockStorageService.get('camera');
       expect(storedCamera).toEqual({
         deviceId: '123',
@@ -196,7 +197,7 @@ describe('CameraService', () => {
 
   describe('CameraService - getAvailableCameraById', () => {
   
-    it('hauria de retornar una càmera disponible segons el seu ID', () => {
+    it('should return an available camera by its ID', () => {
       const mockDevices: MediaDeviceInfo[] = [
         { deviceId: '123', label: 'Camera 1', kind: 'videoinput', groupId: 'group1', toJSON: jest.fn() },
         { deviceId: '456', label: 'Camera 2', kind: 'videoinput', groupId: 'group2', toJSON: jest.fn() },
@@ -209,20 +210,20 @@ describe('CameraService', () => {
       expect(foundCamera).toEqual(mockDevices[1]);
     });
   
-    it('hauria de retornar undefined si l’ID no existeix', () => {
+    it('should return undefined if the ID does not exist', () => {
       const mockDevices: MediaDeviceInfo[] = [
         { deviceId: '123', label: 'Camera 1', kind: 'videoinput', groupId: 'group1', toJSON: jest.fn() },
       ];
   
       cameraService.availableDevices$.set(mockDevices);
   
-      const foundCamera = cameraService.getAvailableCameraById('999'); // ID inexistent
+      const foundCamera = cameraService.getAvailableCameraById('999'); // Non-existent ID
   
       expect(foundCamera).toBeUndefined();
     });
   });
 
-  it('hauria de concedir permís de càmera i aturar els tracks si getUserMedia té èxit', async () => {
+  it('should grant camera permission and stop tracks when getUserMedia succeeds', async () => {
     const mockStream = new MediaStream();
     jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockResolvedValue(mockStream);
     jest.spyOn(cameraService, 'stopMediaTracks').mockImplementation();
@@ -233,7 +234,7 @@ describe('CameraService', () => {
     expect(cameraService.stopMediaTracks).toHaveBeenCalledWith(mockStream);
   });
 
-  it('hauria de llençar un error si getUserMedia falla', async () => {
+  it('should throw an error when getUserMedia fails', async () => {
     const error = new Error('Permission denied');
     jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockRejectedValue(error);
 
@@ -241,7 +242,7 @@ describe('CameraService', () => {
   });
 
   describe('updateAvailableDevices', ()=>{
-    it('hauria d’actualitzar availableDevices$ amb els dispositius de tipus videoinput', async () => {
+    it('should update availableDevices$ with devices of type videoinput', async () => {
       const mockDevices: MediaDeviceInfo[] = [
         { deviceId: '123', label: 'Camera 1', kind: 'videoinput', groupId: 'group1', toJSON: jest.fn() },
         { deviceId: '456', label: 'Microphone', kind: 'audioinput', groupId: 'group2', toJSON: jest.fn() },
@@ -260,7 +261,7 @@ describe('CameraService', () => {
       expect(cameraService.availableDevices$()).toEqual(result);
     });
   
-    it('hauria de retornar una llista buida si no hi ha càmeres disponibles', async () => {
+    it('should return an empty list if no cameras are available', async () => {
       jest.spyOn(navigator.mediaDevices, 'enumerateDevices').mockResolvedValue([
         { deviceId: '456', label: 'Microphone', kind: 'audioinput', groupId: 'group2', toJSON: jest.fn() }
       ]);
@@ -273,7 +274,7 @@ describe('CameraService', () => {
   });
 
   describe('getCameraFromStorage', ()=>{
-    it('hauria de retornar la càmera seleccionada si està disponible', async () => {
+    it('should return the selected camera if it is available', async () => {
       const mockCamera: MediaDeviceInfo = {
         deviceId: '123',
         label: 'Camera 1',
@@ -290,7 +291,7 @@ describe('CameraService', () => {
       expect(result).toBe(mockCamera);
     });
   
-    it('hauria de retornar la càmera emmagatzemada si està disponible', async () => {
+    it('should return the stored camera if it is available', async () => {
       const mockCameraFromStorage: MediaDeviceInfo = {
         deviceId: '456',
         label: 'Stored Camera',
@@ -308,7 +309,7 @@ describe('CameraService', () => {
       expect(cameraService.selectedCamera$()).toBe(mockCameraFromStorage);
     });
   
-    it('hauria de retornar la càmera per defecte si no hi ha cap altra disponible', async () => {
+    it('should return the default camera if no other is available', async () => {
       const mockDefaultCamera: MediaDeviceInfo = {
         deviceId: '789',
         label: 'Default Camera',
@@ -329,7 +330,7 @@ describe('CameraService', () => {
       expect(cameraService.setCamera).toHaveBeenCalledWith(mockDefaultCamera);
     });
   
-    it('hauria de retornar NO_CAMERA_AVAILABLE si no hi ha cap càmera disponible', async () => {
+    it('should return NO_CAMERA_AVAILABLE if no camera is available', async () => {
       jest.spyOn(cameraService, 'isCameraAvailableById').mockReturnValue(false);
       jest.spyOn(cameraService, 'getCameraFromStorage').mockResolvedValue(undefined);
       jest.spyOn(cameraService, 'getDefaultAvailableCamera').mockResolvedValue({} as MediaDeviceInfo);
@@ -342,7 +343,7 @@ describe('CameraService', () => {
   });
 
   describe('getCameraFromStorage', ()=>{
-    it('hauria de retornar la càmera emmagatzemada si és vàlida', async () => {
+    it('should return the stored camera if it is valid', async () => {
       const mockCamera: MediaDeviceInfo = {
         deviceId: '123',
         label: 'Stored Camera',
@@ -359,7 +360,7 @@ describe('CameraService', () => {
       expect(result).toEqual(mockCamera);
     });
   
-    it('hauria de retornar undefined si la càmera emmagatzemada és null', async () => {
+    it('should return undefined if the stored camera is null', async () => {
       jest.spyOn(mockStorageService, 'get').mockResolvedValue(null);
   
       const result = await cameraService.getCameraFromStorage();
@@ -367,8 +368,8 @@ describe('CameraService', () => {
       expect(result).toBeUndefined();
     });
   
-    it('hauria de retornar undefined si la càmera emmagatzemada no és vàlida', async () => {
-      const invalidCamera = { someProperty: 'invalidData' }; // Objecte que no és un MediaDeviceInfo
+    it('should return undefined if the stored camera is not valid', async () => {
+      const invalidCamera = { someProperty: 'invalidData' }; // Object that is not a MediaDeviceInfo
   
       jest.spyOn(mockStorageService, 'get').mockResolvedValue(invalidCamera);
       jest.spyOn(cameraService, 'isValidMediaDeviceInfo').mockReturnValue(false);
@@ -381,57 +382,87 @@ describe('CameraService', () => {
   });
 
   describe('get default available camera', ()=>{
-    it('hauria de retornar la càmera posterior si està disponible', async () => {
+    it('should return the rear camera if available by label', async () => {
       const mockDevices: MediaDeviceInfo[] = [
         { deviceId: '123', label: 'Front Camera', kind: 'videoinput', groupId: 'group1', toJSON: jest.fn() },
         { deviceId: '456', label: 'Rear Camera', kind: 'videoinput', groupId: 'group2', toJSON: jest.fn() },
       ];
-  
+
       cameraService.availableDevices$.set(mockDevices);
-  
+
       const result = await cameraService.getDefaultAvailableCamera();
-  
-      expect(result).toEqual(mockDevices[1]); // La càmera amb "Rear Camera"
+
+      expect(result).toEqual(mockDevices[1]); // The camera with "Rear Camera"
     });
-  
-    it('hauria de retornar la primera càmera disponible si no hi ha càmera posterior', async () => {
+
+    it('should return the camera by deviceId when getUserMedia succeeds with exact environment constraint', async () => {
+      const mockDevices: MediaDeviceInfo[] = [
+        { deviceId: '123', label: 'Front Camera', kind: 'videoinput', groupId: 'group1', toJSON: jest.fn() },
+        { deviceId: '456', label: 'Wide Camera', kind: 'videoinput', groupId: 'group2', toJSON: jest.fn() },
+      ];
+      cameraService.availableDevices$.set(mockDevices);
+
+      const mockTrack = {
+        getSettings: jest.fn().mockReturnValue({ deviceId: '456' }),
+        stop: jest.fn(),
+      };
+      const mockStream = {
+        getVideoTracks: jest.fn().mockReturnValue([mockTrack]),
+        getTracks: jest.fn().mockReturnValue([mockTrack]),
+      } as unknown as MediaStream;
+
+      jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockResolvedValue(mockStream);
+      jest.spyOn(cameraService, 'stopMediaTracks').mockImplementation();
+
+      const result = await cameraService.getDefaultAvailableCamera();
+
+      expect(result).toEqual(mockDevices[1]);
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({
+        video: { facingMode: { exact: CameraOrientation.back } }
+      });
+      expect(cameraService.stopMediaTracks).toHaveBeenCalledWith(mockStream);
+    });
+
+    it('should return the first available camera if there is no rear camera by label or by exact facingMode', async () => {
       const mockDevices: MediaDeviceInfo[] = [
         { deviceId: '123', label: 'Front Camera', kind: 'videoinput', groupId: 'group1', toJSON: jest.fn() },
         { deviceId: '456', label: 'Secondary Camera', kind: 'videoinput', groupId: 'group2', toJSON: jest.fn() },
       ];
-  
+
       cameraService.availableDevices$.set(mockDevices);
-  
+      jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockRejectedValue(new Error('OverconstrainedError'));
+
       const result = await cameraService.getDefaultAvailableCamera();
-  
-      expect(result).toEqual(mockDevices[0]); // Ha de retornar la primera càmera disponible
+
+      expect(result).toEqual(mockDevices[0]);
     });
-  
-    it('hauria de retornar undefined si no hi ha càmeres disponibles', async () => {
+
+    it('should return undefined if no cameras are available', async () => {
       cameraService.availableDevices$.set([]);
-  
+      jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockRejectedValue(new Error('NotAllowedError'));
+
       const result = await cameraService.getDefaultAvailableCamera();
-  
+
       expect(result).toBeUndefined();
     });
-  
+
   })
 
   describe('isCameraAvailableById', ()=>{
-    it('hauria de retornar la càmera posterior si està disponible', async () => {
+    it('should return the rear camera if it is available', async () => {
       const mockDevices: MediaDeviceInfo[] = [
         { deviceId: '123', label: 'Front Camera', kind: 'videoinput', groupId: 'group1', toJSON: jest.fn() },
         { deviceId: '456', label: 'Rear Camera', kind: 'videoinput', groupId: 'group2', toJSON: jest.fn() },
       ];
-  
+
       cameraService.availableDevices$.set(mockDevices);
-  
+
       const result = await cameraService.getDefaultAvailableCamera();
-  
-      expect(result).toEqual(mockDevices[1]); // La càmera amb "Rear Camera"
+
+      expect(result).toEqual(mockDevices[1]); // The camera with "Rear Camera"
     });
-  
-    it('hauria de retornar la primera càmera disponible si no hi ha càmera posterior', async () => {
+
+    it('should return the first available camera if there is no rear camera', async () => {
       const mockDevices: MediaDeviceInfo[] = [
         { deviceId: '123', label: 'Front Camera', kind: 'videoinput', groupId: 'group1', toJSON: jest.fn() },
         { deviceId: '456', label: 'Secondary Camera', kind: 'videoinput', groupId: 'group2', toJSON: jest.fn() },
@@ -441,12 +472,12 @@ describe('CameraService', () => {
   
       const result = await cameraService.getDefaultAvailableCamera();
   
-      expect(result).toEqual(mockDevices[0]); // Ha de retornar la primera càmera disponible
+      expect(result).toEqual(mockDevices[0]); // Must return the first available camera
     });
-  
-    it('hauria de retornar undefined si no hi ha càmeres disponibles', async () => {
+
+    it('should return undefined if no cameras are available', async () => {
       cameraService.availableDevices$.set([]);
-  
+
       const result = await cameraService.getDefaultAvailableCamera();
   
       expect(result).toBeUndefined();
@@ -455,7 +486,7 @@ describe('CameraService', () => {
   });
 
   describe('isValidMediaInfo', ()=>{
-    it('hauria de retornar true per un objecte MediaDeviceInfo vàlid', () => {
+    it('should return true for a valid MediaDeviceInfo object', () => {
       const validCamera: MediaDeviceInfo = {
         deviceId: '123',
         label: 'Valid Camera',
@@ -467,7 +498,7 @@ describe('CameraService', () => {
       expect(cameraService.isValidMediaDeviceInfo(validCamera)).toBe(true);
     });
   
-    it('hauria de retornar false si falta la propietat deviceId', () => {
+    it('should return false if the deviceId property is missing', () => {
       const invalidCamera = {
         label: 'Invalid Camera',
         kind: 'videoinput',
@@ -477,7 +508,7 @@ describe('CameraService', () => {
       expect(cameraService.isValidMediaDeviceInfo(invalidCamera)).toBe(false);
     });
   
-    it('hauria de retornar false si kind no és "videoinput"', () => {
+    it('should return false if kind is not "videoinput"', () => {
       const invalidCamera: any = {
         deviceId: '123',
         label: 'Not a camera',
@@ -488,19 +519,19 @@ describe('CameraService', () => {
       expect(cameraService.isValidMediaDeviceInfo(invalidCamera)).toBe(false);
     });
   
-    it('hauria de retornar false si l’objecte és null o undefined', () => {
+    it('should return false if the object is null or undefined', () => {
       expect(cameraService.isValidMediaDeviceInfo(null)).toBe(false);
       expect(cameraService.isValidMediaDeviceInfo(undefined)).toBe(false);
     });
   
-    it('hauria de retornar false si l’objecte no té la estructura correcta', () => {
+    it('should return false if the object does not have the correct structure', () => {
       const randomObject = { someKey: 'someValue' };
       expect(cameraService.isValidMediaDeviceInfo(randomObject)).toBe(false);
     });
   
   });
 
-  it('hauria de parar tots els tracks del MediaStream', () => {
+  it('should stop all tracks of the MediaStream', () => {
     const mockTrack1 = { stop: jest.fn() };
     const mockTrack2 = { stop: jest.fn() };
     const mockStream = { getTracks: jest.fn(() => [mockTrack1, mockTrack2]) } as unknown as MediaStream;
@@ -512,7 +543,7 @@ describe('CameraService', () => {
     expect(mockTrack2.stop).toHaveBeenCalled();
   });
   
-  it('no hauria de llençar errors si el MediaStream no té tracks', () => {
+  it('should not throw errors if the MediaStream has no tracks', () => {
     const mockStream = { getTracks: jest.fn(() => []) } as unknown as MediaStream;
   
     expect(() => cameraService.stopMediaTracks(mockStream)).not.toThrow();
@@ -520,7 +551,7 @@ describe('CameraService', () => {
   });
   
   describe('handle camera errors', ()=>{
-    it('hauria de establir isCameraError$ a true i registrar un error amb CameraLogsService', async () => {
+    it('should set isCameraError$ to true and log an error with CameraLogsService', async () => {
       const mockError = new Error('Camera permission denied');
       jest.spyOn(cameraService, 'alertCameraErrorsByErrorName');
       const mockAddCameraLog = jest.spyOn(cameraService['cameraLogsService'], 'addCameraLog');
@@ -532,7 +563,7 @@ describe('CameraService', () => {
       expect(mockAddCameraLog).toHaveBeenCalledWith(mockError, 'fetchError');
     });
     
-    it('hauria de manejar errors passats com a objectes amb un camp name', async () => {
+    it('should handle errors passed as objects with a name field', async () => {
       const mockError = { name: 'NotAllowedError' };
       jest.spyOn(cameraService, 'alertCameraErrorsByErrorName');
       const mockAddCameraLog = jest.spyOn(cameraService['cameraLogsService'], 'addCameraLog');
@@ -544,7 +575,7 @@ describe('CameraService', () => {
       expect(mockAddCameraLog).toHaveBeenCalledWith(expect.any(Error), 'fetchError');
     });
     
-    it('hauria de usar "undefinedError" si no es proporciona un tipus de log', async () => {
+    it('should use "undefinedError" if no log type is provided', async () => {
       const mockError = new Error('Unknown error');
       const mockAddCameraLog = jest.spyOn(cameraService['cameraLogsService'], 'addCameraLog');
     
@@ -556,19 +587,19 @@ describe('CameraService', () => {
   });
 
   describe('check device and navigator version', ()=>{
-    it('hauria de retornar true si la versió d’iOS és inferior al valor proporcionat', () => {
+    it('should return true if the iOS version is lower than the provided value', () => {
       jest.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (iPhone; CPU iPhone OS 12_3 like Mac OS X)');
     
       expect(cameraService.isIOSVersionLowerThan(13)).toBe(true);
     });
     
-    it('hauria de retornar false si la versió d’iOS és igual o superior al valor proporcionat', () => {
+    it('should return false if the iOS version is equal to or greater than the provided value', () => {
       jest.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)');
     
       expect(cameraService.isIOSVersionLowerThan(13)).toBe(false);
     });
     
-    it('hauria de retornar false si no s’identifica cap versió d’iOS', () => {
+    it('should return false if no iOS version is identified', () => {
       jest.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
     
       expect(cameraService.isIOSVersionLowerThan(13)).toBe(false);
@@ -577,61 +608,61 @@ describe('CameraService', () => {
   });
 
   describe('should show error by label', ()=>{
-    it('hauria de mostrar "errors.camera.not-readable" si l’error és NotReadableError', () => {
+    it('should display "errors.camera.not-readable" if the error is NotReadableError', () => {
       cameraService.alertCameraErrorsByErrorName('NotReadableError: Could not start video source');
   
       expect(mockToastService.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.camera.not-readable');
     });
   
-    it('hauria de mostrar "errors.camera.not-allowed" si l’error és NotAllowedError', () => {
+    it('should display "errors.camera.not-allowed" if the error is NotAllowedError', () => {
       cameraService.alertCameraErrorsByErrorName('NotAllowedError: Permission denied');
   
       expect(mockToastService.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.camera.not-allowed');
     });
   
-    it('hauria de mostrar "errors.camera.not-found" si l’error és NotFoundError', () => {
+    it('should display "errors.camera.not-found" if the error is NotFoundError', () => {
       cameraService.alertCameraErrorsByErrorName('NotFoundError: No camera found');
   
       expect(mockToastService.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.camera.not-found');
     });
   
-    it('hauria de mostrar "errors.camera.not-found" si l’error és CustomNoAvailable', () => {
+    it('should display "errors.camera.not-found" if the error is CustomNoAvailable', () => {
       cameraService.alertCameraErrorsByErrorName('CustomNoAvailable: No camera found');
   
       expect(mockToastService.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.camera.not-found');
     });
   
-    it('hauria de mostrar "errors.camera.overconstrained" si l’error és OverconstrainedError', () => {
+    it('should display "errors.camera.overconstrained" if the error is OverconstrainedError', () => {
       cameraService.alertCameraErrorsByErrorName('OverconstrainedError: Camera constraints too strict');
   
       expect(mockToastService.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.camera.overconstrained');
     });
   
-    it('hauria de mostrar "errors.camera.security" si l’error és SecurityError', () => {
+    it('should display "errors.camera.security" if the error is SecurityError', () => {
       cameraService.alertCameraErrorsByErrorName('SecurityError: Blocked by browser');
   
       expect(mockToastService.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.camera.security');
     });
   
-    it('hauria de mostrar "errors.camera.abort" si l’error és AbortError', () => {
+    it('should display "errors.camera.abort" if the error is AbortError', () => {
       cameraService.alertCameraErrorsByErrorName('AbortError: The operation was aborted');
   
       expect(mockToastService.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.camera.abort');
     });
   
-    it('hauria de mostrar "errors.camera.type" si l’error és TypeError', () => {
+    it('should display "errors.camera.type" if the error is TypeError', () => {
       cameraService.alertCameraErrorsByErrorName('TypeError: Invalid constraints');
   
       expect(mockToastService.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.camera.type');
     });
   
-    it('hauria de mostrar "errors.camera.not-supported" si l’error és NotSupportedError', () => {
+    it('should display "errors.camera.not-supported" if the error is NotSupportedError', () => {
       cameraService.alertCameraErrorsByErrorName('NotSupportedError: The feature is not supported');
   
       expect(mockToastService.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.camera.not-supported');
     });
   
-    it('hauria de mostrar "errors.camera.default" si l’error no coincideix amb cap cas conegut', () => {
+    it('should display "errors.camera.default" if the error does not match any known case', () => {
       cameraService.alertCameraErrorsByErrorName('RandomError: Something unexpected happened');
   
       expect(mockToastService.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.camera.default');
@@ -646,7 +677,7 @@ describe('CameraService', () => {
       jest.spyOn(cameraService, 'handleCameraErrors').mockImplementation();
     });
   
-    it('hauria de retornar PERMISSION_DENIED si getCameraPermissionAndStopTracks llença un error', async () => {
+    it('should return PERMISSION_DENIED if getCameraPermissionAndStopTracks throws an error', async () => {
       jest.spyOn(cameraService, 'getCameraPermissionAndStopTracks').mockRejectedValue(new Error('Permission Denied'));
   
       const result = await cameraService.getCameraFlow();
@@ -655,7 +686,7 @@ describe('CameraService', () => {
       expect(cameraService.handleCameraErrors).toHaveBeenCalledWith(expect.any(Error), 'fetchError');
     });
   
-    it('hauria de retornar PERMISSION_DENIED si getCameraPermissionAndStopTracks retorna false', async () => {
+    it('should return PERMISSION_DENIED if getCameraPermissionAndStopTracks returns false', async () => {
       jest.spyOn(cameraService, 'getCameraPermissionAndStopTracks').mockRejectedValue(new Error(''))
   
       const result = await cameraService.getCameraFlow();
@@ -664,7 +695,7 @@ describe('CameraService', () => {
       expect(cameraService.handleCameraErrors).toHaveBeenCalledWith(expect.any(Error), 'fetchError');
     });
   
-    it('hauria de retornar NO_CAMERA_AVAILABLE si no hi ha càmeres disponibles', async () => {
+    it('should return NO_CAMERA_AVAILABLE if no cameras are available', async () => {
       jest.spyOn(cameraService, 'updateAvailableCameras').mockResolvedValue([]);
   
       const result = await cameraService.getCameraFlow();
@@ -673,7 +704,7 @@ describe('CameraService', () => {
       expect(cameraService.handleCameraErrors).toHaveBeenCalledWith({ name: 'CustomNoAvailable' }, 'fetchError');
     });
   
-    it('hauria de retornar NO_CAMERA_AVAILABLE si getCameraFromAvailables retorna NO_CAMERA_AVAILABLE', async () => {
+    it('should return NO_CAMERA_AVAILABLE if getCameraFromAvailables returns NO_CAMERA_AVAILABLE', async () => {
       jest.spyOn(cameraService, 'updateAvailableCameras').mockResolvedValue([{ deviceId: '123', label: 'Mock Camera', kind: 'videoinput', groupId: 'group1', toJSON: jest.fn() }]);
       jest.spyOn(cameraService, 'getCameraFromAvailables').mockResolvedValue('NO_CAMERA_AVAILABLE');
   
@@ -683,7 +714,7 @@ describe('CameraService', () => {
       expect(cameraService.handleCameraErrors).toHaveBeenCalledWith({ name: 'CustomNoAvailable' }, 'fetchError');
     });
   
-    it('hauria de retornar una càmera si està disponible', async () => {
+    it('should return a camera if it is available', async () => {
       const mockCamera: MediaDeviceInfo = { deviceId: '123', label: 'Mock Camera', kind: 'videoinput', groupId: 'group1', toJSON: jest.fn() };
   
       jest.spyOn(cameraService, 'updateAvailableCameras').mockResolvedValue([mockCamera]);
@@ -695,8 +726,8 @@ describe('CameraService', () => {
       expect(cameraService.handleCameraErrors).not.toHaveBeenCalled();
     });
   });
-  
-  
+
+
   });
 
 
