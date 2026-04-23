@@ -4,6 +4,7 @@ import { StorageService } from './storage.service';
 import { ToastServiceHandler } from './toast.service';
 import { CameraLogsService } from './camera-logs.service';
 import { CameraLogType } from '../../core/models/camera-log';
+import { CameraOrientation } from '../../core/models/camera';
 
 @Injectable({
   providedIn: 'root',
@@ -131,7 +132,9 @@ public async getCameraFromAvailables(): Promise<MediaDeviceInfo|'NO_CAMERA_AVAIL
   }
 
   public async getDefaultAvailableCamera(): Promise<MediaDeviceInfo | undefined> {
-    const labelMatch = this.availableDevices$().find((device) => /back|rear|environment/gi.test(device.label));
+    const labelMatch = this.availableDevices$().find(
+      (device) => new RegExp(`back|rear|${CameraOrientation.back}`, 'gi').test(device.label)
+    );
     if (labelMatch) {
       console.info('Getting default camera by label: ', labelMatch);
       return labelMatch;
@@ -149,22 +152,18 @@ public async getCameraFromAvailables(): Promise<MediaDeviceInfo|'NO_CAMERA_AVAIL
   }
 
   private async getEnvironmentCameraByFacingMode(): Promise<MediaDeviceInfo | undefined> {
-    const constraints: MediaStreamConstraints[] = [
-      {video: {facingMode: {exact: 'environment'}}},
-      {video: {facingMode: 'environment'}},
-    ];
-    for (const constraint of constraints) {
-      const stream = await navigator.mediaDevices.getUserMedia(constraint).catch(() => undefined);
-      if (!stream) {
-        continue;
-      }
-      const settings = stream.getVideoTracks()[0]?.getSettings();
-      this.stopMediaTracks(stream);
-      if (settings?.deviceId && settings.facingMode === 'environment') {
-        return this.availableDevices$().find(d => d.deviceId === settings.deviceId);
-      }
-    }
-    return undefined;
+    const stream = await navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: { exact: CameraOrientation.back } } })
+      .catch(() => undefined);
+
+    if (!stream) return undefined;
+
+    const deviceId = stream.getVideoTracks()[0]?.getSettings().deviceId;
+    this.stopMediaTracks(stream);
+
+    return deviceId
+      ? this.availableDevices$().find(d => d.deviceId === deviceId)
+      : undefined;
   }
 
   public isCameraAvailableById(cameraId: string): boolean {

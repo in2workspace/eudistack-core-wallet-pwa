@@ -2,6 +2,7 @@ import { TestBed, fakeAsync, tick, flush } from '@angular/core/testing';
 import { CameraService } from './camera.service';
 import { StorageService } from './storage.service';
 import { ToastServiceHandler } from './toast.service';
+import { CameraOrientation } from '../../core/models/camera';
 import { signal } from '@angular/core';
 import { EMPTY, of } from 'rxjs';
 
@@ -394,7 +395,7 @@ describe('CameraService', () => {
       expect(result).toEqual(mockDevices[1]); // The camera with "Rear Camera"
     });
 
-    it('should return the camera by facingMode when getUserMedia detects an environment camera', async () => {
+    it('should return the camera by deviceId when getUserMedia succeeds with exact environment constraint', async () => {
       const mockDevices: MediaDeviceInfo[] = [
         { deviceId: '123', label: 'Front Camera', kind: 'videoinput', groupId: 'group1', toJSON: jest.fn() },
         { deviceId: '456', label: 'Wide Camera', kind: 'videoinput', groupId: 'group2', toJSON: jest.fn() },
@@ -402,7 +403,7 @@ describe('CameraService', () => {
       cameraService.availableDevices$.set(mockDevices);
 
       const mockTrack = {
-        getSettings: jest.fn().mockReturnValue({ deviceId: '456', facingMode: 'environment' }),
+        getSettings: jest.fn().mockReturnValue({ deviceId: '456' }),
         stop: jest.fn(),
       };
       const mockStream = {
@@ -416,41 +417,20 @@ describe('CameraService', () => {
       const result = await cameraService.getDefaultAvailableCamera();
 
       expect(result).toEqual(mockDevices[1]);
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({
+        video: { facingMode: { exact: CameraOrientation.back } }
+      });
       expect(cameraService.stopMediaTracks).toHaveBeenCalledWith(mockStream);
     });
 
-    it('should return the first available camera if there is no rear camera by label or by facingMode', async () => {
+    it('should return the first available camera if there is no rear camera by label or by exact facingMode', async () => {
       const mockDevices: MediaDeviceInfo[] = [
         { deviceId: '123', label: 'Front Camera', kind: 'videoinput', groupId: 'group1', toJSON: jest.fn() },
         { deviceId: '456', label: 'Secondary Camera', kind: 'videoinput', groupId: 'group2', toJSON: jest.fn() },
       ];
 
       cameraService.availableDevices$.set(mockDevices);
-      jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockRejectedValue(new Error('NotAllowedError'));
-
-      const result = await cameraService.getDefaultAvailableCamera();
-
-      expect(result).toEqual(mockDevices[0]);
-    });
-
-    it('should return the first camera when getUserMedia succeeds but facingMode is not environment', async () => {
-      const mockDevices: MediaDeviceInfo[] = [
-        { deviceId: '123', label: 'Front Camera', kind: 'videoinput', groupId: 'group1', toJSON: jest.fn() },
-        { deviceId: '456', label: 'Secondary Camera', kind: 'videoinput', groupId: 'group2', toJSON: jest.fn() },
-      ];
-      cameraService.availableDevices$.set(mockDevices);
-
-      const mockTrack = {
-        getSettings: jest.fn().mockReturnValue({ deviceId: '123', facingMode: 'user' }),
-        stop: jest.fn(),
-      };
-      const mockStream = {
-        getVideoTracks: jest.fn().mockReturnValue([mockTrack]),
-        getTracks: jest.fn().mockReturnValue([mockTrack]),
-      } as unknown as MediaStream;
-
-      jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockResolvedValue(mockStream);
-      jest.spyOn(cameraService, 'stopMediaTracks').mockImplementation();
+      jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockRejectedValue(new Error('OverconstrainedError'));
 
       const result = await cameraService.getDefaultAvailableCamera();
 
