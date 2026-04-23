@@ -1,20 +1,22 @@
-import { Component, inject, ViewChild, OnInit } from '@angular/core';
+import { Component, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AsyncPipe } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import { Router } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.service';
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
+import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
+import { PasskeyApiService } from 'src/app/core/services/passkey-api.service';
 import { base64UrlDecode } from 'src/app/core/utils/base64url';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { LocalAuthService } from 'src/app/core/services/local-auth.service';
 import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input.component';
-// Move html template into login.page.html
+
 @Component({
     selector: 'app-login',
     template: `
@@ -98,7 +100,8 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
               <p class="auth-subtitle">
                 <span *ngIf="step === 'email'">{{ 'auth.login.enter-email' | translate }}</span>
                 <span *ngIf="step === 'code'">{{ 'auth.register.code-sent' | translate }}</span>
-                <span *ngIf="step === 'passkey'">{{ 'auth.login.verify-passkey' | translate }}</span>
+                <span *ngIf="step === 'passkey' && !needsPasskeySetup">{{ 'auth.login.verify-passkey' | translate }}</span>
+                <span *ngIf="step === 'passkey' && needsPasskeySetup">{{ 'auth.passkey.description' | translate }}</span>
               </p>
 
               <!-- Step 1: Email -->
@@ -146,8 +149,8 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
                 </ion-button>
               </div>
 
-              <!-- Step 3: Passkey verification -->
-              <div *ngIf="step === 'passkey'" class="auth-form">
+              <!-- Step 3a: Verify existing passkey -->
+              <div *ngIf="step === 'passkey' && !needsPasskeySetup" class="auth-form">
                 <div class="fingerprint-hero">
                   <div class="fp-circle" [class.fp-authenticating]="loading">
                     <ion-icon name="finger-print-outline"></ion-icon>
@@ -159,7 +162,21 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
                   <ion-icon *ngIf="!loading" name="finger-print-outline" slot="start"></ion-icon>
                   <span *ngIf="!loading">{{ 'auth.login.passkey-button' | translate }}</span>
                 </ion-button>
+              </div>
 
+              <!-- Step 3b: Create passkey on this new device -->
+              <div *ngIf="step === 'passkey' && needsPasskeySetup" class="auth-form">
+                <div class="fingerprint-hero">
+                  <div class="fp-circle" [class.fp-authenticating]="loading">
+                    <ion-icon name="finger-print-outline"></ion-icon>
+                  </div>
+                </div>
+
+                <ion-button expand="block" (click)="createPasskeyForDevice()" [disabled]="loading" class="auth-button">
+                  <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
+                  <ion-icon *ngIf="!loading" name="finger-print-outline" slot="start"></ion-icon>
+                  <span *ngIf="!loading">{{ 'auth.passkey.register-button' | translate }}</span>
+                </ion-button>
               </div>
             </ng-container>
 
@@ -177,7 +194,7 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
   imports: [AsyncPipe, CommonModule, FormsModule, IonicModule, OtpInputComponent, TranslateModule]
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
-export class LoginPage implements OnInit {
+export class LoginPage {
   @ViewChild('otpRef') otpInput!: OtpInputComponent;
 
   private readonly themeService = inject(ThemeService);
@@ -191,18 +208,30 @@ export class LoginPage implements OnInit {
   email = '';
   otpValue = '';
   step: 'email' | 'code' | 'passkey' = 'email';
+  needsPasskeySetup = false;
   private passkeyFromRefreshToken = false;
 
   private readonly authService = inject(AuthService);
   private readonly prfService = inject(PasskeyPrfService);
+  private readonly passkeyStore = inject(PasskeyStoreService);
+  private readonly passkeyApi = inject(PasskeyApiService);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
 
-  ngOnInit(): void {
+  ionViewWillEnter(): void {
+    this.loading = false;
+    this.errorMessage = '';
+
     if (!this.isBrowserMode && localStorage.getItem('wallet_refresh_token')) {
       this.step = 'passkey';
       this.passkeyFromRefreshToken = true;
+      this.needsPasskeySetup = !this.prfService.hasPasskey();
+    } else {
+      this.step = 'email';
+      this.passkeyFromRefreshToken = false;
+      this.needsPasskeySetup = false;
     }
   }
 
@@ -251,14 +280,16 @@ export class LoginPage implements OnInit {
     this.loading = true;
     this.errorMessage = '';
 
-    (this.authService as RemoteAuthService).register(this.email).subscribe({
+    (this.authService as RemoteAuthService).register(this.email, 'login').subscribe({
       next: () => {
         this.step = 'code';
         this.otpValue = '';
         this.loading = false;
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Failed to send verification code';
+        this.errorMessage = err?.status === 429
+          ? this.translate.instant('auth.errors.too-many-attempts')
+          : (err?.error?.message || err?.error?.detail || 'Failed to send verification code');
         this.loading = false;
       }
     });
@@ -272,10 +303,13 @@ export class LoginPage implements OnInit {
       next: () => {
         this.loading = false;
         this.passkeyFromRefreshToken = false;
+        this.needsPasskeySetup = !this.prfService.hasPasskey();
         this.step = 'passkey';
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Invalid verification code';
+        this.errorMessage = err?.status === 429
+          ? this.translate.instant('auth.errors.too-many-attempts-otp')
+          : (err?.error?.message || err?.error?.detail || 'Invalid verification code');
         this.loading = false;
       }
     });
@@ -286,24 +320,15 @@ export class LoginPage implements OnInit {
     this.errorMessage = '';
 
     try {
-      const credentialId = this.prfService.getCredentialId();
-
-      if (!credentialId) {
-        this.router.navigate(['/auth/register'], { queryParams: { reauth: 'true' } });
-        return;
-      }
-
       await this.authenticateLocally();
 
       if (this.passkeyFromRefreshToken) {
-        // Exchange the stored refresh token for a fresh access token.
         await firstValueFrom((this.authService as RemoteAuthService).refreshAccessToken());
       }
 
       this.navigateHome();
     } catch (err: any) {
       if (this.passkeyFromRefreshToken) {
-        // Refresh token expired — clear it and fall back to the full email flow.
         localStorage.removeItem('wallet_refresh_token');
         this.passkeyFromRefreshToken = false;
         this.step = 'email';
@@ -315,6 +340,30 @@ export class LoginPage implements OnInit {
     }
   }
 
+  async createPasskeyForDevice(): Promise<void> {
+    this.loading = true;
+    this.errorMessage = '';
+
+    try {
+      await this.prfService.createPasskey(this.email || 'Wallet User');
+
+      this.navigateHome();
+
+      const credentialId = this.passkeyStore.getCredentialId();
+      if (credentialId) {
+        this.passkeyApi.registerPasskey({
+          credentialId,
+          displayName: this.getDeviceName(),
+          userAgent: navigator.userAgent
+        }).subscribe({
+          error: (err: any) => console.warn('Failed to register passkey on server:', err)
+        });
+      }
+    } catch (err: any) {
+      this.errorMessage = err?.message || 'Failed to create passkey';
+      this.loading = false;
+    }
+  }
 
   // --- Private helpers ---
 
@@ -347,5 +396,16 @@ export class LoginPage implements OnInit {
     const pendingLink = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
     sessionStorage.removeItem(PENDING_DEEP_LINK_KEY);
     this.router.navigateByUrl(pendingLink || '/tabs/home');
+  }
+
+  private getDeviceName(): string {
+    const ua = navigator.userAgent;
+    if (/iPhone/.test(ua)) return 'iPhone';
+    if (/iPad/.test(ua)) return 'iPad';
+    if (/Android/.test(ua)) return 'Android Device';
+    if (/Mac/.test(ua)) return 'Mac';
+    if (/Windows/.test(ua)) return 'Windows PC';
+    if (/Linux/.test(ua)) return 'Linux';
+    return 'Unknown Device';
   }
 }

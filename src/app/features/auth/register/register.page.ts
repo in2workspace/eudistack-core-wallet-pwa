@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { Router, ActivatedRoute } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.service';
 import { LocalAuthService } from 'src/app/core/services/local-auth.service';
 import { ThemeService } from 'src/app/core/services/theme.service';
@@ -110,6 +110,11 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
                 <span *ngIf="!loading">{{ 'auth.register.send-code' | translate }}</span>
               </ion-button>
 
+              <!-- Already registered link -->
+              <ion-button *ngIf="!isReauthMode" expand="block" fill="clear" (click)="goBackToLogin()" class="secondary-button">
+                {{ 'auth.register.already-registered' | translate }}
+              </ion-button>
+
               <!-- Back to login button in reauth mode -->
               <ion-button *ngIf="isReauthMode" expand="block" fill="clear" (click)="goBackToLogin()" class="secondary-button">
                 <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
@@ -195,6 +200,7 @@ export class RegisterPage implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly prfService = inject(PasskeyPrfService);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
 
@@ -261,7 +267,9 @@ export class RegisterPage implements OnInit {
         this.loading = false;
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Failed to send verification code';
+        this.errorMessage = err?.status === 429
+          ? this.translate.instant('auth.errors.too-many-attempts')
+          : (err?.error?.message || err?.error?.detail || 'Failed to send verification code');
         this.loading = false;
       }
     });
@@ -283,7 +291,9 @@ export class RegisterPage implements OnInit {
         }
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Invalid verification code';
+        this.errorMessage = err?.status === 429
+          ? this.translate.instant('auth.errors.too-many-attempts-otp')
+          : (err?.error?.message || err?.error?.detail || 'Invalid verification code');
         this.loading = false;
       }
     });
@@ -294,10 +304,11 @@ export class RegisterPage implements OnInit {
     this.errorMessage = '';
 
     try {
-      // Create passkey locally
       await this.prfService.createPasskey(this.email || 'Wallet User');
 
-      // Register passkey on the server (US-005)
+      // Navigate immediately — server registration happens in background
+      this.navigateHome();
+
       const credentialId = this.passkeyStore.getCredentialId();
       if (credentialId) {
         this.passkeyApi.registerPasskey({
@@ -305,15 +316,8 @@ export class RegisterPage implements OnInit {
           displayName: this.getDeviceName(),
           userAgent: navigator.userAgent
         }).subscribe({
-          next: () => this.navigateHome(),
-          error: (err: any) => {
-            // Log but don't block - passkey is already created locally
-            console.warn('Failed to register passkey on server:', err);
-            this.navigateHome();
-          }
+          error: (err: any) => console.warn('Failed to register passkey on server:', err)
         });
-      } else {
-        this.navigateHome();
       }
     } catch (err: any) {
       this.errorMessage = err?.message || 'Failed to create passkey';
