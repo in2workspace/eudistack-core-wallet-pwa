@@ -5,7 +5,6 @@ import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { Theme } from '../models/theme.model';
 import { ColorService } from '../../shared/services/color-service.service';
 import { StorageService } from '../../shared/services/storage.service';
-import { isKnownTenant, resolveTenant } from '../constants/tenants.constants';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -19,33 +18,22 @@ export class ThemeService {
   ) {}
 
   async load(): Promise<void> {
-    const hostname = window.location.hostname;
-    const tenant = isKnownTenant(hostname) ? resolveTenant(hostname) : 'eudistack';
-    let theme: Theme;
-    let effectiveTenant = tenant;
-    try {
-      theme = await firstValueFrom(this.http.get<Theme>(`assets/tenants/${tenant}/theme.json`));
-    } catch {
-      // Fallback to EUDIStack product branding if tenant has no theme
-      console.warn(`[ThemeService] No theme for tenant '${tenant}', using EUDIStack default`);
-      effectiveTenant = 'eudistack';
-      theme = await firstValueFrom(this.http.get<Theme>(`assets/tenants/eudistack/theme.json`));
-    }
-    this.rewriteAssetPaths(theme, effectiveTenant);
+    const theme = await firstValueFrom(this.http.get<Theme>(`assets/theme.json`));
+    this.rewriteAssetPaths(theme);
     this.theme$.next(theme);
     this.applyTheme(theme);
     await this.setupI18n(theme);
   }
 
   /**
-   * Rewrite legacy absolute asset paths (/assets/tenant/logo.svg)
-   * to tenant-specific relative paths (assets/tenants/{tenant}/logo.svg).
+   * Normalize absolute asset paths (/assets/tenant/logo.svg) to relative
+   * (assets/tenant/logo.svg) so they resolve under the SPA base-href.
    */
-  private rewriteAssetPaths(theme: Theme, tenant: string): void {
+  private rewriteAssetPaths(theme: Theme): void {
     const rewrite = (path: string | null | undefined): string | null => {
       if (!path) return null;
-      if (path.startsWith('/assets/tenant/')) {
-        return `assets/tenants/${tenant}/${path.replace('/assets/tenant/', '')}`;
+      if (path.startsWith('/assets/')) {
+        return path.slice(1);
       }
       return path;
     };
