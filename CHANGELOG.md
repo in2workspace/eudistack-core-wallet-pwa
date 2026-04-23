@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.2] - 2026-04-23
+
+### Fixed (EUDI-064 post-release — env suffix in tenant resolution)
+
+- **`tenants.constants.ts`** — `resolveTenant()` ahora elimina los sufijos de entorno `-stg`, `-dev`, `-pre` antes del lookup en `KNOWN_TENANTS`. Motivación: en STG el host es `sandbox-stg.eudistack.net` y el guard `isKnownTenant` devolvía `false`, redirigiendo al usuario a `/tenant-not-found`. Replica la lógica que ya hace `TenantDomainWebFilter` en el backend (core-issuer) y alinea con el mismo fix en el MFE Credential Manager.
+- **`buildFallbackUrl()`** — preserva el sufijo de entorno del host actual al reconstruir la URL de fallback. Evita que un usuario en STG salte a PROD.
+- **`theme.service.ts`** — sustituido `hostname.split('.')[0]` ad-hoc por `resolveTenant()`.
+- **`tenant-not-found.page`** — añadido logo en la pantalla (antes sólo había texto).
+
 ## [3.1.1] - 2026-04-21
 
 ### Changed
