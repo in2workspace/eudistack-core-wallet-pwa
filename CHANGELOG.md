@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-04-23
+
+### Changed (EUDI-094 — runtime per-tenant theme from shared bucket)
+
+- **`theme.service.ts`** — `load()` resuelve el tenant desde `window.location.hostname` con `resolveTenant()` y pide `/assets/tenants/<tenant>/theme.json` (URL absoluta, bucket compartido servido por CloudFront). Los paths legacy `assets/tenant/*` dentro del theme se reescriben a `/assets/tenants/<tenant>/*`. Helper `isRelativeAssetPath` renombrado a `isSafeAssetPath`; nuevo helper `toAbsoluteAssetUrl` para el manifest PWA.
+- **`index.html`** y **`tenant-not-found.page.html`** — favicon default pasa a ser el producto (`assets/icons/pwa-192x192.png`) en lugar de referenciar `assets/tenant/*`. El ThemeService inyecta dinámicamente el favicon del tenant tras resolverlo.
+- **`ngsw-config.json`** — `/assets/tenants/**` excluido del asset prefetch; el theme del tenant se cachea en dataGroup con freshness (1h).
+- **`.github/workflows/deploy.yml`** — eliminada la inyección build-time de tenant assets y el input `tenant`. El build ahora es único y se publica a `s3://.../wallet/`; se invalidan todas las CloudFront STG del entorno.
+- **`.github/workflows/release.yml`** — el release dispara `deploy.yml` automáticamente tras el tag sin parametrizar tenant (un solo deploy sirve a todos los tenants).
+
 ## [3.2.0] - 2026-04-23
 
 ### Changed (EUDI-094 — theme loaded from single deploy-time asset)
