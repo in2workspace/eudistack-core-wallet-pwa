@@ -59,7 +59,6 @@ jobs:
           WALLET_API_WEBSOCKET_EXTERNAL_URL: ${{ vars.WALLET_API_WEBSOCKET_EXTERNAL_URL }}
           WALLET_MODE: ${{ vars.WALLET_MODE }}
           PREFERRED_GRANT: ${{ vars.PREFERRED_GRANT }}
-          OID4VCI_REDIRECT_URI: ${{ vars.OID4VCI_REDIRECT_URI }}
           LOGS_ENABLED: ${{ vars.LOGS_ENABLED }}
           WIA: ${{ secrets.WIA }}
           WIA_INSTANCE_KEY_JWK: ${{ secrets.WIA_INSTANCE_KEY_JWK }}
