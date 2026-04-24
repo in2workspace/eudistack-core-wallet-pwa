@@ -5,6 +5,9 @@ import { p256 } from '@noble/curves/nist.js';
 import { PasskeyStoreService } from './passkey-store.service';
 
 const HKDF_INFO = 'eudistack:p256:v1';
+// Fixed salt used to derive the session master in a single PRF evaluation.
+// Evaluating PRF during create() collapses two biometric prompts into one.
+const MASTER_SALT = new TextEncoder().encode('eudistack:master:v1');
 
 export type PrfSupportStatus = 'available' | 'unavailable';
 
@@ -20,6 +23,8 @@ export type PrfSupportStatus = 'available' | 'unavailable';
 export class PasskeyPrfService {
   private status: PrfSupportStatus | null = null;
   private prfLock: Promise<any> | null = null;
+  // PRF output derived once per session; avoids repeated biometric prompts.
+  private sessionMaster: Uint8Array | null = null;
   private readonly store = inject(PasskeyStoreService);
 
   /** Check whether the current browser + authenticator support PRF. */
@@ -43,6 +48,10 @@ export class PasskeyPrfService {
    * Create a new discoverable passkey (client-side only, no backend).
    * The challenge is generated locally — the attestation is not verified.
    * Returns the base64url-encoded credential ID.
+   *
+   * PRF is evaluated during creation so the session master is seeded in
+   * the same biometric gesture, preventing a second prompt when keys are
+   * first derived immediately after setup.
    */
   async createPasskey(displayName: string): Promise<string> {
     const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32));
@@ -66,7 +75,7 @@ export class PasskeyPrfService {
       },
       extensions: {
         // @ts-ignore — PRF extension not yet in TS lib types
-        prf: {},
+        prf: { eval: { first: MASTER_SALT } },
       } as AuthenticationExtensionsClientInputs,
       timeout: 120_000,
     };
@@ -81,6 +90,15 @@ export class PasskeyPrfService {
       });
     }
 
+    // Seed session master from the creation PRF result.
+    // When the authenticator supports PRF eval during create(), the master
+    // is available here and no separate navigator.credentials.get() is needed.
+    const ext = credential.getClientExtensionResults() as any;
+    const prfFirst = ext?.prf?.results?.first;
+    if (prfFirst) {
+      this.sessionMaster = new Uint8Array(prfFirst);
+    }
+
     const credentialId = base64UrlEncode(new Uint8Array(credential.rawId));
     await this.store.setCredentialId(credentialId);
 
@@ -90,18 +108,43 @@ export class PasskeyPrfService {
   /**
    * Derive a P-256 signing key from the passkey PRF output.
    *
-   * Flow: PRF(passkey, salt) → HKDF → 32-byte scalar d → (x, y) → CryptoKey
-   *
-   * Each call triggers a biometric prompt.
+   * If the session master was seeded during passkey creation or a previous
+   * call, no biometric prompt is needed. Otherwise a single PRF evaluation
+   * populates the master for the rest of the session.
    */
   async deriveSigningKey(salt: Uint8Array): Promise<{
     privateKey: CryptoKey;
     publicKeyJwk: JsonWebKey;
   }> {
-    // Serialize PRF evaluations to prevent concurrent biometric prompts
+    const master = await this.ensureSessionMaster();
+    return this.deriveP256KeyFromBytes(master, salt);
+  }
+
+  /** Remove the stored passkey credential ID and clear the session master. */
+  async clearPasskey(): Promise<void> {
+    this.sessionMaster = null;
+    await this.store.clear();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns the session master, deriving it via a single PRF evaluation if
+   * not already cached. Serializes concurrent callers so only one biometric
+   * prompt fires even if multiple keys are requested simultaneously.
+   */
+  private async ensureSessionMaster(): Promise<Uint8Array> {
+    if (this.sessionMaster) return this.sessionMaster;
+
+    // Serialize to prevent concurrent biometric prompts.
     while (this.prfLock) {
       await this.prfLock;
     }
+
+    // Re-check after waiting — another caller may have populated the master.
+    if (this.sessionMaster) return this.sessionMaster;
 
     const credentialIdB64 = this.store.getCredentialId();
     if (!credentialIdB64) {
@@ -112,26 +155,17 @@ export class PasskeyPrfService {
 
     const credentialIdBytes = base64UrlDecode(credentialIdB64);
 
-    let resolve: () => void;
-    this.prfLock = new Promise<void>(r => resolve = r);
+    let resolve!: () => void;
+    this.prfLock = new Promise<void>(r => { resolve = r; });
 
     try {
-      const prfOutput = await this.evaluatePrf(credentialIdBytes, salt);
-      return this.deriveP256KeyFromBytes(prfOutput, salt);
+      this.sessionMaster = await this.evaluatePrf(credentialIdBytes, MASTER_SALT);
+      return this.sessionMaster;
     } finally {
       this.prfLock = null;
-      resolve!();
+      resolve();
     }
   }
-
-  /** Remove the stored passkey credential ID (logout / reset). */
-  async clearPasskey(): Promise<void> {
-    await this.store.clear();
-  }
-
-  // ---------------------------------------------------------------------------
-  // Private helpers
-  // ---------------------------------------------------------------------------
 
   private async evaluatePrf(
     credentialId: Uint8Array,
@@ -142,7 +176,7 @@ export class PasskeyPrfService {
     const assertion = (await navigator.credentials.get({
       publicKey: {
         challenge,
-        allowCredentials: [{ id: credentialId, type: 'public-key' }],
+        allowCredentials: [{ id: credentialId.slice(), type: 'public-key' }],
         userVerification: 'required',
         extensions: {
           // @ts-ignore — PRF extension not yet in TS lib types
@@ -177,7 +211,7 @@ export class PasskeyPrfService {
     // Step 1: Import PRF output as HKDF master key
     const masterKey = await globalThis.crypto.subtle.importKey(
       'raw',
-      prfOutput,
+      prfOutput.slice(), // .slice() ensures ArrayBuffer-backed Uint8Array
       'HKDF',
       false,
       ['deriveBits']
@@ -187,9 +221,9 @@ export class PasskeyPrfService {
     const derivedBits = await globalThis.crypto.subtle.deriveBits(
       {
         name: 'HKDF',
-        salt,
+        salt: salt.slice(), // .slice() ensures ArrayBuffer-backed Uint8Array
         hash: 'SHA-256',
-        info: new TextEncoder().encode(HKDF_INFO),
+        info: new TextEncoder().encode(HKDF_INFO).slice(),
       },
       masterKey,
       256
@@ -229,12 +263,7 @@ export class PasskeyPrfService {
       return 'unavailable';
     }
 
-    // Check if the platform supports PRF via the static method (WebAuthn L3)
     try {
-      const extensions =
-        (PublicKeyCredential as any).getClientExtensionResults?.() ??
-        undefined;
-
       // Heuristic: if PublicKeyCredential exists and we have a secure context,
       // assume PRF *might* be available. Definitive check happens at first use.
       const isSecure =
