@@ -8,10 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (Wallet API URLs derived from window.location — multi-tenant)
 
-- **`env.template.js`** / **`environment.production.ts`** — `server_url` y `websocket_url` ahora se derivan del origin en runtime (`${window.location.origin}/wallet` y variante `ws(s)://` para el WebSocket). Permite que el mismo bundle sirva a todos los tenants (`sandbox-stg`, `kpmg-stg`, `dome-stg`, …) asumiendo que CloudFront/nginx proxya `/wallet/*` al EBW del tenant correspondiente (EBW expone `/wallet/api/v1/...`).
+- **`env.template.js`** / **`environment.production.ts`** — `server_url` y `websocket_url` ahora se derivan del origin en runtime (`${window.location.origin}/business-wallet` y variante `ws(s)://` para el WebSocket). Permite que el mismo bundle sirva a todos los tenants (`sandbox-stg`, `kpmg-stg`, `dome-stg`, …) asumiendo que CloudFront/nginx proxya `/business-wallet/*` al EBW del tenant correspondiente (EBW expondrá `/business-wallet/api/v1/...` cuando entre en producción).
 - **`.github/workflows/deploy.yml`** — eliminadas `WALLET_API_EXTERNAL_URL` y `WALLET_API_WEBSOCKET_EXTERNAL_URL` del paso de generación de `env.js`. GitHub Variables borradas en el entorno `stg`.
 - **`src/assets/env.js`** — comentado que en dev local se mantiene el override explícito hacia `http://localhost:8083/wallet`.
-- ⚠️ Requiere que el EBW responda bajo `/wallet/api/*` en el mismo origin del SPA por tenant (no tocado en este commit).
+- ⚠️ EBW no activo en sandbox-stg todavía; cuando se despliegue deberá responder bajo `/business-wallet/api/*` en el mismo origin del SPA por tenant.
 
 ### Changed (Multi-tab single-instance)
 
