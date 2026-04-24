@@ -181,9 +181,8 @@ export class SingleInstanceService implements OnDestroy {
     if (!url.startsWith(base)) return url;
     const rest = url.slice(base.length);
     // Only strip when the match ends on a path segment boundary.
-    if (rest === '' || rest.startsWith('/') || rest.startsWith('?') || rest.startsWith('#')) {
-      return rest || '/';
-    }
+    if (rest === '' || rest.startsWith('/')) return rest || '/';
+    if (rest.startsWith('?') || rest.startsWith('#')) return '/' + rest;
     return url;
   }
 }

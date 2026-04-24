@@ -40,6 +40,7 @@ describe('SingleInstanceService', () => {
 
   beforeAll(() => {
     (globalThis as any).BroadcastChannel = BroadcastChannelMock;
+    jest.spyOn(window, 'focus').mockImplementation(() => undefined);
   });
 
   beforeEach(() => {
