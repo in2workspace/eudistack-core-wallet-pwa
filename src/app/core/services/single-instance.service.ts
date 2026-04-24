@@ -1,5 +1,4 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
-import { APP_BASE_HREF } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
@@ -17,7 +16,6 @@ const ELECTION_TIMEOUT_MS = 300;
 export class SingleInstanceService implements OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly baseHref = inject(APP_BASE_HREF, { optional: true }) ?? '/';
 
   private channel: BroadcastChannel | null = null;
   private readonly tabId = crypto.randomUUID();
@@ -109,9 +107,6 @@ export class SingleInstanceService implements OnDestroy {
           } else {
             sessionStorage.setItem(PENDING_DEEP_LINK_KEY, appRelative);
           }
-        } else {
-        
-        }
         break;
       }
 
@@ -181,8 +176,12 @@ export class SingleInstanceService implements OnDestroy {
 
   private static stripBase(url: string): string {
     const base = (document.querySelector('base')?.getAttribute('href') ?? '/').replace(/\/$/, '');
-    if (base && url.startsWith(base)) {
-      return url.slice(base.length) || '/';
+    if (!base) return url;
+    if (!url.startsWith(base)) return url;
+    const rest = url.slice(base.length);
+    // Only strip when the match ends on a path segment boundary.
+    if (rest === '' || rest.startsWith('/') || rest.startsWith('?') || rest.startsWith('#')) {
+      return rest || '/';
     }
     return url;
   }

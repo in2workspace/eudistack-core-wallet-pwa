@@ -150,6 +150,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   // --- Private helpers ---
 
   override dispose(): void {
+    if (this.disposed) return;
     this.disposed = true;
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
@@ -231,9 +232,6 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.broadcastChannel.close();
-    if (this.refreshTimer) {
-      clearTimeout(this.refreshTimer);
-    }
+    this.dispose();
   }
 }
