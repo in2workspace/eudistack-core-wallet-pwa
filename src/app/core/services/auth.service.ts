@@ -25,6 +25,7 @@ export abstract class AuthService {
   abstract getToken(): string;
   abstract logout(): Observable<void>;
   abstract forceLogout(): void;
+  dispose(): void {}
 }
 
 /** DI provider that selects the right AuthService based on wallet_mode. */
@@ -57,6 +58,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private readonly broadcastChannel = new BroadcastChannel('auth');
   private static readonly BROADCAST_FORCE_LOGOUT = 'forceWalletLogout';
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private disposed = false;
 
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
@@ -92,7 +94,9 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     }).pipe(
       tap(response => this.handleTokenResponse(response)),
       catchError(err => {
-        this.forceLogout();
+        if (!this.disposed) {
+          this.forceLogout();
+        }
         return throwError(() => err);
       })
     );
@@ -145,7 +149,18 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   // --- Private helpers ---
 
+  override dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+    this.broadcastChannel.close();
+  }
+
   private handleTokenResponse(response: TokenPairResponse): void {
+    if (this.disposed) return;
     this.accessToken = response.accessToken;
     this.refreshTokenValue = response.refreshToken;
     localStorage.setItem('wallet_refresh_token', response.refreshToken);
@@ -168,7 +183,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     const refreshInMs = Math.max((expiresInSeconds - 60) * 1000, 0);
     this.refreshTimer = setTimeout(() => {
       this.refreshAccessToken().subscribe({
-        error: () => this.forceLogout()
+        error: () => { if (!this.disposed) { this.forceLogout(); } }
       });
     }, refreshInMs);
   }
@@ -180,7 +195,9 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       this.refreshAccessToken().subscribe({
         next: () => this.initialized$.next(true),
         error: () => {
-          localStorage.removeItem('wallet_refresh_token');
+          if (!this.disposed) {
+            localStorage.removeItem('wallet_refresh_token');
+          }
           this.authenticated$.next(false);
           this.initialized$.next(true);
         }
@@ -192,6 +209,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   private listenToCrossTabLogout(): void {
     this.broadcastChannel.onmessage = (event) => {
+      if (this.disposed) return;
       if (event.data === RemoteAuthService.BROADCAST_FORCE_LOGOUT) {
         console.warn('Detected logout from another tab');
         this.clearState();
@@ -214,9 +232,6 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.broadcastChannel.close();
-    if (this.refreshTimer) {
-      clearTimeout(this.refreshTimer);
-    }
+    this.dispose();
   }
 }

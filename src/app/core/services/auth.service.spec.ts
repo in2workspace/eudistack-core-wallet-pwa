@@ -172,4 +172,47 @@ describe('RemoteAuthService', () => {
     service.ngOnDestroy();
     expect(closeSpy).toHaveBeenCalled();
   });
+
+  describe('dispose', () => {
+    it('sets disposed flag, clears refresh timer and closes broadcast channel', () => {
+      const closeSpy = jest.spyOn((service as any).broadcastChannel, 'close');
+      const timer = setTimeout(() => {}, 60_000);
+      (service as any).refreshTimer = timer;
+
+      service.dispose();
+
+      expect((service as any).disposed).toBe(true);
+      expect((service as any).refreshTimer).toBeNull();
+      expect(closeSpy).toHaveBeenCalled();
+    });
+
+    it('is idempotent — calling twice does not throw', () => {
+      const closeSpy = jest.spyOn((service as any).broadcastChannel, 'close');
+
+      expect(() => {
+        service.dispose();
+        service.dispose();
+      }).not.toThrow();
+
+      expect(closeSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('after dispose(), refresh failure does not trigger forceLogout or navigation', () => {
+      (service as any).refreshTokenValue = 'refresh-abc';
+      service.dispose();
+
+      service.refreshAccessToken().subscribe({ error: () => {} });
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
+      req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+
+      expect(routerMock.navigate).not.toHaveBeenCalled();
+    });
+
+    it('ngOnDestroy() delegates to dispose()', () => {
+      const disposeSpy = jest.spyOn(service, 'dispose');
+      service.ngOnDestroy();
+      expect(disposeSpy).toHaveBeenCalled();
+    });
+  });
 });

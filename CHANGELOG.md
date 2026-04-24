@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<<<<<<< fix/login-loop-in-multi-instance-try
+### Changed
+
+- Simplified single-instance handling: removed unreliable cross-tab focus attempts and now duplicate tabs show a clear "close this tab" UI; deep-link routing was fixed so deep-links are processed by the already-open tab.
+
+### Added
+
+- Add tests for single-instance, and auth service.
+
+### Fixed
+
+- **Multi-tab (Single Instance):** Fixed a critical issue that caused an infinite login redirection loop in the main tab when the user opened a second Wallet tab. Now, the secondary tab correctly detects the leader and cleanly halts its execution (`dispose()`) without corrupting session tokens or emitting erroneous navigation events.
+=======
 ### Changed (Wallet API URLs derived from window.location — multi-tenant)
 
 - **`env.template.js`** / **`environment.production.ts`** — `server_url` y `websocket_url` ahora se derivan del origin en runtime (`${window.location.origin}/wallet` y variante `ws(s)://` para el WebSocket). Permite que el mismo bundle sirva a todos los tenants (`sandbox-stg`, `kpmg-stg`, `dome-stg`, …) asumiendo que CloudFront/nginx proxya `/wallet/*` al EBW del tenant correspondiente (EBW expone `/wallet/api/v1/...`).
@@ -19,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`environment.production.ts`** — documentada la derivación dinámica por origin.
 - **`src/assets/env.js`** — fallback local alineado con el nuevo contrato (string vacío).
 - Follow-up: [EUDISTACK-170](https://eudistack.atlassian.net/browse/EUDISTACK-170) — validar `redirect_uri` contra allowlist por tenant en el Issuer (hoy acepta cualquier valor enviado en el PAR).
+>>>>>>> main
 
 ### Pending (EUDI-094 multi-tenant rollout)
 
