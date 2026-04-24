@@ -7,10 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+
 - Simplified single-instance handling: removed unreliable cross-tab focus attempts and now duplicate tabs show a clear "close this tab" UI; deep-link routing was fixed so deep-links are processed by the already-open tab.
 
 ### Added
+
 - Add tests for single-instance, and auth service.
+
+### Fixed
+
+- **Multi-tab (Single Instance):** Fixed a critical issue that caused an infinite login redirection loop in the main tab when the user opened a second Wallet tab. Now, the secondary tab correctly detects the leader and cleanly halts its execution (`dispose()`) without corrupting session tokens or emitting erroneous navigation events.
+
+### Pending (EUDI-094 multi-tenant rollout)
+
+- E2E OID4VCI flow against same-origin Issuer (`/issuer/*`) still to be
+  validated on STG with real tenant (scheduled 2026-04-24). No code
+  change anticipated; expected to be green post verifier redeploy.
+
+## [3.3.0] - 2026-04-23
+
+### Changed (EUDI-094 — runtime per-tenant theme from shared bucket)
+
+- **`theme.service.ts`** — `load()` resuelve el tenant desde `window.location.hostname` con `resolveTenant()` y pide `/assets/tenants/<tenant>/theme.json` (URL absoluta, bucket compartido servido por CloudFront). Los paths legacy `assets/tenant/*` dentro del theme se reescriben a `/assets/tenants/<tenant>/*`. Helper `isRelativeAssetPath` renombrado a `isSafeAssetPath`; nuevo helper `toAbsoluteAssetUrl` para el manifest PWA.
+- **`index.html`** y **`tenant-not-found.page.html`** — favicon default pasa a ser el producto (`assets/icons/pwa-192x192.png`) en lugar de referenciar `assets/tenant/*`. El ThemeService inyecta dinámicamente el favicon del tenant tras resolverlo.
+- **`ngsw-config.json`** — `/assets/tenants/**` excluido del asset prefetch; el theme del tenant se cachea en dataGroup con freshness (1h).
+- **`.github/workflows/deploy.yml`** — eliminada la inyección build-time de tenant assets y el input `tenant`. El build ahora es único y se publica a `s3://.../wallet/`; se invalidan todas las CloudFront STG del entorno.
+- **`.github/workflows/release.yml`** — el release dispara `deploy.yml` automáticamente tras el tag sin parametrizar tenant (un solo deploy sirve a todos los tenants).
+
+## [3.2.0] - 2026-04-23
+
+### Changed (EUDI-094 — theme loaded from single deploy-time asset)
+
+- **`theme.service.ts`** — `load()` ahora carga un único `assets/theme.json` y elimina el fallback runtime (`isKnownTenant` + `resolveTenant`). La personalización per-tenant se resuelve en CI: `.github/workflows/deploy.yml` copia `eudistack-platform-assets/tenants/<TENANT>/theme.json` a `assets/theme.json` y `tenants/<TENANT>/*` a `assets/tenant/` antes del upload a S3. `rewriteAssetPaths()` se simplifica a normalizar rutas absolutas `/assets/...` a relativas (sin tenant interpolation).
+- **`index.html`** y **`tenant-not-found.page.html`** — favicon default migrado de `favicon.png` a `favicon.svg`, alineado con la estructura de `eudistack-platform-assets` (todos los tenants exponen `favicon.svg`).
+
+## [3.1.2] - 2026-04-23
+
+### Fixed (EUDI-064 post-release — env suffix in tenant resolution)
+
+- **`tenants.constants.ts`** — `resolveTenant()` ahora elimina los sufijos de entorno `-stg`, `-dev`, `-pre` antes del lookup en `KNOWN_TENANTS`. Motivación: en STG el host es `sandbox-stg.eudistack.net` y el guard `isKnownTenant` devolvía `false`, redirigiendo al usuario a `/tenant-not-found`. Replica la lógica que ya hace `TenantDomainWebFilter` en el backend (core-issuer) y alinea con el mismo fix en el MFE Credential Manager.
+- **`buildFallbackUrl()`** — preserva el sufijo de entorno del host actual al reconstruir la URL de fallback. Evita que un usuario en STG salte a PROD.
+- **`theme.service.ts`** — sustituido `hostname.split('.')[0]` ad-hoc por `resolveTenant()`.
+- **`tenant-not-found.page`** — añadido logo en la pantalla (antes sólo había texto).
+
 
 ## [3.1.1] - 2026-04-21
 
@@ -26,7 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `httpTranslateLoader` spec expected absolute `/assets/i18n/en.json` but the loader was changed to relative (`assets/i18n/`) in 11366b3 for `base-href=/wallet/` compatibility. Updated the spec assertion to match.
 - `sync-schemas` script exits with error when canonical schemas are missing instead of falling back silently to stale bundled copies.
-- **Multi-tab (Single Instance):** Fixed a critical issue that caused an infinite login redirection loop in the main tab when the user opened a second Wallet tab. Now, the secondary tab correctly detects the leader and cleanly halts its execution (`dispose()`) without corrupting session tokens or emitting erroneous navigation events.
+- Improved rear camera detection for iOS and now the rear camera is selected by default.
+
 
 ### Removed
 

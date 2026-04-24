@@ -86,8 +86,8 @@ describe('ThemeService', () => {
     });
   });
 
-  describe('isRelativeAssetPath', () => {
-    const validate = (v: string) => (service as any).isRelativeAssetPath(v);
+  describe('isSafeAssetPath', () => {
+    const validate = (v: string) => (service as any).isSafeAssetPath(v);
 
     it('should accept paths starting with assets/', () => {
       expect(validate('assets/tenant/favicon.png')).toBe(true);
