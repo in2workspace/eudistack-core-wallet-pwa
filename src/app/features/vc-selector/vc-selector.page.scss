@@ -208,7 +208,7 @@ ion-footer ion-toolbar {
 }
 
 .rp-logo {
-  height: 50px;
+  height: 40px;
   object-fit: contain;
 }
 
@@ -241,7 +241,7 @@ ion-footer ion-toolbar {
     .bullet {
       width: 8px;
       height: 8px;
-      background: #D9A404; // Tu color dorado de Figma
+      background: var(--primary-color);
       border-radius: 50%;
     }
 
@@ -260,7 +260,7 @@ ion-footer ion-toolbar {
   font-size: 0.85rem;
 
   .legal-link {
-    color: #D9A404;
+    color: var(--primary-color);
     text-decoration: underline;
   }
   .divider { color: #D1D5DB; }
@@ -269,12 +269,13 @@ ion-footer ion-toolbar {
 .action-group {
   width: 100%;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 12px;
 
   button {
+    flex: 1;
+    padding: 16px 8px;
     width: 100%;
-    padding: 14px;
     border-radius: 12px;
     font-weight: 600;
     font-size: 1rem;
@@ -282,10 +283,10 @@ ion-footer ion-toolbar {
   }
 
   .btn-confirm {
-    background: #D9A404;
+    background: var(--primary-color);
     color: white;
     border: none;
-    &:active { transform: scale(0.98); background: #C29303; }
+    &:active { transform: scale(0.98); background: var(--primary-color); }
   }
 
   .btn-cancel {

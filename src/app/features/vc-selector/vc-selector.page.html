@@ -3,12 +3,11 @@
     <div class="consent-wrapper">
       <div class="consent-card">
         <div class="consent-body">
-          <img [src]="clientLogo"
+          <img src="assets/logos/altia-logo-dark.svg"
                class="rp-logo"
-               (error)="clientLogo = 'assets/img/altia-logo.svg'"
                alt="RP Logo">
           <div class="rp-info">
-            <h1 class="rp-name">{{ clientName }}</h1>
+            <h1 class="rp-name">{{ clientName || "ClientName" }}</h1>
             <p class="rp-request-text">{{ "vc-selector.requests-you" | translate }}</p>
           </div>
           <div class="requested-list">
@@ -20,13 +19,13 @@
             }
           </div>
           <div class="legal-links">
-            @if (policyUri) {
-              <a [href]="policyUri" target="_blank" class="legal-links">{{ "vc-selector.privacy-policy" | translate }}</a>
-            }
-            @if (policyUri && tosUri) { <span class="divider">|</span> }
-            @if (tosUri) {
-              <a [href]="tosUri" target="_blank" class="legal-links">{{ "vc-selector.tds" | translate }}</a>
-            }
+
+            <a [href]="policyUri" target="_blank" class="legal-links">{{ "vc-selector.privacy-policy" | translate }}</a>
+
+            <span class="divider">|</span>
+
+            <a [href]="tosUri" target="_blank" class="legal-links">{{ "vc-selector.tds" | translate }}</a>
+
           </div>
           <div class="action-group">
             <button class="btn-confirm" (click)="continueToSelection()">

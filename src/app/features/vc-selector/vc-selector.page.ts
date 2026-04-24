@@ -70,6 +70,7 @@ export class VcSelectorPage {
         this.getExecutionParamsFromQueryParams(params);
         this.formatCredList();
         this.resetIsClickList();
+        this.showConsentScreen = true;
     });
   }
 
@@ -86,8 +87,12 @@ export class VcSelectorPage {
   }
 
   private extractConsentData(): void {
-    const metadata = this.executionResponse['clientMetadata'];
+    console.log('TODA la respuesta:', JSON.stringify(this.executionResponse, null, 2));
+    console.log('Claves disponibles:', Object.keys(this.executionResponse));
+
+    const metadata = this.executionResponse['client_metadata'];
     const currentLocale = this.translate.currentLang || navigator.language || 'es';
+    console.log('Metadata recibida:', metadata);
 
     this.clientName = this.getMetadataValue(metadata, 'client_name', currentLocale, '');
     this.clientLogo = this.getMetadataValue(metadata, 'logo_uri', currentLocale, '');
@@ -114,6 +119,7 @@ export class VcSelectorPage {
   }
 
   public goBack(): void {
+    this.showConsentScreen = true;
     this.router.navigate(['/tabs/credentials']);
   }
 
