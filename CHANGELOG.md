@@ -6,6 +6,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (Wallet API URLs derived from window.location — multi-tenant)
+
+- **`env.template.js`** / **`environment.production.ts`** — `server_url` y `websocket_url` ahora se derivan del origin en runtime (`${window.location.origin}/business-wallet` y variante `ws(s)://` para el WebSocket). Permite que el mismo bundle sirva a todos los tenants (`sandbox-stg`, `kpmg-stg`, `dome-stg`, …) asumiendo que CloudFront/nginx proxya `/business-wallet/*` al EBW del tenant correspondiente (EBW expondrá `/business-wallet/api/v1/...` cuando entre en producción).
+- **`.github/workflows/deploy.yml`** — eliminadas `WALLET_API_EXTERNAL_URL` y `WALLET_API_WEBSOCKET_EXTERNAL_URL` del paso de generación de `env.js`. GitHub Variables borradas en el entorno `stg`.
+- **`src/assets/env.js`** — comentado que en dev local se mantiene el override explícito hacia `http://localhost:8083/wallet`.
+- ⚠️ EBW no activo en sandbox-stg todavía; cuando se despliegue deberá responder bajo `/business-wallet/api/*` en el mismo origin del SPA por tenant.
+
+### Changed (Multi-tab single-instance)
+
+- Simplified single-instance handling: removed unreliable cross-tab focus attempts and now duplicate tabs show a clear "close this tab" UI; deep-link routing was fixed so deep-links are processed by the already-open tab.
+
+### Added
+
+- Add tests for single-instance, and auth service.
+
+### Fixed (OID4VCI redirect_uri multi-tenant)
+
+- **`env.template.js`** / **`.github/workflows/deploy.yml`** — eliminada la variable build-time `OID4VCI_REDIRECT_URI` (GitHub Variable borrada también). El mismo bundle se publica a todos los tenants (`sandbox-stg`, `kpmg-stg`, `dome-stg`, …) y el `redirect_uri` se deriva en runtime de `window.location.origin` vía el fallback ya existente en `environment.production.ts`. Causa del 504 reportado: el host fijado (`wallet-stg.altia.eudistack.net`) no resolvía en DNS tras EUDI-094.
+- **`environment.production.ts`** — documentada la derivación dinámica por origin.
+- **`src/assets/env.js`** — fallback local alineado con el nuevo contrato (string vacío).
+- Follow-up: [EUDISTACK-170](https://eudistack.atlassian.net/browse/EUDISTACK-170) — validar `redirect_uri` contra allowlist por tenant en el Issuer (hoy acepta cualquier valor enviado en el PAR).
+
+### Fixed (Multi-tab single-instance)
+
+- **Multi-tab (Single Instance):** Fixed a critical issue that caused an infinite login redirection loop in the main tab when the user opened a second Wallet tab. Now, the secondary tab correctly detects the leader and cleanly halts its execution (`dispose()`) without corrupting session tokens or emitting erroneous navigation events.
+
 ### Pending (EUDI-094 multi-tenant rollout)
 
 - E2E OID4VCI flow against same-origin Issuer (`/issuer/*`) still to be
