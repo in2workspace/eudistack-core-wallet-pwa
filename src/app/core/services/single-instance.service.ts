@@ -107,6 +107,7 @@ export class SingleInstanceService implements OnDestroy {
           } else {
             sessionStorage.setItem(PENDING_DEEP_LINK_KEY, appRelative);
           }
+        }
         break;
       }
 
