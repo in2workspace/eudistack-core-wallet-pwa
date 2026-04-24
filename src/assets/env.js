@@ -2,6 +2,8 @@
   window.env = window.env || {};
 
   // Environment variables
+  // Local dev: explicit override pointing at the local EBW.
+  // In STG/PROD these are empty so the bundle derives them from window.location.
   window["env"]["server_url"] = "http://localhost:8083/wallet";
   window["env"]["websocket_url"] = "ws://localhost:8083/wallet";
 

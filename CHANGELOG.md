@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (Wallet API URLs derived from window.location — multi-tenant)
+
+- **`env.template.js`** / **`environment.production.ts`** — `server_url` y `websocket_url` ahora se derivan del origin en runtime (`${window.location.origin}/wallet` y variante `ws(s)://` para el WebSocket). Permite que el mismo bundle sirva a todos los tenants (`sandbox-stg`, `kpmg-stg`, `dome-stg`, …) asumiendo que CloudFront/nginx proxya `/wallet/*` al EBW del tenant correspondiente (EBW expone `/wallet/api/v1/...`).
+- **`.github/workflows/deploy.yml`** — eliminadas `WALLET_API_EXTERNAL_URL` y `WALLET_API_WEBSOCKET_EXTERNAL_URL` del paso de generación de `env.js`. GitHub Variables borradas en el entorno `stg`.
+- **`src/assets/env.js`** — comentado que en dev local se mantiene el override explícito hacia `http://localhost:8083/wallet`.
+- ⚠️ Requiere que el EBW responda bajo `/wallet/api/*` en el mismo origin del SPA por tenant (no tocado en este commit).
+
 ### Fixed (OID4VCI redirect_uri multi-tenant)
 
 - **`env.template.js`** / **`.github/workflows/deploy.yml`** — eliminada la variable build-time `OID4VCI_REDIRECT_URI` (GitHub Variable borrada también). El mismo bundle se publica a todos los tenants (`sandbox-stg`, `kpmg-stg`, `dome-stg`, …) y el `redirect_uri` se deriva en runtime de `window.location.origin` vía el fallback ya existente en `environment.production.ts`. Causa del 504 reportado: el host fijado (`wallet-stg.altia.eudistack.net`) no resolvía en DNS tras EUDI-094.
