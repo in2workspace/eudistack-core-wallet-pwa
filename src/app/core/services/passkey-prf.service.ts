@@ -5,8 +5,6 @@ import { p256 } from '@noble/curves/nist.js';
 import { PasskeyStoreService } from './passkey-store.service';
 
 const HKDF_INFO = 'eudistack:p256:v1';
-// Fixed salt used to derive the session master in a single PRF evaluation.
-// Evaluating PRF during create() collapses two biometric prompts into one.
 const MASTER_SALT = new TextEncoder().encode('eudistack:master:v1');
 
 export type PrfSupportStatus = 'available' | 'unavailable';
@@ -23,8 +21,6 @@ export type PrfSupportStatus = 'available' | 'unavailable';
 export class PasskeyPrfService {
   private status: PrfSupportStatus | null = null;
   private prfLock: Promise<any> | null = null;
-  // PRF output derived once per session; avoids repeated biometric prompts.
-  private sessionMaster: Uint8Array | null = null;
   private readonly store = inject(PasskeyStoreService);
 
   /** Check whether the current browser + authenticator support PRF. */
@@ -48,10 +44,6 @@ export class PasskeyPrfService {
    * Create a new discoverable passkey (client-side only, no backend).
    * The challenge is generated locally — the attestation is not verified.
    * Returns the base64url-encoded credential ID.
-   *
-   * PRF is evaluated during creation so the session master is seeded in
-   * the same biometric gesture, preventing a second prompt when keys are
-   * first derived immediately after setup.
    */
   async createPasskey(displayName: string): Promise<string> {
     const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32));
@@ -75,7 +67,7 @@ export class PasskeyPrfService {
       },
       extensions: {
         // @ts-ignore — PRF extension not yet in TS lib types
-        prf: { eval: { first: MASTER_SALT } },
+        prf: {},
       } as AuthenticationExtensionsClientInputs,
       timeout: 120_000,
     };
@@ -90,61 +82,21 @@ export class PasskeyPrfService {
       });
     }
 
-    // Seed session master from the creation PRF result.
-    // When the authenticator supports PRF eval during create(), the master
-    // is available here and no separate navigator.credentials.get() is needed.
-    const ext = credential.getClientExtensionResults() as any;
-    const prfFirst = ext?.prf?.results?.first;
-    if (prfFirst) {
-      this.sessionMaster = new Uint8Array(prfFirst);
-    }
-
     const credentialId = base64UrlEncode(new Uint8Array(credential.rawId));
     await this.store.setCredentialId(credentialId);
 
     return credentialId;
   }
 
-  /**
-   * Derive a P-256 signing key from the passkey PRF output.
-   *
-   * If the session master was seeded during passkey creation or a previous
-   * call, no biometric prompt is needed. Otherwise a single PRF evaluation
-   * populates the master for the rest of the session.
-   */
+  /** Derive a P-256 signing key from the passkey PRF output. Always requires a biometric prompt. */
   async deriveSigningKey(salt: Uint8Array): Promise<{
     privateKey: CryptoKey;
     publicKeyJwk: JsonWebKey;
   }> {
-    const master = await this.ensureSessionMaster();
-    return this.deriveP256KeyFromBytes(master, salt);
-  }
-
-  /** Remove the stored passkey credential ID and clear the session master. */
-  async clearPasskey(): Promise<void> {
-    this.sessionMaster = null;
-    await this.store.clear();
-  }
-
-  // ---------------------------------------------------------------------------
-  // Private helpers
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Returns the session master, deriving it via a single PRF evaluation if
-   * not already cached. Serializes concurrent callers so only one biometric
-   * prompt fires even if multiple keys are requested simultaneously.
-   */
-  private async ensureSessionMaster(): Promise<Uint8Array> {
-    if (this.sessionMaster) return this.sessionMaster;
-
-    // Serialize to prevent concurrent biometric prompts.
+    // Serialize concurrent callers — only one biometric prompt at a time.
     while (this.prfLock) {
       await this.prfLock;
     }
-
-    // Re-check after waiting — another caller may have populated the master.
-    if (this.sessionMaster) return this.sessionMaster;
 
     const credentialIdB64 = this.store.getCredentialId();
     if (!credentialIdB64) {
@@ -159,13 +111,22 @@ export class PasskeyPrfService {
     this.prfLock = new Promise<void>(r => { resolve = r; });
 
     try {
-      this.sessionMaster = await this.evaluatePrf(credentialIdBytes, MASTER_SALT);
-      return this.sessionMaster;
+      const master = await this.evaluatePrf(credentialIdBytes, MASTER_SALT);
+      return this.deriveP256KeyFromBytes(master, salt);
     } finally {
       this.prfLock = null;
       resolve();
     }
   }
+
+  /** Remove the stored passkey credential ID. */
+  async clearPasskey(): Promise<void> {
+    await this.store.clear();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
 
   private async evaluatePrf(
     credentialId: Uint8Array,
@@ -268,8 +229,8 @@ export class PasskeyPrfService {
       // assume PRF *might* be available. Definitive check happens at first use.
       const isSecure =
         globalThis.isSecureContext ??
-        location.protocol === 'https:' ??
-        ['localhost', '127.0.0.1'].includes(location.hostname);
+        (location.protocol === 'https:' ||
+         ['localhost', '127.0.0.1'].includes(location.hostname));
 
       return isSecure ? 'available' : 'unavailable';
     } catch {
