@@ -267,6 +267,7 @@
         "cannot-download-auth-server-metadata": "No hemos podido conectarnos al servidor de autorización. Inténtalo de nuevo.",
         "cannot-download-issuerMetadata": "No hemos podido conectarnos con el emisor. Inténtalo de nuevo.",
         "cannot-download-credentialOffer": "No hemos podido descargar la oferta de credencial. Inténtalo de nuevo.",
+        "cross-tenant-offer": "Esta oferta de credencial pertenece a otro tenant y no puede añadirse a esta wallet.",
         "invalid-credential-configuration": "Esta oferta contiene una configuración de credencial no válida.",
         "unsupported-credential-format": "Este tipo de credencial no es compatible con esta wallet.",
         "invalid-jwt": "Hemos recibido un token de credencial no válido.",

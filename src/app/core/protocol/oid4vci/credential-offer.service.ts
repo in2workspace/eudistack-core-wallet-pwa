@@ -15,6 +15,8 @@ export class CredentialOfferService {
     try {
       const parsedUri = this.parseCredentialOfferUri(credentialOfferUri);
 
+      this.validateOfferUriTenant(parsedUri);
+
       const responseText = await this.fetchCredentialOffer(parsedUri);
 
       const offer = this.parseAndNormalizeCredentialOffer(responseText);
@@ -173,6 +175,34 @@ export class CredentialOfferService {
 
   private asNumber(value: unknown): number | undefined {
     return typeof value === 'number' ? value : undefined;
+  }
+
+  private validateOfferUriTenant(credentialOfferUri: string): void {
+    const walletTenant = this.extractSubdomain(window.location.hostname);
+    if (!walletTenant) return;
+
+    let offerHostname: string;
+    try {
+      offerHostname = new URL(credentialOfferUri).hostname;
+    } catch {
+      return;
+    }
+
+    const offerTenant = this.extractSubdomain(offerHostname);
+    if (!offerTenant) return;
+
+    if (walletTenant !== offerTenant) {
+      throw new Oid4vciError(
+        `Credential offer tenant '${offerTenant}' does not match wallet tenant '${walletTenant}'`,
+        { translationKey: 'errors.cross-tenant-offer' }
+      );
+    }
+  }
+
+  private extractSubdomain(hostname: string): string | null {
+    const dotIndex = hostname.indexOf('.');
+    if (dotIndex <= 0) return null;
+    return hostname.substring(0, dotIndex).toLowerCase();
   }
 
   private validateCredentialOffer(credentialOffer: CredentialOffer): void {

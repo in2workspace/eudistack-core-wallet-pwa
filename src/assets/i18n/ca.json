@@ -267,6 +267,7 @@
         "cannot-download-auth-server-metadata": "No hem pogut connectar amb el servidor d’autorització. Torna-ho a provar.",
         "cannot-download-issuerMetadata": "No hem pogut connectar amb l’emissor. Torna-ho a provar.",
         "cannot-download-credentialOffer": "No hem pogut descarregar l’oferta de credencial. Torna-ho a provar.",
+        "cross-tenant-offer": "Aquesta oferta de credencial pertany a un altre tenant i no es pot afegir a aquesta wallet.",
         "invalid-credential-configuration": "Aquesta oferta conté una configuració de credencial no vàlida.",
         "unsupported-credential-format": "Aquest tipus de credencial no és compatible amb aquesta wallet.",
         "invalid-jwt": "Hem rebut un token de credencial no vàlid.",
