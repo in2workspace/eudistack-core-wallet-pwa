@@ -213,19 +213,34 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       return;
     }
 
+    let uriToProcess = qrCode;
+
+    if (qrCode.toLowerCase().startsWith('http')) {
+      try {
+        const url = new URL(qrCode);
+        const extractedUri = url.searchParams.get('credential_offer_uri');
+        if (extractedUri) {
+          console.info('URL HTTPS detectada. Extrayendo credential_offer_uri...');
+          uriToProcess = extractedUri;
+        }
+      } catch (e) {
+        console.warn('No se pudo parsear como URL, se intentará procesar el string original.');
+      }
+    }
+
     const isCredentialOffer = qrCode.includes('credential_offer_uri');
     if(isCredentialOffer){
       //CROSS-DEVICE VC OFFER
       //show VCs list
       this.closeScannerViewAndScanner();
       console.info('Requesting Credential Offer via cross-device flow.');
-      this.credentialActivationFlow(qrCode);
+      this.credentialActivationFlow(uriToProcess);
     }else{
       // VERIFIABLE PRESENTATION
       // hide scanner but don't show VCs list
       this.closeScanner();
       console.info('Processing QR code for verifiable presentation.');
-      this.verifiablePresentationFlow(qrCode);
+      this.verifiablePresentationFlow(uriToProcess);
       }
   }
 
