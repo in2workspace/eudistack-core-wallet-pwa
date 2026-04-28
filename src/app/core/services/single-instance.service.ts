@@ -77,6 +77,42 @@ export class SingleInstanceService implements OnDestroy {
     }
   }
 
+  /**
+   * Navigates the leader tab to a deep-link URL, or queues it for after login.
+   * Accepts either a full URL (https://…) or an app-relative path (/tabs/…).
+   */
+  public handleDeepLink(url: string): void {
+    let appRelative: string;
+    try {
+      // Full URL — strip origin and base href
+      const parsed = new URL(url);
+      appRelative = SingleInstanceService.stripBase(parsed.pathname + parsed.search);
+    } catch {
+      // Already app-relative
+      appRelative = SingleInstanceService.stripBase(url);
+    }
+
+    if (this.authService.isLoggedIn()) {
+      this.router.navigateByUrl(appRelative);
+    } else {
+      sessionStorage.setItem(PENDING_DEEP_LINK_KEY, appRelative);
+    }
+  }
+
+  /**
+   * Registers a launchQueue consumer so that, when the PWA is installed and
+   * launch_handler.client_mode is "navigate-existing", Chromium focuses the
+   * existing window and forwards the target URL here instead of opening a new one.
+   */
+  public consumeLaunchQueue(): void {
+    if (!('launchQueue' in window)) return;
+    (window as any).launchQueue.setConsumer((launchParams: { targetURL?: string }) => {
+      if (launchParams.targetURL) {
+        this.handleDeepLink(launchParams.targetURL);
+      }
+    });
+  }
+
   private handleMessage(msg: SingleInstanceMessage): void {
     if (msg.tabId === this.tabId) {
       return; // ignore own messages
@@ -100,7 +136,7 @@ export class SingleInstanceService implements OnDestroy {
         // APP_BASE_HREF token resolves to '/' in some setups, so we read the
         // <base href> directly from the DOM for reliability.
         const appRelative = SingleInstanceService.stripBase(msg.url ?? '');
-        
+
         if (appRelative.startsWith('/protocol/') || appRelative.startsWith('/tabs/vc-selector') || appRelative.startsWith('/tabs/credentials')) {
           if (this.authService.isLoggedIn()) {
             this.router.navigateByUrl(appRelative);

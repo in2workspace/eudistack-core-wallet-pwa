@@ -66,6 +66,7 @@ export class AppComponent implements OnInit, OnDestroy {
         return;
       }
 
+      this.singleInstance.consumeLaunchQueue();
       this.initOid4vciEngine();
       this.issuerMetadataCache.refreshStaleMetadata().catch(console.warn);
       this.alertIncompatibleDevice();
