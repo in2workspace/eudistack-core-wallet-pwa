@@ -122,6 +122,22 @@
       </div>
     }
 
+    <!-- Help section -->
+    @if(knowledgeBaseUrl) {
+      <div class="settings-group">
+        <ion-list lines="none" class="settings-list">
+          <ion-item button detail="false" class="settings-item"
+            [href]="knowledgeBaseUrl" target="_blank" rel="noopener noreferrer">
+            <div class="icon-badge icon-badge--blue" slot="start">
+              <ion-icon name="help-circle-outline"></ion-icon>
+            </div>
+            <ion-label>{{"settings.knowledge-base" | translate}}</ion-label>
+            <ion-icon name="open-outline" slot="end" class="chevron"></ion-icon>
+          </ion-item>
+        </ion-list>
+      </div>
+    }
+
     <!-- About section -->
     <div class="settings-group">
       <ion-list lines="none" class="settings-list">

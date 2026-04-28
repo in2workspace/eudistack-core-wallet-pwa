@@ -122,7 +122,8 @@
         "dark-mode-desc": "Cambiar al tema oscuro",
         "section-preferences": "Preferencias",
         "about": "Acerca de",
-        "version": "Versión"
+        "version": "Versión",
+        "knowledge-base": "Base de conocimiento"
     },
     "terms-of-use":{
         "title":"Términos de Uso"
