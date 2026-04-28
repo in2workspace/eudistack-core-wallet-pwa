@@ -199,6 +199,10 @@ export class CredentialOfferService {
     }
   }
 
+  // Intentionally does NOT strip env suffixes (e.g. -stg, -dev) and does NOT
+  // delegate to resolveTenant(). The full first label (e.g. "sandbox-stg") is
+  // the tenant identity here so that STG wallet and PROD issuer are treated as
+  // different tenants and cross-environment offers are rejected.
   private extractSubdomain(hostname: string): string | null {
     const dotIndex = hostname.indexOf('.');
     if (dotIndex <= 0) return null;
