@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add tests for single-instance, and auth service.
+- **Wallet Scanner**: Support for OID4VCI indirect flow. The wallet can now process HTTPS QR codes by extracting the `credential_offer_uri` parameter, ensuring interoperability with native device cameras and browser-based redirections.
 
 ### Fixed (OID4VCI redirect_uri multi-tenant)
 
