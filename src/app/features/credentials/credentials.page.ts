@@ -220,6 +220,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         const url = new URL(qrCode);
         const extractedUri = url.searchParams.get('credential_offer_uri');
         if (extractedUri) {
+          console.info('HTTPS URL detected. Extracting credential_offer_uri..');
           uriToProcess = extractedUri;
         }
       } catch (e) {
