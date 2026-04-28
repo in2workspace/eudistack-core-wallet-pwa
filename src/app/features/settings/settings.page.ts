@@ -28,6 +28,9 @@ export class SettingsPage {
   public featureLogsEnabled = environment.logs_enabled;
   public readonly appVersion = environment.appVersion;
   public readonly isServerMode = (environment as any).wallet_mode === 'server';
+  public readonly walletModeKey = this.isServerMode
+    ? 'settings.wallet-mode-business'
+    : 'settings.wallet-mode-eudiw';
   private readonly pwaInstallService = inject(PwaInstallService);
   private readonly themeService = inject(ThemeService);
   readonly canInstall$ = this.pwaInstallService.installable$;
