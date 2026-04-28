@@ -128,7 +128,8 @@
         "dark-mode": "Dark mode",
         "dark-mode-desc": "Switch to dark theme",
         "about": "About",
-        "version": "Version"
+        "version": "Version",
+        "knowledge-base": "Knowledge base"
     },
     "terms-of-use":{
         "title":"Terms Of Use"

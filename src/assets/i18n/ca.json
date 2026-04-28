@@ -118,7 +118,8 @@
         "dark-mode": "Mode fosc",
         "dark-mode-desc": "Canviar al tema fosc",
         "about": "Sobre",
-        "version": "Versió"
+        "version": "Versió",
+        "knowledge-base": "Base de coneixement"
     },
     "terms-of-use":{
         "title":"Termes d'Ús"
