@@ -25,6 +25,7 @@ export interface Theme {
   content: {
     links: { label: string; url: string }[];
     footer: string | null;
+    knowledgeBaseUrl?: string | null;
   };
   i18n: {
     defaultLang: string;
