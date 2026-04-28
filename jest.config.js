@@ -1,7 +1,6 @@
 module.exports = {
   preset: 'jest-preset-angular',
   setupFilesAfterEnv: ["<rootDir>/src/setup-jest.ts"],
-  globalSetup: 'jest-preset-angular/global-setup',
   moduleNameMapper: {
     "@app/(.*)": "<rootDir>/src/app/$1",
     "@assets/(.*)": "<rootDir>/src/assets/$1",
@@ -16,28 +15,28 @@ module.exports = {
   collectCoverage: true,
   coverageDirectory: "./coverage/app",
   coverageReporters: ["lcov", "text-summary", "cobertura", "html", "json-summary", "json"],
-  collectCoverageFrom: [   
+  collectCoverageFrom: [
     "src/app/app.component.ts",
     "src/app/app.routes.ts",
-    "src/app/guards/**/*.ts",                  
-    "src/app/helpers/**/*.ts",             
-    "src/app/pages/**/*.ts",             
+    "src/app/guards/**/*.ts",
+    "src/app/helpers/**/*.ts",
+    "src/app/pages/**/*.ts",
     "src/app/services/**/*.ts",
     "src/app/interceptors/**/*.ts",
     "src/app/components/**/*.ts",
   ],
   coveragePathIgnorePatterns: [
-    '<rootDir>/node_modules/', 
+    '<rootDir>/node_modules/',
     '<rootDir>/dist/',
   ],
   transformIgnorePatterns: ['/node_modules/(?!@stencil|stencil)/'],
   testPathIgnorePatterns: [
-    '/node_modules/', 
+    '/node_modules/',
     '/dist/',
     // '/src/app/main',
     // '/src/app/app.routes',
     // '/src/app/app.component',
-    // '/src/app/components', 
+    // '/src/app/components',
     // '/src/app/guards',
     // '/src/app/helpers',
     // '/src/app/interceptors',
