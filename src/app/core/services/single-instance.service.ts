@@ -58,7 +58,7 @@ export class SingleInstanceService implements OnDestroy {
           } satisfies SingleInstanceMessage);
           this.channel!.onmessage = originalHandler;
           const appRelative = SingleInstanceService.stripBase(currentUrl);
-          const isDeepLink = appRelative.startsWith('/protocol/') || appRelative.startsWith('/tabs/vc-selector');
+          const isDeepLink = appRelative.startsWith('/protocol/') || appRelative.startsWith('/tabs/vc-selector') || appRelative.startsWith('/tabs/credentials');
           this.renderDuplicateTabMessage(isDeepLink);
           resolve(false);
         } else {
@@ -101,7 +101,7 @@ export class SingleInstanceService implements OnDestroy {
         // <base href> directly from the DOM for reliability.
         const appRelative = SingleInstanceService.stripBase(msg.url ?? '');
         
-        if (appRelative.startsWith('/protocol/') || appRelative.startsWith('/tabs/vc-selector')) {
+        if (appRelative.startsWith('/protocol/') || appRelative.startsWith('/tabs/vc-selector') || appRelative.startsWith('/tabs/credentials')) {
           if (this.authService.isLoggedIn()) {
             this.router.navigateByUrl(appRelative);
           } else {
