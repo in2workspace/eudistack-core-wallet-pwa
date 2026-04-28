@@ -96,6 +96,15 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         this.authorizationRequest = params['authorizationRequest'] ?? '';
         this.selectedCredentialId = params['id'] ?? null;
         this.cdr.detectChanges();
+
+        // IonicRouteStrategy caches pages — ngOnInit won't re-run when the leader tab
+        // receives a NAVIGATE from single-instance and lands here with a new offer URI.
+        // If credentials are already loaded, trigger the flow directly.
+        if (this.isFirstCredentialLoadCompleted && this.credentialOfferUri) {
+          this.sameDeviceVcActivationFlow(this.credentialOfferUri);
+        } else if (this.isFirstCredentialLoadCompleted && this.authorizationRequest) {
+          this.verifiablePresentationFlow(this.authorizationRequest);
+        }
       });
   }
 

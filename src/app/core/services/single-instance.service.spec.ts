@@ -159,11 +159,38 @@ describe('SingleInstanceService', () => {
       );
     });
 
+    it('navigates to /tabs/credentials deep-link when logged in', () => {
+      (service as any).handleMessage({
+        type: 'NAVIGATE',
+        tabId: 'other-tab',
+        url: '/wallet/tabs/credentials?credentialOfferUri=openid-credential-offer%3A%2F%2F',
+      });
+
+      expect(routerMock.navigateByUrl).toHaveBeenCalledWith(
+        '/tabs/credentials?credentialOfferUri=openid-credential-offer%3A%2F%2F'
+      );
+    });
+
+    it('queues /tabs/credentials deep-link to sessionStorage when not logged in', () => {
+      authServiceMock.isLoggedIn.mockReturnValue(false);
+
+      (service as any).handleMessage({
+        type: 'NAVIGATE',
+        tabId: 'other-tab',
+        url: '/wallet/tabs/credentials?credentialOfferUri=openid-credential-offer%3A%2F%2F',
+      });
+
+      expect(routerMock.navigateByUrl).not.toHaveBeenCalled();
+      expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBe(
+        '/tabs/credentials?credentialOfferUri=openid-credential-offer%3A%2F%2F'
+      );
+    });
+
     it('does NOT navigate for non-deep-link routes', () => {
       (service as any).handleMessage({
         type: 'NAVIGATE',
         tabId: 'other-tab',
-        url: '/wallet/tabs/credentials',
+        url: '/wallet/home',
       });
 
       expect(routerMock.navigateByUrl).not.toHaveBeenCalled();
