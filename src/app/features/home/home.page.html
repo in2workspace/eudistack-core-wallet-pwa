@@ -6,7 +6,7 @@
       <ion-button size="small" fill="solid" (click)="installApp()" (keydown.enter)="installApp()" (keydown.space)="installApp()">
         {{"menu.install"|translate}}
       </ion-button>
-      <ion-button size="small" fill="clear" class="install-banner-close" (click)="dismissInstallBanner()" (keydown.enter)="dismissInstallBanner()" (keydown.space)="dismissInstallBanner()">
+      <ion-button size="small" fill="clear" class="install-banner-close" aria-label="Cerrar banner de instalación" (click)="dismissInstallBanner()" (keydown.enter)="dismissInstallBanner()" (keydown.space)="dismissInstallBanner()">
         <ion-icon slot="icon-only" name="close" aria-hidden="true"></ion-icon>
       </ion-button>
     </div>
