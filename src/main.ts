@@ -21,7 +21,7 @@ import { disableTouchScrollOnPaths } from './app/shared/helpers/disable-touch-sc
 import { httpTranslateLoader } from './app/shared/helpers/http-translate-loader';
 import { KEY_STORAGE_PROVIDERS } from './app/core/spi-impl/key-storage.provider.factory';
 import { AUTH_SERVICE_PROVIDER } from './app/core/services/auth.service';
-import { ThemeService } from './app/core/services/theme.service';
+import { ThemeService } from 'src/app/core/services/theme.service';
 import { PasskeyStoreService } from './app/core/services/passkey-store.service';
 
 function initializeTheme(themeService: ThemeService): () => Promise<void> {

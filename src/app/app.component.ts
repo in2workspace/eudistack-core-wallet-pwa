@@ -9,7 +9,7 @@ import { CameraService } from './shared/services/camera.service';
 import { LoaderService } from './shared/services/loader.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.service';
-import { ThemeService } from './core/services/theme.service';
+import { ThemeService } from 'src/app/core/services/theme.service';
 import { IssuerMetadataCacheService } from './core/services/issuer-metadata-cache.service';
 import { UserPreferencesService } from './shared/services/user-preferences.service';
 import { SingleInstanceService } from './core/services/single-instance.service';

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { TranslateModule } from '@ngx-translate/core';
-import { ThemeService } from './theme.service';
+import { ThemeService } from 'src/app/core/services/theme.service';
 import { ColorService } from '../../shared/services/color-service.service';
 import { StorageService } from '../../shared/services/storage.service';
 import { Theme } from '../models/theme.model';
