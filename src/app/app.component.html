@@ -7,6 +7,8 @@
         slot="end"
         fill="clear"
         class="toolbar-but"
+        tabindex="0"
+        aria-label="Abrir menú"
         [disabled]="isAuthRoute$()"
         (click)="openPopover($event)"
         (keydown)="openPopoverByKeydown($event)"
@@ -15,6 +17,7 @@
           slot="icon-only"
           name="ellipsis-vertical"
           style="color: var(--header-text, var(--primary-contrast-color))"
+          aria-hidden="true"
         ></ion-icon>
       </ion-button>
     </ion-toolbar>
