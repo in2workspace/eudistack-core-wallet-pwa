@@ -122,7 +122,10 @@
         "dark-mode-desc": "Cambiar al tema oscuro",
         "about": "Acerca de",
         "version": "Versión",
-        "knowledge-base": "Base de conocimiento"
+        "knowledge-base": "Base de conocimiento",
+        "wallet-mode-label": "Tipo de wallet",
+        "wallet-mode-eudiw": "EUDIW",
+        "wallet-mode-business": "Business Wallet"
     },
     "terms-of-use":{
         "title":"Términos de Uso"
