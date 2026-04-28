@@ -128,7 +128,11 @@
         "dark-mode": "Dark mode",
         "dark-mode-desc": "Switch to dark theme",
         "about": "About",
-        "version": "Version"
+        "version": "Version",
+        "knowledge-base": "Knowledge base",
+        "wallet-mode-label": "Wallet type",
+        "wallet-mode-eudiw": "EUDIW",
+        "wallet-mode-business": "Business Wallet"
     },
     "terms-of-use":{
         "title":"Terms Of Use"

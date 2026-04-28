@@ -118,7 +118,11 @@
         "dark-mode": "Mode fosc",
         "dark-mode-desc": "Canviar al tema fosc",
         "about": "Sobre",
-        "version": "Versió"
+        "version": "Versió",
+        "knowledge-base": "Base de coneixement",
+        "wallet-mode-label": "Tipus de wallet",
+        "wallet-mode-eudiw": "EUDIW",
+        "wallet-mode-business": "Business Wallet"
     },
     "terms-of-use":{
         "title":"Termes d'Ús"
