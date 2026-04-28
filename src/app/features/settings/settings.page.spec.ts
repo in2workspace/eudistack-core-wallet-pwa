@@ -56,7 +56,16 @@ describe('SettingsPage', () => {
         TranslateModule.forRoot(),
     ],
     providers: [
-        { provide: ThemeService, useValue: { snapshot: null } },
+        { 
+          provide: ThemeService,
+          useValue: {
+            snapshot: null,
+            getTheme: jest.fn(),
+            load: jest.fn(),
+            getLogoUrl: jest.fn(),
+            get tenantDomain() { return null; }
+          }
+        },
         { provide: Router, useValue: routerMock },
         { provide: CameraLogsService, useValue: cameraLogsServiceMock },
         { provide: TranslateService, useValue: translateServiceMock },
