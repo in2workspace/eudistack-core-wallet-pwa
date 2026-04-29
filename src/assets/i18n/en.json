@@ -54,7 +54,8 @@
         "ok-msg": "Credential added",
         "rejected-msg": "Credential offer rejected",
         "scan": "Scan QR",
-        "install-hint": "Install the app for a better experience"
+        "install-hint": "Install the app for a better experience",
+        "dismiss-install-banner": "Dismiss install banner"
     },
     "language-selector":{
         "title":"Select language"

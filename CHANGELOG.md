@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.2] — 2026-04-29
+
+### Fixed
+
+- WCAG 2.1 AA compliance improvements (PRB-002 F-H08). Added missing ARIA attributes to icon-only buttons/images, hid decorative icons from screen readers, and fixed heading hierarchy in settings.
+
 ## [3.4.0] — 2026-04-28
 
 ### Added
@@ -30,10 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed (Multi-tab single-instance)
 
 - Simplified single-instance handling: removed unreliable cross-tab focus attempts and now duplicate tabs show a clear "close this tab" UI; deep-link routing was fixed so deep-links are processed by the already-open tab.
-
-### Fixed
-
-- WCAG 2.1 AA compliance improvements (PRB-002 F-H08). Added missing ARIA attributes to icon-only buttons/images, hid decorative icons from screen readers, and fixed heading hierarchy in settings.
 
 ### Added
 

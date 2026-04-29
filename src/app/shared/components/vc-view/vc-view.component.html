@@ -21,7 +21,7 @@
     } @else if(credentialInput.lifeCycleStatus == "REVOKED") {
       <span class="status-pill status-expired">{{ "vc-view.revoked" | translate }}</span>
     } @else if(credentialInput.lifeCycleStatus == "ISSUED") {
-      <button (click)="unsignedInfo($event)" (keydown)="handleButtonKeydown($event, 'info')" class="status-pill status-unsigned" aria-label="información credencial no firmada">
+      <button (click)="unsignedInfo($event)" (keydown)="handleButtonKeydown($event, 'info')" class="status-pill status-unsigned" [attr.aria-label]="'vc-view.unsigned-header' | translate">
         <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
       </button>
     }
@@ -72,8 +72,9 @@
               (keydown)="handleButtonKeydown($event, 'close')"
               class=".close-button"
               style="width: 24px; height: 24px"
+              [attr.aria-label]="'vc-view.qr-close' | translate"
             >
-              <ion-img src="assets/icons/close-button.png" alt="cerrar modal"></ion-img>
+              <ion-img src="assets/icons/close-button.png" alt=""></ion-img>
             </ion-button>
 
             </ion-buttons>

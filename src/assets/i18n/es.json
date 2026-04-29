@@ -47,7 +47,8 @@
         "ok-msg": "Credencial agregada",
         "rejected-msg": "Oferta de credencial rechazada",
         "scan": "Escanear QR",
-        "install-hint": "Instala la app para una mejor experiencia"
+        "install-hint": "Instala la app para una mejor experiencia",
+        "dismiss-install-banner": "Cerrar banner de instalación"
     },
     "language-selector":{
         "title":"Selector de idioma"

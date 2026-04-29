@@ -48,7 +48,8 @@
         "ok-msg": "S'ha afegit la credencial",
         "rejected-msg": "S'ha rebutjat l'oferta de credencial",
         "scan": "Escanejar QR",
-        "install-hint": "Instal\u00b7la l'app per a una millor experi\u00e8ncia"
+        "install-hint": "Instal\u00b7la l'app per a una millor experi\u00e8ncia",
+        "dismiss-install-banner": "Tanca el b\u00e0ner d'instal\u00b7laci\u00f3"
     },
     "language-selector":{
         "title":"Selector d'idioma"
