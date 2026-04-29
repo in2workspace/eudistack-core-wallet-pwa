@@ -11,7 +11,7 @@
             <p class="rp-request-text">{{ "vc-selector.requests-you" | translate }}</p>
           </div>
           <div class="requested-list">
-            @for (reqCred of requestedCredentials; track reqCred) {
+            @for (reqCred of getDisplayCredentials(); track reqCred) {
               <div class="requested-item">
                 <div class="bullet"></div>
                 <p>{{ reqCred }}</p>
@@ -22,7 +22,7 @@
             @if (policyUri) {
               <a [href]="policyUri" target="_blank" class="legal-links">{{ "vc-selector.privacy-policy" | translate }}</a>
             }
-            <span class="divider">|</span>
+            @if (policyUri && tosUri) { <span class="divider">|</span> }
             @if (tosUri) {
               <a [href]="tosUri" target="_blank" class="legal-links">{{ "vc-selector.tds" | translate }}</a>
             }

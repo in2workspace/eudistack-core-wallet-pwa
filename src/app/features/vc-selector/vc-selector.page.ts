@@ -15,6 +15,7 @@ import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared
 import { Oid4vpEngineService } from 'src/app/core/protocol/oid4vp/oid4vp.engine.service';
 import { CredentialDecisionService } from 'src/app/core/services/credential-decision.service';
 import {ThemeService} from "../../core/services/theme.service";
+import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 
 // todo: show only VCs with powers to login
 // todo: if user has only one VC, use this directly
@@ -65,6 +66,7 @@ export class VcSelectorPage {
   private readonly oid4vpEngineService = inject(Oid4vpEngineService);
   private readonly credentialDecisionService = inject(CredentialDecisionService);
   private readonly themeService = inject(ThemeService);
+  private readonly userPrefs = inject(UserPreferencesService);
 
   public constructor() {
       this.route.queryParams.pipe(takeUntilDestroyed()).subscribe((params) => {
@@ -72,6 +74,7 @@ export class VcSelectorPage {
         this.formatCredList();
         this.resetIsClickList();
         this.showConsentScreen = true;
+
     });
   }
 
@@ -88,7 +91,7 @@ export class VcSelectorPage {
   }
 
   private extractConsentData(): void {
-    const metadata = this.executionResponse?.['clientMetadata'];
+    const metadata = this.executionResponse?.['clientMEtadata'];
     if (!metadata) {
       console.warn('ClientMetadata not found')
     }
@@ -96,13 +99,15 @@ export class VcSelectorPage {
     const currentLocale = this.translate.currentLang || navigator.language || 'es';
     const branding = this.themeService.snapshot?.branding;
 
+    const isDarkMode = this.userPrefs.darkMode();
+    const fallbackLogo = isDarkMode ? branding?.logoUrl : branding?.logoDarkUrl;
+
     this.clientName = this.getMetadataValue(metadata, 'client_name', currentLocale, branding?.name || '');
-    this.clientLogo = this.getMetadataValue(metadata, 'logo_uri', currentLocale, branding?.logoUrl || '');
+    this.clientLogo = this.getMetadataValue(metadata, 'logo_uri', currentLocale, fallbackLogo || '');
     this.policyUri = this.getMetadataValue(metadata, 'policy_uri', currentLocale,  '');
     this.tosUri = this.getMetadataValue(metadata, 'tos_uri', currentLocale, '');
     console.log("clientName:" + this.clientName + ", policyUri: " + this.clientLogo + ", clientLogo: " + this.policyUri + ", tosUri: {}" + this.tosUri);
     console.log("branding.name: " + branding?.name);
-
 
     if (this._VCReply.dcqlQuery?.credentials) {
       this.requestedCredentials = this._VCReply.dcqlQuery.credentials.map(c => c.id || c.format);
@@ -119,6 +124,20 @@ export class VcSelectorPage {
       metadata[`${field}#${language}`] ||
       metadata[field] ||
       fallback;
+  }
+
+  public getDisplayCredentials(): string[] {
+    const result: string[] = [];
+
+    const hasEmployee = this.requestedCredentials.some(cred => cred.includes('employee'));
+    if (hasEmployee) result.push('LEARCredentialEmployee');
+
+    const hasMachine = this.requestedCredentials.some(cred => cred.toLowerCase().includes('machine'));
+    if (hasMachine) result.push('LEARCredentialMachine');
+
+    if (!hasEmployee && !hasMachine) result.push('Credential');
+
+    return result;
   }
 
   public continueToSelection(): void {
