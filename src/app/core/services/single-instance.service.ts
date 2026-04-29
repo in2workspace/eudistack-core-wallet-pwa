@@ -1,4 +1,5 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
 
@@ -14,6 +15,7 @@ const ELECTION_TIMEOUT_MS = 300;
 @Injectable({ providedIn: 'root' })
 export class SingleInstanceService implements OnDestroy {
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   private channel: BroadcastChannel | null = null;
   private readonly tabId = crypto.randomUUID();
@@ -55,7 +57,9 @@ export class SingleInstanceService implements OnDestroy {
             url: currentUrl,
           } satisfies SingleInstanceMessage);
           this.channel!.onmessage = originalHandler;
-          this.renderDuplicateTabMessage();
+          const appRelative = SingleInstanceService.stripBase(currentUrl);
+          const isDeepLink = appRelative.startsWith('/protocol/') || appRelative.startsWith('/tabs/vc-selector') || appRelative.startsWith('/tabs/credentials');
+          this.renderDuplicateTabMessage(isDeepLink);
           resolve(false);
         } else {
           originalHandler?.call(this.channel!, ev);
@@ -71,6 +75,42 @@ export class SingleInstanceService implements OnDestroy {
         this.handleMessage(ev.data);
       };
     }
+  }
+
+  /**
+   * Navigates the leader tab to a deep-link URL, or queues it for after login.
+   * Accepts either a full URL (https://…) or an app-relative path (/tabs/…).
+   */
+  public handleDeepLink(url: string): void {
+    let appRelative: string;
+    try {
+      // Full URL — strip origin and base href
+      const parsed = new URL(url);
+      appRelative = SingleInstanceService.stripBase(parsed.pathname + parsed.search);
+    } catch {
+      // Already app-relative
+      appRelative = SingleInstanceService.stripBase(url);
+    }
+
+    if (this.authService.isLoggedIn()) {
+      this.router.navigateByUrl(appRelative);
+    } else {
+      sessionStorage.setItem(PENDING_DEEP_LINK_KEY, appRelative);
+    }
+  }
+
+  /**
+   * Registers a launchQueue consumer so that, when the PWA is installed and
+   * launch_handler.client_mode is "navigate-existing", Chromium focuses the
+   * existing window and forwards the target URL here instead of opening a new one.
+   */
+  public consumeLaunchQueue(): void {
+    if (!('launchQueue' in window)) return;
+    (window as any).launchQueue.setConsumer((launchParams: { targetURL?: string }) => {
+      if (launchParams.targetURL) {
+        this.handleDeepLink(launchParams.targetURL);
+      }
+    });
   }
 
   private handleMessage(msg: SingleInstanceMessage): void {
@@ -90,29 +130,50 @@ export class SingleInstanceService implements OnDestroy {
         } satisfies SingleInstanceMessage);
         break;
 
-      case 'NAVIGATE':
-        if (msg.url) {
-          if (msg.url !== '/') {
-            sessionStorage.setItem(PENDING_DEEP_LINK_KEY, msg.url);
+      case 'NAVIGATE': {
+        window.focus();
+        // Strip the base href from the raw pathname+search sent by the follower.
+        // APP_BASE_HREF token resolves to '/' in some setups, so we read the
+        // <base href> directly from the DOM for reliability.
+        const appRelative = SingleInstanceService.stripBase(msg.url ?? '');
+
+        if (appRelative.startsWith('/protocol/') || appRelative.startsWith('/tabs/vc-selector') || appRelative.startsWith('/tabs/credentials')) {
+          if (this.authService.isLoggedIn()) {
+            this.router.navigateByUrl(appRelative);
+          } else {
+            sessionStorage.setItem(PENDING_DEEP_LINK_KEY, appRelative);
           }
-          this.authService.forceLogout();
-          window.focus();
         }
         break;
+      }
 
       default:
         break;
     }
   }
 
-  private renderDuplicateTabMessage(): void {
-    try {
-      window.close();
-    } catch {
-      // window.close() only works when the tab was opened by script.
+  private renderDuplicateTabMessage(isDeepLink: boolean): void {
+    // Cancel any pending auth operations so this follower tab cannot corrupt shared
+    // storage state.
+    this.authService.dispose();
+    this.channel?.close();
+    this.channel = null;
+
+    // In standalone (PWA installed) mode the OS handles focus via launch_handler
+    // navigate-existing; window.close() is enough.
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    if (isStandalone) {
+      try { window.close(); } catch { /* opened by script only */ }
+      return;
     }
 
-    // Replace body content before Angular paints to avoid a blank/broken page.
+    const title = isDeepLink
+      ? 'Credencial enviada a EUDI Wallet'
+      : 'EUDI Wallet ya está abierto';
+    const subtitle = isDeepLink
+      ? 'La credencial se ha enviado a la pestaña activa de EUDI Wallet. Puedes cerrar esta pestaña.'
+      : 'Ya tienes EUDI Wallet abierto en otra pestaña. Puedes cerrar esta.'
+
     document.body.innerHTML = `
       <div style="
         display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -122,10 +183,11 @@ export class SingleInstanceService implements OnDestroy {
           stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
         </svg>
-        <h2 style="margin:0;font-size:1.25rem;">EUDI Wallet ya está abierto</h2>
-        <p style="margin:0;font-size:.9rem;color:#555;max-width:320px;">
-          Tu solicitud se ha enviado a la pestaña activa. Puedes cerrar esta pestaña.
+        <h2 style="margin:0;font-size:1.25rem;">${title}</h2>
+        <p style="margin:0;font-size:.9rem;color:#555;max-width:320px;line-height:1.5;">
+          ${subtitle}
         </p>
+        <p style="margin:0;font-size:.8rem;color:#aaa;max-width:320px;">Usa Ctrl+Tab para volver a la pestaña activa.</p>
         <button id="__wallet_close_btn" style="
           margin-top:8px;padding:10px 24px;border:none;border-radius:8px;
           background:#001E8C;color:#fff;font-size:.9rem;cursor:pointer;">
@@ -133,19 +195,30 @@ export class SingleInstanceService implements OnDestroy {
         </button>
       </div>`;
 
-    const btn = document.getElementById('__wallet_close_btn') as HTMLButtonElement;
-    btn.addEventListener('click', () => {
+    const closeBtn = document.getElementById('__wallet_close_btn') as HTMLButtonElement;
+    closeBtn.addEventListener('click', () => {
       window.close();
       setTimeout(() => {
-        btn.textContent = 'Cierra esta pestaña con Ctrl+W (⌘+W en Mac)';
-        btn.style.background = '#555';
-        btn.style.cursor = 'default';
-        btn.disabled = true;
+        closeBtn.textContent = 'Cierra esta pestaña con Ctrl+W (⌘+W en Mac)';
+        closeBtn.style.background = '#555';
+        closeBtn.style.cursor = 'default';
+        closeBtn.disabled = true;
       }, 300);
     });
   }
 
   public ngOnDestroy(): void {
     this.channel?.close();
+  }
+
+  private static stripBase(url: string): string {
+    const base = (document.querySelector('base')?.getAttribute('href') ?? '/').replace(/\/$/, '');
+    if (!base) return url;
+    if (!url.startsWith(base)) return url;
+    const rest = url.slice(base.length);
+    // Only strip when the match ends on a path segment boundary.
+    if (rest === '' || rest.startsWith('/')) return rest || '/';
+    if (rest.startsWith('?') || rest.startsWith('#')) return '/' + rest;
+    return url;
   }
 }

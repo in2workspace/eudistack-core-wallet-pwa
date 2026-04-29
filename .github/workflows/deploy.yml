@@ -23,8 +23,9 @@ jobs:
       run:
         working-directory: eudistack-core-wallet-pwa
     env:
-      AMPLIFY_APP_NAME: wallet-ui
-      BRANCH_NAME: main
+      SPA_PREFIX: wallet
+      S3_BUCKET: eudistack-${{ inputs.environment }}-s3-ew1-spa
+      CF_COMMENT_PREFIX: eudistack-${{ inputs.environment }}-cdn-ew1-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -50,25 +51,12 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build -- --output-path=./dist/out --configuration "production"
-
-      - name: Inject tenant assets
-        run: |
-          TENANT="altia"
-          ASSETS_DIR="dist/out/assets"
-          git clone --depth 1 https://github.com/in2workspace/eudistack-platform-assets.git /tmp/platform-assets
-          mkdir -p "${ASSETS_DIR}/tenant"
-          cp -r /tmp/platform-assets/tenants/${TENANT}/* "${ASSETS_DIR}/tenant/"
-          cp /tmp/platform-assets/tenants/${TENANT}/theme.json "${ASSETS_DIR}/theme.json"
-          echo "Injected ${TENANT} tenant assets"
+        run: npm run build -- --output-path=./dist/out --configuration "production" --base-href=/${SPA_PREFIX}/ --deploy-url=/${SPA_PREFIX}/
 
       - name: Generate env.js
         env:
-          WALLET_API_EXTERNAL_URL: ${{ vars.WALLET_API_EXTERNAL_URL }}
-          WALLET_API_WEBSOCKET_EXTERNAL_URL: ${{ vars.WALLET_API_WEBSOCKET_EXTERNAL_URL }}
           WALLET_MODE: ${{ vars.WALLET_MODE }}
           PREFERRED_GRANT: ${{ vars.PREFERRED_GRANT }}
-          OID4VCI_REDIRECT_URI: ${{ vars.OID4VCI_REDIRECT_URI }}
           LOGS_ENABLED: ${{ vars.LOGS_ENABLED }}
           WIA: ${{ secrets.WIA }}
           WIA_INSTANCE_KEY_JWK: ${{ secrets.WIA_INSTANCE_KEY_JWK }}
@@ -83,12 +71,6 @@ jobs:
             exit 1
           fi
 
-      - name: Create Zip
-        run: |
-          cd dist/out
-          zip -r ../out.zip .
-          echo "ZIP_FILE=eudistack-core-wallet-pwa/dist/out.zip" >> $GITHUB_ENV
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -96,31 +78,64 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Deploy to Amplify
-        working-directory: ${{ github.workspace }}
+      - name: Sync build to S3
         run: |
           set -euo pipefail
-          AMPLIFY_APP_ID=$(aws amplify list-apps --query "apps[?name=='${{ env.AMPLIFY_APP_NAME }}'] | [0].appId" --output text)
-          echo "AMPLIFY_APP_ID=$AMPLIFY_APP_ID" >> $GITHUB_ENV
 
-          DEPLOYMENT_OUTPUT=$(aws amplify create-deployment --app-id "${AMPLIFY_APP_ID}" --branch-name "${{ env.BRANCH_NAME }}" --output json)
-          ZIP_UPLOAD_URL=$(echo $DEPLOYMENT_OUTPUT | jq -r '.zipUploadUrl')
-          JOB_ID=$(echo $DEPLOYMENT_OUTPUT | jq -r '.jobId')
+          aws s3 sync dist/out/ "s3://${S3_BUCKET}/${SPA_PREFIX}/" \
+            --delete \
+            --exclude "index.html" \
+            --exclude "assets/env.js" \
+            --exclude "ngsw-worker.js" \
+            --exclude "ngsw.json" \
+            --exclude "manifest.webmanifest" \
+            --cache-control "public, max-age=31536000, immutable"
 
-          curl -X PUT --upload-file ${{ env.ZIP_FILE }} "${ZIP_UPLOAD_URL}"
-          aws amplify start-deployment --app-id "${AMPLIFY_APP_ID}" --branch-name "${{ env.BRANCH_NAME }}" --job-id "${JOB_ID}"
+          aws s3 cp dist/out/index.html "s3://${S3_BUCKET}/${SPA_PREFIX}/index.html" \
+            --cache-control "no-store" \
+            --content-type "text/html"
 
-          echo "### 🚀 Deployed to Amplify" >> $GITHUB_STEP_SUMMARY
-          echo "- **App:** ${{ env.AMPLIFY_APP_NAME }}" >> $GITHUB_STEP_SUMMARY
+          aws s3 cp dist/out/assets/env.js "s3://${S3_BUCKET}/${SPA_PREFIX}/assets/env.js" \
+            --cache-control "no-store" \
+            --content-type "application/javascript"
 
-      - name: Smoke test
-        working-directory: ${{ github.workspace }}
-        run: |
-          SITE_URL="https://wallet-${{ inputs.environment }}.altia.eudistack.net"
-          sleep 30
-          HTTP_STATUS=$(curl -sk -o /dev/null -w "%{http_code}" "${SITE_URL}" --max-time 15 || echo "000")
-          if [ "${HTTP_STATUS}" = "200" ]; then
-            echo "Smoke test passed (HTTP ${HTTP_STATUS})"
-          else
-            echo "::warning::Smoke test returned HTTP ${HTTP_STATUS}"
+          if [ -f dist/out/ngsw-worker.js ]; then
+            aws s3 cp dist/out/ngsw-worker.js "s3://${S3_BUCKET}/${SPA_PREFIX}/ngsw-worker.js" \
+              --cache-control "no-store" \
+              --content-type "application/javascript"
           fi
+
+          if [ -f dist/out/ngsw.json ]; then
+            aws s3 cp dist/out/ngsw.json "s3://${S3_BUCKET}/${SPA_PREFIX}/ngsw.json" \
+              --cache-control "no-store" \
+              --content-type "application/json"
+          fi
+
+          if [ -f dist/out/manifest.webmanifest ]; then
+            aws s3 cp dist/out/manifest.webmanifest "s3://${S3_BUCKET}/${SPA_PREFIX}/manifest.webmanifest" \
+              --cache-control "no-store" \
+              --content-type "application/manifest+json"
+          fi
+
+      - name: Invalidate all tenant CloudFront distributions
+        run: |
+          set -euo pipefail
+
+          DIST_IDS=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?starts_with(Comment, '${CF_COMMENT_PREFIX}')].Id" \
+            --output text)
+
+          if [ -z "${DIST_IDS}" ]; then
+            echo "::error::No CloudFront distributions found for prefix '${CF_COMMENT_PREFIX}'"
+            exit 1
+          fi
+
+          echo "### Deployed to S3 + CloudFront" >> $GITHUB_STEP_SUMMARY
+          echo "- **Bucket:** s3://${S3_BUCKET}/${SPA_PREFIX}/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Invalidations:**" >> $GITHUB_STEP_SUMMARY
+          for DIST_ID in ${DIST_IDS}; do
+            aws cloudfront create-invalidation \
+              --distribution-id "${DIST_ID}" \
+              --paths "/${SPA_PREFIX}/*" >/dev/null
+            echo "  - ${DIST_ID}" >> $GITHUB_STEP_SUMMARY
+          done

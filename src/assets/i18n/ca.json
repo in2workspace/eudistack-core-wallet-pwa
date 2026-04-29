@@ -89,7 +89,8 @@
             "install-title": "Instal·lar l'App",
             "install-subtitle": "Per a la millor experiència i accés offline, instal·la l'app del wallet al teu dispositiu.",
             "install-button": "Instal·lar App",
-            "continue-browser": "Continuar al navegador"
+            "continue-browser": "Continuar al navegador",
+            "already-registered": "Ja tens un compte? Inicia sessió"
         },
         "passkey": {
             "title": "Configurar Passkey",
@@ -100,6 +101,10 @@
             "status-connecting": "Preparant...",
             "status-verifying": "Esperant el teu dispositiu...",
             "retry": "Tornar-ho a provar"
+        },
+        "errors": {
+            "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",
+            "too-many-attempts-otp": "Massa intents incorrectes. Si us plau, sol·licita un nou codi."
         }
     },
     "login":{
@@ -107,6 +112,10 @@
         "login":"Login",
         "register":"No estàs registrat? Registra't",
         "error": "Nom d'usuari o contrasenya incorrectes"
+    },
+    "errors": {
+        "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",
+        "too-many-attempts-otp": "Massa intents incorrectes. Si us plau, sol·licita un nou codi."
     },
     "privacy-policy":{
         "title":"Política de Privacitat"
@@ -118,7 +127,11 @@
         "dark-mode": "Mode fosc",
         "dark-mode-desc": "Canviar al tema fosc",
         "about": "Sobre",
-        "version": "Versió"
+        "version": "Versió",
+        "knowledge-base": "Base de coneixement",
+        "wallet-mode-label": "Tipus de wallet",
+        "wallet-mode-eudiw": "EUDIW",
+        "wallet-mode-business": "Business Wallet"
     },
     "terms-of-use":{
         "title":"Termes d'Ús"
@@ -262,6 +275,7 @@
         "cannot-download-auth-server-metadata": "No hem pogut connectar amb el servidor d’autorització. Torna-ho a provar.",
         "cannot-download-issuerMetadata": "No hem pogut connectar amb l’emissor. Torna-ho a provar.",
         "cannot-download-credentialOffer": "No hem pogut descarregar l’oferta de credencial. Torna-ho a provar.",
+        "cross-tenant-offer": "Aquesta oferta de credencial pertany a un altre tenant i no es pot afegir a aquesta wallet.",
         "invalid-credential-configuration": "Aquesta oferta conté una configuració de credencial no vàlida.",
         "unsupported-credential-format": "Aquest tipus de credencial no és compatible amb aquesta wallet.",
         "invalid-jwt": "Hem rebut un token de credencial no vàlid.",

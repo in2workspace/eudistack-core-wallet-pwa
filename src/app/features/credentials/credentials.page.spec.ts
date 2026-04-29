@@ -27,6 +27,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
   let mockAuthorizationRequestService: { parseAuthorizationRequestFromQr: jest.Mock };
   let mockCredentialCacheService: { getAll: jest.Mock; findCredentialsByDcqlQuery: jest.Mock; findCredentialsByScope: jest.Mock; syncFromBackend: jest.Mock };
   let mockToastServiceHandler: { showErrorAlertByTranslateLabel: jest.Mock; showToast: jest.Mock; showErrorAlert: jest.Mock };
+  let mockHaptic: any;
 
   const mockValidVc: VerifiableCredential = { id: 'vc-valid', lifeCycleStatus: 'VALID' } as any;
   const mockRevokedVc: VerifiableCredential = { id: 'vc-revoked', lifeCycleStatus: 'REVOKED' } as any;
@@ -93,6 +94,53 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
 
     fixture = TestBed.createComponent(CredentialsPage);
     component = fixture.componentInstance;
+    mockHaptic = TestBed.inject(HapticService);
+  });
+
+  describe('CredentialsPage - qrCodeEmit', () => {
+    it('should show error and return if QR content is not supported', () => {
+      const invalidQr = 'not-supported-content';
+      const toastSpy = mockToastServiceHandler.showErrorAlertByTranslateLabel;
+
+      component.qrCodeEmit(invalidQr);
+
+      expect(mockHaptic.notification).toHaveBeenCalled();
+      expect(toastSpy).toHaveBeenCalledWith('errors.invalid-qr');
+    });
+
+    it('should handle Credential Offer (VCI) from a URL and extract the URI', () => {
+      const complexQr = 'https://issuer.com/api?credential_offer_uri=openid-credential-offer://encoded-data';
+      const closeViewSpy = jest.spyOn(component, 'closeScannerViewAndScanner');
+      const flowSpy = jest.spyOn(component as any, 'credentialActivationFlow').mockImplementation();
+
+      component.qrCodeEmit(complexQr);
+
+      expect(closeViewSpy).toHaveBeenCalled();
+      expect(flowSpy).toHaveBeenCalledWith('openid-credential-offer://encoded-data');
+    });
+
+    it('should handle direct Credential Offer (VCI) string', () => {
+      const directQr = 'credential_offer_uri=direct-vci-data';
+      const closeViewSpy = jest.spyOn(component, 'closeScannerViewAndScanner');
+      const flowSpy = jest.spyOn(component as any, 'credentialActivationFlow').mockImplementation();
+
+      component.qrCodeEmit(directQr);
+
+      expect(closeViewSpy).toHaveBeenCalled();
+      expect(flowSpy).toHaveBeenCalledWith(directQr);
+    });
+
+    it('should handle Verifiable Presentation (VP) flow', () => {
+      const vpQr = 'openid4vp://authorize?request_uri=https://verifier.com';
+      const closeScannerSpy = jest.spyOn(component, 'closeScanner');
+      const flowSpy = jest.spyOn(component as any, 'verifiablePresentationFlow').mockImplementation();
+
+      component.qrCodeEmit(vpQr);
+
+      expect(closeScannerSpy).toHaveBeenCalled();
+      // En VP no se cierra la vista completa (showScannerView), solo el scanner
+      expect(flowSpy).toHaveBeenCalledWith(vpQr);
+    });
   });
 
   describe('when no valid VCs are found (selectableVcList.length === 0 after filter)', () => {

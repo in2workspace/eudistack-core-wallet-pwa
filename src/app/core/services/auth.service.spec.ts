@@ -69,7 +69,7 @@ describe('RemoteAuthService', () => {
 
       const req = httpMock.expectOne(`${AUTH_BASE}/register`);
       expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ email: 'test@example.com' });
+      expect(req.request.body).toEqual({ email: 'test@example.com', mode: 'register' });
       req.flush({ message: 'ok' });
     });
   });
@@ -95,27 +95,47 @@ describe('RemoteAuthService', () => {
   });
 
   describe('logout', () => {
-    it('should POST to /logout and clear state', (done) => {
+    it('clears access token and authenticated state without HTTP call', (done) => {
+      const broadcastSpy = jest.spyOn((service as any).broadcastChannel, 'postMessage');
       (service as any).refreshTokenValue = 'refresh-123';
       (service as any).accessToken = 'access-456';
       (service as any).authenticated$.next(true);
+      localStorage.setItem('wallet_refresh_token', 'refresh-123');
 
       service.logout().subscribe(() => {
         expect(service.getToken()).toBe('');
         expect(service.isLoggedIn()).toBe(false);
+        expect(broadcastSpy).toHaveBeenCalledWith('softWalletLogout');
+        // refreshToken must be preserved so the user only needs their passkey to resume
+        expect((service as any).refreshTokenValue).toBe('refresh-123');
+        expect(localStorage.getItem('wallet_refresh_token')).toBe('refresh-123');
         done();
       });
-
-      const req = httpMock.expectOne(`${AUTH_BASE}/logout`);
-      expect(req.request.body).toEqual({ refreshToken: 'refresh-123' });
-      req.flush(null);
+      httpMock.expectNone(`${AUTH_BASE}/logout`);
     });
 
-    it('should clear state even without refresh token', (done) => {
+    it('preserves refresh token when logging out with no active access token', (done) => {
+      (service as any).refreshTokenValue = 'stored-rt';
+      localStorage.setItem('wallet_refresh_token', 'stored-rt');
+
       service.logout().subscribe(() => {
         expect(service.isLoggedIn()).toBe(false);
+        expect((service as any).refreshTokenValue).toBe('stored-rt');
+        expect(localStorage.getItem('wallet_refresh_token')).toBe('stored-rt');
         done();
       });
+    });
+  });
+
+  describe('loadStoredTokens', () => {
+    it('keeps refresh token in memory but does not auto-authenticate', () => {
+      localStorage.setItem('wallet_refresh_token', 'persisted-rt');
+
+      (service as any).loadStoredTokens();
+
+      httpMock.expectNone(`${AUTH_BASE}/refresh`);
+      expect(service.isLoggedIn()).toBe(false);
+      expect((service as any).refreshTokenValue).toBe('persisted-rt');
     });
   });
 
@@ -171,5 +191,48 @@ describe('RemoteAuthService', () => {
     const closeSpy = jest.spyOn((service as any).broadcastChannel, 'close');
     service.ngOnDestroy();
     expect(closeSpy).toHaveBeenCalled();
+  });
+
+  describe('dispose', () => {
+    it('sets disposed flag, clears refresh timer and closes broadcast channel', () => {
+      const closeSpy = jest.spyOn((service as any).broadcastChannel, 'close');
+      const timer = setTimeout(() => {}, 60_000);
+      (service as any).refreshTimer = timer;
+
+      service.dispose();
+
+      expect((service as any).disposed).toBe(true);
+      expect((service as any).refreshTimer).toBeNull();
+      expect(closeSpy).toHaveBeenCalled();
+    });
+
+    it('is idempotent — calling twice does not throw', () => {
+      const closeSpy = jest.spyOn((service as any).broadcastChannel, 'close');
+
+      expect(() => {
+        service.dispose();
+        service.dispose();
+      }).not.toThrow();
+
+      expect(closeSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('after dispose(), refresh failure does not trigger forceLogout or navigation', () => {
+      (service as any).refreshTokenValue = 'refresh-abc';
+      service.dispose();
+
+      service.refreshAccessToken().subscribe({ error: () => {} });
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
+      req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+
+      expect(routerMock.navigate).not.toHaveBeenCalled();
+    });
+
+    it('ngOnDestroy() delegates to dispose()', () => {
+      const disposeSpy = jest.spyOn(service, 'dispose');
+      service.ngOnDestroy();
+      expect(disposeSpy).toHaveBeenCalled();
+    });
   });
 });

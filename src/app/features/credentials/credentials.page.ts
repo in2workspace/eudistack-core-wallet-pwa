@@ -96,6 +96,15 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         this.authorizationRequest = params['authorizationRequest'] ?? '';
         this.selectedCredentialId = params['id'] ?? null;
         this.cdr.detectChanges();
+
+        // IonicRouteStrategy caches pages — ngOnInit won't re-run when the leader tab
+        // receives a NAVIGATE from single-instance and lands here with a new offer URI.
+        // If credentials are already loaded, trigger the flow directly.
+        if (this.isFirstCredentialLoadCompleted && this.credentialOfferUri) {
+          this.sameDeviceVcActivationFlow(this.credentialOfferUri);
+        } else if (this.isFirstCredentialLoadCompleted && this.authorizationRequest) {
+          this.verifiablePresentationFlow(this.authorizationRequest);
+        }
       });
   }
 
@@ -213,19 +222,33 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       return;
     }
 
+    let uriToProcess = qrCode;
+
+    if (qrCode.toLowerCase().startsWith('http')) {
+      try {
+        const url = new URL(qrCode);
+        const extractedUri = url.searchParams.get('credential_offer_uri');
+        if (extractedUri) {
+          uriToProcess = extractedUri;
+        }
+      } catch (e) {
+        console.warn('Could not parse as URL; attempting to process the original string.');
+      }
+    }
+
     const isCredentialOffer = qrCode.includes('credential_offer_uri');
     if(isCredentialOffer){
       //CROSS-DEVICE VC OFFER
       //show VCs list
       this.closeScannerViewAndScanner();
       console.info('Requesting Credential Offer via cross-device flow.');
-      this.credentialActivationFlow(qrCode);
+      this.credentialActivationFlow(uriToProcess);
     }else{
       // VERIFIABLE PRESENTATION
       // hide scanner but don't show VCs list
       this.closeScanner();
       console.info('Processing QR code for verifiable presentation.');
-      this.verifiablePresentationFlow(qrCode);
+      this.verifiablePresentationFlow(uriToProcess);
       }
   }
 

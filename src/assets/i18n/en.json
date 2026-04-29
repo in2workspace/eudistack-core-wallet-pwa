@@ -95,7 +95,8 @@
             "install-title": "Install the App",
             "install-subtitle": "For the best experience and offline access, install the wallet app on your device.",
             "install-button": "Install App",
-            "continue-browser": "Continue in browser"
+            "continue-browser": "Continue in browser",
+            "already-registered": "Already have an account? Log in"
         },
         "passkey": {
             "title": "Set up Passkey",
@@ -110,6 +111,10 @@
         "reauth": {
             "subtitle": "Verify your email to restore your session",
             "back-to-login": "Back to login"
+        },
+        "errors": {
+            "too-many-attempts": "Too many attempts. Please try again later.",
+            "too-many-attempts-otp": "Too many incorrect attempts. Please request a new code."
         }
     },
     "login":{
@@ -128,7 +133,11 @@
         "dark-mode": "Dark mode",
         "dark-mode-desc": "Switch to dark theme",
         "about": "About",
-        "version": "Version"
+        "version": "Version",
+        "knowledge-base": "Knowledge base",
+        "wallet-mode-label": "Wallet type",
+        "wallet-mode-eudiw": "EUDIW",
+        "wallet-mode-business": "Business Wallet"
     },
     "terms-of-use":{
         "title":"Terms Of Use"
@@ -267,6 +276,7 @@
         "cannot-download-auth-server-metadata": "We couldn’t reach the authorization server. Please try again.",
         "cannot-download-issuerMetadata": "We couldn’t reach the issuer. Please try again.",
         "cannot-download-credentialOffer": "We couldn’t download the credential offer. Please try again.",
+        "cross-tenant-offer": "This credential offer comes from a different tenant and cannot be added to this wallet.",
         "invalid-credential-configuration": "This offer contains an invalid credential configuration.",
         "unsupported-credential-format": "This credential type isn’t supported by this wallet.",
         "invalid-jwt": "We received an invalid credential token.",
