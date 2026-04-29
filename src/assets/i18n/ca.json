@@ -401,5 +401,32 @@
         "title": "Tenant no trobat",
         "message": "El subdomini «{{hostname}}» no correspon a cap tenant vàlid.",
         "cta": "Anar a l'entorn sandbox"
+    },
+    "ios-install": {
+        "title": "Instal·la la wallet primer",
+        "subtitle": "A iOS, l'app instal·lada i Safari tenen emmagatzematge completament separat. Si et registres aquí primer, perdràs les teves credencials i sessió quan instal·lis l'app després.",
+        "icon-aria": "Il·lustració de telèfon mòbil",
+        "steps-aria": "Passos per instal·lar la wallet a iOS",
+        "step1": "Toca el botó Compartir",
+        "step1-detail": "Busca la icona de compartir (quadre amb una fletxa) a la part inferior de Safari",
+        "step2": "Desplaça't cap avall i toca Més",
+        "step2-detail": "Llisca cap amunt al full de compartir i busca 'Més opcions'",
+        "step3": "Toca Afegir a la pantalla d'inici",
+        "step3-detail": "Selecciona 'Afegir a la pantalla d'inici' de la llista d'opcions",
+        "step4": "Obre l'app des de la teva pantalla d'inici",
+        "step4-detail": "Toca la icona de la wallet a la teva pantalla d'inici per obrir-la",
+        "learn-more": "Per què és necessari?",
+        "learn-more-body": "Apple aïlla l'emmagatzematge (credencials, sessió) de les apps instal·lades respecte a Safari. Si et registres a Safari i després instal·les l'app, perdries totes les teves dades i hauries de tornar a registrar-te. Instal·lant primer evites aquest problema.",
+        "learn-more-close": "Entès",
+        "continue-browser": "Continuar al navegador",
+        "continue-anyway": "Continuar al navegador de totes maneres",
+        "confirm-title": "Estàs segur?",
+        "confirm-message": "Si continues sense instal·lar l'app, perdràs les teves credencials i sessió quan la instal·lis més endavant. Et recomanem instal·lar primer.",
+        "confirm-ok": "Continuar de totes maneres",
+        "confirm-cancel": "Cancel·lar",
+        "already-bootstrapped-title": "Tens dades a Safari",
+        "already-bootstrapped-subtitle": "Ja has configurat la teva wallet a Safari. Si instal·les l'app ara i l'obres, les teves credencials i sessió no hi estaran disponibles. Instal·la l'app i després torna a registrar-te.",
+        "standalone-divergence-title": "Sessió no trobada en aquesta app",
+        "standalone-divergence-subtitle": "Si tenies credencials o una sessió a Safari, no estan disponibles aquí. Si us plau, torna a autenticar-te i importa les teves credencials."
     }
 }

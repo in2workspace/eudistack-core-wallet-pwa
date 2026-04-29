@@ -1,5 +1,38 @@
 @use 'responsive' as *;
 
+// AC-008.8: iOS standalone EBW divergence informational banner
+.standalone-divergence-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--ion-color-warning-tint, #fff8e1);
+  border: 1px solid var(--ion-color-warning, #ffc409);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--ion-text-color, #1a1a1a);
+
+  ion-icon {
+    font-size: 20px;
+    color: var(--ion-color-warning-shade, #e0ac08);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  strong {
+    font-weight: 600;
+    display: block;
+  }
+}
+
 .auth-bg {
   --background: linear-gradient(135deg, var(--auth-background, var(--primary-color)) 0%, var(--auth-gradient-end, var(--secondary-color)) 100%);
 }
