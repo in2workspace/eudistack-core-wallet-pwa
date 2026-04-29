@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { Router, ActivatedRoute } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.service';
 import { LocalAuthService } from 'src/app/core/services/local-auth.service';
 import { ThemeService } from 'src/app/core/services/theme.service';
@@ -80,32 +80,6 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
 
           <!-- Server mode: email + OTP flow, then local passkey creation -->
           <ng-container *ngIf="!isBrowserMode && ((pwaInstall.installDecision$ | async) === false || !showInstallScreen)">
-            <!-- Steps bar: hide step 3 if in reauth mode (passkey already exists) -->
-            <div class="steps-bar">
-              <div class="step" [class.active]="step === 'email'" [class.done]="step !== 'email'">
-                <div class="step-dot">
-                  <ion-icon *ngIf="step !== 'email'" name="checkmark"></ion-icon>
-                  <span *ngIf="step === 'email'">1</span>
-                </div>
-                <span class="step-label">{{ 'auth.register.step-email' | translate }}</span>
-              </div>
-              <div class="step-line" [class.filled]="step !== 'email'"></div>
-              <div class="step" [class.active]="step === 'code'" [class.done]="step === 'passkey' || (isReauthMode && step === 'code')">
-                <div class="step-dot">
-                  <ion-icon *ngIf="step === 'passkey' || (isReauthMode && verifiedEmail)" name="checkmark"></ion-icon>
-                  <span *ngIf="step !== 'passkey' && !(isReauthMode && verifiedEmail)">2</span>
-                </div>
-                <span class="step-label">{{ 'auth.register.step-verify' | translate }}</span>
-              </div>
-              <ng-container *ngIf="!isReauthMode">
-                <div class="step-line" [class.filled]="step === 'passkey'"></div>
-                <div class="step" [class.active]="step === 'passkey'">
-                  <div class="step-dot"><span>3</span></div>
-                  <span class="step-label">{{ 'auth.passkey.title' | translate }}</span>
-                </div>
-              </ng-container>
-            </div>
-
             <h2 class="auth-title">
               {{ isReauthMode ? ('auth.login.title' | translate) : ('auth.register.title' | translate) }}
             </h2>
@@ -130,10 +104,15 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
                 ></ion-input>
               </div>
 
-              <ion-button expand="block" (click)="sendCode()" [disabled]="!email || loading" class="auth-button">
+              <ion-button expand="block" (click)="email && !loading && sendCode()" [disabled]="loading" [class.inactive-email]="!email && !loading" class="auth-button">
                 <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
                 <ion-icon *ngIf="!loading" name="paper-plane-outline" slot="start"></ion-icon>
                 <span *ngIf="!loading">{{ 'auth.register.send-code' | translate }}</span>
+              </ion-button>
+
+              <!-- Already registered link -->
+              <ion-button *ngIf="!isReauthMode" expand="block" fill="clear" (click)="goBackToLogin()" class="secondary-button">
+                {{ 'auth.register.already-registered' | translate }}
               </ion-button>
 
               <!-- Back to login button in reauth mode -->
@@ -146,7 +125,6 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
             <!-- Step 2: OTP code -->
             <div *ngIf="step === 'code'" class="auth-form">
               <div class="email-badge">
-                <ion-icon name="mail-outline"></ion-icon>
                 <span>{{ email }}</span>
               </div>
 
@@ -155,18 +133,16 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
                 [length]="6"
                 [autofocus]="true"
                 [error]="!!errorMessage"
-                (completed)="onOtpCompleted($event)"
                 (changed)="otpValue = $event; errorMessage = ''"
               ></app-otp-input>
 
-              <ion-button expand="block" (click)="verifyCode()" [disabled]="otpValue.length < 6 || loading" class="auth-button">
+              <ion-button expand="block" (click)="otpValue.length >= 6 && !loading && verifyCode()" [disabled]="loading" [class.inactive-email]="otpValue.length < 6 && !loading" class="auth-button">
                 <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
                 <ion-icon *ngIf="!loading" name="shield-checkmark-outline" slot="start"></ion-icon>
                 <span *ngIf="!loading">{{ 'auth.register.verify' | translate }}</span>
               </ion-button>
 
               <ion-button expand="block" fill="clear" (click)="goBackToEmail()" class="secondary-button">
-                <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
                 {{ 'auth.register.change-email' | translate }}
               </ion-button>
             </div>
@@ -224,6 +200,7 @@ export class RegisterPage implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly prfService = inject(PasskeyPrfService);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
 
@@ -290,7 +267,9 @@ export class RegisterPage implements OnInit {
         this.loading = false;
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Failed to send verification code';
+        this.errorMessage = err?.status === 429
+          ? this.translate.instant('auth.errors.too-many-attempts')
+          : (err?.error?.message || err?.error?.detail || 'Failed to send verification code');
         this.loading = false;
       }
     });
@@ -305,16 +284,16 @@ export class RegisterPage implements OnInit {
         this.loading = false;
         this.verifiedEmail = true;
 
-        if (this.isReauthMode) {
-          // User already has a passkey, skip to home
+        if (this.isReauthMode || this.passkeyStore.hasPasskey()) {
           this.navigateHome();
         } else {
-          // New registration, proceed to passkey creation
           this.step = 'passkey';
         }
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Invalid verification code';
+        this.errorMessage = err?.status === 429
+          ? this.translate.instant('auth.errors.too-many-attempts-otp')
+          : (err?.error?.message || err?.error?.detail || 'Invalid verification code');
         this.loading = false;
       }
     });
@@ -325,10 +304,11 @@ export class RegisterPage implements OnInit {
     this.errorMessage = '';
 
     try {
-      // Create passkey locally
       await this.prfService.createPasskey(this.email || 'Wallet User');
 
-      // Register passkey on the server (US-005)
+      // Navigate immediately — server registration happens in background
+      this.navigateHome();
+
       const credentialId = this.passkeyStore.getCredentialId();
       if (credentialId) {
         this.passkeyApi.registerPasskey({
@@ -336,15 +316,8 @@ export class RegisterPage implements OnInit {
           displayName: this.getDeviceName(),
           userAgent: navigator.userAgent
         }).subscribe({
-          next: () => this.navigateHome(),
-          error: (err: any) => {
-            // Log but don't block - passkey is already created locally
-            console.warn('Failed to register passkey on server:', err);
-            this.navigateHome();
-          }
+          error: (err: any) => console.warn('Failed to register passkey on server:', err)
         });
-      } else {
-        this.navigateHome();
       }
     } catch (err: any) {
       this.errorMessage = err?.message || 'Failed to create passkey';

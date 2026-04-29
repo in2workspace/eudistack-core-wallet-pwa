@@ -6,16 +6,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.4.2] — 2026-04-29
+## [3.5.0] - 2026-04-28
+
+### Added
+- Add tests for single-instance and auth service.
+- Unit tests for `CredentialOfferService` tenant validation.
 
 ### Fixed
-
+- **PasskeyPrf key storage** — wallet always uses `PasskeyPrf` key storage until EUDI-041 (key management) is ready, preventing fallback to weaker storage in server mode.
+- **Passkey handling for device registration** — improved passkey flow and user-facing error states during device registration to avoid dead-ends when the authenticator interaction fails.
+- **OTP input** — removed spurious `completed` event emission that triggered double-submit in some flows.
+- **`settings.page.spec.ts`** — added `ThemeService` stub (null snapshot) to `TestBed`. The spec was failing in CI with `NullInjectorError: No provider for HttpClient` since commit 596f3a0 because `ThemeService` injects `HttpClient` and the spec did not provide it.
+- **OID4VCI `redirect_uri` multi-tenant** — removed the build-time `OID4VCI_REDIRECT_URI` variable. The same bundle is deployed to all tenants and `redirect_uri` is now derived at runtime from `window.location.origin`. Root cause of the reported 504: the hardcoded host (`wallet-stg.altia.eudistack.net`) did not resolve in DNS after EUDI-094.
+- **Multi-tab (Single Instance)** — fixed infinite login redirection loop in the main tab when a second Wallet tab was opened; secondary tab now correctly detects the leader and halts cleanly without corrupting session tokens.
 - WCAG 2.1 AA compliance improvements (PRB-002 F-H08). Added missing ARIA attributes to icon-only buttons/images, hid decorative icons from screen readers, and fixed heading hierarchy in settings.
 
-## [3.4.0] — 2026-04-28
+### Changed
+
+- **PRF handling streamlined** — refactored PRF key derivation path to consolidate biometric prompt triggers; duplicate prompts in multi-step flows eliminated.
+- **Logout process** — streamlined logout to clear session state in a single pass; removed intermediate redirect steps that caused flicker on some devices.
+- **Registration and login pages** — removed steps bar component; replaced with inline progress cues to reduce visual noise.
+- **Button styles** — updated primary/secondary button styles for consistency across auth screens.
+- **Wallet API URLs derived from `window.location`** — `server_url` and `websocket_url` are now derived from the origin at runtime. This allows the same bundle to serve all tenants, assuming CloudFront/nginx proxies `/business-wallet/*` to the corresponding tenant's EBW.
+- **Multi-tab single-instance** — simplified single-instance handling: removed unreliable cross-tab focus attempts; duplicate tabs now show a clear "close this tab" UI; deep-links are processed by the already-open tab.
+
+
+## [3.4.0] - 2026-04-28
 
 ### Added
 
+- **Cross-tenant credential offer validation** — `CredentialOfferService` now validates that the credential offer belongs to the current tenant, rejecting cross-tenant offers with a dedicated error message and i18n keys.
+- **Session master handling for PRF** — implements session master key derivation to reuse existing PRF material across operations, reducing the number of biometric prompts required per session.
+- **Registration flow `mode` parameter** — registration route accepts a `mode` query param to distinguish device-passkey vs browser flows; UI text updated accordingly for clearer user guidance.
 - **Settings → Wallet type badge** — la página de Ajustes muestra ahora un indicador del modo del wallet (`EUDIW` cuando `wallet_mode === 'browser'`, `Business Wallet` cuando `wallet_mode === 'server'`). Permite al usuario distinguir de un vistazo en qué tipo de wallet está operando, alineado con la documentación pública (`docs.eudistack.net`).
   - `settings.page.{ts,html}` — nuevo `walletModeKey` y `<ion-badge>` justo encima del item *About*.
   - `i18n/{en,es,ca}.json` — claves `settings.wallet-mode-label`, `wallet-mode-eudiw`, `wallet-mode-business`.
