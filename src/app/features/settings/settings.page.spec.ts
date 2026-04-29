@@ -10,7 +10,6 @@ import { ThemeService } from 'src/app/core/services/theme.service';
 import { EventEmitter, NO_ERRORS_SCHEMA, signal } from '@angular/core';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
-import { ThemeService } from 'src/app/core/services/theme.service';
 
 
 const translateServiceMock = {
