@@ -88,7 +88,8 @@
             "install-title": "Instalar la App",
             "install-subtitle": "Para la mejor experiencia y acceso offline, instala la app del wallet en tu dispositivo.",
             "install-button": "Instalar App",
-            "continue-browser": "Continuar en el navegador"
+            "continue-browser": "Continuar en el navegador",
+            "already-registered": "¿Ya tienes una cuenta? Inicia sesión"
         },
         "passkey": {
             "title": "Configurar Passkey",
@@ -103,6 +104,10 @@
         "reauth": {
             "subtitle": "Verifica tu email para restaurar tu sesión",
             "back-to-login": "Volver al login"
+        },
+        "errors": {
+            "too-many-attempts": "Demasiados intentos. Por favor, inténtalo más tarde.",
+            "too-many-attempts-otp": "Demasiados intentos incorrectos. Por favor, solicita un nuevo código."
         }
     },
     "login":{
@@ -266,6 +271,7 @@
         "cannot-download-auth-server-metadata": "No hemos podido conectarnos al servidor de autorización. Inténtalo de nuevo.",
         "cannot-download-issuerMetadata": "No hemos podido conectarnos con el emisor. Inténtalo de nuevo.",
         "cannot-download-credentialOffer": "No hemos podido descargar la oferta de credencial. Inténtalo de nuevo.",
+        "cross-tenant-offer": "Esta oferta de credencial pertenece a otro tenant y no puede añadirse a esta wallet.",
         "invalid-credential-configuration": "Esta oferta contiene una configuración de credencial no válida.",
         "unsupported-credential-format": "Este tipo de credencial no es compatible con esta wallet.",
         "invalid-jwt": "Hemos recibido un token de credencial no válido.",

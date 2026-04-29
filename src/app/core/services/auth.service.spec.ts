@@ -69,7 +69,7 @@ describe('RemoteAuthService', () => {
 
       const req = httpMock.expectOne(`${AUTH_BASE}/register`);
       expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ email: 'test@example.com' });
+      expect(req.request.body).toEqual({ email: 'test@example.com', mode: 'register' });
       req.flush({ message: 'ok' });
     });
   });
@@ -95,27 +95,47 @@ describe('RemoteAuthService', () => {
   });
 
   describe('logout', () => {
-    it('should POST to /logout and clear state', (done) => {
+    it('clears access token and authenticated state without HTTP call', (done) => {
+      const broadcastSpy = jest.spyOn((service as any).broadcastChannel, 'postMessage');
       (service as any).refreshTokenValue = 'refresh-123';
       (service as any).accessToken = 'access-456';
       (service as any).authenticated$.next(true);
+      localStorage.setItem('wallet_refresh_token', 'refresh-123');
 
       service.logout().subscribe(() => {
         expect(service.getToken()).toBe('');
         expect(service.isLoggedIn()).toBe(false);
+        expect(broadcastSpy).toHaveBeenCalledWith('softWalletLogout');
+        // refreshToken must be preserved so the user only needs their passkey to resume
+        expect((service as any).refreshTokenValue).toBe('refresh-123');
+        expect(localStorage.getItem('wallet_refresh_token')).toBe('refresh-123');
         done();
       });
-
-      const req = httpMock.expectOne(`${AUTH_BASE}/logout`);
-      expect(req.request.body).toEqual({ refreshToken: 'refresh-123' });
-      req.flush(null);
+      httpMock.expectNone(`${AUTH_BASE}/logout`);
     });
 
-    it('should clear state even without refresh token', (done) => {
+    it('preserves refresh token when logging out with no active access token', (done) => {
+      (service as any).refreshTokenValue = 'stored-rt';
+      localStorage.setItem('wallet_refresh_token', 'stored-rt');
+
       service.logout().subscribe(() => {
         expect(service.isLoggedIn()).toBe(false);
+        expect((service as any).refreshTokenValue).toBe('stored-rt');
+        expect(localStorage.getItem('wallet_refresh_token')).toBe('stored-rt');
         done();
       });
+    });
+  });
+
+  describe('loadStoredTokens', () => {
+    it('keeps refresh token in memory but does not auto-authenticate', () => {
+      localStorage.setItem('wallet_refresh_token', 'persisted-rt');
+
+      (service as any).loadStoredTokens();
+
+      httpMock.expectNone(`${AUTH_BASE}/refresh`);
+      expect(service.isLoggedIn()).toBe(false);
+      expect((service as any).refreshTokenValue).toBe('persisted-rt');
     });
   });
 

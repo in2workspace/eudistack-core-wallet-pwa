@@ -145,10 +145,6 @@ export class OtpInputComponent implements AfterViewInit {
       }
 
       this.changed.emit(this.value);
-
-      if (this.value.length === this.length) {
-        this.completed.emit(this.value);
-      }
     } else {
       this.digits[index] = '';
       input.value = '';
@@ -195,10 +191,6 @@ export class OtpInputComponent implements AfterViewInit {
     this.focusBox(nextEmpty >= 0 ? nextEmpty : this.length - 1);
 
     this.changed.emit(this.value);
-
-    if (this.value.length === this.length) {
-      this.completed.emit(this.value);
-    }
   }
 
   onFocus(index: number): void {
