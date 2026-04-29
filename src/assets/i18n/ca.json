@@ -403,10 +403,10 @@
         "cta": "Anar a l'entorn sandbox"
     },
     "ios-install": {
-        "title": "Instal·la la wallet primer",
+        "title": "Instal·la Wallet primer",
         "subtitle": "A iOS, l'app instal·lada i Safari tenen emmagatzematge completament separat. Si et registres aquí primer, perdràs les teves credencials i sessió quan instal·lis l'app després.",
         "icon-aria": "Il·lustració de telèfon mòbil",
-        "steps-aria": "Passos per instal·lar la wallet a iOS",
+        "steps-aria": "Passos per instal·lar Wallet a iOS",
         "step1": "Toca el botó Compartir",
         "step1-detail": "Busca la icona de compartir (quadre amb una fletxa) a la part inferior de Safari",
         "step2": "Desplaça't cap avall i toca Més",
@@ -414,7 +414,7 @@
         "step3": "Toca Afegir a la pantalla d'inici",
         "step3-detail": "Selecciona 'Afegir a la pantalla d'inici' de la llista d'opcions",
         "step4": "Obre l'app des de la teva pantalla d'inici",
-        "step4-detail": "Toca la icona de la wallet a la teva pantalla d'inici per obrir-la",
+        "step4-detail": "Toca la icona de Wallet a la teva pantalla d'inici per obrir-la",
         "learn-more": "Per què és necessari?",
         "learn-more-body": "Apple aïlla l'emmagatzematge (credencials, sessió) de les apps instal·lades respecte a Safari. Si et registres a Safari i després instal·les l'app, perdries totes les teves dades i hauries de tornar a registrar-te. Instal·lant primer evites aquest problema.",
         "learn-more-close": "Entès",

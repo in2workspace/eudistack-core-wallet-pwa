@@ -403,10 +403,10 @@
         "cta": "Ir al entorno sandbox"
     },
     "ios-install": {
-        "title": "Instala la wallet primero",
+        "title": "Instala Wallet primero",
         "subtitle": "En iOS, la app instalada y Safari tienen almacenamiento completamente separado. Si te registras aquí primero, perderás tus credenciales y sesión al instalar la app después.",
         "icon-aria": "Ilustración de teléfono móvil",
-        "steps-aria": "Pasos para instalar la wallet en iOS",
+        "steps-aria": "Pasos para instalar Wallet en iOS",
         "step1": "Toca el botón Compartir",
         "step1-detail": "Busca el icono de compartir (cuadro con una flecha) en la parte inferior de Safari",
         "step2": "Desplázate hacia abajo y toca Más",
@@ -414,7 +414,7 @@
         "step3": "Toca Añadir a pantalla de inicio",
         "step3-detail": "Selecciona 'Añadir a pantalla de inicio' de la lista de opciones",
         "step4": "Abre la app desde tu pantalla de inicio",
-        "step4-detail": "Toca el icono de la wallet en tu pantalla de inicio para abrirla",
+        "step4-detail": "Toca el icono de Wallet en tu pantalla de inicio para abrirla",
         "learn-more": "¿Por qué es necesario?",
         "learn-more-body": "Apple aísla el almacenamiento (credenciales, sesión) de las apps instaladas respecto a Safari. Si te registras en Safari y luego instalas la app, perderías todos tus datos y tendrías que volver a registrarte. Instalando primero evitas este problema.",
         "learn-more-close": "Entendido",

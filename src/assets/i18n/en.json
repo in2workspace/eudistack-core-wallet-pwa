@@ -403,7 +403,7 @@
         "cta": "Go to sandbox environment"
     },
     "ios-install": {
-        "title": "Install the wallet first",
+        "title": "Install Wallet first",
         "subtitle": "On iOS, the installed app and Safari have completely separate storage. If you register here first, you will lose your credentials and session when you install the app later.",
         "icon-aria": "Mobile phone illustration",
         "steps-aria": "Steps to install the wallet on iOS",
