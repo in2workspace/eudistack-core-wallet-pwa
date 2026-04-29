@@ -401,5 +401,32 @@
         "title": "Tenant no encontrado",
         "message": "El subdominio «{{hostname}}» no corresponde a ningún tenant válido.",
         "cta": "Ir al entorno sandbox"
+    },
+    "ios-install": {
+        "title": "Instala Wallet primero",
+        "subtitle": "En iOS, la app instalada y Safari tienen almacenamiento completamente separado. Si te registras aquí primero, perderás tus credenciales y sesión al instalar la app después.",
+        "icon-aria": "Ilustración de teléfono móvil",
+        "steps-aria": "Pasos para instalar Wallet en iOS",
+        "step1": "Toca el botón Compartir",
+        "step1-detail": "Busca el icono de compartir (cuadro con una flecha) en la parte inferior de Safari",
+        "step2": "Desplázate hacia abajo y toca Más",
+        "step2-detail": "Desliza hacia arriba en la hoja de compartir y busca 'Más opciones'",
+        "step3": "Toca Añadir a pantalla de inicio",
+        "step3-detail": "Selecciona 'Añadir a pantalla de inicio' de la lista de opciones",
+        "step4": "Abre la app desde tu pantalla de inicio",
+        "step4-detail": "Toca el icono de Wallet en tu pantalla de inicio para abrirla",
+        "learn-more": "¿Por qué es necesario?",
+        "learn-more-body": "Apple aísla el almacenamiento (credenciales, sesión) de las apps instaladas respecto a Safari. Si te registras en Safari y luego instalas la app, perderías todos tus datos y tendrías que volver a registrarte. Instalando primero evitas este problema.",
+        "learn-more-close": "Entendido",
+        "continue-browser": "Continuar en el navegador",
+        "continue-anyway": "Continuar en el navegador de todas formas",
+        "confirm-title": "¿Estás seguro?",
+        "confirm-message": "Si continúas sin instalar la app, perderás tus credenciales y sesión cuando la instales más adelante. Te recomendamos encarecidamente instalar primero.",
+        "confirm-ok": "Continuar de todas formas",
+        "confirm-cancel": "Cancelar",
+        "already-bootstrapped-title": "Tienes datos en Safari",
+        "already-bootstrapped-subtitle": "Ya has configurado tu wallet en Safari. Si instalas la app ahora y la abres, tus credenciales y sesión no estarán disponibles allí. Instala la app y luego vuelve a registrarte.",
+        "standalone-divergence-title": "Sesión no encontrada en esta app",
+        "standalone-divergence-subtitle": "Si tenías credenciales o una sesión en Safari, no están disponibles aquí. Por favor, vuelve a autenticarte e importa tus credenciales."
     }
 }

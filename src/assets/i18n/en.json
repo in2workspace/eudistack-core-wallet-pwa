@@ -401,5 +401,32 @@
         "title": "Tenant not found",
         "message": "The subdomain \"{{hostname}}\" does not match any valid tenant.",
         "cta": "Go to sandbox environment"
+    },
+    "ios-install": {
+        "title": "Install Wallet first",
+        "subtitle": "On iOS, the installed app and Safari have completely separate storage. If you register here first, you will lose your credentials and session when you install the app later.",
+        "icon-aria": "Mobile phone illustration",
+        "steps-aria": "Steps to install the wallet on iOS",
+        "step1": "Tap the Share button",
+        "step1-detail": "Look for the share icon (box with an arrow) at the bottom of Safari",
+        "step2": "Scroll down and tap More",
+        "step2-detail": "Swipe up in the share sheet and look for 'More' or 'View more'",
+        "step3": "Tap Add to Home Screen",
+        "step3-detail": "Select 'Add to Home Screen' from the list of options",
+        "step4": "Open the app from your Home Screen",
+        "step4-detail": "Tap the wallet icon on your home screen to launch it",
+        "learn-more": "Why is this necessary?",
+        "learn-more-body": "Apple isolates the storage (credentials, session) of installed apps from Safari. If you register in Safari and later install the app, you would lose all your data and need to re-register. Installing first avoids this problem.",
+        "learn-more-close": "Got it",
+        "continue-browser": "Continue in browser",
+        "continue-anyway": "Continue in browser anyway",
+        "confirm-title": "Are you sure?",
+        "confirm-message": "If you continue without installing the app, you will lose your credentials and session when you install it later. We strongly recommend installing first.",
+        "confirm-ok": "Continue anyway",
+        "confirm-cancel": "Cancel",
+        "already-bootstrapped-title": "You have data in Safari",
+        "already-bootstrapped-subtitle": "You have already set up your wallet in Safari. If you install the app now and open it, your credentials and session will not be available there. Install the app and then re-register.",
+        "standalone-divergence-title": "Session not found in this app",
+        "standalone-divergence-subtitle": "If you had credentials or a session in Safari, they are not available here. Please re-authenticate and import your credentials."
     }
 }
