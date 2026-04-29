@@ -142,6 +142,18 @@
     <div class="settings-group">
       <ion-list lines="none" class="settings-list">
         <ion-item detail="false" class="settings-item">
+          <div class="icon-badge icon-badge--indigo" slot="start">
+            <ion-icon name="wallet-outline"></ion-icon>
+          </div>
+          <ion-label>{{ "settings.wallet-mode-label" | translate }}</ion-label>
+          <ion-badge slot="end" class="wallet-mode-badge" [color]="isServerMode ? 'tertiary' : 'primary'">
+            {{ walletModeKey | translate }}
+          </ion-badge>
+        </ion-item>
+
+        <div class="item-divider"></div>
+
+        <ion-item detail="false" class="settings-item">
           <div class="icon-badge icon-badge--blue" slot="start">
             <ion-icon name="information-circle-outline"></ion-icon>
           </div>
