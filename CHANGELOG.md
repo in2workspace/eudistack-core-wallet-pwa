@@ -16,8 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **PasskeyPrf key storage** — wallet always uses `PasskeyPrf` key storage until EUDI-041 (key management) is ready, preventing fallback to weaker storage in server mode.
 - **Passkey handling for device registration** — improved passkey flow and user-facing error states during device registration to avoid dead-ends when the authenticator interaction fails.
 - **OTP input** — removed spurious `completed` event emission that triggered double-submit in some flows.
-- **`settings.page.spec.ts`** — añadido stub de `ThemeService` (snapshot null) en el `TestBed`. El spec fallaba en CI con `NullInjectorError: No provider for HttpClient` desde el commit 596f3a0, porque `ThemeService` inyecta `HttpClient` y el spec no lo proveía.
-- **OID4VCI `redirect_uri` multi-tenant** — eliminada la variable build-time `OID4VCI_REDIRECT_URI`. El mismo bundle se publica a todos los tenants y el `redirect_uri` se deriva en runtime de `window.location.origin`. Causa del 504 reportado: el host fijado (`wallet-stg.altia.eudistack.net`) no resolvía en DNS tras EUDI-094.
+- **`settings.page.spec.ts`** — added `ThemeService` stub (null snapshot) to `TestBed`. The spec was failing in CI with `NullInjectorError: No provider for HttpClient` since commit 596f3a0 because `ThemeService` injects `HttpClient` and the spec did not provide it.
+- **OID4VCI `redirect_uri` multi-tenant** — removed the build-time `OID4VCI_REDIRECT_URI` variable. The same bundle is deployed to all tenants and `redirect_uri` is now derived at runtime from `window.location.origin`. Root cause of the reported 504: the hardcoded host (`wallet-stg.altia.eudistack.net`) did not resolve in DNS after EUDI-094.
 - **Multi-tab (Single Instance)** — fixed infinite login redirection loop in the main tab when a second Wallet tab was opened; secondary tab now correctly detects the leader and halts cleanly without corrupting session tokens.
 
 ### Changed
@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Logout process** — streamlined logout to clear session state in a single pass; removed intermediate redirect steps that caused flicker on some devices.
 - **Registration and login pages** — removed steps bar component; replaced with inline progress cues to reduce visual noise.
 - **Button styles** — updated primary/secondary button styles for consistency across auth screens.
-- **Wallet API URLs derived from `window.location`** — `server_url` y `websocket_url` ahora se derivan del origin en runtime. Permite que el mismo bundle sirva a todos los tenants asumiendo que CloudFront/nginx proxya `/business-wallet/*` al EBW del tenant correspondiente.
+- **Wallet API URLs derived from `window.location`** — `server_url` and `websocket_url` are now derived from the origin at runtime. This allows the same bundle to serve all tenants, assuming CloudFront/nginx proxies `/business-wallet/*` to the corresponding tenant's EBW.
 - **Multi-tab single-instance** — simplified single-instance handling: removed unreliable cross-tab focus attempts; duplicate tabs now show a clear "close this tab" UI; deep-links are processed by the already-open tab.
 
 
