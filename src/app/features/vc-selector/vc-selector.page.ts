@@ -91,7 +91,7 @@ export class VcSelectorPage {
   }
 
   private extractConsentData(): void {
-    const metadata = this.executionResponse?.['clientMEtadata'];
+    const metadata = this.executionResponse?.['clientMetadata'];
     if (!metadata) {
       console.warn('ClientMetadata not found')
     }
