@@ -78,6 +78,15 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
             </ion-button>
           </ng-container>
 
+          <!-- AC-008.8: iOS standalone EBW divergence warning (informational, non-blocking) -->
+          <div *ngIf="isStandaloneDivergence" class="standalone-divergence-banner" role="alert">
+            <ion-icon name="information-circle-outline" aria-hidden="true"></ion-icon>
+            <div>
+              <strong>{{ 'ios-install.standalone-divergence-title' | translate }}</strong>
+              <span>{{ 'ios-install.standalone-divergence-subtitle' | translate }}</span>
+            </div>
+          </div>
+
           <!-- Server mode: email + OTP flow, then local passkey creation -->
           <ng-container *ngIf="!isBrowserMode && ((pwaInstall.installDecision$ | async) === false || !showInstallScreen)">
             <h2 class="auth-title">
@@ -203,6 +212,15 @@ export class RegisterPage implements OnInit {
   private readonly translate = inject(TranslateService);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
+
+  /**
+   * AC-008.8: iOS standalone + EBW mode + empty storage.
+   * Indicates the user likely had data in Safari that is not available here.
+   */
+  readonly isStandaloneDivergence =
+    this.pwaInstall.isStandalone &&
+    !this.isBrowserMode &&
+    !this.passkeyStore.hasPasskey();
 
   ngOnInit(): void {
     // Check if we're in re-authentication mode (passkey exists but session expired)

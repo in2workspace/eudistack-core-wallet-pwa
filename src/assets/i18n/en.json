@@ -1,407 +1,431 @@
-
 {
-    "menu":{
-        "scan":"QR Scan",
-        "credentials":"Credentials",
-        "camera-selector":"Camera Selector",
-        "language-selector":"Language Selector",
-        "terms-of-user":"Terms of Use",
-        "privacy-policy":"Privacy Policy",
-        "faqs":"FAQs",
-        "settings":"Settings",
-        "logout":"Logout",
-        "install":"Install App",
-        "wallet":"Wallet"
+  "menu": {
+    "scan": "QR Scan",
+    "credentials": "Credentials",
+    "camera-selector": "Camera Selector",
+    "language-selector": "Language Selector",
+    "terms-of-user": "Terms of Use",
+    "privacy-policy": "Privacy Policy",
+    "faqs": "FAQs",
+    "settings": "Settings",
+    "logout": "Logout",
+    "install": "Install App",
+    "wallet": "Wallet"
+  },
+  "scanner": {
+    "initializing": "Initializing scanner... Please wait.",
+    "manualInput": "Or paste QR content manually:",
+    "manualInputPlaceholder": "Paste QR code content here...",
+    "send": "Send"
+  },
+  "camera-selector": {
+    "title": "Selected camera",
+    "settings": "Camera settings",
+    "no-device": "No device",
+    "changing-device": "Switching camera..."
+  },
+  "credential-offer": {
+    "title": "Credential Offer",
+    "generate": "Create Credential",
+    "ok-header": "Congratulations",
+    "vc-saved": "Credential saved"
+  },
+  "credentials": {
+    "title": "Credentials",
+    "add": "Add",
+    "nocred": "You have no saved credentials.\nAdd one to start using the Wallet.",
+    "nocred-title": "No credentials yet",
+    "nocred-subtitle": "Scan a QR code or accept a credential offer to get started.",
+    "expiration": "Expired",
+    "expiring-soon": "Expiring soon",
+    "expiredCredential": "Credential expired",
+    "expiredText": "This credential has expired and you can no longer use it.",
+    "close": "Close",
+    "confirmation": "Confirmation",
+    "confirmationMessage": "Do you want to choose this credential?",
+    "addVC": "Add Credential",
+    "identify": "Identify yourself"
+  },
+  "faqs": {
+    "title": "Faqs"
+  },
+  "home": {
+    "ok-msg": "Credential added",
+    "rejected-msg": "Credential offer rejected",
+    "scan": "Scan QR",
+    "install-hint": "Install the app for a better experience"
+  },
+  "language-selector": {
+    "title": "Select language"
+  },
+  "logs-selector": {
+    "title": "View logs",
+    "send": "Send logs",
+    "camera": "Camera logs"
+  },
+  "camera-logs": {
+    "title": "Camera logs",
+    "no-more-logs": "No more camera logs to load."
+  },
+  "mailto_permission_alert": "Please make sure you have the necessary permissions to send emails with your default email application. If the email service doesn't open, it is likely due to permission restrictions.",
+  "auth": {
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Use your passkey to sign in securely",
+      "passkey-button": "Sign in with Passkey",
+      "enter-email": "Enter your email to continue",
+      "verify-passkey": "Verify your identity with your passkey"
     },
-    "scanner":{
-        "initializing": "Initializing scanner... Please wait.",
-        "manualInput": "Or paste QR content manually:",
-        "manualInputPlaceholder": "Paste QR code content here...",
-        "send": "Send"
+    "register": {
+      "title": "Create account",
+      "subtitle": "Enter your email to get started",
+      "step-email": "Email",
+      "step-verify": "Verify",
+      "email": "Email",
+      "email-placeholder": "Enter your email",
+      "send-code": "Send verification code",
+      "code-sent": "We sent a verification code to your email",
+      "code": "Verification code",
+      "code-placeholder": "Enter the 6-digit code",
+      "verify": "Verify",
+      "change-email": "Change email",
+      "passkey-subtitle": "Create a passkey to set up your wallet securely",
+      "create-wallet": "Create Wallet",
+      "install-title": "Install the App",
+      "install-subtitle": "For the best experience and offline access, install the wallet app on your device.",
+      "install-button": "Install App",
+      "continue-browser": "Continue in browser",
+      "already-registered": "Already have an account? Log in"
     },
-    "camera-selector":{
-        "title":"Selected camera",
-        "settings": "Camera settings",
-        "no-device": "No device",
-        "changing-device": "Switching camera..."
+    "passkey": {
+      "title": "Set up Passkey",
+      "description": "Create a passkey to sign in securely without a password. Your device will use biometrics or a PIN to verify your identity.",
+      "register-button": "Create Passkey",
+      "email-verified": "Email verified",
+      "success": "Passkey registered successfully!",
+      "status-connecting": "Preparing...",
+      "status-verifying": "Waiting for your device...",
+      "retry": "Try again"
     },
-    "credential-offer":{
-        "title":"Credential Offer",
-        "generate":"Create Credential",
-        "ok-header": "Congratulations",
-        "vc-saved":"Credential saved"
+    "reauth": {
+      "subtitle": "Verify your email to restore your session",
+      "back-to-login": "Back to login"
     },
-    "credentials":{
-        "title":"Credentials",
-        "add":"Add",
-        "nocred":"You have no saved credentials.\nAdd one to start using the Wallet.",
-        "nocred-title":"No credentials yet",
-        "nocred-subtitle":"Scan a QR code or accept a credential offer to get started.",
-        "expiration":"Expired",
-        "expiring-soon":"Expiring soon",
-        "expiredCredential":"Credential expired",
-        "expiredText":"This credential has expired and you can no longer use it.",
-        "close":"Close",
-        "confirmation":"Confirmation",
-        "confirmationMessage":"Do you want to choose this credential?",
-        "addVC":"Add Credential",
-        "identify": "Identify yourself"
-    },
-    "faqs":{
-        "title":"Faqs"
-    },
-    "home":{
-        "ok-msg": "Credential added",
-        "rejected-msg": "Credential offer rejected",
-        "scan": "Scan QR",
-        "install-hint": "Install the app for a better experience",
-        "dismiss-install-banner": "Dismiss install banner"
-    },
-    "language-selector":{
-        "title":"Select language"
-    },
-    "logs-selector": {
-        "title": "View logs",
-        "send": "Send logs",
-        "camera": "Camera logs"
-    },
-    "camera-logs": {
-        "title": "Camera logs",
-        "no-more-logs": "No more camera logs to load."
-    },
-    "mailto_permission_alert": "Please make sure you have the necessary permissions to send emails with your default email application. If the email service doesn't open, it is likely due to permission restrictions.",
-    "auth": {
-        "login": {
-            "title": "Welcome back",
-            "subtitle": "Use your passkey to sign in securely",
-            "passkey-button": "Sign in with Passkey",
-            "enter-email": "Enter your email to continue",
-            "verify-passkey": "Verify your identity with your passkey"
-        },
-        "register": {
-            "title": "Create account",
-            "subtitle": "Enter your email to get started",
-            "step-email": "Email",
-            "step-verify": "Verify",
-            "email": "Email",
-            "email-placeholder": "Enter your email",
-            "send-code": "Send verification code",
-            "code-sent": "We sent a verification code to your email",
-            "code": "Verification code",
-            "code-placeholder": "Enter the 6-digit code",
-            "verify": "Verify",
-            "change-email": "Change email",
-            "passkey-subtitle": "Create a passkey to set up your wallet securely",
-            "create-wallet": "Create Wallet",
-            "install-title": "Install the App",
-            "install-subtitle": "For the best experience and offline access, install the wallet app on your device.",
-            "install-button": "Install App",
-            "continue-browser": "Continue in browser",
-            "already-registered": "Already have an account? Log in"
-        },
-        "passkey": {
-            "title": "Set up Passkey",
-            "description": "Create a passkey to sign in securely without a password. Your device will use biometrics or a PIN to verify your identity.",
-            "register-button": "Create Passkey",
-            "email-verified": "Email verified",
-            "success": "Passkey registered successfully!",
-            "status-connecting": "Preparing...",
-            "status-verifying": "Waiting for your device...",
-            "retry": "Try again"
-        },
-        "reauth": {
-            "subtitle": "Verify your email to restore your session",
-            "back-to-login": "Back to login"
-        },
-        "errors": {
-            "too-many-attempts": "Too many attempts. Please try again later.",
-            "too-many-attempts-otp": "Too many incorrect attempts. Please request a new code."
-        }
-    },
-    "login":{
-        "title":"Login",
-        "login":"Login",
-        "register":"Not registered? Sign up",
-        "error": "Username or password incorrect"
-    },
-    "privacy-policy":{
-        "title":"Privacy Policy"
-    },
-    "settings":{
-        "title":"Settings",
-        "privacy-blur": "Privacy blur",
-        "privacy-blur-desc": "Blur credential details",
-        "dark-mode": "Dark mode",
-        "dark-mode-desc": "Switch to dark theme",
-        "section-preferences": "Preferences",
-        "about": "About",
-        "version": "Version",
-        "knowledge-base": "Knowledge base",
-        "wallet-mode-label": "Wallet type",
-        "wallet-mode-eudiw": "EUDIW",
-        "wallet-mode-business": "Business Wallet"
-    },
-    "terms-of-use":{
-        "title":"Terms Of Use"
-    },
-    "vc-selector":{
-        "select-cred":"Select a Credential",
-        "presentation-request":"Credential Request",
-        "select-instruction":"Tap the credential you want to present",
-        "cancel":"Cancel",
-        "send-cred":"Send Credential",
-        "ok-header": "Credential sent successfully",
-        "ok-message":"Log in completed",
-        "unauthorized-message":"The credential provided is invalid",
-        "bad-request-error-message":"Error sending the credential",
-        "server-error-message":"We couldn't process your request.<br>Please try again later.",
-        "generic-error-message": "Unknown error",
-        "credential-revoke-message":"The credential provided is invalid, it has been revoked or is not valid for this operation",
-        "close": "Close"
-    },
-    "vc-view":{
-        "warning-header": "Credential",
-        "warning-msg": "By generating this code, you agree that the data contained in your permit, and its legal status, will be displayed on the reader device to verify its validity.",
-        "qr-title": "QR Credential",
-        "qr-close": "Close",
-        "delete-header": "Are you sure to delete this credential?",
-        "delete-message": "If you delete the credential from the app and need to recover it, you will need to request a new one.",
-        "delete-confirm": "Yes, delete",
-        "delete-cancel": "Cancel",
-        "delete-close": "Close",
-        "unsigned": "Unsigned",
-        "unsigned-header": "Unsigned Credential",
-        "unsigned-message": "Your credential has not yet been signed and cannot be used. Wait for the issuer to complete the signing process.",
-        "revoked": "Revoked",
-        "delete-success": "Credential deleted successfully"
-    },
-    "vc-fields":{
-        "delete": "Delete",
-        "copy-success": "Copied to clipboard",
-        "modal-title": "Credential Details",
-        "title": "Credential Info",
-        "credentialInfo": {
-            "context": "Context",
-            "type": "Type",
-            "id": "ID",
-            "name": "Name",
-            "description": "Description",
-            "issuerId": "Issuer ID",
-            "issuerOrganization": "Issuer Organization",
-            "issuerOrganizationIdentifier": "Issuer Organization ID",
-            "issuerCountry": "Issuer Country",
-            "issuerCommonName": "Issuer Common Name",
-            "issuerSerialNumber": "Issuer Serial Number",
-            "validFrom": "Valid From",
-            "validUntil": "Valid Until",
-            "format": "Format",
-            "status": "Status",
-            "revocationUrl": "Revocation Status URL"
-        },
-        "credentialEncoded": "Credential",
-        "learCredentialEmployee":{
-            "mandatee": {
-                "title": "Mandatee",
-                "employeeId": "Employee ID",
-                "id": "ID",
-                "firstName": "First Name",
-                "lastName": "Last Name",
-                "email": "Email",
-                "nationality": "Nationality"
-            },
-            "mandator": {
-                "id": "ID",
-                "title": "Mandator",
-                "organizationIdentifier": "Organization Identifier",
-                "organization": "Organization",
-                "commonName": "Common Name",
-                "serialNumber": "Serial Number",
-                "country": "Country",
-                "email": "Email"
-            },
-            "powers": "Powers"
-        },
-        "lear-credential-machine":{
-            "mandatee": {
-                "title": "Machine Info",
-                "id": "ID",
-                "domain": "Domain",
-                "ipAddress": "IP Address"
-            },
-            "mandator": {
-                "id": "ID",
-                "title": "Mandator",
-                "organizationIdentifier": "Organization Identifier",
-                "organization": "Organization",
-                "commonName": "Common Name",
-                "serialNumber": "Serial Number",
-                "country": "Country",
-                "email": "Email"
-            },
-            "powers": "Powers"
-        },
-        "gaia-x-label-credential":{
-            "label-info": {
-                "title": "Label Info",
-                "id": "Label ID",
-                "labelLevel": "Label Level",
-                "engineVersion": "Engine Version",
-                "rulesVersion": "Rules Version"
-            },
-            "compliantCredentials": "Compliant Credentials",
-            "validatedCriteria": "Validated Criteria"
-        },
-        "power": {
-            "onboarding": "Onboarding",
-            "certification": "Certification",
-            "productoffering": "Product Offering",
-            "execute": "Execute",
-            "create": "Create",
-            "update": "Update",
-            "delete": "Delete",
-            "attest": "Attest",
-            "upload": "Upload"
-        }
-
-    },
-    "errors":{
-        "default": "Something went wrong. If it keeps happening, please contact the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
-        "key-storage-unavailable": "This browser can’t securely store keys. You won’t be able to activate or use credentials on this device.",
-        "key-storage-public-only": "This browser can’t securely store keys. You can add credentials, but they may stop working after you close or reload the app.",
-        "credential-validation-failed": "We couldn’t validate the credential. Please try again.",
-        "invalid-credentialOffer": "This credential offer isn’t valid.",
-        "invalid-issuerMetadata": "We couldn’t read the issuer information.",
-        "cannot-download-auth-server-metadata": "We couldn’t reach the authorization server. Please try again.",
-        "cannot-download-issuerMetadata": "We couldn’t reach the issuer. Please try again.",
-        "cannot-download-credentialOffer": "We couldn’t download the credential offer. Please try again.",
-        "cross-tenant-offer": "This credential offer comes from a different tenant and cannot be added to this wallet.",
-        "invalid-credential-configuration": "This offer contains an invalid credential configuration.",
-        "unsupported-credential-format": "This credential type isn’t supported by this wallet.",
-        "invalid-jwt": "We received an invalid credential token.",
-        "browser-compatibility-check-failed": "We couldn’t check if your browser is compatible. Please try again.",
-        "secure-storage-open-failed": "We couldn’t open secure storage on this device. Please try again.",
-        "secure-storage-blocked-by-another-tab": "Another tab is using secure storage. Close other tabs of this app and try again.",
-        "browser-storage-full": "Your browser storage is full. Free up space and try again.",
-        "browser-storage-operation-failed": "Secure storage failed. Please try again.",
-        "signing-key-not-found": "We couldn’t find the key for this credential on this browser. Please make sure you are using the same browser and device where you added the credential, and try again.",
-        "private-key-not-available": "We couldn’t find the key for this credential on this browser. Please make sure you are using the same browser and device where you added the credential, and try again.",
-        "key-not-found": "We couldn’t find the key for this credential on this browser. Please make sure you are using the same browser and device where you added the credential, and try again.",
-        "private-key-non-extractable": "This key can’t be exported from the device.",
-        "unsupported-algorithm": "This security feature isn’t supported on this device.",
-        "invalid-public-jwk": "We couldn't find a valid public key for this credential on this browser. Please make sure you are using the same browser and device where you added the credential, and try again.",
-        "unsupported-key-type": "This key type isn’t supported. Please try again.",
-        "unsupported-curve": "This key curve isn’t supported. Please try again.",
-        "invalid-auth-server-metadata": "The authorization server information is invalid.",
-        "cannot-get-access-token": "We couldn’t sign you in to the issuer. Please try again.",
-        "invalid-token-response": "We received an invalid response from the issuer.",
-        "pin-timeout": "Time ran out to enter the PIN. Please try again.",
-        "cannot-open-pin-prompt": "We couldn’t open the PIN screen. Please try again.",
-        "network-error": "A network error occurred. Please check your connection and try again.",
-        "invalid-request": "The request was invalid. Please try again.",
-        "not-authorized": "You are not authorized to perform this action. Please check your credentials and try again.",
-        "resource-not-found": "The requested resource was not found. Please try again.",
-        "server-error": "The server encountered an error. Please try again later.",
-        "verifier-post-failed": "We couldn’t send the login response. Please try again.",
-        "signature-failed": "We couldn’t sign the presentation. Please try again.",
-
-        "failed-qr-process": "We couldn't process the QR code.<br>It might be invalid or already used. Please refresh it. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
-        "invalid-qr":"The presented QR code is not valid",
-        "no-credentials-available": "There are no credentials available to login",
-        "expired-credentialOffer":"The credential offer is expired or already used. Please refresh and try again later, or contact your company's LEAR to get a new credential.",
-        "cannot-get-VC":"Issuer credential could not be obtained",
-        "signing-failed": "We're experiencing a temporary technical issue. Please close this screen and try again in a few minutes using the link in the email you received.",
-        "cannot-save-VC":"The credential could not be saved successfully",
-        "incorrect-pin": "Incorrect PIN. Please refresh the credential offer. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
-        "pin-expired": "You didn't enter the PIN within the time limit. Please refresh the credential offer. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
-        "qr-expired": "The QR session has expired. Please refresh the credential offer.",
-        "unsigned": "The signed credential is not yet available",
-        "loading-VCs": "There was an error loading credentials. Please try again. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
-        "Errunsigned": "Credential could not be obtained",
-        "no-connection": "Connection was lost. Please check your network and try again.",
-        "navigation": "There was an unexpected problem when trying to access the page. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
-        "camera": {
-            "not-readable": "The camera cannot be accessed. Make sure no other application is using it. You may need to refresh the page.",
-            "not-allowed": "Camera access is denied. Check your browser permissions. If the issue persists, try refreshing the page.",
-            "not-found": "Camera not found on this device. Make sure it is properly connected and refresh the page.",
-            "overconstrained": "The camera configuration is not compatible. Try selecting a different camera or refreshing the page.",
-            "security": "Camera access is blocked due to security restrictions. You may need to refresh the page or check your browser settings.",
-            "abort": "Camera access was aborted. Check your browser permissions and make sure no other application is using the camera. Try again or refresh the page.",
-            "type": "Configuration error: the camera request is invalid. Try refreshing the page or checking your camera settings",
-            "not-supported": "Your browser does not support camera access. Consider using a different browser.",
-            "default": "Unexpected error. Check your browser permissions and make sure no other application is using the camera. Try refreshing the page."
-        }
-    },
-    "activity": {
-        "title": "Activity",
-        "empty": "No activity yet",
-        "empty-hint": "Your credential activity will appear here",
-        "clear": "Clear",
-        "clear-confirm": "Clear all activity?",
-        "type-issued": "Credential received",
-        "type-presented": "Credential presented",
-        "type-deleted": "Credential deleted",
-        "time-now": "Just now",
-        "time-minutes": "{{count}}m ago",
-        "time-hours": "{{count}}h ago",
-        "time-days": "{{count}}d ago"
-    },
-    "devices": {
-        "settings-link": "My Devices",
-        "title": "My Devices",
-        "subtitle": "Manage the passkeys registered to your account",
-        "rename-header": "Rename Passkey",
-        "rename-placeholder": "Enter new name",
-        "rename-confirm": "Rename",
-        "rename-aria": "Rename this passkey",
-        "delete-header": "Delete Passkey",
-        "delete-message": "Are you sure you want to delete this passkey? If this is the passkey for your current device, you will not be able to sign in from this browser anymore.",
-        "delete-confirm": "Delete",
-        "delete-aria": "Delete this passkey",
-        "cancel": "Cancel",
-        "ok": "OK",
-        "error-header": "Cannot Delete",
-        "last-passkey-error": "You cannot delete your last passkey. Register a new device first.",
-        "load-error": "Could not load your devices. Please try again.",
-        "retry": "Retry",
-        "no-passkeys": "No passkeys registered."
-    },
-    "verification": {
-        "button": "Verify Credential",
-        "modal-title": "Credential Verification",
-        "verifying": "Verifying credential...",
-        "result-valid": "Credential is valid",
-        "result-invalid": "Credential has issues",
-        "result-revoked": "Credential revoked",
-        "result-expired": "Credential expired",
-        "check-issuer": "Issuer",
-        "check-issuance": "Issuance date",
-        "check-expiration": "Expiration date",
-        "check-status": "Revocation status",
-        "detail-revoked": "Revoked",
-        "detail-no-status-list": "No status list",
-        "detail-no-expiry": "No expiry"
-    },
-    "confirmation":{
-        "header":"Send credential?",
-        "ok":"Ok",
-        "cancel":"Cancel",
-        "new-credential": "Do you want to accept this credential?",
-        "new-credential-title": "New Credential",
-        "accept":"Accept",
-        "pin":"Enter PIN",
-        "description": "A PIN has been sent to your email. Check your inbox. Enter your PIN Code.",
-        "send": "Send",
-        "messageHtml": "{{description}}<br><small class=\"counter\">Time remaining: {{counter}} seconds</small>",
-        "organization":"Organization: ",
-        "holder":"Holder: ",
-        "powers":"Powers: ",
-        "expiration":"Expiration date: ",
-        "unknown": "Unknown",
-        "time-remaining": "Time remaining"
-    },
-    "tenantNotFound": {
-        "title": "Tenant not found",
-        "message": "The subdomain \"{{hostname}}\" does not match any valid tenant.",
-        "cta": "Go to sandbox environment"
+    "errors": {
+      "too-many-attempts": "Too many attempts. Please try again later.",
+      "too-many-attempts-otp": "Too many incorrect attempts. Please request a new code."
     }
+  },
+  "login": {
+    "title": "Login",
+    "login": "Login",
+    "register": "Not registered? Sign up",
+    "error": "Username or password incorrect"
+  },
+  "privacy-policy": {
+    "title": "Privacy Policy"
+  },
+  "settings": {
+    "title": "Settings",
+    "privacy-blur": "Privacy blur",
+    "privacy-blur-desc": "Blur credential details",
+    "dark-mode": "Dark mode",
+    "dark-mode-desc": "Switch to dark theme",
+    "about": "About",
+    "version": "Version",
+    "knowledge-base": "Knowledge base",
+    "wallet-mode-label": "Wallet type",
+    "wallet-mode-eudiw": "EUDIW",
+    "wallet-mode-business": "Business Wallet"
+  },
+  "terms-of-use": {
+    "title": "Terms Of Use"
+  },
+  "vc-selector": {
+    "select-cred": "Select a Credential",
+    "presentation-request": "Credential Request",
+    "select-instruction": "Tap the credential you want to present",
+    "cancel": "Cancel",
+    "send-cred": "Send Credential",
+    "ok-header": "Credential sent successfully",
+    "ok-message": "Log in completed",
+    "unauthorized-message": "The credential provided is invalid",
+    "bad-request-error-message": "Error sending the credential",
+    "server-error-message": "We couldn't process your request.<br>Please try again later.",
+    "generic-error-message": "Unknown error",
+    "credential-revoke-message": "The credential provided is invalid, it has been revoked or is not valid for this operation",
+    "close": "Close"
+  },
+  "vc-view": {
+    "warning-header": "Credential",
+    "warning-msg": "By generating this code, you agree that the data contained in your permit, and its legal status, will be displayed on the reader device to verify its validity.",
+    "qr-title": "QR Credential",
+    "qr-close": "Close",
+    "delete-header": "Are you sure to delete this credential?",
+    "delete-message": "If you delete the credential from the app and need to recover it, you will need to request a new one.",
+    "delete-confirm": "Yes, delete",
+    "delete-cancel": "Cancel",
+    "delete-close": "Close",
+    "unsigned": "Unsigned",
+    "unsigned-header": "Unsigned Credential",
+    "unsigned-message": "Your credential has not yet been signed and cannot be used. Wait for the issuer to complete the signing process.",
+    "revoked": "Revoked",
+    "delete-success": "Credential deleted successfully"
+  },
+  "vc-fields": {
+    "delete": "Delete",
+    "copy-success": "Copied to clipboard",
+    "modal-title": "Credential Details",
+    "title": "Credential Info",
+    "credentialInfo": {
+      "context": "Context",
+      "type": "Type",
+      "id": "ID",
+      "name": "Name",
+      "description": "Description",
+      "issuerId": "Issuer ID",
+      "issuerOrganization": "Issuer Organization",
+      "issuerOrganizationIdentifier": "Issuer Organization ID",
+      "issuerCountry": "Issuer Country",
+      "issuerCommonName": "Issuer Common Name",
+      "issuerSerialNumber": "Issuer Serial Number",
+      "validFrom": "Valid From",
+      "validUntil": "Valid Until",
+      "format": "Format",
+      "status": "Status",
+      "revocationUrl": "Revocation Status URL"
+    },
+    "credentialEncoded": "Credential",
+    "learCredentialEmployee": {
+      "mandatee": {
+        "title": "Mandatee",
+        "employeeId": "Employee ID",
+        "id": "ID",
+        "firstName": "First Name",
+        "lastName": "Last Name",
+        "email": "Email",
+        "nationality": "Nationality"
+      },
+      "mandator": {
+        "id": "ID",
+        "title": "Mandator",
+        "organizationIdentifier": "Organization Identifier",
+        "organization": "Organization",
+        "commonName": "Common Name",
+        "serialNumber": "Serial Number",
+        "country": "Country",
+        "email": "Email"
+      },
+      "powers": "Powers"
+    },
+    "lear-credential-machine": {
+      "mandatee": {
+        "title": "Machine Info",
+        "id": "ID",
+        "domain": "Domain",
+        "ipAddress": "IP Address"
+      },
+      "mandator": {
+        "id": "ID",
+        "title": "Mandator",
+        "organizationIdentifier": "Organization Identifier",
+        "organization": "Organization",
+        "commonName": "Common Name",
+        "serialNumber": "Serial Number",
+        "country": "Country",
+        "email": "Email"
+      },
+      "powers": "Powers"
+    },
+    "gaia-x-label-credential": {
+      "label-info": {
+        "title": "Label Info",
+        "id": "Label ID",
+        "labelLevel": "Label Level",
+        "engineVersion": "Engine Version",
+        "rulesVersion": "Rules Version"
+      },
+      "compliantCredentials": "Compliant Credentials",
+      "validatedCriteria": "Validated Criteria"
+    },
+    "power": {
+      "onboarding": "Onboarding",
+      "certification": "Certification",
+      "productoffering": "Product Offering",
+      "execute": "Execute",
+      "create": "Create",
+      "update": "Update",
+      "delete": "Delete",
+      "attest": "Attest",
+      "upload": "Upload"
+    }
+  },
+  "errors": {
+    "default": "Something went wrong. If it keeps happening, please contact the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
+    "key-storage-unavailable": "This browser can’t securely store keys. You won’t be able to activate or use credentials on this device.",
+    "key-storage-public-only": "This browser can’t securely store keys. You can add credentials, but they may stop working after you close or reload the app.",
+    "credential-validation-failed": "We couldn’t validate the credential. Please try again.",
+    "invalid-credentialOffer": "This credential offer isn’t valid.",
+    "invalid-issuerMetadata": "We couldn’t read the issuer information.",
+    "cannot-download-auth-server-metadata": "We couldn’t reach the authorization server. Please try again.",
+    "cannot-download-issuerMetadata": "We couldn’t reach the issuer. Please try again.",
+    "cannot-download-credentialOffer": "We couldn’t download the credential offer. Please try again.",
+    "cross-tenant-offer": "This credential offer comes from a different tenant and cannot be added to this wallet.",
+    "invalid-credential-configuration": "This offer contains an invalid credential configuration.",
+    "unsupported-credential-format": "This credential type isn’t supported by this wallet.",
+    "invalid-jwt": "We received an invalid credential token.",
+    "browser-compatibility-check-failed": "We couldn’t check if your browser is compatible. Please try again.",
+    "secure-storage-open-failed": "We couldn’t open secure storage on this device. Please try again.",
+    "secure-storage-blocked-by-another-tab": "Another tab is using secure storage. Close other tabs of this app and try again.",
+    "browser-storage-full": "Your browser storage is full. Free up space and try again.",
+    "browser-storage-operation-failed": "Secure storage failed. Please try again.",
+    "signing-key-not-found": "We couldn’t find the key for this credential on this browser. Please make sure you are using the same browser and device where you added the credential, and try again.",
+    "private-key-not-available": "We couldn’t find the key for this credential on this browser. Please make sure you are using the same browser and device where you added the credential, and try again.",
+    "key-not-found": "We couldn’t find the key for this credential on this browser. Please make sure you are using the same browser and device where you added the credential, and try again.",
+    "private-key-non-extractable": "This key can’t be exported from the device.",
+    "unsupported-algorithm": "This security feature isn’t supported on this device.",
+    "invalid-public-jwk": "We couldn't find a valid public key for this credential on this browser. Please make sure you are using the same browser and device where you added the credential, and try again.",
+    "unsupported-key-type": "This key type isn’t supported. Please try again.",
+    "unsupported-curve": "This key curve isn’t supported. Please try again.",
+    "invalid-auth-server-metadata": "The authorization server information is invalid.",
+    "cannot-get-access-token": "We couldn’t sign you in to the issuer. Please try again.",
+    "invalid-token-response": "We received an invalid response from the issuer.",
+    "pin-timeout": "Time ran out to enter the PIN. Please try again.",
+    "cannot-open-pin-prompt": "We couldn’t open the PIN screen. Please try again.",
+    "network-error": "A network error occurred. Please check your connection and try again.",
+    "invalid-request": "The request was invalid. Please try again.",
+    "not-authorized": "You are not authorized to perform this action. Please check your credentials and try again.",
+    "resource-not-found": "The requested resource was not found. Please try again.",
+    "server-error": "The server encountered an error. Please try again later.",
+    "verifier-post-failed": "We couldn’t send the login response. Please try again.",
+    "signature-failed": "We couldn’t sign the presentation. Please try again.",
+    "failed-qr-process": "We couldn't process the QR code.<br>It might be invalid or already used. Please refresh it. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
+    "invalid-qr": "The presented QR code is not valid",
+    "no-credentials-available": "There are no credentials available to login",
+    "expired-credentialOffer": "The credential offer is expired or already used. Please refresh and try again later, or contact your company's LEAR to get a new credential.",
+    "cannot-get-VC": "Issuer credential could not be obtained",
+    "signing-failed": "We're experiencing a temporary technical issue. Please close this screen and try again in a few minutes using the link in the email you received.",
+    "cannot-save-VC": "The credential could not be saved successfully",
+    "incorrect-pin": "Incorrect PIN. Please refresh the credential offer. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
+    "pin-expired": "You didn't enter the PIN within the time limit. Please refresh the credential offer. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
+    "qr-expired": "The QR session has expired. Please refresh the credential offer.",
+    "unsigned": "The signed credential is not yet available",
+    "loading-VCs": "There was an error loading credentials. Please try again. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
+    "Errunsigned": "Credential could not be obtained",
+    "no-connection": "Connection was lost. Please check your network and try again.",
+    "navigation": "There was an unexpected problem when trying to access the page. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
+    "camera": {
+      "not-readable": "The camera cannot be accessed. Make sure no other application is using it. You may need to refresh the page.",
+      "not-allowed": "Camera access is denied. Check your browser permissions. If the issue persists, try refreshing the page.",
+      "not-found": "Camera not found on this device. Make sure it is properly connected and refresh the page.",
+      "overconstrained": "The camera configuration is not compatible. Try selecting a different camera or refreshing the page.",
+      "security": "Camera access is blocked due to security restrictions. You may need to refresh the page or check your browser settings.",
+      "abort": "Camera access was aborted. Check your browser permissions and make sure no other application is using the camera. Try again or refresh the page.",
+      "type": "Configuration error: the camera request is invalid. Try refreshing the page or checking your camera settings",
+      "not-supported": "Your browser does not support camera access. Consider using a different browser.",
+      "default": "Unexpected error. Check your browser permissions and make sure no other application is using the camera. Try refreshing the page."
+    }
+  },
+  "activity": {
+    "title": "Activity",
+    "empty": "No activity yet",
+    "empty-hint": "Your credential activity will appear here",
+    "clear": "Clear",
+    "clear-confirm": "Clear all activity?",
+    "type-issued": "Credential received",
+    "type-presented": "Credential presented",
+    "type-deleted": "Credential deleted",
+    "time-now": "Just now",
+    "time-minutes": "{{count}}m ago",
+    "time-hours": "{{count}}h ago",
+    "time-days": "{{count}}d ago"
+  },
+  "devices": {
+    "settings-link": "My Devices",
+    "title": "My Devices",
+    "subtitle": "Manage the passkeys registered to your account",
+    "rename-header": "Rename Passkey",
+    "rename-placeholder": "Enter new name",
+    "rename-confirm": "Rename",
+    "rename-aria": "Rename this passkey",
+    "delete-header": "Delete Passkey",
+    "delete-message": "Are you sure you want to delete this passkey? If this is the passkey for your current device, you will not be able to sign in from this browser anymore.",
+    "delete-confirm": "Delete",
+    "delete-aria": "Delete this passkey",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "error-header": "Cannot Delete",
+    "last-passkey-error": "You cannot delete your last passkey. Register a new device first.",
+    "load-error": "Could not load your devices. Please try again.",
+    "retry": "Retry",
+    "no-passkeys": "No passkeys registered."
+  },
+  "verification": {
+    "button": "Verify Credential",
+    "modal-title": "Credential Verification",
+    "verifying": "Verifying credential...",
+    "result-valid": "Credential is valid",
+    "result-invalid": "Credential has issues",
+    "result-revoked": "Credential revoked",
+    "result-expired": "Credential expired",
+    "check-issuer": "Issuer",
+    "check-issuance": "Issuance date",
+    "check-expiration": "Expiration date",
+    "check-status": "Revocation status",
+    "detail-revoked": "Revoked",
+    "detail-no-status-list": "No status list",
+    "detail-no-expiry": "No expiry"
+  },
+  "confirmation": {
+    "header": "Send credential?",
+    "ok": "Ok",
+    "cancel": "Cancel",
+    "new-credential": "Do you want to accept this credential?",
+    "new-credential-title": "New Credential",
+    "accept": "Accept",
+    "pin": "Enter PIN",
+    "description": "A PIN has been sent to your email. Check your inbox. Enter your PIN Code.",
+    "send": "Send",
+    "messageHtml": "{{description}}<br><small class=\"counter\">Time remaining: {{counter}} seconds</small>",
+    "organization": "Organization: ",
+    "holder": "Holder: ",
+    "powers": "Powers: ",
+    "expiration": "Expiration date: ",
+    "unknown": "Unknown",
+    "time-remaining": "Time remaining"
+  },
+  "tenantNotFound": {
+    "title": "Tenant not found",
+    "message": "The subdomain \"{{hostname}}\" does not match any valid tenant.",
+    "cta": "Go to sandbox environment"
+  },
+  "ios-install": {
+    "title": "Activate your credential in Wallet",
+    "subtitle": "On iPhone, links and QR codes opened from the camera or email cannot deliver credentials directly to wallet apps. Install Wallet, then scan the QR code from your email inside the app.",
+    "icon-aria": "Mobile phone illustration",
+    "steps-aria": "Steps to install the wallet on iOS",
+    "step1": "Tap the Share button",
+    "step1-detail": "Look for the share icon (box with an arrow) at the bottom of Safari",
+    "step2": "Tap \"Add to Home Screen\"",
+    "step2-detail": "Scroll down in the share sheet if you don't see it",
+    "step3": "Tap \"Add\"",
+    "step3-detail": "Confirm to install Wallet on your home screen",
+    "step4": "Open Wallet from your home screen",
+    "step4-detail": "Tap the Wallet icon you just added",
+    "learn-more": "Why is this necessary?",
+    "learn-more-body": "Apple isolates the storage (credentials, session) of installed apps from Safari. If you register in Safari and later install the app, you would lose all your data and need to re-register. Installing first avoids this problem.",
+    "learn-more-close": "Got it",
+    "continue-browser": "Continue in browser",
+    "continue-anyway": "Continue in browser anyway",
+    "confirm-title": "Are you sure?",
+    "confirm-message": "If you continue without installing Wallet, you will not be able to receive your credential here. The credential will not transfer to the installed app later.",
+    "confirm-ok": "Continue anyway",
+    "confirm-cancel": "Cancel",
+    "already-bootstrapped-title": "Activate your credential in Wallet",
+    "already-bootstrapped-subtitle": "On iPhone, links and QR codes opened from the camera or email cannot deliver credentials directly to wallet apps. Open Wallet from your home screen and scan the QR code from your email inside the app.",
+    "standalone-divergence-title": "Session not found in this app",
+    "standalone-divergence-subtitle": "If you had credentials or a session in Safari, they are not available here. Please re-authenticate and import your credentials.",
+    "step5": "Scan the QR from inside Wallet",
+    "step5-detail": "Important: use the Wallet scanner, not your iPhone camera. Tap 'QR Scan' inside Wallet to open the scanner."
+  }
 }

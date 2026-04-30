@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.1] - 2026-04-30
+
+### Added
+
+- **iOS PWA install onboarding wizard (EUDI-045 US-008)** — Changed steps
+
+## [3.6.0] - 2026-04-29
+
+### Added
+
+- **iOS PWA install onboarding wizard (EUDI-045 US-008)** — iOS Safari users in browser mode are now gated by a 4-step wizard before reaching the auth flow. The wizard explains how to add the wallet to the home screen via Safari's "Add to Home Screen" option, preventing data loss caused by iOS standalone PWA storage isolation (IndexedDB, localStorage, and cookies are fully isolated from the Safari browser context). Detection excludes Chrome iOS (`CriOS`), Firefox iOS (`FxiOS`), and Edge iOS (`EdgiOS`), since only Safari can install PWAs on iOS. Users who have already bootstrapped their wallet (`PasskeyStoreService.hasPasskey()`) see an adapted variant reminding them to reopen from the home screen icon. A "Continue anyway" escape hatch is available via confirmation dialog; dismissal is session-scoped (`sessionStorage`) so the wizard reappears on the next visit.
+- **Telemetry stub** — anonymous telemetry events (`ios_onboarding_shown`, `ios_onboarding_dismissed`, `ios_pwa_installed`) logged in dev mode via `TelemetryService`; no-op in production until a backend endpoint is wired.
+- **Standalone divergence banner** — in server mode, if the wallet is opened in standalone but has no passkey stored, a contextual warning banner is shown on the register page informing the user of the storage isolation risk (AC-008.8).
+- **i18n** — new `ios-install.*` keys added to `en.json`, `es.json`, and `ca.json`.
+
 ## [3.5.0] - 2026-04-28
 
 ### Added
