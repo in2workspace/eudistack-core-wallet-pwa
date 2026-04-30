@@ -125,8 +125,6 @@ describe('VcSelectorPage', () => {
   let mockLoader: jest.Mocked<LoaderService>;
   let mockToast: jest.Mocked<ToastServiceHandler>;
   let mockCredentialDecisionService: { showTempMessage: jest.Mock };
-  let mockThemeService: any;
-  let mockUserPrefs: any;
 
   beforeEach(async () => {
     // Create mocks with Jest
@@ -175,20 +173,6 @@ describe('VcSelectorPage', () => {
     mockAlert.onDidDismiss.mockResolvedValue({ role: 'ok' });
     mockAlertController.create.mockResolvedValue(mockAlert);
 
-    mockThemeService = {
-      snapshot: {
-        branding: {
-          name: 'BRAND',
-          logoUrl: 'logo.png',
-          logoDarkUrl: 'logo-dark.png'
-        }
-      }
-    };
-
-    mockUserPrefs = {
-      darkMode: jest.fn().mockReturnValue(false)
-    };
-
     await TestBed.configureTestingModule({
       imports: [VcSelectorPage],
       providers: [
@@ -199,9 +183,7 @@ describe('VcSelectorPage', () => {
         { provide: Oid4vpEngineService, useValue: mockOid4vpEngineService },
         { provide: CredentialDecisionService, useValue: mockCredentialDecisionService },
         { provide: LoaderService, useValue: mockLoader },
-        { provide: ToastServiceHandler, useValue: mockToast },
-        { provide: ThemeService, useValue: mockThemeService },
-        { provide: UserPreferencesService, useValue: mockUserPrefs }
+        { provide: ToastServiceHandler, useValue: mockToast }
       ]
     }).compileComponents();
 
@@ -279,8 +261,8 @@ describe('VcSelectorPage', () => {
       component.getExecutionParamsFromQueryParams({
         executionResponse: JSON.stringify(responseNoMetadata)
       });
-      expect(component.clientName).toBe('BRAND');
-      expect(component.clientLogo).toBe('logo-dark.png');
+      expect(component.clientName).toBe('tenant.domain.com');
+      expect(component.clientLogo).toBe('');
       expect(component.policyUri).toBe('');
       expect(component.tosUri).toBe('');
     });

@@ -3,11 +3,17 @@
     <div class="consent-wrapper">
       <div class="consent-card">
         <div class="consent-body">
-          <img [src]="clientLogo"
+          @if (clientLogo) {
+            <img [src]="clientLogo"
                class="rp-logo"
                alt="RP Logo">
+          } @else {
+            <div class="header-icon">
+              <ion-icon name="shield-checkmark-outline"></ion-icon>
+            </div>
+          }
           <div class="rp-info">
-            <h1 class="rp-name">{{ clientName }}</h1>
+            <h1 class="rp-name">{{ clientName || "vc-selector.presentation-request" | translate }}</h1>
             <p class="rp-request-text">{{ "vc-selector.requests-you" | translate }}</p>
           </div>
           <div class="requested-list">

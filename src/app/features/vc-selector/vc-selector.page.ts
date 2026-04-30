@@ -65,8 +65,6 @@ export class VcSelectorPage {
   private readonly translate = inject(TranslateService);
   private readonly oid4vpEngineService = inject(Oid4vpEngineService);
   private readonly credentialDecisionService = inject(CredentialDecisionService);
-  private readonly themeService = inject(ThemeService);
-  private readonly userPrefs = inject(UserPreferencesService);
 
   public constructor() {
       this.route.queryParams.pipe(takeUntilDestroyed()).subscribe((params) => {
@@ -92,22 +90,15 @@ export class VcSelectorPage {
 
   private extractConsentData(): void {
     const metadata = this.executionResponse?.['clientMetadata'];
+    const currentLocale = this.translate.currentLang || navigator.language || 'es';
+
     if (!metadata) {
       console.warn('ClientMetadata not found')
     }
-    console.log('Metadata recibida:', metadata);
-    const currentLocale = this.translate.currentLang || navigator.language || 'es';
-    const branding = this.themeService.snapshot?.branding;
-
-    const isDarkMode = this.userPrefs.darkMode();
-    const fallbackLogo = isDarkMode ? branding?.logoUrl : branding?.logoDarkUrl;
-
-    this.clientName = this.getMetadataValue(metadata, 'client_name', currentLocale, branding?.name || '');
-    this.clientLogo = this.getMetadataValue(metadata, 'logo_uri', currentLocale, fallbackLogo || '');
+    this.clientName = this.getMetadataValue(metadata, 'client_name', currentLocale, this.requesterDomain || '');
+    this.clientLogo = this.getMetadataValue(metadata, 'logo_uri', currentLocale, '');
     this.policyUri = this.getMetadataValue(metadata, 'policy_uri', currentLocale,  '');
     this.tosUri = this.getMetadataValue(metadata, 'tos_uri', currentLocale, '');
-    console.log("clientName:" + this.clientName + ", policyUri: " + this.clientLogo + ", clientLogo: " + this.policyUri + ", tosUri: {}" + this.tosUri);
-    console.log("branding.name: " + branding?.name);
 
     if (this._VCReply.dcqlQuery?.credentials) {
       this.requestedCredentials = this._VCReply.dcqlQuery.credentials.map(c => c.id || c.format);

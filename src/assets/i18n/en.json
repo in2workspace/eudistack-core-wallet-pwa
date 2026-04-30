@@ -156,7 +156,7 @@
         "generic-error-message": "Unknown error",
         "credential-revoke-message":"The credential provided is invalid, it has been revoked or is not valid for this operation",
         "close": "Close",
-        "requests-you": "Requests you:",
+        "requests-you": "Requests:",
         "privacy-policy": "Privacy policy",
         "tds": "TdS",
         "select": "Select"
