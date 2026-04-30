@@ -160,7 +160,10 @@ export class SingleInstanceService implements OnDestroy {
     this.channel = null;
 
     // Adapt copy depending on whether this is a browser tab or the installed PWA.
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    // iOS Safari PWAs expose navigator.standalone instead of display-mode:standalone.
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as any).standalone === true;
     const windowOrTab = isStandalone ? 'ventana' : 'pestaña';
 
     const title = isDeepLink

@@ -5,6 +5,27 @@ import { AuthService } from './auth.service';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
 
 // ---------------------------------------------------------------------------
+// Media / navigator helpers (mirrors ios-install.service.spec.ts pattern)
+// ---------------------------------------------------------------------------
+
+function setStandaloneMedia(value: boolean): void {
+  (window as any).matchMedia = (query: string) => ({
+    matches: value && query.includes('standalone'),
+    media: query,
+    onchange: null,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    dispatchEvent: () => false,
+  });
+}
+
+function setNavigatorStandalone(value: boolean | undefined): void {
+  Object.defineProperty(navigator, 'standalone', { value, configurable: true });
+}
+
+// ---------------------------------------------------------------------------
 // Minimal BroadcastChannel mock
 // ---------------------------------------------------------------------------
 class BroadcastChannelMock {
@@ -75,6 +96,8 @@ describe('SingleInstanceService', () => {
   afterEach(() => {
     jest.restoreAllMocks();
     sessionStorage.clear();
+    setStandaloneMedia(false);
+    setNavigatorStandalone(undefined);
   });
 
   // -------------------------------------------------------------------------
@@ -243,16 +266,7 @@ describe('SingleInstanceService', () => {
     });
 
     it('renders the duplicate-tab message UI in browser tab mode (non-standalone)', () => {
-      (window as any).matchMedia = (query: string) => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addListener: () => undefined,
-        removeListener: () => undefined,
-        addEventListener: () => undefined,
-        removeEventListener: () => undefined,
-        dispatchEvent: () => false,
-      });
+      setStandaloneMedia(false);
 
       (service as any).renderDuplicateTabMessage(false);
 
@@ -263,16 +277,7 @@ describe('SingleInstanceService', () => {
     });
 
     it('renders the duplicate-tab message UI in standalone (PWA installed) mode', () => {
-      (window as any).matchMedia = (query: string) => ({
-        matches: query === '(display-mode: standalone)',
-        media: query,
-        onchange: null,
-        addListener: () => undefined,
-        removeListener: () => undefined,
-        addEventListener: () => undefined,
-        removeEventListener: () => undefined,
-        dispatchEvent: () => false,
-      });
+      setStandaloneMedia(true);
 
       (service as any).renderDuplicateTabMessage(false);
 
@@ -283,16 +288,7 @@ describe('SingleInstanceService', () => {
     });
 
     it('renders deep-link variant in standalone mode', () => {
-      (window as any).matchMedia = (query: string) => ({
-        matches: query === '(display-mode: standalone)',
-        media: query,
-        onchange: null,
-        addListener: () => undefined,
-        removeListener: () => undefined,
-        addEventListener: () => undefined,
-        removeEventListener: () => undefined,
-        dispatchEvent: () => false,
-      });
+      setStandaloneMedia(true);
 
       (service as any).renderDuplicateTabMessage(true);
 
@@ -302,20 +298,21 @@ describe('SingleInstanceService', () => {
     });
 
     it('calls authService.dispose() in standalone mode (no silent close bypass)', () => {
-      (window as any).matchMedia = (query: string) => ({
-        matches: query === '(display-mode: standalone)',
-        media: query,
-        onchange: null,
-        addListener: () => undefined,
-        removeListener: () => undefined,
-        addEventListener: () => undefined,
-        removeEventListener: () => undefined,
-        dispatchEvent: () => false,
-      });
+      setStandaloneMedia(true);
 
       (service as any).renderDuplicateTabMessage(false);
 
       expect(authServiceMock.dispose).toHaveBeenCalled();
+    });
+
+    it('renders standalone copy when navigator.standalone is true (iOS Safari PWA)', () => {
+      setStandaloneMedia(false);
+      setNavigatorStandalone(true);
+
+      (service as any).renderDuplicateTabMessage(false);
+
+      expect(document.body.innerHTML).toContain('ventana');
+      expect(document.body.innerHTML).not.toContain('Ctrl+Tab');
     });
   });
 });
