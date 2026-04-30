@@ -6,6 +6,162 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-04-29
+
+### Added
+
+- **iOS PWA install onboarding wizard (EUDI-045 US-008)** — iOS Safari users in browser mode are now gated by a 4-step wizard before reaching the auth flow. The wizard explains how to add the wallet to the home screen via Safari's "Add to Home Screen" option, preventing data loss caused by iOS standalone PWA storage isolation (IndexedDB, localStorage, and cookies are fully isolated from the Safari browser context). Detection excludes Chrome iOS (`CriOS`), Firefox iOS (`FxiOS`), and Edge iOS (`EdgiOS`), since only Safari can install PWAs on iOS. Users who have already bootstrapped their wallet (`PasskeyStoreService.hasPasskey()`) see an adapted variant reminding them to reopen from the home screen icon. A "Continue anyway" escape hatch is available via confirmation dialog; dismissal is session-scoped (`sessionStorage`) so the wizard reappears on the next visit.
+- **Telemetry stub** — anonymous telemetry events (`ios_onboarding_shown`, `ios_onboarding_dismissed`, `ios_pwa_installed`) logged in dev mode via `TelemetryService`; no-op in production until a backend endpoint is wired.
+- **Standalone divergence banner** — in server mode, if the wallet is opened in standalone but has no passkey stored, a contextual warning banner is shown on the register page informing the user of the storage isolation risk (AC-008.8).
+- **i18n** — new `ios-install.*` keys added to `en.json`, `es.json`, and `ca.json`.
+
+## [3.5.0] - 2026-04-28
+
+### Added
+- Add tests for single-instance and auth service.
+- Unit tests for `CredentialOfferService` tenant validation.
+
+### Fixed
+- **PasskeyPrf key storage** — wallet always uses `PasskeyPrf` key storage until EUDI-041 (key management) is ready, preventing fallback to weaker storage in server mode.
+- **Passkey handling for device registration** — improved passkey flow and user-facing error states during device registration to avoid dead-ends when the authenticator interaction fails.
+- **OTP input** — removed spurious `completed` event emission that triggered double-submit in some flows.
+- **`settings.page.spec.ts`** — added `ThemeService` stub (null snapshot) to `TestBed`. The spec was failing in CI with `NullInjectorError: No provider for HttpClient` since commit 596f3a0 because `ThemeService` injects `HttpClient` and the spec did not provide it.
+- **OID4VCI `redirect_uri` multi-tenant** — removed the build-time `OID4VCI_REDIRECT_URI` variable. The same bundle is deployed to all tenants and `redirect_uri` is now derived at runtime from `window.location.origin`. Root cause of the reported 504: the hardcoded host (`wallet-stg.altia.eudistack.net`) did not resolve in DNS after EUDI-094.
+- **Multi-tab (Single Instance)** — fixed infinite login redirection loop in the main tab when a second Wallet tab was opened; secondary tab now correctly detects the leader and halts cleanly without corrupting session tokens.
+
+### Changed
+
+- **PRF handling streamlined** — refactored PRF key derivation path to consolidate biometric prompt triggers; duplicate prompts in multi-step flows eliminated.
+- **Logout process** — streamlined logout to clear session state in a single pass; removed intermediate redirect steps that caused flicker on some devices.
+- **Registration and login pages** — removed steps bar component; replaced with inline progress cues to reduce visual noise.
+- **Button styles** — updated primary/secondary button styles for consistency across auth screens.
+- **Wallet API URLs derived from `window.location`** — `server_url` and `websocket_url` are now derived from the origin at runtime. This allows the same bundle to serve all tenants, assuming CloudFront/nginx proxies `/business-wallet/*` to the corresponding tenant's EBW.
+- **Multi-tab single-instance** — simplified single-instance handling: removed unreliable cross-tab focus attempts; duplicate tabs now show a clear "close this tab" UI; deep-links are processed by the already-open tab.
+
+
+## [3.4.0] - 2026-04-28
+
+### Added
+
+- **Cross-tenant credential offer validation** — `CredentialOfferService` now validates that the credential offer belongs to the current tenant, rejecting cross-tenant offers with a dedicated error message and i18n keys.
+- **Session master handling for PRF** — implements session master key derivation to reuse existing PRF material across operations, reducing the number of biometric prompts required per session.
+- **Registration flow `mode` parameter** — registration route accepts a `mode` query param to distinguish device-passkey vs browser flows; UI text updated accordingly for clearer user guidance.
+- **Settings → Wallet type badge** — la página de Ajustes muestra ahora un indicador del modo del wallet (`EUDIW` cuando `wallet_mode === 'browser'`, `Business Wallet` cuando `wallet_mode === 'server'`). Permite al usuario distinguir de un vistazo en qué tipo de wallet está operando, alineado con la documentación pública (`docs.eudistack.net`).
+  - `settings.page.{ts,html}` — nuevo `walletModeKey` y `<ion-badge>` justo encima del item *About*.
+  - `i18n/{en,es,ca}.json` — claves `settings.wallet-mode-label`, `wallet-mode-eudiw`, `wallet-mode-business`.
+- **Settings → Knowledge base link** — item visible cuando el `theme.json` del tenant define `content.knowledgeBaseUrl`. Todos los tenants EUDIStack ahora apuntan a `https://docs.eudistack.net` (excepto DOME, que mantiene su KB propia).
+
+### Fixed
+
+- **`appVersion` hardcoded a 3.0.0** — `environment{,.production}.ts` y `package.json` desincronizados desde hace varias releases; *About* siempre mostraba `v3.0.0` independientemente del bundle desplegado. Bumpeado a `3.4.0` en los tres ficheros (follow-up: derivar `appVersion` de `package.json` en build-time para no volver a olvidarlo).
+- **`settings.page.spec.ts`** — añadido stub de `ThemeService` (snapshot null) en el `TestBed`. El spec fallaba en CI con `NullInjectorError: No provider for HttpClient` desde el commit 596f3a0 (knowledge base link), porque `ThemeService` inyecta `HttpClient` y el spec no lo proveía.
+
+### Changed (Wallet API URLs derived from window.location — multi-tenant)
+
+- **`env.template.js`** / **`environment.production.ts`** — `server_url` y `websocket_url` ahora se derivan del origin en runtime (`${window.location.origin}/business-wallet` y variante `ws(s)://` para el WebSocket). Permite que el mismo bundle sirva a todos los tenants (`sandbox-stg`, `kpmg-stg`, `dome-stg`, …) asumiendo que CloudFront/nginx proxya `/business-wallet/*` al EBW del tenant correspondiente (EBW expondrá `/business-wallet/api/v1/...` cuando entre en producción).
+- **`.github/workflows/deploy.yml`** — eliminadas `WALLET_API_EXTERNAL_URL` y `WALLET_API_WEBSOCKET_EXTERNAL_URL` del paso de generación de `env.js`. GitHub Variables borradas en el entorno `stg`.
+- **`src/assets/env.js`** — comentado que en dev local se mantiene el override explícito hacia `http://localhost:8083/wallet`.
+- ⚠️ EBW no activo en sandbox-stg todavía; cuando se despliegue deberá responder bajo `/business-wallet/api/*` en el mismo origin del SPA por tenant.
+
+### Changed (Multi-tab single-instance)
+
+- Simplified single-instance handling: removed unreliable cross-tab focus attempts and now duplicate tabs show a clear "close this tab" UI; deep-link routing was fixed so deep-links are processed by the already-open tab.
+
+### Added
+
+- Add tests for single-instance, and auth service.
+- **Wallet Scanner**: Support for OID4VCI indirect flow. The wallet can now process HTTPS QR codes by extracting the `credential_offer_uri` parameter, ensuring interoperability with native device cameras and browser-based redirections.
+
+### Fixed (OID4VCI redirect_uri multi-tenant)
+
+- **`env.template.js`** / **`.github/workflows/deploy.yml`** — eliminada la variable build-time `OID4VCI_REDIRECT_URI` (GitHub Variable borrada también). El mismo bundle se publica a todos los tenants (`sandbox-stg`, `kpmg-stg`, `dome-stg`, …) y el `redirect_uri` se deriva en runtime de `window.location.origin` vía el fallback ya existente en `environment.production.ts`. Causa del 504 reportado: el host fijado (`wallet-stg.altia.eudistack.net`) no resolvía en DNS tras EUDI-094.
+- **`environment.production.ts`** — documentada la derivación dinámica por origin.
+- **`src/assets/env.js`** — fallback local alineado con el nuevo contrato (string vacío).
+- Follow-up: [EUDISTACK-170](https://eudistack.atlassian.net/browse/EUDISTACK-170) — validar `redirect_uri` contra allowlist por tenant en el Issuer (hoy acepta cualquier valor enviado en el PAR).
+
+### Fixed (Multi-tab single-instance)
+
+- **Multi-tab (Single Instance):** Fixed a critical issue that caused an infinite login redirection loop in the main tab when the user opened a second Wallet tab. Now, the secondary tab correctly detects the leader and cleanly halts its execution (`dispose()`) without corrupting session tokens or emitting erroneous navigation events.
+
+### Pending (EUDI-094 multi-tenant rollout)
+
+- E2E OID4VCI flow against same-origin Issuer (`/issuer/*`) still to be
+  validated on STG with real tenant (scheduled 2026-04-24). No code
+  change anticipated; expected to be green post verifier redeploy.
+
+## [3.3.0] - 2026-04-23
+
+### Changed (EUDI-094 — runtime per-tenant theme from shared bucket)
+
+- **`theme.service.ts`** — `load()` resuelve el tenant desde `window.location.hostname` con `resolveTenant()` y pide `/assets/tenants/<tenant>/theme.json` (URL absoluta, bucket compartido servido por CloudFront). Los paths legacy `assets/tenant/*` dentro del theme se reescriben a `/assets/tenants/<tenant>/*`. Helper `isRelativeAssetPath` renombrado a `isSafeAssetPath`; nuevo helper `toAbsoluteAssetUrl` para el manifest PWA.
+- **`index.html`** y **`tenant-not-found.page.html`** — favicon default pasa a ser el producto (`assets/icons/pwa-192x192.png`) en lugar de referenciar `assets/tenant/*`. El ThemeService inyecta dinámicamente el favicon del tenant tras resolverlo.
+- **`ngsw-config.json`** — `/assets/tenants/**` excluido del asset prefetch; el theme del tenant se cachea en dataGroup con freshness (1h).
+- **`.github/workflows/deploy.yml`** — eliminada la inyección build-time de tenant assets y el input `tenant`. El build ahora es único y se publica a `s3://.../wallet/`; se invalidan todas las CloudFront STG del entorno.
+- **`.github/workflows/release.yml`** — el release dispara `deploy.yml` automáticamente tras el tag sin parametrizar tenant (un solo deploy sirve a todos los tenants).
+
+## [3.2.0] - 2026-04-23
+
+### Changed (EUDI-094 — theme loaded from single deploy-time asset)
+
+- **`theme.service.ts`** — `load()` ahora carga un único `assets/theme.json` y elimina el fallback runtime (`isKnownTenant` + `resolveTenant`). La personalización per-tenant se resuelve en CI: `.github/workflows/deploy.yml` copia `eudistack-platform-assets/tenants/<TENANT>/theme.json` a `assets/theme.json` y `tenants/<TENANT>/*` a `assets/tenant/` antes del upload a S3. `rewriteAssetPaths()` se simplifica a normalizar rutas absolutas `/assets/...` a relativas (sin tenant interpolation).
+- **`index.html`** y **`tenant-not-found.page.html`** — favicon default migrado de `favicon.png` a `favicon.svg`, alineado con la estructura de `eudistack-platform-assets` (todos los tenants exponen `favicon.svg`).
+
+## [3.1.2] - 2026-04-23
+
+### Fixed (EUDI-064 post-release — env suffix in tenant resolution)
+
+- **`tenants.constants.ts`** — `resolveTenant()` ahora elimina los sufijos de entorno `-stg`, `-dev`, `-pre` antes del lookup en `KNOWN_TENANTS`. Motivación: en STG el host es `sandbox-stg.eudistack.net` y el guard `isKnownTenant` devolvía `false`, redirigiendo al usuario a `/tenant-not-found`. Replica la lógica que ya hace `TenantDomainWebFilter` en el backend (core-issuer) y alinea con el mismo fix en el MFE Credential Manager.
+- **`buildFallbackUrl()`** — preserva el sufijo de entorno del host actual al reconstruir la URL de fallback. Evita que un usuario en STG salte a PROD.
+- **`theme.service.ts`** — sustituido `hostname.split('.')[0]` ad-hoc por `resolveTenant()`.
+- **`tenant-not-found.page`** — añadido logo en la pantalla (antes sólo había texto).
+
+## [3.1.1] - 2026-04-21
+
+### Changed
+
+- Credential schemas (`src/assets/schemas/*.json`) are now synced from `eudistack-platform-dev/dev-tools/schemas/` on every `prestart`/`prebuild` via `scripts/sync-schemas.js` (extracted from inline `package.json` one-liner). Platform-dev is the single source of truth; the directory is git-ignored.
+- CI and Deploy workflows sparse-checkout `eudistack-platform-dev` as a sibling so the sync step has a real source on every build.
+
+### Added
+- Login and register with Wallet EBS in server mode
+
+### Fixed
+
+- `httpTranslateLoader` spec expected absolute `/assets/i18n/en.json` but the loader was changed to relative (`assets/i18n/`) in 11366b3 for `base-href=/wallet/` compatibility. Updated the spec assertion to match.
+- `sync-schemas` script exits with error when canonical schemas are missing instead of falling back silently to stale bundled copies.
+- Improved rear camera detection for iOS and now the rear camera is selected by default.
+
+### Removed
+
+- 8 legacy schemas absent from canonical source: `eu.europa.ec.eudi.{employee,pid,por}.1.{json,profile.json}` and orphan `learcredential.{employee,machine}.w3c.1.profile.json`.
+
+## [3.0.2] - 2026-04-20
+### Changed
+- Standardize query parameter detection to `credential_offer_uri` to align with OIDC4VCI standards.
+- Integrate `CredentialOfferService` to correctly parse and decode nested/double-encoded offer URIs.
+
+## [3.0.1] - 2026-04-17
+
+## [3.1.0] - 2026-04-20
+
+### Added (Interaction tokens)
+
+- Brand-independent CSS tokens `--ui-caret`, `--ui-focus-ring`, `--ui-focus-ring-rgb`, `--ui-selection-bg`, `--ui-selection-fg` in `variables.scss`. Guarantee WCAG AA contrast regardless of tenant branding.
+- Global `::selection` rule in `globalDefault.scss` using the new interaction tokens.
+
+### Fixed (Interaction tokens)
+
+- Replace broken `caret-color: var(---primary-color)` (triple-dash typo) with `var(--ui-caret)` in `OtpInputComponent` and the register page.
+
+### Added (EUDI-064: Tenant validation)
+
+- **`tenantGuard`** — Angular route guard that validates tenant exists before rendering protected routes.
+- **`TenantNotFoundPage`** — user-friendly error page for unknown tenant subdomains.
+- **`tenants.constants`** — central registry of valid tenants.
+- `error-handler.interceptor`: redirect to tenant-not-found on tenant 404.
+- `theme.service`: handle tenant-not-found theme state.
+- i18n keys for tenant-not-found page (ca/en/es).
+
 ### Added
 
 - **RFC 9901 compliant SD-JWT parser** — Rewrite `SdJwtParserService` with digest-based disclosure resolution at any nesting depth. Synchronous pure-JS SHA-256. (EUDI-012)
@@ -17,6 +173,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Credential card showing mandator instead of mandatee** — Aligned W3C credential type versions from `.w3c.4`/`.w3c.3` to `.w3c.1` matching the schema `credential_configuration_id`. Fixes schema registry lookup failure that caused `summary_claims` to be ignored.
+- **PWA install race condition (EUDI-402)** — Deterministic `installDecision$` observable prevents the install screen from being skipped on first load in STG.
+- **"Close tab" button non-functional** — Duplicate-tab UI close button now works; falls back to keyboard shortcut hint if the browser blocks `window.close()`.
 
 ### Changed
 
@@ -26,7 +184,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Back the primary color for verify button (it changed the contrast color in the commit 46bfd21).
 - Remove --action-primary CSS variable and its hue/lightness computation function, using --primary-color instead.
 - Remove color variables from theme.service.ts that duplicated values already defined in variables.scss.
-- Add brand-independent neutral color variables　to variables.scss.
+- Add brand-independent neutral color variables	to variables.scss.
+
+### Removed
+- Removed several unused dependencies from the repository (cleaned up `package.json` and removed unused libraries):
+	- `@simplewebauthn/browser`
+	- `@zxing/browser`
+	- `wallet-ui`
+	- `@babel/plugin-proposal-decorators`
+	- `jasmine-spec-reporter`
+	- `ng-mocks`
 
 ### Fixed
 - Clean up mixed/incorrect translations across EN/ES/CA.
@@ -43,7 +210,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove the revoke URL text and button from the verification modal.
 - Use translation labels for verification text.
 - Enable touch scroll in settings page.
+- Fixed keyboard input and navigation logic to prevent character duplication and improved state synchronization for pasting.
 - Fixed an issue causing double login prompts when submitting invalid credentials to the verifier by preventing unintended logout on error.
+- Show error alert when scanning unsupported or invalid QR content, preventing processing of unrelated data.
+- Improve language selector reliability: selecting a language now works consistently when clicking anywhere on the row, not only on the radio circle.
 
 ## [3.0.0] - 2026-03-24
 

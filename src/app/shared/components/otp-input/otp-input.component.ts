@@ -17,11 +17,15 @@ import { CommonModule } from '@angular/common';
   template: `
     <div class="otp-container">
       <input
-        *ngFor="let d of digits; let i = index"
+        *ngFor="let d of digits; let i = index; trackBy: trackByIndex"
         #otpBox
         type="text"
         inputmode="numeric"
         maxlength="1"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
         class="otp-box"
         [class.filled]="digits[i] !== ''"
         [class.error]="error"
@@ -52,7 +56,7 @@ import { CommonModule } from '@angular/common';
       color: var(--text-primary, #1A1A2E);
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-      caret-color: var(---primary-color);
+      caret-color: var(--ui-caret);
 
       &:focus {
         border-color: var(--neutral-medium);
@@ -118,6 +122,10 @@ export class OtpInputComponent implements AfterViewInit {
     return this.digits.join('');
   }
 
+  trackByIndex(index: number): number {
+    return index;
+  }
+
   /** Programmatic reset */
   reset(): void {
     this.digits = Array(this.length).fill('');
@@ -133,14 +141,10 @@ export class OtpInputComponent implements AfterViewInit {
       input.value = val[0];
 
       if (index < this.length - 1) {
-        this.focusBox(index + 1);
+        setTimeout(() => this.focusBox(index + 1), 0);
       }
 
       this.changed.emit(this.value);
-
-      if (this.value.length === this.length) {
-        this.completed.emit(this.value);
-      }
     } else {
       this.digits[index] = '';
       input.value = '';
@@ -150,12 +154,15 @@ export class OtpInputComponent implements AfterViewInit {
 
   onKeydown(event: KeyboardEvent, index: number): void {
     if (event.key === 'Backspace') {
-      if (this.digits[index] === '' && index > 0) {
+      if (this.digits[index] !== '') {
+        this.digits[index] = '';
+        if (index > 0) {
+          this.focusBox(index - 1);
+        }
+      } else if (index > 0) {
         this.digits[index - 1] = '';
         this.focusBox(index - 1);
         event.preventDefault();
-      } else {
-        this.digits[index] = '';
       }
       this.changed.emit(this.value);
     } else if (event.key === 'ArrowLeft' && index > 0) {
@@ -184,10 +191,6 @@ export class OtpInputComponent implements AfterViewInit {
     this.focusBox(nextEmpty >= 0 ? nextEmpty : this.length - 1);
 
     this.changed.emit(this.value);
-
-    if (this.value.length === this.length) {
-      this.completed.emit(this.value);
-    }
   }
 
   onFocus(index: number): void {
@@ -200,7 +203,11 @@ export class OtpInputComponent implements AfterViewInit {
   private focusBox(index: number): void {
     const boxes = this.boxes?.toArray();
     if (boxes?.[index]) {
-      boxes[index].nativeElement.focus();
+      const el = boxes[index].nativeElement;
+      if (el.value !== this.digits[index]) {
+        el.value = this.digits[index];
+      }
+      el.focus();
     }
   }
 }

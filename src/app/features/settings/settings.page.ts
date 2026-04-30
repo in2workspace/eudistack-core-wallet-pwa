@@ -8,6 +8,7 @@ import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
 import { environment } from 'src/environments/environment';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
+import { ThemeService } from 'src/app/core/services/theme.service';
 
 @Component({
     selector: 'app-settings',
@@ -26,9 +27,17 @@ export class SettingsPage {
   public userName = '';
   public featureLogsEnabled = environment.logs_enabled;
   public readonly appVersion = environment.appVersion;
+  public readonly isServerMode = (environment as any).wallet_mode === 'server';
+  public readonly walletModeKey = this.isServerMode
+    ? 'settings.wallet-mode-business'
+    : 'settings.wallet-mode-eudiw';
   private readonly pwaInstallService = inject(PwaInstallService);
+  private readonly themeService = inject(ThemeService);
   readonly canInstall$ = this.pwaInstallService.installable$;
   readonly prefs = inject(UserPreferencesService);
+  public get knowledgeBaseUrl(): string | null {
+    return this.themeService.snapshot?.content?.knowledgeBaseUrl ?? null;
+  }
 
   public constructor(
     private router: Router,

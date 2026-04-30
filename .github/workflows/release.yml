@@ -44,5 +44,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh workflow run deploy.yml -f environment=stg
-          echo "### Deploy triggered" >> $GITHUB_STEP_SUMMARY
+          gh workflow run deploy.yml -f environment=stg --ref main
+          echo "### Auto-deploy to STG triggered" >> $GITHUB_STEP_SUMMARY

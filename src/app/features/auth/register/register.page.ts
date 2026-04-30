@@ -1,15 +1,17 @@
-import { Component, inject, ViewChild } from '@angular/core';
+import { Component, inject, ViewChild, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
-import { Router } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
+import { Router, ActivatedRoute } from '@angular/router';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.service';
 import { LocalAuthService } from 'src/app/core/services/local-auth.service';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input.component';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
+import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
+import { PasskeyApiService } from 'src/app/core/services/passkey-api.service';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 
 @Component({
@@ -22,8 +24,15 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
             <img [src]="logoSrc" alt="Logo" class="logo-img" />
           </div>
 
-          <!-- PWA Install screen (shown before registration when installable) -->
-          <ng-container *ngIf="showInstallScreen && (pwaInstall.installable$ | async)">
+          <!-- Pending install decision -->
+          <ng-container *ngIf="(pwaInstall.installDecision$ | async) === null">
+            <div class="auth-checking">
+              <ion-spinner name="crescent"></ion-spinner>
+            </div>
+          </ng-container>
+
+          <!-- Install screen -->
+          <ng-container *ngIf="(pwaInstall.installDecision$ | async) === true && showInstallScreen">
             <div class="install-hero">
               <div class="install-icon-circle">
                 <ion-icon name="download-outline"></ion-icon>
@@ -53,7 +62,7 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
           </ng-container>
 
           <!-- Browser mode: simple passkey creation -->
-          <ng-container *ngIf="isBrowserMode && (!showInstallScreen || !(pwaInstall.installable$ | async))">
+          <ng-container *ngIf="isBrowserMode && ((pwaInstall.installDecision$ | async) === false || !showInstallScreen)">
             <h2 class="auth-title">{{ 'auth.register.title' | translate }}</h2>
             <p class="auth-subtitle">{{ 'auth.register.passkey-subtitle' | translate }}</p>
 
@@ -69,34 +78,24 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
             </ion-button>
           </ng-container>
 
-          <!-- Server mode: email + OTP flow, then local passkey creation -->
-          <ng-container *ngIf="!isBrowserMode && (!showInstallScreen || !(pwaInstall.installable$ | async))">
-            <div class="steps-bar">
-              <div class="step" [class.active]="step === 'email'" [class.done]="step !== 'email'">
-                <div class="step-dot">
-                  <ion-icon *ngIf="step !== 'email'" name="checkmark"></ion-icon>
-                  <span *ngIf="step === 'email'">1</span>
-                </div>
-                <span class="step-label">{{ 'auth.register.step-email' | translate }}</span>
-              </div>
-              <div class="step-line" [class.filled]="step !== 'email'"></div>
-              <div class="step" [class.active]="step === 'code'" [class.done]="step === 'passkey'">
-                <div class="step-dot">
-                  <ion-icon *ngIf="step === 'passkey'" name="checkmark"></ion-icon>
-                  <span *ngIf="step !== 'passkey'">2</span>
-                </div>
-                <span class="step-label">{{ 'auth.register.step-verify' | translate }}</span>
-              </div>
-              <div class="step-line" [class.filled]="step === 'passkey'"></div>
-              <div class="step" [class.active]="step === 'passkey'">
-                <div class="step-dot"><span>3</span></div>
-                <span class="step-label">{{ 'auth.passkey.title' | translate }}</span>
-              </div>
+          <!-- AC-008.8: iOS standalone EBW divergence warning (informational, non-blocking) -->
+          <div *ngIf="isStandaloneDivergence" class="standalone-divergence-banner" role="alert">
+            <ion-icon name="information-circle-outline" aria-hidden="true"></ion-icon>
+            <div>
+              <strong>{{ 'ios-install.standalone-divergence-title' | translate }}</strong>
+              <span>{{ 'ios-install.standalone-divergence-subtitle' | translate }}</span>
             </div>
+          </div>
 
-            <h2 class="auth-title">{{ 'auth.register.title' | translate }}</h2>
+          <!-- Server mode: email + OTP flow, then local passkey creation -->
+          <ng-container *ngIf="!isBrowserMode && ((pwaInstall.installDecision$ | async) === false || !showInstallScreen)">
+            <h2 class="auth-title">
+              {{ isReauthMode ? ('auth.login.title' | translate) : ('auth.register.title' | translate) }}
+            </h2>
             <p class="auth-subtitle">
-              <span *ngIf="step === 'email'">{{ 'auth.register.subtitle' | translate }}</span>
+              <span *ngIf="step === 'email'">
+                {{ isReauthMode ? ('auth.reauth.subtitle' | translate) : ('auth.register.subtitle' | translate) }}
+              </span>
               <span *ngIf="step === 'code'">{{ 'auth.register.code-sent' | translate }}</span>
               <span *ngIf="step === 'passkey'">{{ 'auth.passkey.description' | translate }}</span>
             </p>
@@ -114,17 +113,27 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
                 ></ion-input>
               </div>
 
-              <ion-button expand="block" (click)="sendCode()" [disabled]="!email || loading" class="auth-button">
+              <ion-button expand="block" (click)="email && !loading && sendCode()" [disabled]="loading" [class.inactive-email]="!email && !loading" class="auth-button">
                 <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
                 <ion-icon *ngIf="!loading" name="paper-plane-outline" slot="start"></ion-icon>
                 <span *ngIf="!loading">{{ 'auth.register.send-code' | translate }}</span>
+              </ion-button>
+
+              <!-- Already registered link -->
+              <ion-button *ngIf="!isReauthMode" expand="block" fill="clear" (click)="goBackToLogin()" class="secondary-button">
+                {{ 'auth.register.already-registered' | translate }}
+              </ion-button>
+
+              <!-- Back to login button in reauth mode -->
+              <ion-button *ngIf="isReauthMode" expand="block" fill="clear" (click)="goBackToLogin()" class="secondary-button">
+                <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+                {{ 'auth.reauth.back-to-login' | translate }}
               </ion-button>
             </div>
 
             <!-- Step 2: OTP code -->
             <div *ngIf="step === 'code'" class="auth-form">
               <div class="email-badge">
-                <ion-icon name="mail-outline"></ion-icon>
                 <span>{{ email }}</span>
               </div>
 
@@ -133,18 +142,16 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
                 [length]="6"
                 [autofocus]="true"
                 [error]="!!errorMessage"
-                (completed)="onOtpCompleted($event)"
                 (changed)="otpValue = $event; errorMessage = ''"
               ></app-otp-input>
 
-              <ion-button expand="block" (click)="verifyCode()" [disabled]="otpValue.length < 6 || loading" class="auth-button">
+              <ion-button expand="block" (click)="otpValue.length >= 6 && !loading && verifyCode()" [disabled]="loading" [class.inactive-email]="otpValue.length < 6 && !loading" class="auth-button">
                 <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
                 <ion-icon *ngIf="!loading" name="shield-checkmark-outline" slot="start"></ion-icon>
                 <span *ngIf="!loading">{{ 'auth.register.verify' | translate }}</span>
               </ion-button>
 
               <ion-button expand="block" fill="clear" (click)="goBackToEmail()" class="secondary-button">
-                <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
                 {{ 'auth.register.change-email' | translate }}
               </ion-button>
             </div>
@@ -152,7 +159,7 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
             <!-- Step 3: Passkey creation -->
             <div *ngIf="step === 'passkey'" class="auth-form">
               <div class="fingerprint-hero">
-                <div class="fp-circle">
+                <div class="fp-circle" [class.fp-authenticating]="loading">
                   <ion-icon name="finger-print-outline"></ion-icon>
                 </div>
               </div>
@@ -177,29 +184,55 @@ import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constant
     imports: [IonicModule, CommonModule, FormsModule, TranslateModule, OtpInputComponent]
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
-export class RegisterPage {
+export class RegisterPage implements OnInit {
   @ViewChild('otpRef') otpInput!: OtpInputComponent;
 
   private readonly themeService = inject(ThemeService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly passkeyStore = inject(PasskeyStoreService);
+  private readonly passkeyApi = inject(PasskeyApiService);
+
   readonly pwaInstall = inject(PwaInstallService);
   readonly logoSrc = this.themeService.getLogoUrl('dark');
+
   email = '';
   otpValue = '';
   step: 'email' | 'code' | 'passkey' = 'email';
   loading = false;
   errorMessage = '';
   showInstallScreen = !this.pwaInstall.isStandalone;
+  verifiedEmail = false;
+
+  /** True if user has a passkey but needs to re-authenticate (session expired) */
+  isReauthMode = false;
 
   private readonly authService = inject(AuthService);
   private readonly prfService = inject(PasskeyPrfService);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
+
+  /**
+   * AC-008.8: iOS standalone + EBW mode + empty storage.
+   * Indicates the user likely had data in Safari that is not available here.
+   */
+  readonly isStandaloneDivergence =
+    this.pwaInstall.isStandalone &&
+    !this.isBrowserMode &&
+    !this.passkeyStore.hasPasskey();
+
+  ngOnInit(): void {
+    // Check if we're in re-authentication mode (passkey exists but session expired)
+    const reauth = this.route.snapshot.queryParamMap.get('reauth');
+    this.isReauthMode = reauth === 'true' && this.passkeyStore.hasPasskey();
+  }
 
   // --- PWA Install ---
 
   async installApp(): Promise<void> {
     await this.pwaInstall.promptInstall();
+    this.showInstallScreen = false;
   }
 
   skipInstall(): void {
@@ -237,6 +270,10 @@ export class RegisterPage {
     this.otpValue = '';
   }
 
+  goBackToLogin(): void {
+    this.router.navigate(['/auth/login']);
+  }
+
   sendCode(): void {
     this.loading = true;
     this.errorMessage = '';
@@ -248,7 +285,9 @@ export class RegisterPage {
         this.loading = false;
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Failed to send verification code';
+        this.errorMessage = err?.status === 429
+          ? this.translate.instant('auth.errors.too-many-attempts')
+          : (err?.error?.message || err?.error?.detail || 'Failed to send verification code');
         this.loading = false;
       }
     });
@@ -261,10 +300,18 @@ export class RegisterPage {
     (this.authService as RemoteAuthService).verifyEmail(this.email, this.otpValue).subscribe({
       next: () => {
         this.loading = false;
-        this.step = 'passkey';
+        this.verifiedEmail = true;
+
+        if (this.isReauthMode || this.passkeyStore.hasPasskey()) {
+          this.navigateHome();
+        } else {
+          this.step = 'passkey';
+        }
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Invalid verification code';
+        this.errorMessage = err?.status === 429
+          ? this.translate.instant('auth.errors.too-many-attempts-otp')
+          : (err?.error?.message || err?.error?.detail || 'Invalid verification code');
         this.loading = false;
       }
     });
@@ -276,10 +323,22 @@ export class RegisterPage {
 
     try {
       await this.prfService.createPasskey(this.email || 'Wallet User');
+
+      // Navigate immediately — server registration happens in background
       this.navigateHome();
+
+      const credentialId = this.passkeyStore.getCredentialId();
+      if (credentialId) {
+        this.passkeyApi.registerPasskey({
+          credentialId,
+          displayName: this.getDeviceName(),
+          userAgent: navigator.userAgent
+        }).subscribe({
+          error: (err: any) => console.warn('Failed to register passkey on server:', err)
+        });
+      }
     } catch (err: any) {
       this.errorMessage = err?.message || 'Failed to create passkey';
-    } finally {
       this.loading = false;
     }
   }
@@ -288,5 +347,16 @@ export class RegisterPage {
     const pendingLink = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
     sessionStorage.removeItem(PENDING_DEEP_LINK_KEY);
     this.router.navigateByUrl(pendingLink || '/tabs/home');
+  }
+
+  private getDeviceName(): string {
+    const ua = navigator.userAgent;
+    if (/iPhone/.test(ua)) return 'iPhone';
+    if (/iPad/.test(ua)) return 'iPad';
+    if (/Android/.test(ua)) return 'Android Device';
+    if (/Mac/.test(ua)) return 'Mac';
+    if (/Windows/.test(ua)) return 'Windows PC';
+    if (/Linux/.test(ua)) return 'Linux';
+    return 'Unknown Device';
   }
 }

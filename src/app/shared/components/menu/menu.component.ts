@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
+import { Router, RouterModule } from '@angular/router';
 import { AuthService } from 'src/app/core/services/auth.service';
-import { RouterModule } from '@angular/router';
 import { IonicModule, PopoverController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
@@ -16,6 +16,7 @@ import { TranslateModule } from '@ngx-translate/core';
 export class MenuComponent {
   private readonly popOverController = inject(PopoverController);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   public logoutOnKeydown(event: KeyboardEvent): void {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -26,7 +27,7 @@ export class MenuComponent {
 
   public logout(): void {
     this.authService.logout().subscribe(() => {
-      window.location.href = '/auth/login';
+      this.router.navigate(['/auth/login']);
     });
     this.popOverController.dismiss();
   }

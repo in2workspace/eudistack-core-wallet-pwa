@@ -29,7 +29,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
     return next.handle(request).pipe(
       catchError((errorResp: HttpErrorResponse) => {
         // Normalize URL to ensure request params are not included in the conditionals below
-        const urlObj = new URL(request.url);
+        const urlObj = new URL(request.url, window.location.origin);
         const href = urlObj.href;
         const isOwnBackend = href.startsWith(environment.server_url);
         const pathname = urlObj.pathname;
@@ -46,6 +46,8 @@ export class HttpErrorInterceptor implements HttpInterceptor {
 
         // DON'T SHOW POPUP CASES
         const shouldHandleSilently =
+          // static assets (theme.json, i18n, etc.) — not real backend errors
+          pathname.startsWith('/assets/') ||
           // get credentials endpoint
           (pathname.endsWith(SERVER_PATH.CREDENTIALS) &&
             errMessage?.startsWith('The credentials list is empty')) ||

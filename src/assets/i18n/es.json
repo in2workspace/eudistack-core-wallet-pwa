@@ -66,7 +66,9 @@
         "login": {
             "title": "Bienvenido",
             "subtitle": "Usa tu passkey para acceder de forma segura",
-            "passkey-button": "Iniciar sesión con Passkey"
+            "passkey-button": "Iniciar sesión con Passkey",
+            "enter-email": "Introduce tu email para continuar",
+            "verify-passkey": "Verifica tu identidad con tu passkey"
         },
         "register": {
             "title": "Crear cuenta",
@@ -86,7 +88,8 @@
             "install-title": "Instalar la App",
             "install-subtitle": "Para la mejor experiencia y acceso offline, instala la app del wallet en tu dispositivo.",
             "install-button": "Instalar App",
-            "continue-browser": "Continuar en el navegador"
+            "continue-browser": "Continuar en el navegador",
+            "already-registered": "¿Ya tienes una cuenta? Inicia sesión"
         },
         "passkey": {
             "title": "Configurar Passkey",
@@ -97,6 +100,14 @@
             "status-connecting": "Preparando...",
             "status-verifying": "Esperando tu dispositivo...",
             "retry": "Reintentar"
+        },
+        "reauth": {
+            "subtitle": "Verifica tu email para restaurar tu sesión",
+            "back-to-login": "Volver al login"
+        },
+        "errors": {
+            "too-many-attempts": "Demasiados intentos. Por favor, inténtalo más tarde.",
+            "too-many-attempts-otp": "Demasiados intentos incorrectos. Por favor, solicita un nuevo código."
         }
     },
     "login":{
@@ -115,7 +126,11 @@
         "dark-mode": "Modo oscuro",
         "dark-mode-desc": "Cambiar al tema oscuro",
         "about": "Acerca de",
-        "version": "Versión"
+        "version": "Versión",
+        "knowledge-base": "Base de conocimiento",
+        "wallet-mode-label": "Tipo de wallet",
+        "wallet-mode-eudiw": "EUDIW",
+        "wallet-mode-business": "Business Wallet"
     },
     "terms-of-use":{
         "title":"Términos de Uso"
@@ -158,7 +173,7 @@
         "send": "Enviar"
     },
     "vc-fields": {
-        "delete": "Eliminar",        
+        "delete": "Eliminar",
         "copy-success": "Copiado al portapapeles",
         "modal-title": "Detalles de credencial",
         "title": "Información de credenciales",
@@ -180,7 +195,7 @@
             "status": "Estado",
             "revocationUrl": "URL de estado de revocación"
         },
-        
+
         "credentialEncoded": "Credencial",
         "learCredentialEmployee": {
             "mandatee": {
@@ -256,6 +271,7 @@
         "cannot-download-auth-server-metadata": "No hemos podido conectarnos al servidor de autorización. Inténtalo de nuevo.",
         "cannot-download-issuerMetadata": "No hemos podido conectarnos con el emisor. Inténtalo de nuevo.",
         "cannot-download-credentialOffer": "No hemos podido descargar la oferta de credencial. Inténtalo de nuevo.",
+        "cross-tenant-offer": "Esta oferta de credencial pertenece a otro tenant y no puede añadirse a esta wallet.",
         "invalid-credential-configuration": "Esta oferta contiene una configuración de credencial no válida.",
         "unsupported-credential-format": "Este tipo de credencial no es compatible con esta wallet.",
         "invalid-jwt": "Hemos recibido un token de credencial no válido.",
@@ -285,12 +301,13 @@
 
         "verifier-post-failed": "No hemos podido enviar la respuesta de login. Inténtalo de nuevo.",
         "signature-failed": "No hemos podido firmar la presentación. Inténtalo de nuevo.",
-       
+
         "failed-qr-process": "Ha habido un error al procesar QR. Puede que sea inválido o que ya haya sido usado antes. Refrésquelo, por favor. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>",
         "invalid-qr":"El QR presentado es inválido",
         "no-credentials-available": "No hay ninguna credencial disponible para el login",
         "expired-credentialOffer":"La oferta de credencial está expirada o ya utilizada",
         "cannot-get-VC":"No se pudo obtener la credencial del Issuer",
+        "signing-failed": "Estamos teniendo dificultades t\u00e9cnicas puntuales. Cierra esta pantalla e int\u00e9ntalo de nuevo en unos minutos desde el enlace del correo que recibiste.",
         "cannot-save-VC":"No se pudo guardar correctamente la credencial",
         "incorrect-pin":"PIN incorrecto. Por favor, renueve la oferta de credencial. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
         "pin-expired": "No ha introducido el PIN dentro del límite de tiempo. Por favor, renueve la oferta de credencial. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
@@ -299,7 +316,7 @@
         "loading-VCs": "Ha habido un error al cargar las credenciales. Vuélvalo a intentar más tarde. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
         "Errunsigned": "No se pudo obtener la credencial",
         "no-connection": "Se perdió la conexión. Compruebe su conexión a internet e inténtelo de nuevo.",
-        "navigation": "Error inesperado al intentar acceder a la página. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>", 
+        "navigation": "Error inesperado al intentar acceder a la página. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>",
         "camera": {
             "not-readable": "No se puede acceder a la cámara. Asegúrate de que ninguna otra aplicación la esté utilizando. Es posible que necesites actualizar la página.",
             "not-allowed": "El acceso a la cámara está denegado. Revisa los permisos de tu navegador. Si el problema persiste, intenta actualizar la página.",
@@ -379,5 +396,37 @@
         "expiration":"Fecha de caducidad: ",
         "unknown": "Desconocido",
         "time-remaining": "Tiempo restante"
+    },
+    "tenantNotFound": {
+        "title": "Tenant no encontrado",
+        "message": "El subdominio «{{hostname}}» no corresponde a ningún tenant válido.",
+        "cta": "Ir al entorno sandbox"
+    },
+    "ios-install": {
+        "title": "Instala Wallet primero",
+        "subtitle": "En iOS, la app instalada y Safari tienen almacenamiento completamente separado. Si te registras aquí primero, perderás tus credenciales y sesión al instalar la app después.",
+        "icon-aria": "Ilustración de teléfono móvil",
+        "steps-aria": "Pasos para instalar Wallet en iOS",
+        "step1": "Toca el botón Compartir",
+        "step1-detail": "Busca el icono de compartir (cuadro con una flecha) en la parte inferior de Safari",
+        "step2": "Desplázate hacia abajo y toca Más",
+        "step2-detail": "Desliza hacia arriba en la hoja de compartir y busca 'Más opciones'",
+        "step3": "Toca Añadir a pantalla de inicio",
+        "step3-detail": "Selecciona 'Añadir a pantalla de inicio' de la lista de opciones",
+        "step4": "Abre la app desde tu pantalla de inicio",
+        "step4-detail": "Toca el icono de Wallet en tu pantalla de inicio para abrirla",
+        "learn-more": "¿Por qué es necesario?",
+        "learn-more-body": "Apple aísla el almacenamiento (credenciales, sesión) de las apps instaladas respecto a Safari. Si te registras en Safari y luego instalas la app, perderías todos tus datos y tendrías que volver a registrarte. Instalando primero evitas este problema.",
+        "learn-more-close": "Entendido",
+        "continue-browser": "Continuar en el navegador",
+        "continue-anyway": "Continuar en el navegador de todas formas",
+        "confirm-title": "¿Estás seguro?",
+        "confirm-message": "Si continúas sin instalar la app, perderás tus credenciales y sesión cuando la instales más adelante. Te recomendamos encarecidamente instalar primero.",
+        "confirm-ok": "Continuar de todas formas",
+        "confirm-cancel": "Cancelar",
+        "already-bootstrapped-title": "Tienes datos en Safari",
+        "already-bootstrapped-subtitle": "Ya has configurado tu wallet en Safari. Si instalas la app ahora y la abres, tus credenciales y sesión no estarán disponibles allí. Instala la app y luego vuelve a registrarte.",
+        "standalone-divergence-title": "Sesión no encontrada en esta app",
+        "standalone-divergence-subtitle": "Si tenías credenciales o una sesión en Safari, no están disponibles aquí. Por favor, vuelve a autenticarte e importa tus credenciales."
     }
 }

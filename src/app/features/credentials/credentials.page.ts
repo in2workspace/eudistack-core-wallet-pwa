@@ -19,7 +19,7 @@ import { ExtendedHttpErrorResponse } from 'src/app/core/models/errors';
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
 import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engine.service';
-import { AuthorizationRequestService } from 'src/app/core/protocol/oid4vp/authorization-request.service';
+import { AuthorizationRequestService, InvalidQrError } from 'src/app/core/protocol/oid4vp/authorization-request.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 import { CredentialPreviewBuilderService } from 'src/app/core/services/credential-preview-builder.service';
 import { CredentialDecisionService } from 'src/app/core/services/credential-decision.service';
@@ -92,10 +92,19 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       .subscribe((params) => {
         this.showScannerView = params['showScannerView'] === 'true';
         this.showScanner = params['showScanner']     === 'true';
-        this.credentialOfferUri = params['credentialOfferUri'];
+        this.credentialOfferUri = params['credentialOfferUri'] || params['credential_offer_uri'];
         this.authorizationRequest = params['authorizationRequest'] ?? '';
         this.selectedCredentialId = params['id'] ?? null;
         this.cdr.detectChanges();
+
+        // IonicRouteStrategy caches pages — ngOnInit won't re-run when the leader tab
+        // receives a NAVIGATE from single-instance and lands here with a new offer URI.
+        // If credentials are already loaded, trigger the flow directly.
+        if (this.isFirstCredentialLoadCompleted && this.credentialOfferUri) {
+          this.sameDeviceVcActivationFlow(this.credentialOfferUri);
+        } else if (this.isFirstCredentialLoadCompleted && this.authorizationRequest) {
+          this.verifiablePresentationFlow(this.authorizationRequest);
+        }
       });
   }
 
@@ -208,21 +217,46 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
 
   public qrCodeEmit(qrCode: string): void {
     this.hapticService.notification();
+    if (!this.isSupportedQrContent(qrCode)) {
+      this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.invalid-qr').pipe(take(1)).subscribe();
+      return;
+    }
+
+    let uriToProcess = qrCode;
+
+    if (qrCode.toLowerCase().startsWith('http')) {
+      try {
+        const url = new URL(qrCode);
+        const extractedUri = url.searchParams.get('credential_offer_uri');
+        if (extractedUri) {
+          uriToProcess = extractedUri;
+        }
+      } catch (e) {
+        console.warn('Could not parse as URL; attempting to process the original string.');
+      }
+    }
+
     const isCredentialOffer = qrCode.includes('credential_offer_uri');
-    //todo don't accept qrs that are not to login or get VC
     if(isCredentialOffer){
       //CROSS-DEVICE VC OFFER
       //show VCs list
       this.closeScannerViewAndScanner();
       console.info('Requesting Credential Offer via cross-device flow.');
-      this.credentialActivationFlow(qrCode);
+      this.credentialActivationFlow(uriToProcess);
     }else{
       // VERIFIABLE PRESENTATION
       // hide scanner but don't show VCs list
       this.closeScanner();
       console.info('Processing QR code for verifiable presentation.');
-      this.verifiablePresentationFlow(qrCode);
+      this.verifiablePresentationFlow(uriToProcess);
       }
+  }
+
+  private isSupportedQrContent(qrCode: string): boolean {
+    return qrCode.includes('credential_offer_uri')
+      || qrCode.startsWith('openid4vp://')
+      || qrCode.includes('request_uri=')
+      || qrCode.includes('request=');
   }
 
   private sameDeviceVcActivationFlow(credentialOfferUri: string): void {
@@ -386,7 +420,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     .subscribe();
   }
 
-  
+
   private handleActivationSuccess(): Observable<boolean> {
     console.log("Handling successful credential activation...");
     this.loader.addLoadingProcess();
@@ -400,7 +434,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       )
   }
 
-  
+
   private loadCredentials(): Observable<VerifiableCredential[]> {
     // todo this conditional should be removed when scanner is moved to another page
     const isScannerOpen = this.isScannerOpen();
@@ -503,11 +537,11 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     const pendingCredentials = this.credList.filter(
       (credential) => credential.lifeCycleStatus === 'ISSUED'
     );
-    
+
     if (pendingCredentials.length === 0) {
       return;
     }
-    
+
     console.log('Requesting signatures for pending credentials...');
 
     const requests = pendingCredentials.map((credential) =>
@@ -518,11 +552,11 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         })
       )
     );
-  
+
     forkJoin(requests).subscribe({
       next: (responses: (HttpResponse<string> | { status: number })[]) => {
         const successfulResponses = responses.filter(response => response.status === 204);
-    
+
         if (successfulResponses.length > 0) {
           console.log('Signed credentials:', successfulResponses.length);
           this.reloadCredentials();
@@ -542,16 +576,25 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   }
 
   //todo review this (it is storing camera logs, but is used after API calls)
-  private handleContentExecutionError(errorResponse: ExtendedHttpErrorResponse): void{
-    const httpErr = errorResponse?.error;
-    const message = httpErr?.message || errorResponse?.message || 'No error message';
-    const title = httpErr?.title || errorResponse?.title || '(No title)';
-    const path = httpErr?.path || errorResponse?.path || '(No path)';
+  private handleContentExecutionError(errorResponse: ExtendedHttpErrorResponse | Error): void{
+    const httpErr = (errorResponse as ExtendedHttpErrorResponse)?.error;
+    const message = httpErr?.message || (errorResponse as ExtendedHttpErrorResponse)?.message || errorResponse?.message || 'No error message';
+    const title = httpErr?.title || (errorResponse as ExtendedHttpErrorResponse)?.title || '(No title)';
+    const path = httpErr?.path || (errorResponse as ExtendedHttpErrorResponse)?.path || '(No path)';
 
     const error = title + ' . ' + message + ' . ' + path;
     this.cameraLogsService.addCameraLog(new Error(error), 'httpError');
 
     console.error(errorResponse);
+
+    const translationKey = errorResponse instanceof InvalidQrError
+      ? 'errors.invalid-qr'
+      : 'errors.failed-qr-process';
+    this.toastServiceHandler
+      .showErrorAlertByTranslateLabel(translationKey)
+      .pipe(take(1))
+      .subscribe();
+
     setTimeout(()=>{
       this.router.navigate(['/tabs/home'])
     }, 1000);

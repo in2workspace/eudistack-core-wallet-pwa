@@ -67,7 +67,9 @@
         "login": {
             "title": "Benvingut",
             "subtitle": "Usa la teva passkey per accedir de forma segura",
-            "passkey-button": "Iniciar sessió amb Passkey"
+            "passkey-button": "Iniciar sessió amb Passkey",
+            "enter-email": "Introdueix el teu email per continuar",
+            "verify-passkey": "Verifica la teva identitat amb la teva passkey"
         },
         "register": {
             "title": "Crear compte",
@@ -87,7 +89,8 @@
             "install-title": "Instal·lar l'App",
             "install-subtitle": "Per a la millor experiència i accés offline, instal·la l'app del wallet al teu dispositiu.",
             "install-button": "Instal·lar App",
-            "continue-browser": "Continuar al navegador"
+            "continue-browser": "Continuar al navegador",
+            "already-registered": "Ja tens un compte? Inicia sessió"
         },
         "passkey": {
             "title": "Configurar Passkey",
@@ -98,6 +101,10 @@
             "status-connecting": "Preparant...",
             "status-verifying": "Esperant el teu dispositiu...",
             "retry": "Tornar-ho a provar"
+        },
+        "errors": {
+            "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",
+            "too-many-attempts-otp": "Massa intents incorrectes. Si us plau, sol·licita un nou codi."
         }
     },
     "login":{
@@ -105,6 +112,10 @@
         "login":"Login",
         "register":"No estàs registrat? Registra't",
         "error": "Nom d'usuari o contrasenya incorrectes"
+    },
+    "errors": {
+        "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",
+        "too-many-attempts-otp": "Massa intents incorrectes. Si us plau, sol·licita un nou codi."
     },
     "privacy-policy":{
         "title":"Política de Privacitat"
@@ -116,7 +127,11 @@
         "dark-mode": "Mode fosc",
         "dark-mode-desc": "Canviar al tema fosc",
         "about": "Sobre",
-        "version": "Versió"
+        "version": "Versió",
+        "knowledge-base": "Base de coneixement",
+        "wallet-mode-label": "Tipus de wallet",
+        "wallet-mode-eudiw": "EUDIW",
+        "wallet-mode-business": "Business Wallet"
     },
     "terms-of-use":{
         "title":"Termes d'Ús"
@@ -221,7 +236,7 @@
                 "country": "País",
                 "email":"Correu electrònic"
             },
-            "powers": "Poders"            
+            "powers": "Poders"
         },
         "gaia-x-label-credential": {
             "label-info": {
@@ -256,6 +271,7 @@
         "cannot-download-auth-server-metadata": "No hem pogut connectar amb el servidor d’autorització. Torna-ho a provar.",
         "cannot-download-issuerMetadata": "No hem pogut connectar amb l’emissor. Torna-ho a provar.",
         "cannot-download-credentialOffer": "No hem pogut descarregar l’oferta de credencial. Torna-ho a provar.",
+        "cross-tenant-offer": "Aquesta oferta de credencial pertany a un altre tenant i no es pot afegir a aquesta wallet.",
         "invalid-credential-configuration": "Aquesta oferta conté una configuració de credencial no vàlida.",
         "unsupported-credential-format": "Aquest tipus de credencial no és compatible amb aquesta wallet.",
         "invalid-jwt": "Hem rebut un token de credencial no vàlid.",
@@ -285,12 +301,13 @@
 
         "verifier-post-failed": "No hem pogut enviar la resposta de login. Torna-ho a provar.",
         "signature-failed": "No hem pogut signar la presentació. Torna-ho a provar.",
-        
+
         "failed-qr-process": "Hi ha hagut un problema en processar el QR. Pot ser que sigui invàlid o que ja hagi estat utilitzat abans. Refresqueu-lo. Si el problema persisteix, contacteu <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>",
         "invalid-qr":"El QR presentat és invàlid",
         "no-credentials-available": "No hi ha cap credencial disponible per al login",
         "expired-credentialOffer":"L'oferta de credencial ha expirat o ja s'ha utilitzat",
         "cannot-get-VC":"No s'ha pogut obtenir la credencial del Issuer",
+        "signing-failed": "Estem tenint dificultats t\u00e8cniques puntuals. Tanca aquesta pantalla i torna-ho a provar d'aqu\u00ed uns minuts des de l'enlla\u00e7 del correu que vas rebre.",
         "cannot-save-VC":"No s'ha pogut guardar correctament la credencial",
         "incorrect-pin":"PIN incorrecte. Si us plau, actualitzeu l'oferta de credencials. Si el problema persisteix, poseu-vos en contacte amb <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>.",
         "pin-expired": "No ha introduït el PIN dins del límit de temps. Si us plau, renoveu l'oferta de credencial. Si el problema persisteix, poseu-vos en contacte amb <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>.",
@@ -368,7 +385,7 @@
         "cancel":"Cancel·lar",
         "new-credential": "Vols acceptar aquesta credencial?",
         "new-credential-title": "Nova credencial",
-        "accept":"Acceptar",    
+        "accept":"Acceptar",
         "pin":"Introdueix el PIN",
         "description": "S'ha enviat un codi PIN al teu email. Revisa'l i introdueix el PIN.",
         "send": "Enviar",
@@ -379,5 +396,37 @@
         "expiration":"Data de caducitat: ",
         "unknown": "Desconegut",
         "time-remaining": "Temps restant"
+    },
+    "tenantNotFound": {
+        "title": "Tenant no trobat",
+        "message": "El subdomini «{{hostname}}» no correspon a cap tenant vàlid.",
+        "cta": "Anar a l'entorn sandbox"
+    },
+    "ios-install": {
+        "title": "Instal·la Wallet primer",
+        "subtitle": "A iOS, l'app instal·lada i Safari tenen emmagatzematge completament separat. Si et registres aquí primer, perdràs les teves credencials i sessió quan instal·lis l'app després.",
+        "icon-aria": "Il·lustració de telèfon mòbil",
+        "steps-aria": "Passos per instal·lar Wallet a iOS",
+        "step1": "Toca el botó Compartir",
+        "step1-detail": "Busca la icona de compartir (quadre amb una fletxa) a la part inferior de Safari",
+        "step2": "Desplaça't cap avall i toca Més",
+        "step2-detail": "Llisca cap amunt al full de compartir i busca 'Més opcions'",
+        "step3": "Toca Afegir a la pantalla d'inici",
+        "step3-detail": "Selecciona 'Afegir a la pantalla d'inici' de la llista d'opcions",
+        "step4": "Obre l'app des de la teva pantalla d'inici",
+        "step4-detail": "Toca la icona de Wallet a la teva pantalla d'inici per obrir-la",
+        "learn-more": "Per què és necessari?",
+        "learn-more-body": "Apple aïlla l'emmagatzematge (credencials, sessió) de les apps instal·lades respecte a Safari. Si et registres a Safari i després instal·les l'app, perdries totes les teves dades i hauries de tornar a registrar-te. Instal·lant primer evites aquest problema.",
+        "learn-more-close": "Entès",
+        "continue-browser": "Continuar al navegador",
+        "continue-anyway": "Continuar al navegador de totes maneres",
+        "confirm-title": "Estàs segur?",
+        "confirm-message": "Si continues sense instal·lar l'app, perdràs les teves credencials i sessió quan la instal·lis més endavant. Et recomanem instal·lar primer.",
+        "confirm-ok": "Continuar de totes maneres",
+        "confirm-cancel": "Cancel·lar",
+        "already-bootstrapped-title": "Tens dades a Safari",
+        "already-bootstrapped-subtitle": "Ja has configurat la teva wallet a Safari. Si instal·les l'app ara i l'obres, les teves credencials i sessió no hi estaran disponibles. Instal·la l'app i després torna a registrar-te.",
+        "standalone-divergence-title": "Sessió no trobada en aquesta app",
+        "standalone-divergence-subtitle": "Si tenies credencials o una sessió a Safari, no estan disponibles aquí. Si us plau, torna a autenticar-te i importa les teves credencials."
     }
 }

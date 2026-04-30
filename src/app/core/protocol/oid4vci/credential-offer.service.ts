@@ -8,12 +8,14 @@ import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message'
 
 @Injectable({ providedIn: 'root' })
 export class CredentialOfferService {
- 
+
   private readonly walletService = inject(WalletService);
 
     async getCredentialOfferFromCredentialOfferUri(credentialOfferUri: string): Promise<CredentialOffer> {
     try {
       const parsedUri = this.parseCredentialOfferUri(credentialOfferUri);
+
+      this.validateOfferUriTenant(parsedUri);
 
       const responseText = await this.fetchCredentialOffer(parsedUri);
 
@@ -34,10 +36,14 @@ export class CredentialOfferService {
 
   private parseCredentialOfferUri(credentialOfferUri: string): string {
     try {
-      const parts = credentialOfferUri.split('=');
-      const value = parts[1];
-      if (!value) return credentialOfferUri;
-      return decodeURIComponent(value);
+      const url = new URL(credentialOfferUri);
+      const offerParams = url.searchParams.get('credential_offer_uri');
+
+      if (offerParams) {
+        console.log('Detected wrapped offer URI:', offerParams);
+        return offerParams;
+      }
+      return credentialOfferUri;
     } catch {
       console.warn('Error parsing credential offer URI, using original value as fallback.');
       return credentialOfferUri;
@@ -169,6 +175,38 @@ export class CredentialOfferService {
 
   private asNumber(value: unknown): number | undefined {
     return typeof value === 'number' ? value : undefined;
+  }
+
+  private validateOfferUriTenant(credentialOfferUri: string): void {
+    const walletTenant = this.extractSubdomain(window.location.hostname);
+    if (!walletTenant) return;
+
+    let offerHostname: string;
+    try {
+      offerHostname = new URL(credentialOfferUri).hostname;
+    } catch {
+      return;
+    }
+
+    const offerTenant = this.extractSubdomain(offerHostname);
+    if (!offerTenant) return;
+
+    if (walletTenant !== offerTenant) {
+      throw new Oid4vciError(
+        `Credential offer tenant '${offerTenant}' does not match wallet tenant '${walletTenant}'`,
+        { translationKey: 'errors.cross-tenant-offer' }
+      );
+    }
+  }
+
+  // Intentionally does NOT strip env suffixes (e.g. -stg, -dev) and does NOT
+  // delegate to resolveTenant(). The full first label (e.g. "sandbox-stg") is
+  // the tenant identity here so that STG wallet and PROD issuer are treated as
+  // different tenants and cross-environment offers are rejected.
+  private extractSubdomain(hostname: string): string | null {
+    const dotIndex = hostname.indexOf('.');
+    if (dotIndex <= 0) return null;
+    return hostname.substring(0, dotIndex).toLowerCase();
   }
 
   private validateCredentialOffer(credentialOffer: CredentialOffer): void {

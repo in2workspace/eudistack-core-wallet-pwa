@@ -25,6 +25,7 @@ export abstract class AuthService {
   abstract getToken(): string;
   abstract logout(): Observable<void>;
   abstract forceLogout(): void;
+  dispose(): void {}
 }
 
 /** DI provider that selects the right AuthService based on wallet_mode. */
@@ -57,6 +58,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private readonly broadcastChannel = new BroadcastChannel('auth');
   private static readonly BROADCAST_FORCE_LOGOUT = 'forceWalletLogout';
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private disposed = false;
 
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
@@ -64,14 +66,15 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   constructor() {
     super();
-    this.loadStoredTokens();
+    // TODO Refactor
+    Promise.resolve().then(() => this.loadStoredTokens());
     this.listenToCrossTabLogout();
   }
 
   // --- Registration flow (email + OTP → JWT tokens) ---
 
-  register(email: string): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${AUTH_BASE}/register`, { email });
+  register(email: string, mode: 'register' | 'login' = 'register'): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${AUTH_BASE}/register`, { email, mode });
   }
 
   verifyEmail(email: string, code: string): Observable<TokenPairResponse> {
@@ -91,29 +94,18 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     }).pipe(
       tap(response => this.handleTokenResponse(response)),
       catchError(err => {
-        this.forceLogout();
+        if (!this.disposed) {
+          this.forceLogout();
+        }
         return throwError(() => err);
       })
     );
   }
 
   logout(): Observable<void> {
-    if (!this.refreshTokenValue) {
-      this.clearState();
-      return of(undefined);
-    }
-    return this.http.post<void>(`${AUTH_BASE}/logout`, {
-      refreshToken: this.refreshTokenValue
-    }).pipe(
-      tap(() => {
-        this.broadcastChannel.postMessage(RemoteAuthService.BROADCAST_FORCE_LOGOUT);
-        this.clearState();
-      }),
-      catchError(() => {
-        this.clearState();
-        return of(undefined);
-      })
-    );
+    this.broadcastChannel.postMessage('softWalletLogout');
+    this.softClearState();
+    return of(undefined);
   }
 
   forceLogout(): void {
@@ -144,7 +136,18 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   // --- Private helpers ---
 
+  override dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+    this.broadcastChannel.close();
+  }
+
   private handleTokenResponse(response: TokenPairResponse): void {
+    if (this.disposed) return;
     this.accessToken = response.accessToken;
     this.refreshTokenValue = response.refreshToken;
     localStorage.setItem('wallet_refresh_token', response.refreshToken);
@@ -167,7 +170,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     const refreshInMs = Math.max((expiresInSeconds - 60) * 1000, 0);
     this.refreshTimer = setTimeout(() => {
       this.refreshAccessToken().subscribe({
-        error: () => this.forceLogout()
+        error: () => { if (!this.disposed) { this.forceLogout(); } }
       });
     }, refreshInMs);
   }
@@ -175,29 +178,38 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private loadStoredTokens(): void {
     const storedRefreshToken = localStorage.getItem('wallet_refresh_token');
     if (storedRefreshToken) {
+      // Keep the refresh token in memory so verifyPasskey() can exchange it after biometric auth.
+      // Do NOT auto-authenticate — the user must present their passkey first.
       this.refreshTokenValue = storedRefreshToken;
-      this.refreshAccessToken().subscribe({
-        next: () => this.initialized$.next(true),
-        error: () => {
-          localStorage.removeItem('wallet_refresh_token');
-          this.authenticated$.next(false);
-          this.initialized$.next(true);
-        }
-      });
-    } else {
-      this.initialized$.next(true);
     }
+    this.initialized$.next(true);
   }
 
   private listenToCrossTabLogout(): void {
     this.broadcastChannel.onmessage = (event) => {
+      if (this.disposed) return;
       if (event.data === RemoteAuthService.BROADCAST_FORCE_LOGOUT) {
-        console.warn('Detected logout from another tab');
+        console.warn('Detected force-logout from another tab');
         this.clearState();
         const hasPasskey = this.passkeyStore.hasPasskey();
         this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
+      } else if (event.data === 'softWalletLogout') {
+        this.softClearState();
+        this.router.navigate(['/auth/login']);
       }
     };
+  }
+
+  private softClearState(): void {
+    this.accessToken = null;
+    this.name$.next('');
+    this.authenticated$.next(false);
+    // refreshTokenValue and localStorage entry are intentionally kept so the
+    // user only needs their passkey to resume the session.
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
   }
 
   private clearState(): void {
@@ -213,9 +225,6 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.broadcastChannel.close();
-    if (this.refreshTimer) {
-      clearTimeout(this.refreshTimer);
-    }
+    this.dispose();
   }
 }

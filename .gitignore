@@ -29,6 +29,9 @@ log.txt
 /out-tsc
 /bazel-out
 
+# Canonical schemas synced from eudistack-platform-dev/dev-tools/schemas (see scripts/sync-schemas.js)
+/src/assets/schemas/*.json
+
 # Node
 /node_modules
 npm-debug.log
@@ -70,3 +73,5 @@ android/
 
 # Schemas copied from platform-dev at build time
 src/assets/schemas/*.json
+/.claude/
+/docs/

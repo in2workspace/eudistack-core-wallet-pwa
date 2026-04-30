@@ -7,7 +7,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
 
   // Don't add auth header to auth endpoints (they handle their own auth)
-  if (req.url.includes('/api/v1/auth/')) {
+  // EXCEPT for passkey management endpoints which require authentication
+  const isAuthEndpoint = req.url.includes('/api/v1/auth/');
+  const isPasskeyEndpoint = req.url.includes('/api/v1/auth/passkeys');
+
+  if (isAuthEndpoint && !isPasskeyEndpoint) {
     return next(req);
   }
 

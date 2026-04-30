@@ -1,7 +1,44 @@
 @use 'responsive' as *;
 
+// AC-008.8: iOS standalone EBW divergence informational banner
+.standalone-divergence-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--ion-color-warning-tint, #fff8e1);
+  border: 1px solid var(--ion-color-warning, #ffc409);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--ion-text-color, #1a1a1a);
+
+  ion-icon {
+    font-size: 20px;
+    color: var(--ion-color-warning-shade, #e0ac08);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  strong {
+    font-weight: 600;
+    display: block;
+  }
+}
+
 .auth-bg {
   --background: linear-gradient(135deg, var(--auth-background, var(--primary-color)) 0%, var(--auth-gradient-end, var(--secondary-color)) 100%);
+}
+
+:host-context(.dark-theme) .auth-bg {
+  --background: linear-gradient(135deg, var(--surface-card) 0%, var(--auth-gradient-end, var(--secondary-color)) 100%);
 }
 
 .auth-wrapper {
@@ -15,7 +52,7 @@
 .auth-card {
   width: 100%;
   max-width: 420px;
-  background: rgba(255, 255, 255, 0.97);
+  background: #D6DAE1;
   border-radius: 24px;
   padding: clamp(24px, 8vw, 40px) clamp(20px, 6vw, 32px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -56,77 +93,44 @@
   color: var(--secondary-color);
 }
 
-// Steps bar
-.steps-bar {
+// Fingerprint hero
+.fingerprint-hero {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 0;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
-.step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.step-dot {
-  width: 32px;
-  height: 32px;
+.fp-circle {
+  width: clamp(64px, 18vw, 80px);
+  height: clamp(64px, 18vw, 80px);
   border-radius: 50%;
-  background: var(--action-secondary-hover);
-  color: var(--text-disabled);
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8rem;
-  font-weight: 600;
-  transition: all 0.3s ease;
-
-  .step.active & {
-    background: var(--primary-color);
-    color: var(--primary-contrast-color);
-    box-sizing: content-box;
-    border: 1px solid var(--primary-contrast-color);
-    box-shadow: 0 2px 8px rgb(var(--primary-color-rgb), 0.3);
-  }
-
-  .step.done & {
-    background: var(--status-success);
-    color: var(--primary-contrast-color);
-  }
+  animation: fpPulse 2s ease-in-out infinite;
 
   ion-icon {
-    font-size: 16px;
+    font-size: 40px;
+    color: var(--primary-contrast-color, #fff);
   }
 }
 
-.step-label {
-  font-size: 0.7rem;
-  color: var(--text-disabled);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-
-  .step.active &,
-  .step.done & {
-    color: var(--text-primary);
-  }
+@keyframes fpPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.85; }
 }
 
-.step-line {
-  width: clamp(24px, 8vw, 48px);
-  height: 2px;
-  background: var(--action-secondary-hover);
-  margin: 0 clamp(4px, 2vw, 12px);
-  margin-bottom: 20px;
-  transition: background 0.3s ease;
+// Authenticating variant
+.fp-circle.fp-authenticating {
+  animation: fpAuthPulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 0 8px rgb(var(--secondary-color-rgb) / 0.15),
+              0 0 20px rgb(var(--secondary-color-rgb) / 0.1);
+}
 
-  &.filled {
-    background: var(--status-success);
-  }
+@keyframes fpAuthPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.12); opacity: 0.8; }
 }
 
 // Install hero
@@ -153,7 +157,7 @@
   text-align: center;
   @include fluid-type(1.25rem, 1.5rem);
   font-weight: 700;
-  color: var(--text-primary);
+  color: #3F4856;
   margin: 0 0 6px;
 }
 
@@ -177,17 +181,20 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 10px;
+  align-self: center;
+  width: fit-content;
+  max-width: 100%;
+  background: var(--action-secondary-hover, #F3F4F6);
+  border: 1px solid var(--border-default, #D1D5DB);
+  border-radius: 20px;
   padding: 10px 14px;
   font-size: 0.875rem;
-  color: var(--status-info);
+  color: var(--text-secondary);
 
   ion-icon {
     font-size: 18px;
     flex-shrink: 0;
-    color: var(--status-info);
+    color: var(--text-secondary);
   }
 
   span {
@@ -253,7 +260,7 @@
   color: var(--text-primary);
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-  caret-color: var(---primary-color);
+  caret-color: var(--ui-caret);
 
   &:focus {
     border-color: var(--neutral-medium);
@@ -288,6 +295,10 @@
   }
 }
 
+.inactive-email::part(native) {
+  cursor: not-allowed;
+}
+
 .btn-spinner {
   width: 22px;
   height: 22px;
@@ -295,7 +306,7 @@
 
 .secondary-button {
   --color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.7rem;
   margin-top: 0;
 }
 
