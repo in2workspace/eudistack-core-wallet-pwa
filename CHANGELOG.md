@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added 5 new test for single-instance service to cover the new logic for installed PWA and follower notification. 
+- Added 4 new tests for single-instance service to cover the new logic for installed PWA and follower notification.
 
 ## [3.6.0] - 2026-04-29
 
