@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.1] - 2026-04-30
+
+### Added
+
+- **iOS PWA install onboarding wizard (EUDI-045 US-008)** — Changed steps
+
 ## [3.6.0] - 2026-04-29
 
 ### Added

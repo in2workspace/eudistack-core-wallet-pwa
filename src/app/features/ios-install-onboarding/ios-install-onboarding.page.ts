@@ -33,6 +33,7 @@ export class IosInstallOnboardingPage implements OnInit {
     { icon: 'ellipsis-horizontal',  labelKey: 'ios-install.step2', detailKey: 'ios-install.step2-detail' },
     { icon: 'add-circle-outline',   labelKey: 'ios-install.step3', detailKey: 'ios-install.step3-detail' },
     { icon: 'phone-portrait-outline', labelKey: 'ios-install.step4', detailKey: 'ios-install.step4-detail' },
+    { icon: 'qr-code-outline',      labelKey: 'ios-install.step5', detailKey: 'ios-install.step5-detail' },
   ];
 
   ngOnInit(): void {
