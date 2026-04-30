@@ -61,8 +61,8 @@ describe('IosInstallOnboardingPage', () => {
     expect(telemetry.track).toHaveBeenCalledWith('ios_onboarding_shown', { state: 'not-bootstrapped' });
   });
 
-  it('exposes 5 wizard steps', () => {
-    expect(component.steps.length).toBe(5);
+  it('exposes 6 wizard steps', () => {
+    expect(component.steps.length).toBe(6);
   });
 
   it('reads already-bootstrapped state from query params', () => {

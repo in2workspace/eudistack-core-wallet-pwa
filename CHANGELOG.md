@@ -8,9 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.6.1] - 2026-04-30
 
-### Added
+### Changed
 
-- **iOS PWA install onboarding wizard (EUDI-045 US-008)** — Changed steps
+- **iOS PWA install onboarding wizard — refined steps for credential offer flow (EUDI-045 US-008)**.
+  Wizard now guides the user end-to-end from "open the email link in Safari" all the way to the wallet
+  receiving the credential. Step list reworked to:
+  1. Tap the down arrow in Safari (open the options menu — replaces the previous "tap Share" first step,
+     which was misleading on iOS layouts where Share is hidden inside the more-options menu)
+  2. Tap the Share button
+  3. Tap "Add to Home Screen"
+  4. Tap "Add"
+  5. Open Wallet from your home screen
+  6. Scan the QR from inside Wallet
+  Step 6 explicitly tells the user to use Wallet's `Escáner QR` / `QR Scan` option — not the iPhone
+  native camera — because scanning from the OS camera reopens Safari and loses the offer due to the
+  Safari ↔ standalone storage isolation. Title and subtitle updated to frame the wizard as the
+  credential activation flow rather than a generic install prompt. i18n keys renumbered `step1`–`step6`
+  in `en.json`, `es.json`, `ca.json`.
+
+- **QR scan support for `authorization_request=` URLs (proximity verifier same-device flow)**
+  (`credentials.page.ts`). `qrCodeEmit()` now extracts the inner `openid4vp://` URI from
+  HTTPS callback URLs that carry it as the `authorization_request` query parameter (the format the
+  proximity verifier puts in its QR codes). Previously these URLs were rejected by
+  `isSupportedQrContent` because `request_uri=` was URL-encoded inside the query value, which made
+  the literal-substring check miss. Pattern added: `qrCode.includes('authorization_request=')`.
 
 ## [3.6.0] - 2026-04-29
 
