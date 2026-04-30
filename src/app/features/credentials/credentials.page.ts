@@ -227,9 +227,12 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     if (qrCode.toLowerCase().startsWith('http')) {
       try {
         const url = new URL(qrCode);
-        const extractedUri = url.searchParams.get('credential_offer_uri');
-        if (extractedUri) {
-          uriToProcess = extractedUri;
+        const credentialOfferUri = url.searchParams.get('credential_offer_uri');
+        const authorizationRequest = url.searchParams.get('authorization_request');
+        if (credentialOfferUri) {
+          uriToProcess = credentialOfferUri;
+        } else if (authorizationRequest) {
+          uriToProcess = authorizationRequest;
         }
       } catch (e) {
         console.warn('Could not parse as URL; attempting to process the original string.');
@@ -256,7 +259,8 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     return qrCode.includes('credential_offer_uri')
       || qrCode.startsWith('openid4vp://')
       || qrCode.includes('request_uri=')
-      || qrCode.includes('request=');
+      || qrCode.includes('request=')
+      || qrCode.includes('authorization_request=');
   }
 
   private sameDeviceVcActivationFlow(credentialOfferUri: string): void {
