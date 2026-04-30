@@ -159,20 +159,22 @@ export class SingleInstanceService implements OnDestroy {
     this.channel?.close();
     this.channel = null;
 
-    // In standalone (PWA installed) mode the OS handles focus via launch_handler
-    // navigate-existing; window.close() is enough.
+    // Adapt copy depending on whether this is a browser tab or the installed PWA.
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-    if (isStandalone) {
-      try { window.close(); } catch { /* opened by script only */ }
-      return;
-    }
+    const windowOrTab = isStandalone ? 'ventana' : 'pestaña';
 
     const title = isDeepLink
       ? 'Credencial enviada a EUDI Wallet'
       : 'EUDI Wallet ya está abierto';
     const subtitle = isDeepLink
-      ? 'La credencial se ha enviado a la pestaña activa de EUDI Wallet. Puedes cerrar esta pestaña.'
-      : 'Ya tienes EUDI Wallet abierto en otra pestaña. Puedes cerrar esta.'
+      ? `La credencial se ha enviado a la ${windowOrTab} activa de EUDI Wallet. Puedes cerrar esta ${windowOrTab}.`
+      : `Ya tienes EUDI Wallet abierto en otra ${windowOrTab}. Puedes cerrar esta.`;
+    const hint = isStandalone
+      ? 'Vuelve a la otra ventana de EUDI Wallet.'
+      : 'Usa Ctrl+Tab para volver a la pestaña activa.';
+    const closeFallback = isStandalone
+      ? 'Cierra esta ventana manualmente'
+      : 'Cierra esta pestaña con Ctrl+W (⌘+W en Mac)';
 
     document.body.innerHTML = `
       <div style="
@@ -187,11 +189,11 @@ export class SingleInstanceService implements OnDestroy {
         <p style="margin:0;font-size:.9rem;color:#555;max-width:320px;line-height:1.5;">
           ${subtitle}
         </p>
-        <p style="margin:0;font-size:.8rem;color:#aaa;max-width:320px;">Usa Ctrl+Tab para volver a la pestaña activa.</p>
+        <p style="margin:0;font-size:.8rem;color:#aaa;max-width:320px;">${hint}</p>
         <button id="__wallet_close_btn" style="
           margin-top:8px;padding:10px 24px;border:none;border-radius:8px;
           background:#001E8C;color:#fff;font-size:.9rem;cursor:pointer;">
-          Cerrar esta pestaña
+          Cerrar esta ${windowOrTab}
         </button>
       </div>`;
 
@@ -199,7 +201,7 @@ export class SingleInstanceService implements OnDestroy {
     closeBtn.addEventListener('click', () => {
       window.close();
       setTimeout(() => {
-        closeBtn.textContent = 'Cierra esta pestaña con Ctrl+W (⌘+W en Mac)';
+        closeBtn.textContent = closeFallback;
         closeBtn.style.background = '#555';
         closeBtn.style.cursor = 'default';
         closeBtn.disabled = true;
