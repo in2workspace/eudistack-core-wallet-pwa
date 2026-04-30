@@ -241,5 +241,81 @@ describe('SingleInstanceService', () => {
       (service as any).renderDuplicateTabMessage(false);
       expect((service as any).channel).toBeNull();
     });
+
+    it('renders the duplicate-tab message UI in browser tab mode (non-standalone)', () => {
+      (window as any).matchMedia = (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      });
+
+      (service as any).renderDuplicateTabMessage(false);
+
+      expect(document.body.innerHTML).toContain('__wallet_close_btn');
+      expect(document.body.innerHTML).toContain('EUDI Wallet ya está abierto');
+      expect(document.body.innerHTML).toContain('pestaña');
+      expect(document.body.innerHTML).toContain('Ctrl+Tab');
+    });
+
+    it('renders the duplicate-tab message UI in standalone (PWA installed) mode', () => {
+      (window as any).matchMedia = (query: string) => ({
+        matches: query === '(display-mode: standalone)',
+        media: query,
+        onchange: null,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      });
+
+      (service as any).renderDuplicateTabMessage(false);
+
+      expect(document.body.innerHTML).toContain('__wallet_close_btn');
+      expect(document.body.innerHTML).toContain('EUDI Wallet ya está abierto');
+      expect(document.body.innerHTML).toContain('ventana');
+      expect(document.body.innerHTML).not.toContain('Ctrl+Tab');
+    });
+
+    it('renders deep-link variant in standalone mode', () => {
+      (window as any).matchMedia = (query: string) => ({
+        matches: query === '(display-mode: standalone)',
+        media: query,
+        onchange: null,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      });
+
+      (service as any).renderDuplicateTabMessage(true);
+
+      expect(document.body.innerHTML).toContain('__wallet_close_btn');
+      expect(document.body.innerHTML).toContain('Credencial enviada a EUDI Wallet');
+      expect(document.body.innerHTML).toContain('ventana');
+    });
+
+    it('calls authService.dispose() in standalone mode (no silent close bypass)', () => {
+      (window as any).matchMedia = (query: string) => ({
+        matches: query === '(display-mode: standalone)',
+        media: query,
+        onchange: null,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      });
+
+      (service as any).renderDuplicateTabMessage(false);
+
+      expect(authServiceMock.dispose).toHaveBeenCalled();
+    });
   });
 });
