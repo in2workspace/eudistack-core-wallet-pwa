@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.3] - 2026-04-30
+
+### Fixed
+
+- **iOS onboarding step 1 — corrected icon and copy to "three dots"** (EUDI-045 US-008).
+  Step 1 of the install wizard previously described the Safari more-options control as a
+  "down arrow" (`chevron-down-outline` icon). On modern iOS Safari, the actual control is
+  a three-dots ellipsis button next to the address bar. Icon changed to `ellipsis-horizontal`
+  and copy reworded in `en.json`, `es.json`, `ca.json` to match the real control name and
+  position. Files: `ios-install-onboarding.page.ts`, `src/assets/i18n/{en,es,ca}.json`.
+
 ## [3.6.2] - 2026-04-30
 
 ### Fixed
@@ -12,9 +23,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.6.1] - 2026-04-30
 
-### Added
+### Changed
 
-- **iOS PWA install onboarding wizard (EUDI-045 US-008)** — Changed steps
+- **iOS PWA install onboarding wizard — refined steps for credential offer flow (EUDI-045 US-008)**.
+  Wizard now guides the user end-to-end from "open the email link in Safari" all the way to the wallet
+  receiving the credential. Step list reworked to:
+  1. Tap the down arrow in Safari (open the options menu — replaces the previous "tap Share" first step,
+     which was misleading on iOS layouts where Share is hidden inside the more-options menu)
+  2. Tap the Share button
+  3. Tap "Add to Home Screen"
+  4. Tap "Add"
+  5. Open Wallet from your home screen
+  6. Scan the QR from inside Wallet
+  Step 6 explicitly tells the user to use Wallet's `Escáner QR` / `QR Scan` option — not the iPhone
+  native camera — because scanning from the OS camera reopens Safari and loses the offer due to the
+  Safari ↔ standalone storage isolation. Title and subtitle updated to frame the wizard as the
+  credential activation flow rather than a generic install prompt. i18n keys renumbered `step1`–`step6`
+  in `en.json`, `es.json`, `ca.json`.
+
+- **QR scan support for `authorization_request=` URLs (proximity verifier same-device flow)**
+  (`credentials.page.ts`). `qrCodeEmit()` now extracts the inner `openid4vp://` URI from
+  HTTPS callback URLs that carry it as the `authorization_request` query parameter (the format the
+  proximity verifier puts in its QR codes). Previously these URLs were rejected by
+  `isSupportedQrContent` because `request_uri=` was URL-encoded inside the query value, which made
+  the literal-substring check miss. Pattern added: `qrCode.includes('authorization_request=')`.
 
 ## [3.6.0] - 2026-04-29
 
