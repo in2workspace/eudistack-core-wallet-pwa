@@ -427,7 +427,7 @@
     "step3-detail": "Scroll down in the share sheet if you don't see it",
     "step2": "Tap the Share button",
     "step2-detail": "Look for the share icon (box with an arrow) at the bottom of Safari",
-    "step1": "Tap the down arrow in Safari",
-    "step1-detail": "Look for it on the right of Safari's address bar to open the options menu"
+    "step1": "Tap the three dots in Safari",
+    "step1-detail": "Look for them next to the address bar to open the options menu"
   }
 }

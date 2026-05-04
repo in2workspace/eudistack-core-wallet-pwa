@@ -29,7 +29,7 @@ export class IosInstallOnboardingPage implements OnInit {
   state: WizardState = 'not-bootstrapped';
 
   readonly steps = [
-    { icon: 'chevron-down-outline',   labelKey: 'ios-install.step1', detailKey: 'ios-install.step1-detail' },
+    { icon: 'ellipsis-horizontal',    labelKey: 'ios-install.step1', detailKey: 'ios-install.step1-detail' },
     { icon: 'share-outline',          labelKey: 'ios-install.step2', detailKey: 'ios-install.step2-detail' },
     { icon: 'home-outline',           labelKey: 'ios-install.step3', detailKey: 'ios-install.step3-detail' },
     { icon: 'add-circle-outline',     labelKey: 'ios-install.step4', detailKey: 'ios-install.step4-detail' },
