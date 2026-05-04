@@ -6,10 +6,10 @@ import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
 import { Observable, of, throwError } from 'rxjs';
 import { IonicModule, NavController } from '@ionic/angular';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { ThemeService } from 'src/app/core/services/theme.service';
 import { EventEmitter, NO_ERRORS_SCHEMA, signal } from '@angular/core';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
-import { ThemeService } from 'src/app/core/services/theme.service';
 
 
 const translateServiceMock = {
@@ -53,9 +53,10 @@ describe('SettingsPage', () => {
         SettingsPage,
         IonicModule.forRoot(),
         RouterModule.forRoot([]),
-        TranslateModule.forRoot()
+        TranslateModule.forRoot(),
     ],
     providers: [
+        { provide: ThemeService, useValue: { snapshot: null } },
         { provide: Router, useValue: routerMock },
         { provide: CameraLogsService, useValue: cameraLogsServiceMock },
         { provide: TranslateService, useValue: translateServiceMock },
