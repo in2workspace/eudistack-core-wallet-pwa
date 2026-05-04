@@ -4,15 +4,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.6.1] - 2026-04-30
+## [3.6.3] - 2026-04-30
 
 ### Fixed
 
-- **Single-instance (PWA vs web):** Ensure installed PWA shows duplicate-instance UI and not silently close; follower now notifies leader and renders contextual message in standalone mode. (single-instance.service)
+- **Single-instance:** Ensure installed PWA shows duplicate-instance UI and not silently close; follower now notifies leader and renders contextual message in standalone mode.
 
 ### Added
 
 - Added 4 new tests for single-instance service to cover the new logic for installed PWA and follower notification.
+
+## [3.6.2] - 2026-04-30
+
+### Fixed
+
+- WCAG 2.1 AA compliance improvements (PRB-002 F-H08). Added missing ARIA attributes to icon-only buttons/images, hid decorative icons from screen readers, and fixed heading hierarchy in settings.
+
+## [3.6.1] - 2026-04-30
+
+### Added
+
+- **iOS PWA install onboarding wizard (EUDI-045 US-008)** — Changed steps
 
 ## [3.6.0] - 2026-04-29
 
