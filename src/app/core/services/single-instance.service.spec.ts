@@ -4,10 +4,6 @@ import { SingleInstanceService } from './single-instance.service';
 import { AuthService } from './auth.service';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
 
-// ---------------------------------------------------------------------------
-// Media / navigator helpers (mirrors ios-install.service.spec.ts pattern)
-// ---------------------------------------------------------------------------
-
 function setStandaloneMedia(value: boolean): void {
   (window as any).matchMedia = (query: string) => ({
     matches: value && query.includes('standalone'),
@@ -25,9 +21,6 @@ function setNavigatorStandalone(value: boolean | undefined): void {
   Object.defineProperty(navigator, 'standalone', { value, configurable: true });
 }
 
-// ---------------------------------------------------------------------------
-// Minimal BroadcastChannel mock
-// ---------------------------------------------------------------------------
 class BroadcastChannelMock {
   readonly name: string;
   onmessage: ((ev: MessageEvent) => void) | null = null;
@@ -100,9 +93,6 @@ describe('SingleInstanceService', () => {
     setNavigatorStandalone(undefined);
   });
 
-  // -------------------------------------------------------------------------
-  // stripBase
-  // -------------------------------------------------------------------------
   describe('stripBase', () => {
     it('strips base href on path boundary', () => {
       const result = (SingleInstanceService as any).stripBase('/wallet/protocol/callback?code=abc');
@@ -136,9 +126,6 @@ describe('SingleInstanceService', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // handleMessage — leader deep-link forwarding
-  // -------------------------------------------------------------------------
   describe('handleMessage NAVIGATE (leader)', () => {
     beforeEach(() => {
       (service as any).isLeader = true;
@@ -245,9 +232,6 @@ describe('SingleInstanceService', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // renderDuplicateTabMessage — authService.dispose() is always called
-  // -------------------------------------------------------------------------
   describe('renderDuplicateTabMessage (follower cleanup)', () => {
     it('calls authService.dispose() on duplicate non-deep-link tab', () => {
       (service as any).renderDuplicateTabMessage(false);

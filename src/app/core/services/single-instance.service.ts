@@ -1,5 +1,6 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from './auth.service';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
 
@@ -16,6 +17,7 @@ const ELECTION_TIMEOUT_MS = 300;
 export class SingleInstanceService implements OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
 
   private channel: BroadcastChannel | null = null;
   private readonly tabId = crypto.randomUUID();
@@ -164,20 +166,23 @@ export class SingleInstanceService implements OnDestroy {
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as any).standalone === true;
-    const windowOrTab = isStandalone ? 'ventana' : 'pestaña';
+    const typeKey = isStandalone ? 'single-instance.type-window' : 'single-instance.type-tab';
+    const type = this.translate.instant(typeKey);
+    const params = { type };
 
-    const title = isDeepLink
-      ? 'Credencial enviada a EUDI Wallet'
-      : 'EUDI Wallet ya está abierto';
-    const subtitle = isDeepLink
-      ? `La credencial se ha enviado a la ${windowOrTab} activa de EUDI Wallet. Puedes cerrar esta ${windowOrTab}.`
-      : `Ya tienes EUDI Wallet abierto en otra ${windowOrTab}. Puedes cerrar esta.`;
-    const hint = isStandalone
-      ? 'Vuelve a la otra ventana de EUDI Wallet.'
-      : 'Usa Ctrl+Tab para volver a la pestaña activa.';
-    const closeFallback = isStandalone
-      ? 'Cierra esta ventana manualmente'
-      : 'Cierra esta pestaña con Ctrl+W (⌘+W en Mac)';
+    const title = this.translate.instant(
+      isDeepLink ? 'single-instance.title-deep-link' : 'single-instance.title-already-open'
+    );
+    const subtitle = this.translate.instant(
+      isDeepLink ? 'single-instance.subtitle-deep-link' : 'single-instance.subtitle-already-open',
+      params
+    );
+    const hint = this.translate.instant(
+      isStandalone ? 'single-instance.hint-standalone' : 'single-instance.hint-tab'
+    );
+    const closeFallback = this.translate.instant(
+      isStandalone ? 'single-instance.close-fallback-standalone' : 'single-instance.close-fallback-tab'
+    );
 
     document.body.innerHTML = `
       <div style="
@@ -196,7 +201,7 @@ export class SingleInstanceService implements OnDestroy {
         <button id="__wallet_close_btn" style="
           margin-top:8px;padding:10px 24px;border:none;border-radius:8px;
           background:#001E8C;color:#fff;font-size:.9rem;cursor:pointer;">
-          Cerrar esta ${windowOrTab}
+          ${this.translate.instant('single-instance.close-button', params)}
         </button>
       </div>`;
 
