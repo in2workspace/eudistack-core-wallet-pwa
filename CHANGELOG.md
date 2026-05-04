@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Single-instance:** Ensure installed PWA shows duplicate-instance UI and not silently close; follower now notifies leader and renders contextual message in standalone mode.
+- **Single-instance:** Ensure installed PWA shows the duplicate-instance UI instead of silently closing; follower now notifies leader and renders a contextual message in standalone mode.
 
 ### Added
 
