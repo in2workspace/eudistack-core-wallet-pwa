@@ -11,7 +11,7 @@
       <span class="status-pill status-expired">{{ "credentials.expiration" | translate }}</span>
     } @else if(expiryStatus() === 'expiring-soon') {
       <span class="status-pill status-expiring-soon">
-        <ion-icon name="time-outline"></ion-icon>
+        <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
         @if(daysUntilExpiry() !== null && daysUntilExpiry()! > 0) {
           {{ daysUntilExpiry() }}d
         } @else {
@@ -21,15 +21,15 @@
     } @else if(credentialInput.lifeCycleStatus == "REVOKED") {
       <span class="status-pill status-expired">{{ "vc-view.revoked" | translate }}</span>
     } @else if(credentialInput.lifeCycleStatus == "ISSUED") {
-      <button (click)="unsignedInfo($event)" (keydown)="handleButtonKeydown($event, 'info')" class="status-pill status-unsigned">
-        <ion-icon name="alert-circle-outline"></ion-icon>
+      <button (click)="unsignedInfo($event)" (keydown)="handleButtonKeydown($event, 'info')" class="status-pill status-unsigned" aria-label="información credencial no firmada">
+        <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
       </button>
     }
   </div>
 
   <div class="card-body">
     <div class="card-title-row">
-      <ion-icon name="shield-checkmark-outline" class="card-shield-icon"></ion-icon>
+      <ion-icon name="shield-checkmark-outline" class="card-shield-icon" aria-hidden="true"></ion-icon>
       <span class="card-title">{{ displayName() || credentialType }}</span>
     </div>
     <div class="card-fields" [class.card-blurred]="blurred()">
@@ -73,7 +73,7 @@
               class=".close-button"
               style="width: 24px; height: 24px"
             >
-              <ion-img src="assets/icons/close-button.png"></ion-img>
+              <ion-img src="assets/icons/close-button.png" alt="close modal"></ion-img>
             </ion-button>
 
             </ion-buttons>
@@ -197,11 +197,11 @@
         <!-- Animated shield icon -->
         <div class="verify-shield" [class.verify-shield--done]="verifyOverall !== 'pending'">
           @if(verifyOverall === 'pending') {
-            <ion-icon name="shield-outline" class="shield-icon shield-icon--pending"></ion-icon>
+            <ion-icon name="shield-outline" class="shield-icon shield-icon--pending" aria-hidden="true"></ion-icon>
           } @else if(verifyOverall === 'valid') {
-            <ion-icon name="shield-checkmark" class="shield-icon shield-icon--valid"></ion-icon>
+            <ion-icon name="shield-checkmark" class="shield-icon shield-icon--valid" aria-hidden="true"></ion-icon>
           } @else {
-            <ion-icon name="shield" class="shield-icon shield-icon--invalid"></ion-icon>
+            <ion-icon name="shield" class="shield-icon shield-icon--invalid" aria-hidden="true"></ion-icon>
           }
         </div>
 
@@ -215,9 +215,9 @@
                 } @else if(check.status === 'checking') {
                   <ion-spinner name="crescent" class="check-spinner"></ion-spinner>
                 } @else if(check.status === 'passed') {
-                  <ion-icon name="checkmark-circle" class="check-icon check-icon--pass"></ion-icon>
+                  <ion-icon name="checkmark-circle" class="check-icon check-icon--pass" aria-hidden="true"></ion-icon>
                 } @else {
-                  <ion-icon name="close-circle" class="check-icon check-icon--fail"></ion-icon>
+                  <ion-icon name="close-circle" class="check-icon check-icon--fail" aria-hidden="true"></ion-icon>
                 }
               </div>
               <div class="verify-row-info">
@@ -233,7 +233,7 @@
         <!-- Overall result banner -->
         @if(verifyOverall !== 'pending') {
           <div class="verify-result" [class.verify-result--valid]="verifyOverall === 'valid'" [class.verify-result--invalid]="verifyOverall === 'invalid'">
-            <ion-icon [name]="verifyOverall === 'valid' ? 'checkmark-circle' : 'alert-circle'"></ion-icon>
+            <ion-icon [name]="verifyOverall === 'valid' ? 'checkmark-circle' : 'alert-circle'" aria-hidden="true"></ion-icon>
             <span>{{ (verifyOverall === 'valid' ? "verification.result-valid" : verifyResultKey) | translate }}</span>
           </div>
         }

@@ -15,12 +15,12 @@
 
   <div class="credential-list">
     @for (cred of credList; track cred) {
-      <button class="selectable-card" (click)="sendCred(cred)">
+      <div role="button" class="selectable-card" tabindex="0" (click)="sendCred(cred)" (keydown.enter)="sendCred(cred)" (keydown.space)="$event.preventDefault()" (keyup.space)="sendCred(cred)" [attr.aria-label]="'vc-selector.select-cred' | translate">
         <app-vc-view [credentialInput$]="cred" [enableDetailView$]="false"></app-vc-view>
         <div class="card-action-hint">
-          <ion-icon name="chevron-forward-outline"></ion-icon>
+          <ion-icon name="chevron-forward-outline" aria-hidden="true"></ion-icon>
         </div>
-      </button>
+      </div>
     }
   </div>
 </ion-content>
