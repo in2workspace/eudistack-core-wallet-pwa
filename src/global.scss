@@ -79,11 +79,13 @@ app-tabs ion-tab-button {
   height: 100%;
 }
 
-.scanner-shell zxing-scanner video{
+.scanner-shell video{
   display: block;
   object-fit: cover !important;
   width: 100%;
   height: 100%;
+  transform: scale(1.3);
+  transform-origin: center center;
 }
 
 // ── Hide scrollbars globally (keep scroll functional) ─
