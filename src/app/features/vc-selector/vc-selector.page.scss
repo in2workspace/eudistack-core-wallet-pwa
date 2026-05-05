@@ -12,6 +12,13 @@
   padding: 24px 20px 8px;
 }
 
+.header-logo {
+  height: 40px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
 .header-icon {
   display: inline-flex;
   align-items: center;

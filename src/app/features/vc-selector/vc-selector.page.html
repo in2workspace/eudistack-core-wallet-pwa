@@ -1,14 +1,18 @@
 <ion-content [fullscreen]="true" class="vc-selector-content">
   <div class="vc-selector-header">
-    <div class="header-icon">
-      <ion-icon name="shield-checkmark-outline"></ion-icon>
-    </div>
-    <h2 class="header-title">{{ "vc-selector.presentation-request" | translate }}</h2>
+    @if (clientLogo) {
+      <img [src]="clientLogo" class="header-logo" alt="RP Logo">
+    } @else {
+      <div class="header-icon">
+        <ion-icon name="shield-checkmark-outline"></ion-icon>
+      </div>
+    }
+    <h2 class="header-title">{{ clientName || "vc-selector.presentation-request" | translate }}</h2>
     <p class="header-subtitle">{{ "vc-selector.select-instruction" | translate }}</p>
-    @if (requesterDomain) {
+    @if ( clientUri ) {
       <div class="requester-badge">
         <ion-icon name="globe-outline"></ion-icon>
-        <span>{{ requesterDomain }}</span>
+        <span>{{ clientUri }}</span>
       </div>
     }
   </div>
