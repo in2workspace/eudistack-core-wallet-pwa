@@ -97,16 +97,24 @@ export class VcSelectorPage {
     this.clientUri = this.getMetadataValue(metadata, 'clientUri', currentLocale, this.requesterDomain);
     this.policyUri = this.getMetadataValue(metadata, 'policyUri', currentLocale, '');
     this.tosUri = this.getMetadataValue(metadata, 'tosUri', currentLocale, '');
-    this.clientLogo = this.getMetadataValue(metadata, 'logoUri', currentLocale, '');
-    console.log('clientName: ' + this.clientName);
+    this.clientLogo = this.getLogoByTheme(metadata, currentLocale);
+  }
+
+  private getLogoByTheme(metadata: any, locale: string) {
+    const lightLogo = this.getMetadataValue(metadata, 'logoUri', locale, '');
+    const darkLogo = this.getMetadataValue(metadata, 'logoDarkUri', locale, '');
+
+    const isDarkMode = this.userPrefs.darkMode();
+    return (!isDarkMode && darkLogo !== '') ? darkLogo : lightLogo;
   }
 
   public getMetadataValue(metadata: any, field: string, locale: string, fallback: string): string {
     if (!metadata) return fallback;
     const language = locale.split('-')[0];
+    console.log(language);
 
-    return (metadata.localized_claims && metadata.localized_claims[`${field}#${locale}`]) ||
-      (metadata.localized_claims && metadata.localized_claims[`${field}#${language}`]) ||
+    return (metadata.localizedClaims && metadata.localizedClaims[`${field}#${locale}`]) ||
+      (metadata.localizedClaims && metadata.localizedClaims[`${field}#${language}`]) ||
       metadata[`${field}#${locale}`] ||
       metadata[`${field}#${language}`] ||
       metadata[field] ||
