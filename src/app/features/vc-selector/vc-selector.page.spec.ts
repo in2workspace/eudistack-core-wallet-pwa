@@ -9,6 +9,7 @@ import { Oid4vpEngineService } from 'src/app/core/protocol/oid4vp/oid4vp.engine.
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
 import { CredentialDecisionService } from 'src/app/core/services/credential-decision.service';
+import { UserPreferencesService} from "../../shared/services/user-preferences.service";
 
 describe('VcSelectorPage', () => {
   let component: VcSelectorPage;
@@ -18,6 +19,7 @@ describe('VcSelectorPage', () => {
   let mockTranslateService: jest.Mocked<TranslateService>;
   let mockAlertController: jest.Mocked<AlertController>;
   let mockAlert: any;
+  let mockUserPrefs: any;
 
   const mockMandatee: Mandatee = {
     id: 'mandatee1',
@@ -100,7 +102,15 @@ describe('VcSelectorPage', () => {
     ] as VerifiableCredential[],
     redirectUri: 'http://example.com/callback',
     state: 'test-state',
-    nonce: 'test-nonce'
+    nonce: 'test-nonce',
+    clientId: 'https://client.example.com',
+    dcqlQuery: 'mock-query',
+    clientMetadata: {
+      client_name: 'Test Client',
+      'client_name#es': 'Cliente Test',
+      logo_uri: 'https://light.logo',
+      logo_dark_uri: 'https://dark.logo'
+    }
   };
 
   const mockQueryParams = {
@@ -119,7 +129,8 @@ describe('VcSelectorPage', () => {
     } as any;
 
     mockTranslateService = {
-      instant: jest.fn()
+      instant: jest.fn(),
+      currentLang: 'es'
     } as any;
 
     mockAlert = {
@@ -154,6 +165,10 @@ describe('VcSelectorPage', () => {
       showTempMessage: jest.fn(),
     };
 
+    mockUserPrefs = {
+      darkMode: jest.fn().mockReturnValue(false)
+    };
+
     // Setup default return values
     mockAlert.onDidDismiss.mockResolvedValue({ role: 'ok' });
     mockAlertController.create.mockResolvedValue(mockAlert);
@@ -174,6 +189,11 @@ describe('VcSelectorPage', () => {
 
     fixture = TestBed.createComponent(VcSelectorPage);
     component = fixture.componentInstance;
+
+    (component as any).userPrefs = mockUserPrefs;
+    if (!(component as any).extractDomain) {
+      (component as any).extractDomain = jest.fn().mockReturnValue('client.example.com');
+    }
   });
 
   it('should create', () => {
@@ -196,7 +216,7 @@ describe('VcSelectorPage', () => {
     });
   });
 
-  describe('getExecutionParamsFromQueryParams', () => {
+  describe('getExecutionParamsFromQueryParams & Consent Data', () => {
     it('should parse execution response and set VCReply properties', () => {
       component.getExecutionParamsFromQueryParams(mockQueryParams);
 
@@ -204,6 +224,15 @@ describe('VcSelectorPage', () => {
       expect(component._VCReply.redirectUri).toBe('http://example.com/callback');
       expect(component._VCReply.state).toBe('test-state');
       expect(component._VCReply.nonce).toBe('test-nonce');
+      expect(component._VCReply.clientId).toBe('https://client.example.com');
+      expect(component._VCReply.dcqlQuery).toBe('mock-query');
+      expect(component.clientName).toBe('Cliente Test');
+      expect(component.clientLogo).toBe('https://dark.logo');
+    });
+
+    it('should use fallback if metadata value is not present', () => {
+      const result = component.getMetadataValue({}, 'non_existent_field', 'es-ES', 'default-fallback');
+      expect(result).toBe('default-fallback');
     });
   });
 
@@ -214,7 +243,7 @@ describe('VcSelectorPage', () => {
 
       expect(component.credList).toHaveLength(1);
       expect(component.credList[0].id).toBe('vc1');
-      
+
       // Verify mandate structure is preserved
       const credSubject = component.credList[0].credentialSubject as { mandate: Mandate };
       expect(credSubject.mandate.mandatee.firstName).toBe('John');
@@ -232,9 +261,9 @@ describe('VcSelectorPage', () => {
     it('should handle credentials without credentialSubject', () => {
       const executionResponseWithoutSubject = {
         selectableVcList: [
-          { 
+          {
             '@context': ['https://www.w3.org/2018/credentials/v1'],
-            id: 'vc1', 
+            id: 'vc1',
             type: ['VerifiableCredential', 'learcredential.employee.w3c.4'],
             issuer: mockIssuer,
             validFrom: '2024-01-01T00:00:00Z',
@@ -244,7 +273,7 @@ describe('VcSelectorPage', () => {
         ]
       };
       component.executionResponse = executionResponseWithoutSubject;
-      
+
       expect(() => component.formatCredList()).not.toThrow();
       expect(component.credList).toHaveLength(1);
     });
@@ -253,7 +282,7 @@ describe('VcSelectorPage', () => {
   describe('resetIsClickList', () => {
     it('should initialize isClick array with false values', () => {
       component.credList = [
-        { 
+        {
           '@context': ['https://www.w3.org/2018/credentials/v1'],
           id: 'vc1',
           issuer: mockIssuer,
@@ -265,7 +294,7 @@ describe('VcSelectorPage', () => {
           lifeCycleStatus: "VALID",
           credentialStatus: {} as CredentialStatus,
         } as VerifiableCredential,
-        { 
+        {
           '@context': ['https://www.w3.org/2018/credentials/v1'],
           id: 'vc2',
           issuer: mockIssuer,
@@ -296,7 +325,7 @@ describe('VcSelectorPage', () => {
 
   describe('selectCred', () => {
     it('should add credential to selected list and toggle click state', () => {
-      const mockCred = { 
+      const mockCred = {
         '@context': ['https://www.w3.org/2018/credentials/v1'],
         id: 'vc1',
         issuer: mockIssuer,
@@ -309,7 +338,7 @@ describe('VcSelectorPage', () => {
         credentialStatus: {} as CredentialStatus,
       } as VerifiableCredential;
       component.isClick = [false, false];
-      
+
       component.selectCred(mockCred, 0);
 
       expect(component.selCredList).toContain(mockCred);
@@ -321,7 +350,7 @@ describe('VcSelectorPage', () => {
     let mockCred: VerifiableCredential;
 
     beforeEach(() => {
-      mockCred = { 
+      mockCred = {
         '@context': ['https://www.w3.org/2018/credentials/v1'],
         id: 'vc1',
         issuer: mockIssuer,
@@ -334,7 +363,7 @@ describe('VcSelectorPage', () => {
         credentialStatus: {} as CredentialStatus,
       } as VerifiableCredential;
     });
-    
+
     //todo complete tests
     // it('should show confirmation alert', async () => {
     //   await component.sendCred(mockCred);
@@ -406,7 +435,7 @@ describe('VcSelectorPage', () => {
   //     expect(mockTranslateService.instant).toHaveBeenCalledWith('vc-selector.generic-error-message');
   //   });
 
-   
+
   // });
 
   describe('Component integration', () => {
@@ -423,7 +452,7 @@ describe('VcSelectorPage', () => {
       // Should be able to select credentials
       const credential = component.credList[0];
       component.selectCred(credential, 0);
-      
+
       expect(component.selCredList).toContain(credential);
       expect(component.isClick[0]).toBe(true);
     });

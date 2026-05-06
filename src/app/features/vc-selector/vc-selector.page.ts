@@ -93,16 +93,16 @@ export class VcSelectorPage {
     if (!metadata) {
       console.warn('ClientMetadata not found');
     }
-    this.clientName = this.getMetadataValue(metadata, 'clientName', currentLocale, this.requesterDomain);
-    this.clientUri = this.getMetadataValue(metadata, 'clientUri', currentLocale, this.requesterDomain);
-    this.policyUri = this.getMetadataValue(metadata, 'policyUri', currentLocale, '');
-    this.tosUri = this.getMetadataValue(metadata, 'tosUri', currentLocale, '');
+    this.clientName = this.getMetadataValue(metadata, 'client_name', currentLocale, this.requesterDomain);
+    this.clientUri = this.getMetadataValue(metadata, 'client_uri', currentLocale, this.requesterDomain);
+    this.policyUri = this.getMetadataValue(metadata, 'policy_uri', currentLocale, '');
+    this.tosUri = this.getMetadataValue(metadata, 'tos_uri', currentLocale, '');
     this.clientLogo = this.getLogoByTheme(metadata, currentLocale);
   }
 
   private getLogoByTheme(metadata: any, locale: string) {
-    const lightLogo = this.getMetadataValue(metadata, 'logoUri', locale, '');
-    const darkLogo = this.getMetadataValue(metadata, 'logoDarkUri', locale, '');
+    const lightLogo = this.getMetadataValue(metadata, 'logo_uri', locale, '');
+    const darkLogo = this.getMetadataValue(metadata, 'logo_dark_uri', locale, '');
 
     const isDarkMode = this.userPrefs.darkMode();
     return (!isDarkMode && darkLogo !== '') ? darkLogo : lightLogo;
