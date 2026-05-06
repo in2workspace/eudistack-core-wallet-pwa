@@ -98,12 +98,6 @@ describe('BarcodeScannerComponent', () => {
       expect(component['scanFailureDebounceDelay']).toBe(3000);
     });
 
-
-    it('should initialize scanSuccess$ as a BehaviorSubject with an empty string', () => {
-      expect(component.scanSuccess$).toBeInstanceOf(BehaviorSubject);
-      expect(component.scanSuccess$.getValue()).toBe('');
-    });
-
     it('should initialize destroy$ as a Subject', () => {
       expect(component.destroy$).toBeInstanceOf(Subject);
     });

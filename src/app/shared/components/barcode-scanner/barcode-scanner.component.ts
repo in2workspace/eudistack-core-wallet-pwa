@@ -126,7 +126,6 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
   private readonly scanFailureDebounceDelay = 3000;
   private originalConsoleError: undefined|((...data: any[]) => void);
 
-  public scanSuccess$ = new BehaviorSubject<string>('');
   public destroy$ = new Subject<void>();
 
 
