@@ -68,7 +68,12 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
   private readonly canvas: HTMLCanvasElement = document.createElement('canvas');
   private readonly ctx: CanvasRenderingContext2D = this.canvas.getContext('2d')!;
   private scanLoopRunning = false;
+  private destroyed = false;
   private lastEmittedResult: string | null = null;
+  private lastEmittedResultAt = 0;
+  private readonly sameResultCooldownMs = 1500;
+  private lastDecodeAttemptAt = 0;
+  private readonly decodeIntervalMs = 100;
 
   // COUNTDOWN
   public readonly isError$ = this.cameraService.isCameraError$;
@@ -92,7 +97,7 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
   public readonly selectedDevice$: WritableSignal<MediaDeviceInfo|undefined> = this.cameraService.selectedCamera$;
   private readonly updateScannerDeviceEffect = effect(async () => {
     const selectedDevice = this.selectedDevice$();
-    if(this.firstActivationCompleted && selectedDevice && this.scannerDevice !== selectedDevice){
+    if(this.firstActivationCompleted && selectedDevice && this.scannerDevice?.deviceId !== selectedDevice.deviceId){
       let hasPermission = undefined;
       // if there is already a device, sometimes the askForPemission causes error
       if(!this.scannerDevice){
@@ -154,7 +159,9 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   public ngOnDestroy(): void {
+    this.destroyed = true;
     this.destroy$.next();
+    this.reader = null;
     this.setActivatingTimeout();
     this.restoreOriginalConsoleError();
     this.cameraService.isCameraError$.set(false);
@@ -165,9 +172,11 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
 
   public async initCameraIfNoActivateScanners(): Promise<void>{
        //activate scanner once there are no other scanner in deactivation process
+    if (this.destroyed) return;
     const activatingScannersList = this.isActivatingScanner$();
     if (activatingScannersList?.length === 0) {
       const cameraFlowResult = await this.cameraService.getCameraFlow();
+      if (this.destroyed) return;
          if(cameraFlowResult === 'NO_CAMERA_AVAILABLE' || cameraFlowResult === 'PERMISSION_DENIED'){
         console.warn('SCANNER: camera flow not completed; scanner will not be activated.');
         return;
@@ -207,8 +216,17 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   public onCodeResult(resultString: string): void {
-    if (resultString === this.lastEmittedResult) return;
+    const now = Date.now();
+
+    if (
+      resultString === this.lastEmittedResult &&
+      now - this.lastEmittedResultAt < this.sameResultCooldownMs
+    ) {
+      return;
+    }
+
     this.lastEmittedResult = resultString;
+    this.lastEmittedResultAt = now;
     this.qrCode.emit(resultString);
   }
 
@@ -229,7 +247,14 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
     this.originalConsoleError = console.error;
     console.error = (message?: string, ...optionalParams: any[]) => {
       // TODO: for now all error logs are being stored, but this should be reviewed if more control is needed
-     
+      console.warn('Logging library error');
+      const logMessage = formatLogMessage(message, optionalParams);
+      const err = {...new Error(logMessage), name: optionalParams[1]};
+      const errorType = optionalParams[0] === 
+        "Can't get user media, this is not supported." ?
+        'noMediaError' :
+        'undefinedError';
+      this.cameraService.handleCameraErrors(err, errorType);
       if (this.originalConsoleError) {
         this.originalConsoleError(message, ...optionalParams);
       }
@@ -257,7 +282,7 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
     this.stopScanLoop();
     this.releaseStream();
 
-    if (!device || !this.scannerEnabled) return;
+    if (!device || !this.scannerEnabled || this.destroyed) return;
 
     try {
       this.activeStream = await navigator.mediaDevices.getUserMedia({
@@ -265,7 +290,10 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
       });
 
       const video = this.scannerVideoRef?.nativeElement;
-      if (!video) return;
+      if (this.destroyed || !video) {
+        this.releaseStream();
+        return;
+      }
 
       video.srcObject = this.activeStream;
       await video.play();
@@ -284,24 +312,37 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private scheduleFrame(video: HTMLVideoElement): void {
-    if (!this.scanLoopRunning || !this.scannerEnabled) return;
+    if (!this.scanLoopRunning || !this.scannerEnabled || this.destroyed) return;
     this.rafId = requestAnimationFrame(() => this.processFrame(video));
   }
 
   private async processFrame(video: HTMLVideoElement): Promise<void> {
-    if (!this.scanLoopRunning || !this.scannerEnabled) return;
+    if (!this.scanLoopRunning || !this.scannerEnabled || this.destroyed) return;
     if (video.readyState < 2) { this.scheduleFrame(video); return; }
 
     const w = video.videoWidth;
     const h = video.videoHeight;
     if (!w || !h) { this.scheduleFrame(video); return; }
 
-    this.canvas.width = w;
-    this.canvas.height = h;
+    if (this.canvas.width !== w || this.canvas.height !== h) {
+      this.canvas.width = w;
+      this.canvas.height = h;
+    }
+
+    const now = performance.now();
+    if (now - this.lastDecodeAttemptAt < this.decodeIntervalMs) {
+      this.scheduleFrame(video);
+      return;
+    }
+    this.lastDecodeAttemptAt = now;
+
     this.ctx.drawImage(video, 0, 0, w, h);
 
     try {
       const result = await this.reader!.decodeFromCanvas(this.canvas);
+      if (this.destroyed || !this.scanLoopRunning || !this.scannerEnabled) {
+        return;
+      }
       if (result) {
         this.ngZone.run(() => {
           this.onCodeResult(result.getText());
