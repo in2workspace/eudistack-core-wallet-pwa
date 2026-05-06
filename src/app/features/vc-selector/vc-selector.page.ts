@@ -76,6 +76,7 @@ export class VcSelectorPage {
   public getExecutionParamsFromQueryParams(params: Params){
       console.log('updating params in vc-selector');
       this.executionResponse = JSON.parse(params['executionResponse']);
+      console.log(JSON.stringify(this.executionResponse, null, 2));
       this._VCReply.redirectUri = this.executionResponse['redirectUri'];
       this._VCReply.state = this.executionResponse['state'];
       this._VCReply.nonce = this.executionResponse['nonce'];
@@ -86,7 +87,7 @@ export class VcSelectorPage {
   }
 
   private extractConsentData(): void {
-    const metadata = this.executionResponse?.['clientMetadata'];
+    const metadata = this.executionResponse['clientMetadata'];
     const currentLocale = this.translate.currentLang || navigator.language || 'es';
 
     if (!metadata) {
@@ -96,12 +97,8 @@ export class VcSelectorPage {
     this.clientUri = this.getMetadataValue(metadata, 'clientUri', currentLocale, this.requesterDomain);
     this.policyUri = this.getMetadataValue(metadata, 'policyUri', currentLocale, '');
     this.tosUri = this.getMetadataValue(metadata, 'tosUri', currentLocale, '');
-    const lightLogo = this.getMetadataValue(metadata, 'logoUri', currentLocale, '');
-    const darkLogo = this.getMetadataValue(metadata, 'logoDarkUri', currentLocale, '');
-
-    const isDarkMode = this.userPrefs.darkMode();
-    if (isDarkMode && darkLogo) this.clientLogo = darkLogo;
-    else this.clientLogo = lightLogo;
+    this.clientLogo = this.getMetadataValue(metadata, 'logoUri', currentLocale, '');
+    console.log('clientName: ' + this.clientName);
   }
 
   public getMetadataValue(metadata: any, field: string, locale: string, fallback: string): string {

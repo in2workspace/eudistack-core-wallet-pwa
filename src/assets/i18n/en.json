@@ -144,6 +144,7 @@
   "vc-selector": {
     "select-cred": "Select a Credential",
     "presentation-request": "Credential Request",
+    "presentation-request-verifier": "It requests a credential, tap the credential you want to present",
     "select-instruction": "Tap the credential you want to present",
     "cancel": "Cancel",
     "send-cred": "Send Credential",
@@ -154,7 +155,10 @@
     "server-error-message": "We couldn't process your request.<br>Please try again later.",
     "generic-error-message": "Unknown error",
     "credential-revoke-message": "The credential provided is invalid, it has been revoked or is not valid for this operation",
-    "close": "Close"
+    "close": "Close",
+    "privacy-policy": "Privacy policy",
+    "tds": "TdS",
+    "official-site": "Official site"
   },
   "vc-view": {
     "warning-header": "Credential",
