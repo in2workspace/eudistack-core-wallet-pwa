@@ -36,8 +36,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { TranslateModule } from '@ngx-translate/core';
 import { IonicModule } from '@ionic/angular';
 
-// ! Since console.error is intercepted (to capture the error already caught by zxing), be careful to avoid recursion
-// ! (i.e., console.error should not be called within the execution flow of another console.error)
+// TODO review state management and timeouts
 
 // When a scanner component is created, it waits until the "destroying scanner list" is empty.
 // A scanner component (its id) is removed from such list not right after being destroyed, but after some delay.
@@ -53,7 +52,6 @@ import { IonicModule } from '@ionic/angular';
 export class BarcodeScannerComponent implements  AfterViewInit, OnDestroy {
   @Output() public qrCode: EventEmitter<string> = new EventEmitter();
   @ViewChild('scanner') public scannerVideoRef!: ElementRef<HTMLVideoElement>;
-  public allowedFormats = [BarcodeFormat.QR_CODE];
   public firstActivationCompleted = false;
   public scannerEnabled = false;
   public scannerDevice: MediaDeviceInfo | undefined = undefined;
@@ -74,7 +72,6 @@ export class BarcodeScannerComponent implements  AfterViewInit, OnDestroy {
   private readonly decodeIntervalMs = 100;
 
   // COUNTDOWN
-  // TODO review activation timeout
   public readonly isError$ = this.cameraService.isCameraError$;
   private readonly activationTimeoutInSeconds = 1;
   private readonly _activatedScanner$$ = new Subject<void>();

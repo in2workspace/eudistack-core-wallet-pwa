@@ -65,10 +65,6 @@ describe('BarcodeScannerComponent', () => {
   });
 
   describe('BarcodeScannerComponent Initialization', () => {
-    it('should initialize allowedFormats with QR_CODE', () => {
-      expect(component.allowedFormats).toEqual([BarcodeFormat.QR_CODE]);
-    });
-
     it('should initialize scannerId as a random string', () => {
       expect(typeof component['scannerId']).toBe('string');
       expect(component['scannerId'].length).toBeGreaterThan(0);
