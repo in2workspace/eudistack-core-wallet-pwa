@@ -76,7 +76,6 @@ export class VcSelectorPage {
   public getExecutionParamsFromQueryParams(params: Params){
       console.log('updating params in vc-selector');
       this.executionResponse = JSON.parse(params['executionResponse']);
-      console.log(JSON.stringify(this.executionResponse, null, 2));
       this._VCReply.redirectUri = this.executionResponse['redirectUri'];
       this._VCReply.state = this.executionResponse['state'];
       this._VCReply.nonce = this.executionResponse['nonce'];
@@ -111,7 +110,6 @@ export class VcSelectorPage {
   public getMetadataValue(metadata: any, field: string, locale: string, fallback: string): string {
     if (!metadata) return fallback;
     const language = locale.split('-')[0];
-    console.log(language);
 
     return (metadata.localizedClaims && metadata.localizedClaims[`${field}#${locale}`]) ||
       (metadata.localizedClaims && metadata.localizedClaims[`${field}#${language}`]) ||
