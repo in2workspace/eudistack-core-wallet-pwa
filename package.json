@@ -37,7 +37,7 @@
     "@ngx-translate/http-loader": "^8.0.0",
     "@noble/curves": "^2.0.1",
     "@zxing/library": "^0.21.3",
-    "@zxing/ngx-scanner": "^19.0.0",
+    "@zxing/browser": "^0.1.4",
     "angularx-qrcode": "^19.0.0",
     "cbor-web": "^10.0.11",
     "dayjs": "^1.11.13",

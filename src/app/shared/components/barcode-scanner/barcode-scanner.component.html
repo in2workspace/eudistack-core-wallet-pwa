@@ -11,14 +11,12 @@
 }
 
 <div class="scanner-shell">
-  <zxing-scanner
+  <video
     #scanner
     [style.display]="firstActivationCompleted ? 'block' : 'none'"
     class="scanner"
-    [autostart]="false"
-    [formats]="allowedFormats"
-    (scanSuccess)="onCodeResult($event)"
-    (scanError)="onScanError($event)"
-    (scanFailure)="onScanFailure($event)"
-  ></zxing-scanner>
+    autoplay
+    muted
+    playsinline
+  ></video>
 </div>
