@@ -398,6 +398,19 @@
     "unknown": "Desconocido",
     "time-remaining": "Tiempo restante"
   },
+  "single-instance": {
+    "type-window": "ventana",
+    "type-tab": "pesta\u00f1a",
+    "title-deep-link": "Credencial enviada a EUDI Wallet",
+    "title-already-open": "EUDI Wallet ya est\u00e1 abierto",
+    "subtitle-deep-link": "La credencial se ha enviado a la {{type}} activa de EUDI Wallet. Puedes cerrar esta {{type}}.",
+    "subtitle-already-open": "Ya tienes EUDI Wallet abierto en otra {{type}}. Puedes cerrar esta.",
+    "hint-standalone": "Vuelve a la otra ventana de EUDI Wallet.",
+    "hint-tab": "Usa Ctrl+Tab para volver a la pesta\u00f1a activa.",
+    "close-fallback-standalone": "Cierra esta ventana manualmente",
+    "close-fallback-tab": "Cierra esta pesta\u00f1a con Ctrl+W (\u2318+W en Mac)",
+    "close-button": "Cerrar esta {{type}}"
+  },
   "tenantNotFound": {
     "title": "Tenant no encontrado",
     "message": "El subdominio «{{hostname}}» no corresponde a ningún tenant válido.",

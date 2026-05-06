@@ -394,6 +394,19 @@
     "unknown": "Desconegut",
     "time-remaining": "Temps restant"
   },
+  "single-instance": {
+    "type-window": "finestra",
+    "type-tab": "pestanya",
+    "title-deep-link": "Credencial enviada a EUDI Wallet",
+    "title-already-open": "EUDI Wallet ja est\u00e0 obert",
+    "subtitle-deep-link": "La credencial s'ha enviat a la {{type}} activa de EUDI Wallet. Pots tancar aquesta {{type}}.",
+    "subtitle-already-open": "Ja tens EUDI Wallet obert en una altra {{type}}. Pots tancar aquesta.",
+    "hint-standalone": "Torna a l'altra finestra de EUDI Wallet.",
+    "hint-tab": "Usa Ctrl+Tab per tornar a la pestanya activa.",
+    "close-fallback-standalone": "Tanca aquesta finestra manualment",
+    "close-fallback-tab": "Tanca aquesta pestanya amb Ctrl+W (\u2318+W a Mac)",
+    "close-button": "Tanca aquesta {{type}}"
+  },
   "tenantNotFound": {
     "title": "Tenant no trobat",
     "message": "El subdomini «{{hostname}}» no correspon a cap tenant vàlid.",
