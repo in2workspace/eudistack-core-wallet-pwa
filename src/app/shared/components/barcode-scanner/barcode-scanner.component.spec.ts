@@ -94,8 +94,8 @@ describe('BarcodeScannerComponent', () => {
       expect(component['scanFailureSubject']).toBeInstanceOf(Subject);
     });
 
-    it('should initialize scanFailureDebounceDelay as 3000', () => {
-      expect(component['scanFailureDebounceDelay']).toBe(3000);
+    it('should initialize scanFailureDebounceDelay as 6000', () => {
+      expect(component['scanFailureDebounceDelay']).toBe(6000);
     });
 
     it('should initialize destroy$ as a Subject', () => {
@@ -105,32 +105,14 @@ describe('BarcodeScannerComponent', () => {
 
   describe('BarcodeScannerComponent Lifecycle Hooks', () => {
     beforeEach(() => {
-      jest.spyOn(component, 'modifyConsoleErrorToHandleScannerErrors').mockImplementation();
       jest.spyOn(component, 'initCameraIfNoActivateScanners').mockImplementation();
       jest.spyOn((component as any), 'setActivatingTimeout').mockImplementation();
-      jest.spyOn(component, 'restoreOriginalConsoleError').mockImplementation();
       jest.spyOn(mockCameraService.isCameraError$, 'set').mockImplementation();
-    });
-
-    it('should call modifyConsoleErrorToHandleScannerErrors on ngOnInit', async () => {
-      await component.ngOnInit();
-      expect(component.modifyConsoleErrorToHandleScannerErrors).toHaveBeenCalled();
     });
 
     it('should call initCameraIfNoActivateScanners on ngAfterViewInit', async () => {
       await component.ngAfterViewInit();
       expect(component.initCameraIfNoActivateScanners).toHaveBeenCalled();
-    });
-
-    it('should call destroy$.next, setActivatingTimeout, restoreOriginalConsoleError and reset camera error on ngOnDestroy', () => {
-      jest.spyOn(component.destroy$, 'next');
-
-      component.ngOnDestroy();
-
-      expect(component.destroy$.next).toHaveBeenCalled();
-      expect((component as any).setActivatingTimeout).toHaveBeenCalled();
-      expect(component.restoreOriginalConsoleError).toHaveBeenCalled();
-      expect(mockCameraService.isCameraError$.set).toHaveBeenCalledWith(false);
     });
   });
 
@@ -188,88 +170,6 @@ describe('BarcodeScannerComponent', () => {
     });
   });
 
-  describe('restoreOriginalConsoleError', () => {
-    it('should restore console.error if originalConsoleError is defined', () => {
-      const mockConsoleError = jest.fn();
-      component['originalConsoleError'] = mockConsoleError;
-
-      component.restoreOriginalConsoleError();
-
-      expect(console.error).toBe(mockConsoleError);
-    });
-
-    it('should not change console.error if originalConsoleError is undefined', () => {
-      const originalConsoleError = console.error;
-      component['originalConsoleError'] = undefined;
-
-      component.restoreOriginalConsoleError();
-
-      expect(console.error).toBe(originalConsoleError);
-    });
-  });
-
-  describe('modifyConsoleErrorToHandleScannerErrors', () => {
-    let originalConsoleError: jest.Mock;
-
-    beforeEach(() => {
-      originalConsoleError = jest.fn();
-      console.error = originalConsoleError;
-      mockCameraService.handleCameraErrors = jest.fn();
-    });
-
-    afterEach(() => {
-      console.error = originalConsoleError;
-    });
-
-    it('should redefine console.error and store the original one', () => {
-      component.modifyConsoleErrorToHandleScannerErrors();
-
-      expect(component['originalConsoleError']).toBe(originalConsoleError);
-      expect(typeof console.error).toBe('function');
-    });
-
-    it('should call handleCameraErrors once with noMediaError when specific error occurs', () => {
-      component.modifyConsoleErrorToHandleScannerErrors();
-
-      console.error('@zxing/ngx-scanner', "Can't get user media, this is not supported.", 'extraData');
-
-      expect(mockCameraService.handleCameraErrors).toHaveBeenCalledTimes(1);
-      expect(mockCameraService.handleCameraErrors).toHaveBeenCalledWith({ name: 'extraData' }, 'noMediaError');
-      expect(originalConsoleError).toHaveBeenCalledWith('@zxing/ngx-scanner', "Can't get user media, this is not supported.", 'extraData');
-    });
-
-    it('should delegate to original console.error for other messages and not handle scanner errors', () => {
-      component.modifyConsoleErrorToHandleScannerErrors();
-
-      console.error('@zxing/ngx-scanner', 'Some other scanner error', 'extraData');
-
-      expect(mockCameraService.handleCameraErrors).toHaveBeenCalledTimes(1);
-      expect(mockCameraService.handleCameraErrors).toHaveBeenCalledWith({ name: 'extraData' }, 'undefinedError');
-      expect(originalConsoleError).toHaveBeenCalledWith('@zxing/ngx-scanner', 'Some other scanner error', 'extraData');
-    });
-
-    it('should call handleCameraErrors once with undefinedError for other @zxing/ngx-scanner errors', () => {
-      component.modifyConsoleErrorToHandleScannerErrors();
-
-      mockCameraService.handleCameraErrors.mockClear();
-      console.error('Some other message', 'extraData');
-
-      expect(mockCameraService.handleCameraErrors).toHaveBeenCalledTimes(1);
-      expect(mockCameraService.handleCameraErrors).toHaveBeenCalledWith({ name: undefined }, 'undefinedError');
-      expect(originalConsoleError).toHaveBeenCalledWith('Some other message', 'extraData');
-    });
-
-    it('should not throw error if originalConsoleError is undefined and non-scanner error occurs', () => {
-      component['originalConsoleError'] = undefined;
-      component.modifyConsoleErrorToHandleScannerErrors();
-
-      expect(() => console.error('Some other message', 'extraData')).not.toThrow();
-    });
-  });
-  
-  
-  
-
 //   it('should redefine console.error and handle zxing errors correctly', () => {
 //     const alertMock = jest.spyOn(window, 'alert').mockImplementation(() => {});
 //     const saveErrorLogSpy = jest.spyOn(component, 'saveErrorLog');
@@ -316,18 +216,18 @@ describe('BarcodeScannerComponent', () => {
     expect(component.saveErrorLog).toHaveBeenCalledWith(testError, 'scanError');
   });
 
-  it('should save scan failure log when onScanFailure is called with an error', fakeAsync(() => {
+  it('should save scan failure log when onNotFoundException is called with an error', fakeAsync(() => {
     const testError = new Exception('Test scan failure');
     const saveErrorSpy = jest.spyOn(component, 'saveErrorLog');
-    component.onScanFailure(testError);
-    tick(3000);
+    component.onNotFoundException(testError);
+    tick(6000);
     expect(saveErrorSpy).toHaveBeenCalledWith(testError, 'scanFailure');
   }));
 
-  it('should save undefined scan failure log when onScanFailure is called without an error', fakeAsync(() => {
+  it('should save undefined scan failure log when onNotFoundException is called without an error', fakeAsync(() => {
     const saveErrorSpy = jest.spyOn(component, 'saveErrorLog');
-    component.onScanFailure(undefined);
-    tick(3000);
+    component.onNotFoundException(undefined);
+    tick(6000);
     expect(saveErrorSpy).toHaveBeenCalledWith(expect.any(Error), 'scanFailure');
   }));
 

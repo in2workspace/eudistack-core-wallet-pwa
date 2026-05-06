@@ -7,7 +7,6 @@ import {
   ElementRef,
   Output,
   EventEmitter,
-  OnInit,
   OnDestroy,
   ViewChild,
   WritableSignal,
@@ -18,7 +17,6 @@ import {
 import { BarcodeFormat, Exception } from '@zxing/library';
 import { BrowserQRCodeReader } from '@zxing/browser';
 import {
-  BehaviorSubject,
   Observable,
   Subject,
   debounceTime,
@@ -52,7 +50,7 @@ import { IonicModule } from '@ionic/angular';
   styleUrl: './barcode-scanner.component.scss',
   imports: [CommonModule, RouterModule, TranslateModule, IonicModule]
 })
-export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy {
+export class BarcodeScannerComponent implements  AfterViewInit, OnDestroy {
   @Output() public qrCode: EventEmitter<string> = new EventEmitter();
   @ViewChild('scanner') public scannerVideoRef!: ElementRef<HTMLVideoElement>;
   public allowedFormats = [BarcodeFormat.QR_CODE];
@@ -76,6 +74,7 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
   private readonly decodeIntervalMs = 100;
 
   // COUNTDOWN
+  // TODO review activation timeout
   public readonly isError$ = this.cameraService.isCameraError$;
   private readonly activationTimeoutInSeconds = 1;
   private readonly _activatedScanner$$ = new Subject<void>();
@@ -123,7 +122,7 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
   });
   private readonly isActivatingScanner$ = toSignal(this.cameraService.activatingScannersList$);
   private readonly scanFailureSubject = new Subject<Error>();
-  private readonly scanFailureDebounceDelay = 3000;
+  private readonly scanFailureDebounceDelay = 6000;
   private originalConsoleError: undefined|((...data: any[]) => void);
 
   public destroy$ = new Subject<void>();
@@ -148,10 +147,6 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
  
   }
 
-  public async ngOnInit(): Promise<void> {
-    this.modifyConsoleErrorToHandleScannerErrors();
-  }
-
   public async ngAfterViewInit(): Promise<void> {
     this.reader = new BrowserQRCodeReader();
     this.initCameraIfNoActivateScanners();
@@ -162,7 +157,6 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
     this.destroy$.next();
     this.reader = null;
     this.setActivatingTimeout();
-    this.restoreOriginalConsoleError();
     this.cameraService.isCameraError$.set(false);
     this.stopScanLoop();
     this.releaseStream();
@@ -233,38 +227,13 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
     this.saveErrorLog(error, 'scanError');
   }
 
-  public onScanFailure(error: Exception|undefined): void{
+  public onNotFoundException(error: Exception|undefined): void{
     const exception: Error = error ?? new Error('Undefined scan failure');
     this.scanFailureSubject.next(exception);
   }
 
   public saveErrorLog(error: Error|undefined, exceptionType: CameraLogType): void {
     this.cameraLogsService.addCameraLog(error, exceptionType);
-  }
-
-  public modifyConsoleErrorToHandleScannerErrors(): void {
-    this.originalConsoleError = console.error;
-    console.error = (message?: string, ...optionalParams: any[]) => {
-      // TODO: for now all error logs are being stored, but this should be reviewed if more control is needed
-      console.warn('Logging library error');
-      const logMessage = formatLogMessage(message, optionalParams);
-      const err = {...new Error(logMessage), name: optionalParams[1]};
-      const errorType = optionalParams[0] === 
-        "Can't get user media, this is not supported." ?
-        'noMediaError' :
-        'undefinedError';
-      this.cameraService.handleCameraErrors(err, errorType);
-      if (this.originalConsoleError) {
-        this.originalConsoleError(message, ...optionalParams);
-      }
-    
-    };
-  }
-
-  public restoreOriginalConsoleError(): void{
-    if(this.originalConsoleError) {
-      console.error = this.originalConsoleError;
-    }
   }
 
   public async askForPermission(): Promise<boolean> {
@@ -298,7 +267,7 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
       await video.play();
       this.startScanLoop(video);
     } catch (err: any) {
-      console.error('@zxing/browser', err?.message ?? 'Stream error', err?.name);
+      this.onScanError(err as Error);
     }
   }
 
@@ -338,7 +307,8 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
     this.ctx.drawImage(video, 0, 0, w, h);
 
     try {
-      const result = await this.reader!.decodeFromCanvas(this.canvas);
+      if (!this.reader) return;
+      const result = await this.reader.decodeFromCanvas(this.canvas);
       if (this.destroyed || !this.scanLoopRunning || !this.scannerEnabled) {
         return;
       }
@@ -349,7 +319,7 @@ export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy
       }
     } catch (err: any) {
       if (err?.name === 'NotFoundException') {
-        this.onScanFailure(err as Exception);
+        this.onNotFoundException(err as Exception);
       } else {
         this.ngZone.run(() => {
           this.onScanError(err as Error);
