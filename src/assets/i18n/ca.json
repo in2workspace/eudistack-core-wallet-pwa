@@ -200,6 +200,7 @@
   "vc-selector": {
     "select-cred": "Selecciona una Credencial",
     "presentation-request": "Sol·licitud de Credencial",
+    "presentation-request-verifier": "Et sol·licita una credencial, prem la credencial que vols presentar",
     "select-instruction": "Prem la credencial que vols presentar",
     "cancel": "Cancel·lar",
     "send-cred": "Envia Credencial",
@@ -210,7 +211,10 @@
     "server-error-message": "No s'ha pogut processar la petició.<br>Torni a intentar-ho més tard.",
     "generic-error-message": "Error desconegut",
     "close": "Tancar",
-    "credential-revoke-message": "La credencial proporcionada no és vàlida, ha estat revocada o no és vàlida per a aquesta operació"
+    "credential-revoke-message": "La credencial proporcionada no és vàlida, ha estat revocada o no és vàlida per a aquesta operació",
+    "privacy-policy": "Política de privacitat",
+    "tds": "TdS",
+    "official-site": "Lloc oficial"
   },
   "vc-view": {
     "warning-header": "Credencial",

@@ -401,6 +401,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
           clientId: authRequest.clientId,
           dcqlQuery: authRequest.dcqlQuery,
           selectableVcList,
+          clientMetadata: authRequest.clientMetadata,
         };
 
         return from(
