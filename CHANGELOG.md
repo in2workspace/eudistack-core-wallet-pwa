@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.2] — 2026-05-11
+
+### Fixed
+
+- **Migración del lector QR** — se reemplazó el scanner anterior por una implementación basada en `@zxing/browser` para mejorar el rendimiento y simplificar el manejo de errores.
+
 ## [3.4.0] — 2026-04-28
 
 ### Added
