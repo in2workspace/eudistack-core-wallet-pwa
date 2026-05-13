@@ -1,12 +1,41 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
+import { TranslateService } from '@ngx-translate/core';
 import { SingleInstanceService } from './single-instance.service';
 import { AuthService } from './auth.service';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
 
-// ---------------------------------------------------------------------------
-// Minimal BroadcastChannel mock
-// ---------------------------------------------------------------------------
+const SINGLE_INSTANCE_I18N: Record<string, string> = {
+  'single-instance.type-window': 'ventana',
+  'single-instance.type-tab': 'pestaña',
+  'single-instance.title-deep-link': 'Credencial enviada a EUDI Wallet',
+  'single-instance.title-already-open': 'EUDI Wallet ya está abierto',
+  'single-instance.subtitle-deep-link': 'La credencial se ha enviado a la {{type}} activa de EUDI Wallet. Puedes cerrar esta {{type}}.',
+  'single-instance.subtitle-already-open': 'Ya tienes EUDI Wallet abierto en otra {{type}}. Puedes cerrar esta.',
+  'single-instance.hint-standalone': 'Vuelve a la otra ventana de EUDI Wallet.',
+  'single-instance.hint-tab': 'Usa Ctrl+Tab para volver a la pestaña activa.',
+  'single-instance.close-fallback-standalone': 'Cierra esta ventana manualmente',
+  'single-instance.close-fallback-tab': 'Cierra esta pestaña con Ctrl+W (⌘+W en Mac)',
+  'single-instance.close-button': 'Cerrar esta {{type}}',
+};
+
+function setStandaloneMedia(value: boolean): void {
+  (window as any).matchMedia = (query: string) => ({
+    matches: value && query.includes('standalone'),
+    media: query,
+    onchange: null,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    dispatchEvent: () => false,
+  });
+}
+
+function setNavigatorStandalone(value: boolean | undefined): void {
+  Object.defineProperty(navigator, 'standalone', { value, configurable: true });
+}
+
 class BroadcastChannelMock {
   readonly name: string;
   onmessage: ((ev: MessageEvent) => void) | null = null;
@@ -36,6 +65,7 @@ describe('SingleInstanceService', () => {
   let service: SingleInstanceService;
   let routerMock: jest.Mocked<Pick<Router, 'navigateByUrl'>>;
   let authServiceMock: jest.Mocked<Pick<AuthService, 'isLoggedIn' | 'dispose'>>;
+  let translateServiceMock: jest.Mocked<Pick<TranslateService, 'instant'>>;
   let baseQuerySpy: jest.SpyInstance;
 
   beforeAll(() => {
@@ -52,6 +82,15 @@ describe('SingleInstanceService', () => {
       isLoggedIn: jest.fn().mockReturnValue(true),
       dispose: jest.fn(),
     } as unknown as jest.Mocked<Pick<AuthService, 'isLoggedIn' | 'dispose'>>;
+    translateServiceMock = {
+      instant: jest.fn().mockImplementation((key: string, params?: Record<string, string>) => {
+        let text = SINGLE_INSTANCE_I18N[key] ?? key;
+        if (params) {
+          text = text.replace(/\{\{(\w+)\}\}/g, (_: string, k: string) => params[k] ?? '');
+        }
+        return text;
+      }),
+    } as unknown as jest.Mocked<Pick<TranslateService, 'instant'>>;
 
     // Simulate <base href="/wallet/"> in the document
     baseQuerySpy = jest.spyOn(document, 'querySelector').mockImplementation((selector) => {
@@ -66,6 +105,7 @@ describe('SingleInstanceService', () => {
         SingleInstanceService,
         { provide: Router, useValue: routerMock },
         { provide: AuthService, useValue: authServiceMock },
+        { provide: TranslateService, useValue: translateServiceMock },
       ],
     });
 
@@ -75,11 +115,10 @@ describe('SingleInstanceService', () => {
   afterEach(() => {
     jest.restoreAllMocks();
     sessionStorage.clear();
+    setStandaloneMedia(false);
+    setNavigatorStandalone(undefined);
   });
 
-  // -------------------------------------------------------------------------
-  // stripBase
-  // -------------------------------------------------------------------------
   describe('stripBase', () => {
     it('strips base href on path boundary', () => {
       const result = (SingleInstanceService as any).stripBase('/wallet/protocol/callback?code=abc');
@@ -113,9 +152,6 @@ describe('SingleInstanceService', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // handleMessage — leader deep-link forwarding
-  // -------------------------------------------------------------------------
   describe('handleMessage NAVIGATE (leader)', () => {
     beforeEach(() => {
       (service as any).isLeader = true;
@@ -222,9 +258,6 @@ describe('SingleInstanceService', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // renderDuplicateTabMessage — authService.dispose() is always called
-  // -------------------------------------------------------------------------
   describe('renderDuplicateTabMessage (follower cleanup)', () => {
     it('calls authService.dispose() on duplicate non-deep-link tab', () => {
       (service as any).renderDuplicateTabMessage(false);
@@ -240,6 +273,56 @@ describe('SingleInstanceService', () => {
       (service as any).channel = new BroadcastChannelMock('wallet-single-instance');
       (service as any).renderDuplicateTabMessage(false);
       expect((service as any).channel).toBeNull();
+    });
+
+    it('renders the duplicate-tab message UI in browser tab mode (non-standalone)', () => {
+      setStandaloneMedia(false);
+
+      (service as any).renderDuplicateTabMessage(false);
+
+      expect(document.body.innerHTML).toContain('__wallet_close_btn');
+      expect(document.body.innerHTML).toContain('EUDI Wallet ya está abierto');
+      expect(document.body.innerHTML).toContain('pestaña');
+      expect(document.body.innerHTML).toContain('Ctrl+Tab');
+    });
+
+    it('renders the duplicate-tab message UI in standalone (PWA installed) mode', () => {
+      setStandaloneMedia(true);
+
+      (service as any).renderDuplicateTabMessage(false);
+
+      expect(document.body.innerHTML).toContain('__wallet_close_btn');
+      expect(document.body.innerHTML).toContain('EUDI Wallet ya está abierto');
+      expect(document.body.innerHTML).toContain('ventana');
+      expect(document.body.innerHTML).not.toContain('Ctrl+Tab');
+    });
+
+    it('renders deep-link variant in standalone mode', () => {
+      setStandaloneMedia(true);
+
+      (service as any).renderDuplicateTabMessage(true);
+
+      expect(document.body.innerHTML).toContain('__wallet_close_btn');
+      expect(document.body.innerHTML).toContain('Credencial enviada a EUDI Wallet');
+      expect(document.body.innerHTML).toContain('ventana');
+    });
+
+    it('calls authService.dispose() in standalone mode (no silent close bypass)', () => {
+      setStandaloneMedia(true);
+
+      (service as any).renderDuplicateTabMessage(false);
+
+      expect(authServiceMock.dispose).toHaveBeenCalled();
+    });
+
+    it('renders standalone copy when navigator.standalone is true (iOS Safari PWA)', () => {
+      setStandaloneMedia(false);
+      setNavigatorStandalone(true);
+
+      (service as any).renderDuplicateTabMessage(false);
+
+      expect(document.body.innerHTML).toContain('ventana');
+      expect(document.body.innerHTML).not.toContain('Ctrl+Tab');
     });
   });
 });

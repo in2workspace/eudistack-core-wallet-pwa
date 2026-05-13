@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.4] - 2026-05-13
+
+### Added
+- **VC Selector**: Integrated verifier information display within the `vc-selector` view to improve transparency during credential selection.
+- **Testing**: implemented new test suites for `vc-selector` page specifically targeting metadata rendering and edge cases.
+- Added 5 new tests for single-instance service to cover the new logic for installed PWA and follower notification.
+
+### Fixed
+
+- **Single-instance:** Ensure installed PWA shows the duplicate-instance UI instead of silently closing; follower now notifies leader and renders a contextual message in standalone mode.
+
+
 ## [3.6.3] - 2026-04-30
 
 ### Fixed

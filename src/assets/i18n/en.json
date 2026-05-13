@@ -144,6 +144,7 @@
   "vc-selector": {
     "select-cred": "Select a Credential",
     "presentation-request": "Credential Request",
+    "presentation-request-verifier": "It requests a credential, tap the credential you want to present",
     "select-instruction": "Tap the credential you want to present",
     "cancel": "Cancel",
     "send-cred": "Send Credential",
@@ -154,7 +155,10 @@
     "server-error-message": "We couldn't process your request.<br>Please try again later.",
     "generic-error-message": "Unknown error",
     "credential-revoke-message": "The credential provided is invalid, it has been revoked or is not valid for this operation",
-    "close": "Close"
+    "close": "Close",
+    "privacy-policy": "Privacy policy",
+    "tds": "TdS",
+    "official-site": "Official site"
   },
   "vc-view": {
     "warning-header": "Credential",
@@ -393,6 +397,19 @@
     "expiration": "Expiration date: ",
     "unknown": "Unknown",
     "time-remaining": "Time remaining"
+  },
+  "single-instance": {
+    "type-window": "window",
+    "type-tab": "tab",
+    "title-deep-link": "Credential sent to EUDI Wallet",
+    "title-already-open": "EUDI Wallet is already open",
+    "subtitle-deep-link": "The credential has been sent to the active {{type}} of EUDI Wallet. You can close this {{type}}.",
+    "subtitle-already-open": "EUDI Wallet is already open in another {{type}}. You can close this one.",
+    "hint-standalone": "Return to the other EUDI Wallet window.",
+    "hint-tab": "Use Ctrl+Tab to return to the active tab.",
+    "close-fallback-standalone": "Close this window manually",
+    "close-fallback-tab": "Close this tab with Ctrl+W (\u2318+W on Mac)",
+    "close-button": "Close this {{type}}"
   },
   "tenantNotFound": {
     "title": "Tenant not found",

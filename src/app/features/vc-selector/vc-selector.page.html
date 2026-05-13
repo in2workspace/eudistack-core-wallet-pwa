@@ -1,16 +1,33 @@
 <ion-content [fullscreen]="true" class="vc-selector-content">
   <div class="vc-selector-header">
-    <div class="header-icon">
-      <ion-icon name="shield-checkmark-outline"></ion-icon>
-    </div>
-    <h2 class="header-title">{{ "vc-selector.presentation-request" | translate }}</h2>
-    <p class="header-subtitle">{{ "vc-selector.select-instruction" | translate }}</p>
-    @if (requesterDomain) {
-      <div class="requester-badge">
-        <ion-icon name="globe-outline"></ion-icon>
-        <span>{{ requesterDomain }}</span>
+    @if (clientLogo) {
+      <img [src]="clientLogo" class="header-logo" alt="RP Logo">
+    } @else {
+      <div class="header-icon">
+        <ion-icon name="shield-checkmark-outline"></ion-icon>
       </div>
     }
+    @if (clientName) {
+      <h2 class="header-title">{{ clientName }}</h2>
+      <h2 class="header-subtitle">{{ "vc-selector.presentation-request-verifier" | translate }}</h2>
+    }
+    @else {
+      <h2 class="header-title">{{ "vc-selector.presentation-request" | translate }}</h2>
+      <p class="header-subtitle">{{ "vc-selector.select-instruction" | translate }}</p>
+    }
+    <div class="legal-links">
+      @if (clientUri) {
+        <a [href]="clientUri" target="_blank" class="legal-link">{{ "vc-selector.official-site" | translate }}</a>
+      }
+      @if (clientUri && policyUri || tosUri) { <span class="divider">|</span> }
+      @if (policyUri) {
+        <a [href]="policyUri" target="_blank" class="legal-link">{{ "vc-selector.privacy-policy" | translate }}</a>
+      }
+      @if (policyUri && tosUri) { <span class="divider">|</span> }
+      @if (tosUri) {
+        <a [href]="tosUri" target="_blank" class="legal-link">{{ "vc-selector.tds" | translate }}</a>
+      }
+    </div>
   </div>
 
   <div class="credential-list">
