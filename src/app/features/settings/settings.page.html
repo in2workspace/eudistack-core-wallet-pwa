@@ -138,29 +138,19 @@
       </div>
     }
 
-    <!-- About section -->
-    <div class="settings-group">
-      <ion-list lines="none" class="settings-list">
-        <ion-item detail="false" class="settings-item">
-          <div class="icon-badge icon-badge--indigo" slot="start">
-            <ion-icon name="wallet-outline"></ion-icon>
-          </div>
-          <ion-label>{{ "settings.wallet-mode-label" | translate }}</ion-label>
-          <ion-badge slot="end" class="wallet-mode-badge" [color]="isServerMode ? 'tertiary' : 'primary'">
-            {{ walletModeKey | translate }}
-          </ion-badge>
-        </ion-item>
-
-        <div class="item-divider"></div>
-
-        <ion-item detail="false" class="settings-item">
-          <div class="icon-badge icon-badge--blue" slot="start">
-            <ion-icon name="information-circle-outline"></ion-icon>
-          </div>
-          <ion-label>{{"settings.about" | translate}}</ion-label>
-          <span class="settings-value" slot="end">v{{ appVersion }}</span>
-        </ion-item>
-      </ion-list>
+    <!-- Info panel (non-interactive: wallet type + version) -->
+    <div class="settings-info-panel">
+      <div class="settings-info-panel__row">
+        <span class="settings-info-panel__label">{{ "settings.wallet-mode-label" | translate }}</span>
+        <ion-badge [color]="isServerMode ? 'tertiary' : 'primary'" class="wallet-mode-badge">
+          {{ walletModeKey | translate }}
+        </ion-badge>
+      </div>
+      <div class="settings-info-panel__divider"></div>
+      <div class="settings-info-panel__row">
+        <span class="settings-info-panel__label">{{ "settings.version" | translate }}</span>
+        <span class="settings-info-panel__value">v{{ appVersion }}</span>
+      </div>
     </div>
 
   </div>

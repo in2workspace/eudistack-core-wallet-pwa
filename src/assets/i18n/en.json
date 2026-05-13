@@ -143,7 +143,7 @@
   },
   "vc-selector": {
     "select-cred": "Select a Credential",
-    "presentation-request": "Credential Request",
+    "presentation-request": "Select Credential",
     "presentation-request-verifier": "It requests a credential, tap the credential you want to present",
     "select-instruction": "Tap the credential you want to present",
     "cancel": "Cancel",

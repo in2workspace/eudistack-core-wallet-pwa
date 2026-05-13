@@ -141,6 +141,39 @@
   padding-inline-end: 16px;
 }
 
+// -- Info panel (non-interactive: wallet type + version) --------------------
+
+.settings-info-panel {
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  padding: 0 16px;
+
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 48px;
+  }
+
+  &__divider {
+    height: 1px;
+    background: var(--border-default);
+  }
+
+  &__label {
+    font-size: 16px;
+    color: var(--text-secondary);
+  }
+
+  &__value {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+}
+
 // -- Entrance animation -----------------------------------------------------
 
 @keyframes settingsFadeIn {
