@@ -9,16 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **VC Selector**: Integrated verifier information display within the `vc-selector` view to improve transparency during credential selection.
 - **Testing**: implemented new test suites for `vc-selector` page specifically targeting metadata rendering and edge cases.
-
-## [3.6.3] - 2026-04-30
-
-### Added
-
 - Added 5 new tests for single-instance service to cover the new logic for installed PWA and follower notification.
 
 ### Fixed
 
 - **Single-instance:** Ensure installed PWA shows the duplicate-instance UI instead of silently closing; follower now notifies leader and renders a contextual message in standalone mode.
+
+
+## [3.6.3] - 2026-04-30
+
+### Fixed
+
 - **iOS onboarding step 1 — corrected icon and copy to "three dots"** (EUDI-045 US-008).
   Step 1 of the install wizard previously described the Safari more-options control as a
   "down arrow" (`chevron-down-outline` icon). On modern iOS Safari, the actual control is
