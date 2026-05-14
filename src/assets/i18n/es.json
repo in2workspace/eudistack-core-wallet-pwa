@@ -138,7 +138,7 @@
   "vc-selector": {
     "select-cred": "Selecciona una Credencial",
     "presentation-request": "Solicitud de Credencial",
-    "presentation-request-verifier": "Te solicita una credencial, pulsa la credencial que deseas presentar",
+    "presentation-request-verifier": "Selecciona la credencial que deseas presentar.",
     "select-instruction": "Pulsa la credencial que deseas presentar",
     "cancel": "Cancelar",
     "send-cred": "Enviar Credencial",

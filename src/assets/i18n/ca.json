@@ -200,7 +200,7 @@
   "vc-selector": {
     "select-cred": "Selecciona una Credencial",
     "presentation-request": "Sol·licitud de Credencial",
-    "presentation-request-verifier": "Et sol·licita una credencial, prem la credencial que vols presentar",
+    "presentation-request-verifier": "Selecciona la credencial que vols presentar",
     "select-instruction": "Prem la credencial que vols presentar",
     "cancel": "Cancel·lar",
     "send-cred": "Envia Credencial",
