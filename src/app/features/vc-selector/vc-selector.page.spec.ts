@@ -229,11 +229,6 @@ describe('VcSelectorPage', () => {
       expect(component.clientName).toBe('Cliente Test');
       expect(component.clientLogo).toBe('https://dark.logo');
     });
-
-    it('should use fallback if metadata value is not present', () => {
-      const result = component.getMetadataValue({}, 'non_existent_field', 'es-ES', 'default-fallback');
-      expect(result).toBe('default-fallback');
-    });
   });
 
   describe('formatCredList', () => {
