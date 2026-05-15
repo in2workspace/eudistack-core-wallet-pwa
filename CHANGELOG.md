@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Updated the credential selection message on the vc-selector page.
+- Added a white background behind the logo when no dark-mode compatible RP Metadata logo is available, improving visibility in fallback scenarios.
 
 ## [3.6.6] - 2026-05-13
 
