@@ -126,7 +126,7 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
   }
 
   public ionViewWillEnter(): void {
-     if (this.isFirstCredentialLoadCompleted) {
+    if (this.isFirstCredentialLoadCompleted) {
       this.loadCredentials()
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe();
