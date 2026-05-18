@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IonicModule, ViewWillLeave } from '@ionic/angular';
+import { IonicModule, ViewWillEnter, ViewWillLeave } from '@ionic/angular';
 import { StorageService } from 'src/app/shared/services/storage.service';
 import { BarcodeScannerComponent } from 'src/app/shared/components/barcode-scanner/barcode-scanner.component';
 import { WalletService } from 'src/app/core/services/wallet.service';
@@ -53,7 +53,7 @@ import * as dayjs from 'dayjs';
 })
 
 // eslint-disable-next-line @angular-eslint/component-class-suffix
-export class CredentialsPage implements OnInit, ViewWillLeave {
+export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
   public credList: Array<VerifiableCredential> = [];
   public showScannerView = false;
   public showScanner = false;
@@ -123,6 +123,15 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         this.verifiablePresentationFlow(this.authorizationRequest);
       }
     });
+  }
+
+  public ionViewWillEnter(): void {
+    if (this.isFirstCredentialLoadCompleted) {
+      this.loadCredentials()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe();
+    }
+    this.cdr.detectChanges();
   }
 
   public ionViewDidEnter(): void {
