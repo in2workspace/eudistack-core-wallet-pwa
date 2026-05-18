@@ -6,6 +6,7 @@ import { environment } from 'src/environments/environment';
 import { Router } from '@angular/router';
 import { LocalAuthService } from './local-auth.service';
 import { PasskeyStoreService } from './passkey-store.service';
+import { WalletDiscoveryService } from './wallet-discovery.service';
 
 export interface TokenPairResponse {
   accessToken: string;
@@ -28,11 +29,18 @@ export abstract class AuthService {
   dispose(): void {}
 }
 
-/** DI provider that selects the right AuthService based on wallet_mode. */
+/**
+ * DI provider that selects the right AuthService implementation based on the
+ * wallet mode resolved at bootstrap by `WalletDiscoveryService` (AC-009.2b,
+ * AC-009.3b, AC-009.5d — EUDISTACK-502).
+ *
+ * The factory runs after `APP_INITIALIZER` completes, so `mode()` is always
+ * synchronous and deterministic for the session (AD-3).
+ */
 export const AUTH_SERVICE_PROVIDER: Provider = {
   provide: AuthService,
   useFactory: () => {
-    if ((environment as any).wallet_mode === 'server') {
+    if (inject(WalletDiscoveryService).mode() === 'server') {
       return inject(RemoteAuthService);
     }
     return inject(LocalAuthService);

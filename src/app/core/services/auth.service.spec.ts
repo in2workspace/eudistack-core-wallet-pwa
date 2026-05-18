@@ -1,8 +1,13 @@
+import { Injectable } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
-import { RemoteAuthService, TokenPairResponse } from './auth.service';
+import { AuthService, AUTH_SERVICE_PROVIDER, RemoteAuthService, TokenPairResponse } from './auth.service';
 import { PasskeyStoreService } from './passkey-store.service';
+import { PasskeyPrfService } from './passkey-prf.service';
+import { WalletDiscoveryService } from './wallet-discovery.service';
+import { WALLET_DISCOVERY_GATEWAY } from '../gateways/wallet-discovery.gateway';
+import { LocalAuthService } from './local-auth.service';
 import { environment } from 'src/environments/environment';
 
 const AUTH_BASE = `${environment.server_url}/api/v1/auth`;
@@ -234,5 +239,76 @@ describe('RemoteAuthService', () => {
       service.ngOnDestroy();
       expect(disposeSpy).toHaveBeenCalled();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T-14 — AUTH_SERVICE_PROVIDER factory selects implementation by wallet mode
+// AC-009.2b, AC-009.3b, AC-009.5d (EUDISTACK-502)
+// ---------------------------------------------------------------------------
+describe('AUTH_SERVICE_PROVIDER', () => {
+  /**
+   * Stub LocalAuthService — avoids pulling in PasskeyPrfService and its
+   * WebAuthn transitive dependencies, while still satisfying `instanceof`.
+   */
+  @Injectable()
+  class StubLocalAuthService extends LocalAuthService {}
+
+  /**
+   * Stub RemoteAuthService — avoids HttpClient + BroadcastChannel setup,
+   * while still satisfying `instanceof`.
+   */
+  @Injectable()
+  class StubRemoteAuthService extends RemoteAuthService {}
+
+  function configureWithMode(walletMode: 'browser' | 'server'): void {
+    const discoveryMock: Partial<WalletDiscoveryService> = {
+      mode: () => walletMode,
+    };
+
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [
+        AUTH_SERVICE_PROVIDER,
+        { provide: RemoteAuthService, useClass: StubRemoteAuthService },
+        { provide: LocalAuthService, useClass: StubLocalAuthService },
+        { provide: WalletDiscoveryService, useValue: discoveryMock },
+        { provide: WALLET_DISCOVERY_GATEWAY, useValue: { fetch: jest.fn() } },
+        { provide: Router, useValue: { navigate: jest.fn() } },
+        { provide: PasskeyStoreService, useValue: { hasPasskey: jest.fn().mockReturnValue(false) } },
+        { provide: PasskeyPrfService, useValue: {} },
+      ],
+    });
+  }
+
+  beforeAll(() => {
+    (globalThis as any).BroadcastChannel = class {
+      name: string;
+      onmessage: ((ev: MessageEvent) => void) | null = null;
+      constructor(name: string) { this.name = name; }
+      postMessage(_message: unknown) {}
+      close() {}
+    };
+  });
+
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    localStorage.clear();
+  });
+
+  it('factory selects LocalAuthService when discovery mode is browser', () => {
+    configureWithMode('browser');
+
+    const authService = TestBed.inject(AuthService);
+
+    expect(authService).toBeInstanceOf(LocalAuthService);
+  });
+
+  it('factory selects RemoteAuthService when discovery mode is server', () => {
+    configureWithMode('server');
+
+    const authService = TestBed.inject(AuthService);
+
+    expect(authService).toBeInstanceOf(RemoteAuthService);
   });
 });
