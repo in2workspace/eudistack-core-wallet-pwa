@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `wallet_mode` at runtime by calling `GET /business-wallet/.well-known/wallet-config-metadata`
   before any Angular route activates. Implemented as an `APP_INITIALIZER` (AD-1). Result is
   stored in a reactive signal, exposed via `mode()` for synchronous downstream reads (AC-009.5b).
-- `HttpWalletDiscoveryGateway`: HTTP adapter for the EBW well-known endpoint with a 5 s timeout
+- `HttpWalletDiscoveryGateway`: HTTP adapter for the EBW well-known endpoint with a 2 s defensive timeout (AC-009.4c)
   and shape validation (AC-009.2, AC-009.3).
 - `walletDiscoveryInitializer`: `APP_INITIALIZER` factory — never rejects; falls back silently
   on any network or HTTP error (AC-009.4, AD-2).
