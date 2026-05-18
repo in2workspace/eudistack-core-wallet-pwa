@@ -4,9 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.8] - 2026-05-18
+
+### Fixed
+
+- Ensure cards are visible and add `ionViewWillEnter` lifecycle method for loading credentials
+
 ## [3.6.7] - 2026-05-14
 
 ### Fixed
+
 - Updated the credential selection message on the vc-selector page.
 - Added a white background behind the logo when no dark-mode compatible RP Metadata logo is available, improving visibility in fallback scenarios.
 
