@@ -36,7 +36,7 @@ Forms for any form. Strict path-scoped conventions in
 
 - **Same-origin per tenant.** Wallet PWA of tenant X only talks to Issuer/EBW of tenant X. Cross-tenant calls = CORS + session loss.
 - See SAD §3.1 + ADR-001.
-- `KNOWN_TENANTS` list is duplicated here and in MFE Credential Manager — keep in sync (tech debt EUDI-048).
+- `KNOWN_TENANTS` lives in `src/app/core/constants/tenants.constants.ts` and is **duplicated verbatim** in `eudistack-mfe-credential-manager` (same path). Any change here MUST be mirrored there until EUDI-048 moves the list to the edge (API Gateway).
 
 ## Common commands
 
