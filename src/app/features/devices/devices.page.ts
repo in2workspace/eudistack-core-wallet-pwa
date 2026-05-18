@@ -6,7 +6,7 @@ import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { PasskeyApiService, PasskeyInfo } from 'src/app/core/services/passkey-api.service';
 import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
-import { environment } from 'src/environments/environment';
+import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 
 @Component({
     selector: 'app-devices',
@@ -190,12 +190,16 @@ export class DevicesPage implements OnInit {
   private readonly alertController = inject(AlertController);
   private readonly translate = inject(TranslateService);
   private readonly router = inject(Router);
+  private readonly discovery = inject(WalletDiscoveryService);
 
   readonly passkeys = signal<PasskeyInfo[]>([]);
   readonly loading = signal(true);
   readonly error = signal(false);
 
-  readonly isServerMode = (environment as any).wallet_mode === 'server';
+  /** True when the wallet operates in server (EBW) mode (AC-009.2c, AC-009.3c). */
+  get isServerMode(): boolean {
+    return this.discovery.mode() === 'server';
+  }
   readonly currentCredentialId = this.passkeyStore.getCredentialId();
 
   ngOnInit(): void {

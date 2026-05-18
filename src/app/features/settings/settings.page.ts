@@ -9,6 +9,7 @@ import { environment } from 'src/environments/environment';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { ThemeService } from 'src/app/core/services/theme.service';
+import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 
 @Component({
     selector: 'app-settings',
@@ -24,13 +25,20 @@ import { ThemeService } from 'src/app/core/services/theme.service';
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class SettingsPage {
+  private readonly discovery = inject(WalletDiscoveryService);
+
   public userName = '';
   public featureLogsEnabled = environment.logs_enabled;
   public readonly appVersion = environment.appVersion;
-  public readonly isServerMode = (environment as any).wallet_mode === 'server';
-  public readonly walletModeKey = this.isServerMode
-    ? 'settings.wallet-mode-business'
-    : 'settings.wallet-mode-eudiw';
+  /** True when the wallet operates in server (EBW) mode (AC-009.2c, AC-009.3c). */
+  public get isServerMode(): boolean {
+    return this.discovery.mode() === 'server';
+  }
+  public get walletModeKey(): string {
+    return this.isServerMode
+      ? 'settings.wallet-mode-business'
+      : 'settings.wallet-mode-eudiw';
+  }
   private readonly pwaInstallService = inject(PwaInstallService);
   private readonly themeService = inject(ThemeService);
   readonly canInstall$ = this.pwaInstallService.installable$;

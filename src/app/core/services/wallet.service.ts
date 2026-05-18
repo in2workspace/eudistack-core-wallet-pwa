@@ -11,6 +11,7 @@ import { CredentialResponse } from '../models/dto/CredentialResponse';
 import { CONTENT_TYPE_APPLICATION_JSON, CONTENT_TYPE_URL_ENCODED_FORM, RESPONSE_TYPE, TEXT } from '../constants/content-type.constants';
 import { LocalCredentialStorageService } from './local-credential-storage.service';
 import { CredentialParserService } from '../utils/credential-parser.util';
+import { WalletDiscoveryService } from './wallet-discovery.service';
 
 const contentTypeApplicationJsonHeader = new HttpHeaders({
   [CONTENT_TYPE]: CONTENT_TYPE_APPLICATION_JSON,
@@ -21,8 +22,6 @@ export const options = {
   redirect: 'follow',
 };
 
-const isBrowserMode = () => (environment as any).wallet_mode !== 'server';
-
 @Injectable({
   providedIn: 'root',
 })
@@ -30,9 +29,15 @@ export class WalletService {
   private http = inject(HttpClient);
   private credentialStorage = inject(LocalCredentialStorageService);
   private credentialParser = inject(CredentialParserService);
+  private discovery = inject(WalletDiscoveryService);
+
+  /** Returns true when the wallet operates in browser (EUDIW) mode (AC-009.2c, AC-009.3c). */
+  private isBrowserMode(): boolean {
+    return this.discovery.mode() !== 'server';
+  }
 
   public getVCinCBOR(credential: VerifiableCredential): Observable<string> {
-    if (isBrowserMode()) {
+    if (this.isBrowserMode()) {
       return of(credential.credentialEncoded ?? '');
     }
     const options = {
@@ -48,7 +53,7 @@ export class WalletService {
   }
 
   public getAllVCs(): Observable<VerifiableCredential[]> {
-    if (isBrowserMode()) {
+    if (this.isBrowserMode()) {
       return from(this.credentialStorage.getAllCredentials());
     }
     return this.http.get<VerifiableCredential[]>(
@@ -58,7 +63,7 @@ export class WalletService {
   }
 
   public deleteVC(credentialId: string): Observable<any> {
-    if (isBrowserMode()) {
+    if (this.isBrowserMode()) {
       return from(this.credentialStorage.deleteCredential(credentialId));
     }
     return this.http.delete<string>(
@@ -70,7 +75,7 @@ export class WalletService {
   }
 
   public updateCredentialStatus(credentialId: string, status: LifeCycleStatus): Observable<void> {
-    if (isBrowserMode()) {
+    if (this.isBrowserMode()) {
       return from(this.credentialStorage.updateCredentialStatus(credentialId, status));
     }
     return this.http.patch<void>(
@@ -81,7 +86,7 @@ export class WalletService {
   }
 
   public requestSignature(credentialId: string): Observable<HttpResponse<string>> {
-    if (isBrowserMode()) {
+    if (this.isBrowserMode()) {
       // No deferred credential signing in browser mode
       return of(new HttpResponse<string>({ status: 204 }));
     }
@@ -96,7 +101,7 @@ export class WalletService {
   }
 
   public finalizeCredentialIssuance(credResponse: FinalizeIssuancePayload): Observable<void>{
-    if (isBrowserMode()) {
+    if (this.isBrowserMode()) {
       return from(this.finalizeLocally(credResponse));
     }
     return this.http.post<void>(
