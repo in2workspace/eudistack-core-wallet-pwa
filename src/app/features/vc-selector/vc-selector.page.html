@@ -1,7 +1,9 @@
 <ion-content [fullscreen]="true" class="vc-selector-content">
   <div class="vc-selector-header">
     @if (clientLogo) {
-      <img [src]="clientLogo" class="header-logo" alt="RP Logo">
+      <div [class.header-logo-fallback]="needsFallback">
+        <img [src]="clientLogo" class="header-logo" alt="RP Logo">
+      </div>
     } @else {
       <div class="header-icon">
         <ion-icon name="shield-checkmark-outline"></ion-icon>

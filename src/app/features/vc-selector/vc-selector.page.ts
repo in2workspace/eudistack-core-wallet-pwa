@@ -44,6 +44,7 @@ export class VcSelectorPage {
   public sendCredentialAlert = false;
   public clientName = '';
   public clientLogo = '';
+  public needsFallback = false;
   public policyUri = '';
   public tosUri = '';
   public clientUri = '';
@@ -99,15 +100,7 @@ export class VcSelectorPage {
     this.clientLogo = this.getLogoByTheme(metadata, currentLocale);
   }
 
-  private getLogoByTheme(metadata: any, locale: string) {
-    const lightLogo = this.getMetadataValue(metadata, 'logo_uri', locale, '');
-    const darkLogo = this.getMetadataValue(metadata, 'logo_dark_uri', locale, '');
-
-    const isDarkMode = this.userPrefs.darkMode();
-    return (!isDarkMode && darkLogo !== '') ? darkLogo : lightLogo;
-  }
-
-  public getMetadataValue(metadata: any, field: string, locale: string, fallback: string): string {
+  private getMetadataValue(metadata: any, field: string, locale: string, fallback: string): string {
     if (!metadata) return fallback;
     const language = locale.split('-')[0];
 
@@ -117,6 +110,25 @@ export class VcSelectorPage {
       metadata[`${field}#${language}`] ||
       metadata[field] ||
       fallback;
+  }
+
+  private getLogoByTheme(metadata: any, locale: string) {
+    const lightLogo = this.getMetadataValue(metadata, 'logo_uri', locale, '');
+    const darkLogo = this.getMetadataValue(metadata, 'logo_dark_uri', locale, '');
+    const isDarkMode = this.userPrefs.darkMode();
+
+    if (!isDarkMode && darkLogo !== '') {
+      this.needsFallback = false;
+      return darkLogo;
+    }
+    else if (isDarkMode && lightLogo !== '') {
+      this.needsFallback = false;
+      return lightLogo;
+    }
+    else {
+      this.needsFallback = true;
+      return lightLogo;
+    }
   }
 
   public goBack(): void {
