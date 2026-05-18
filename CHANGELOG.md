@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Wallet mode discovery** (EUDISTACK-502, US-009): new `WalletDiscoveryService` resolves
+  `wallet_mode` at runtime by calling `GET /business-wallet/.well-known/wallet-config-metadata`
+  before any Angular route activates. Implemented as an `APP_INITIALIZER` (AD-1). Result is
+  stored in a reactive signal, exposed via `mode()` for synchronous downstream reads (AC-009.5b).
+- `HttpWalletDiscoveryGateway`: HTTP adapter for the EBW well-known endpoint with a 5 s timeout
+  and shape validation (AC-009.2, AC-009.3).
+- `walletDiscoveryInitializer`: `APP_INITIALIZER` factory — never rejects; falls back silently
+  on any network or HTTP error (AC-009.4, AD-2).
+- Silent fallback chain: well-known failure → `environment.wallet_mode` → default `'browser'`
+  (AC-009.4a–e, AD-5). Emits `console.warn` + telemetry on every fallback.
+- Discovery result is memoized per session — exactly one HTTP request regardless of route
+  navigation count (AC-009.5a, AD-3).
+
+### Changed
+
+- `AUTH_SERVICE_PROVIDER`: migrated `wallet_mode` read from static `environment.wallet_mode`
+  to `WalletDiscoveryService.mode()` (AC-009.6).
+- `WalletService.isBrowserMode`, `SettingsPage.isServerMode`, `DevicesPage.isServerMode`:
+  same migration — all downstream consumers now read from the resolved signal (AC-009.6).
+- Service Worker (`ngsw-config.json`): added `well-known-ebw` data group with freshness
+  strategy to prevent the SW from serving a stale discovery response from cache (AC-009.1).
+
 ## [3.6.8] - 2026-05-18
 
 ### Fixed
