@@ -24,7 +24,7 @@ describe('credential type helpers', () => {
     it('returns true for a known credential type', () => {
       expect(isValidCredentialType('learcredential.employee.w3c.4' as any)).toBe(true);
       expect(isValidCredentialType('learcredential.machine.w3c.3' as any)).toBe(true);
-      expect(isValidCredentialType('gx.labelcredential.w3c.1' as any)).toBe(true);
+      expect(isValidCredentialType('gx.labelcredential.w3c.2' as any)).toBe(true);
     });
 
     it('returns false for an unknown credential type', () => {

@@ -20,7 +20,7 @@ const SUPPORTED_SCHEMAS = [
   'learcredential.employee.sd.1',
   'learcredential.machine.w3c.3',
   'learcredential.machine.sd.1',
-  'gx.labelcredential.w3c.1',
+  'gx.labelcredential.w3c.2',
   'doctorid.sd.1',
 ] as const;
 
