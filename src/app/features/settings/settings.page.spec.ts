@@ -41,7 +41,8 @@ async function createModule(walletMode: 'browser' | 'server' = 'browser'): Promi
   };
   const cameraLogsServiceMock = {
     fetchCameraLogs: jest.fn().mockResolvedValue(true),
-    sendCameraLogs: jest.fn()
+    sendCameraLogs: jest.fn(),
+    buildMailtoLink: jest.fn().mockReturnValue(null),
   };
   const navCtrlMock = { navigateForward: jest.fn() };
 
