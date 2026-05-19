@@ -11,5 +11,5 @@ export const environment = {
   oid4vci_redirect_uri: window["env"]?.["oid4vci_redirect_uri"] || `${window.location.origin}/wallet/callback`,
   wia: window["env"]?.["wia"] || '',
   wia_instance_key_jwk: window["env"]?.["wia_instance_key_jwk"] || '',
-  appVersion: '3.4.0',
+  appVersion: '3.7.0',
 };

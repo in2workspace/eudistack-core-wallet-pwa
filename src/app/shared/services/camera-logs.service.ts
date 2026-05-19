@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { CameraLog, CameraLogType, LogsMailContent } from '../../core/models/camera-log';
 import { StorageService } from './storage.service';
 import { LOGS_EMAIL } from '../../core/constants/email.constants';
+import { TranslateService } from '@ngx-translate/core';
 
 export const LOGS_PREFIX = 'CAMERA_LOGS';
 
@@ -10,6 +11,7 @@ export const LOGS_PREFIX = 'CAMERA_LOGS';
 })
 export class CameraLogsService {
   private readonly storageService = inject(StorageService);
+  private readonly translate = inject(TranslateService);
 
   private cameraLogs: CameraLog[]|undefined = undefined;
 
@@ -56,12 +58,13 @@ export class CameraLogsService {
   }
   
 
-  //sends through mailTo the last logs that fit in 1200 characters (message body limit aprox.)
-  public async sendCameraLogs() {
+  public async sendCameraLogs(): Promise<void> {
     const logs = await this.getCameraLogs();
   
     if (logs.length === 0) {
-      alert("Could not find any stored log"); //acceptable alert, not in PRD
+      this.translate.get('camera-logs.no-logs-found').subscribe((msg: string) => {
+        alert(msg);
+      });
       return;
     }
   
@@ -84,7 +87,34 @@ export class CameraLogsService {
     };
   
     const mailtoLink = `mailto:${LOGS_EMAIL}?subject=${encodeURIComponent(msg.subject)}&body=${encodeURIComponent(msg.body)}`;
-    window.open(mailtoLink, '_blank');
+    
+    const anchor = document.createElement('a');
+    anchor.href = mailtoLink;
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+  }
+
+  public buildMailtoLink(): string | null {
+    if (!this.cameraLogs || this.cameraLogs.length === 0) return null;
+
+    const maxChars = 1500;
+    let emailBody = '';
+    const reversedLogs = [...this.cameraLogs].reverse();
+    reversedLogs.some(log => {
+      const logString = JSON.stringify(log);
+      if ((emailBody.length + logString.length) > maxChars) return true;
+      emailBody = logString + '\n' + emailBody;
+      return false;
+    });
+
+    const msg: LogsMailContent = {
+      subject: 'Camera Logs',
+      body: emailBody.trim(),
+    };
+
+    return `mailto:${LOGS_EMAIL}?subject=${encodeURIComponent(msg.subject)}&body=${encodeURIComponent(msg.body)}`;
   }
 
 }

@@ -59,7 +59,10 @@
   },
   "camera-logs": {
     "title": "Logs de cámara",
-    "no-more-logs": "No hay más logs de cámara para mostrar."
+    "no-more-logs": "No hay más logs de cámara para mostrar.",
+    "no-logs-found": "No se encontraron logs almacenados",
+    "send-error": "Error al enviar los logs de cámara",
+    "send-success": "Logs de cámara enviados correctamente"
   },
   "mailto_permission_alert": "Por favor, asegúrate de que tienes los permisos necesarios para enviar correos electrónicos con tu aplicación de correo predeterminada. Si el servicio de correo no se abre, es probable que se deba a restricciones de permisos.",
   "auth": {

@@ -59,7 +59,10 @@
   },
   "camera-logs": {
     "title": "Logs de càmera",
-    "no-more-logs": "No hi ha més logs de càmera per mostrar."
+    "no-more-logs": "No hi ha més logs de càmera per mostrar.",
+    "no-logs-found": "No es van trobar logs emmagatzemats",
+    "send-error": "Error en enviar els logs de càmera",
+    "send-success": "Logs de càmera enviats correctament"
   },
   "mailto_permission_alert": "Assegureu-vos que teniu els permisos necessaris per enviar correus electrònics amb la vostra aplicació de correu predeterminada. Si el servei de correu no s'obre, probablement és a causa de restriccions de permisos.",
   "auth": {

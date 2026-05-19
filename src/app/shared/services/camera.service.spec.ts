@@ -2,6 +2,7 @@ import { TestBed, fakeAsync, tick, flush } from '@angular/core/testing';
 import { CameraService } from './camera.service';
 import { StorageService } from './storage.service';
 import { ToastServiceHandler } from './toast.service';
+import { CameraLogsService } from './camera-logs.service';
 import { CameraOrientation } from '../../core/models/camera';
 import { signal } from '@angular/core';
 import { EMPTY, of } from 'rxjs';
@@ -64,16 +65,23 @@ describe('CameraService', () => {
   let mockToastService: {
     showErrorAlertByTranslateLabel: jest.Mock
   }
+  let mockCameraLogsService: {
+    addCameraLog: jest.Mock
+  }
 
   beforeEach(() => {
     mockToastService = {
       showErrorAlertByTranslateLabel: jest.fn().mockReturnValue(EMPTY)
     }
+    mockCameraLogsService = {
+      addCameraLog: jest.fn().mockReturnValue(Promise.resolve())
+    }
     TestBed.configureTestingModule({
       providers: [
         CameraService,
         { provide: StorageService, useClass: MockStorageService },
-        { provide: ToastServiceHandler, useValue: mockToastService }
+        { provide: ToastServiceHandler, useValue: mockToastService },
+        { provide: CameraLogsService, useValue: mockCameraLogsService }
       ],
     });
 
