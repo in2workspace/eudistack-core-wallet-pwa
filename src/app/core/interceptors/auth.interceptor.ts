@@ -1,9 +1,17 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { AuthService } from '../services/auth.service';
+import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import { environment } from 'src/environments/environment';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  // The well-known endpoint is public — skip auth entirely so that
+  // AUTH_SERVICE_PROVIDER is not instantiated before WalletDiscoveryService
+  // resolves its snapshot (bootstrap timing issue, EUDISTACK-502).
+  if (req.url.endsWith(WALLET_DISCOVERY_PATH)) {
+    return next(req);
+  }
+
   const authService = inject(AuthService);
 
   // Don't add auth header to auth endpoints (they handle their own auth)
