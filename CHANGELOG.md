@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.7.0] - 2026-05-18
 
 ### Added
 
@@ -29,6 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   same migration — all downstream consumers now read from the resolved signal (AC-009.6).
 - Service Worker (`ngsw-config.json`): added `well-known-ebw` data group with freshness
   strategy to prevent the SW from serving a stale discovery response from cache (AC-009.1).
+
+## [3.6.9] - 2026-05-18
+
+### Fixed
+
+- Fixed the Send Logs button flow on Safari and installed PWA contexts.
 
 ## [3.6.8] - 2026-05-18
 

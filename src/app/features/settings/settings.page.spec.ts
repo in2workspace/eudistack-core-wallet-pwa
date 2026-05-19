@@ -110,14 +110,15 @@ describe('SettingsPage', () => {
   it('should fetch and send camera logs on sendCameraLogs', (done) => {
     const translateSpy = jest.spyOn(translateService, 'get').mockReturnValue(of('translated_message'));
     const fetchLogsSpy = jest.spyOn(cameraLogsService, 'fetchCameraLogs').mockResolvedValue();
-    const sendLogsSpy = jest.spyOn(cameraLogsService, 'sendCameraLogs');
+    const buildMailtoLinkSpy = jest.spyOn(cameraLogsService, 'buildMailtoLink').mockReturnValue('mailto:test@example.com?subject=Camera%20Logs&body=test');
 
     component.sendCameraLogs();
+
 
     setTimeout(() => {
       expect(translateSpy).toHaveBeenCalledWith('mailto_permission_alert');
       expect(fetchLogsSpy).toHaveBeenCalled();
-      expect(sendLogsSpy).toHaveBeenCalled();
+      expect(buildMailtoLinkSpy).toHaveBeenCalled();
       done();
     }, 0);
   });
