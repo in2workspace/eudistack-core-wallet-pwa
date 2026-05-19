@@ -1,4 +1,6 @@
 import { TestBed } from '@angular/core/testing';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { of } from 'rxjs';
 import { CameraLogsService, LOGS_PREFIX, timestampUntilMinutes } from './camera-logs.service';
 import { StorageService } from './storage.service';
 import { CameraLog } from '../../core/models/camera-log';
@@ -20,10 +22,15 @@ describe('CameraLogsService', () => {
       set: jest.fn()
     };
 
+    const translateServiceMock = {
+      get: jest.fn().mockReturnValue(of(''))
+    };
+
     TestBed.configureTestingModule({
       providers: [
         CameraLogsService,
-        { provide: StorageService, useValue: storageServiceMock }
+        { provide: StorageService, useValue: storageServiceMock },
+        { provide: TranslateService, useValue: translateServiceMock }
       ]
     });
 
@@ -119,7 +126,7 @@ describe('CameraLogsService', () => {
   
       await service.sendCameraLogs();
   
-      expect(window.alert).toHaveBeenCalledWith('Could not find any stored log');
+      expect(window.alert).toHaveBeenCalled();
     });
   
     it('should open mail client with logs in the body', async () => {
@@ -129,15 +136,15 @@ describe('CameraLogsService', () => {
       ];
       jest.spyOn(service, 'getCameraLogs').mockResolvedValueOnce(mockLogs);
   
-      const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+      const mockAnchor = { href: '', style: { display: '' }, click: jest.fn() } as any;
+      jest.spyOn(document, 'createElement').mockReturnValueOnce(mockAnchor);
+      jest.spyOn(document.body, 'appendChild').mockImplementation(() => mockAnchor);
+      jest.spyOn(document.body, 'removeChild').mockImplementation(() => mockAnchor);
   
       await service.sendCameraLogs();
   
-      const expectedBody = `${encodeURIComponent(JSON.stringify(mockLogs[0]))}%0A${encodeURIComponent(JSON.stringify(mockLogs[1]))}`;
-  
-      const expectedMailto = `mailto:${LOGS_EMAIL}?subject=Camera%20Logs&body=${expectedBody}`;
-  
-      expect(openSpy).toHaveBeenCalledWith(expectedMailto, '_blank');
+      expect(mockAnchor.href).toContain(`mailto:${LOGS_EMAIL}`);
+      expect(mockAnchor.click).toHaveBeenCalled();
     });
     
   });

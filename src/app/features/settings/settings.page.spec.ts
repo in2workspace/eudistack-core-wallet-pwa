@@ -40,38 +40,37 @@ describe('SettingsPage', () => {
       createUrlTree: (commands:any, navExtras = {}) => {}
     };
     const cameraLogsServiceMock = {
-      fetchCameraLogs: jest.fn().mockResolvedValue(true), // Mock async method
-      sendCameraLogs: jest.fn()
+      fetchCameraLogs: jest.fn().mockResolvedValue(true),
+      sendCameraLogs: jest.fn(),
+      buildMailtoLink: jest.fn().mockReturnValue('mailto:test@example.com?subject=Camera%20Logs&body=test')
     };
     const navCtrlMock = { navigateForward: jest.fn() };
-   
-
 
     await TestBed.configureTestingModule({
-    schemas: [NO_ERRORS_SCHEMA],
-    imports: [
-        SettingsPage,
-        IonicModule.forRoot(),
-        RouterModule.forRoot([]),
-        TranslateModule.forRoot(),
-    ],
-    providers: [
-        { provide: ThemeService, useValue: { snapshot: null } },
-        { provide: Router, useValue: routerMock },
-        { provide: CameraLogsService, useValue: cameraLogsServiceMock },
-        { provide: TranslateService, useValue: translateServiceMock },
-        { provide: NavController, useValue: navCtrlMock },
-        { provide: ActivatedRoute, useValue: { snapshot: { data: { data: "" } } } },
-        { provide: PwaInstallService, useValue: { installable$: of(false), promptInstall: jest.fn() } },
-        { provide: UserPreferencesService, useValue: {
-          privacyBlur: signal(false),
-          darkMode: signal(false),
-          togglePrivacyBlur: jest.fn(),
-          toggleDarkMode: jest.fn(),
-        } },
-        { provide: ThemeService, useValue: { snapshot: null } },
-    ]
-}).compileComponents();
+      schemas: [NO_ERRORS_SCHEMA],
+      imports: [
+          SettingsPage,
+          IonicModule.forRoot(),
+          RouterModule.forRoot([]),
+          TranslateModule.forRoot(),
+      ],
+      providers: [
+          { provide: ThemeService, useValue: { snapshot: null } },
+          { provide: Router, useValue: routerMock },
+          { provide: CameraLogsService, useValue: cameraLogsServiceMock },
+          { provide: TranslateService, useValue: translateServiceMock },
+          { provide: NavController, useValue: navCtrlMock },
+          { provide: ActivatedRoute, useValue: { snapshot: { data: { data: "" } } } },
+          { provide: PwaInstallService, useValue: { installable$: of(false), promptInstall: jest.fn() } },
+          { provide: UserPreferencesService, useValue: {
+            privacyBlur: signal(false),
+            darkMode: signal(false),
+            togglePrivacyBlur: jest.fn(),
+            toggleDarkMode: jest.fn(),
+          } },
+          { provide: ThemeService, useValue: { snapshot: null } },
+      ]
+    }).compileComponents();
  
     fixture = TestBed.createComponent(SettingsPage);
     component = fixture.componentInstance;
@@ -99,18 +98,17 @@ describe('SettingsPage', () => {
   it('should fetch and send camera logs on sendCameraLogs', (done) => {
     const translateSpy = jest.spyOn(translateService, 'get').mockReturnValue(of('translated_message'));
     const fetchLogsSpy = jest.spyOn(cameraLogsService, 'fetchCameraLogs').mockResolvedValue();
-    const sendLogsSpy = jest.spyOn(cameraLogsService, 'sendCameraLogs');
-
+    const buildMailtoLinkSpy = jest.spyOn(cameraLogsService, 'buildMailtoLink').mockReturnValue('mailto:test@example.com?subject=Camera%20Logs&body=test');
 
     component.sendCameraLogs();
- 
+
     setTimeout(() => {
       expect(translateSpy).toHaveBeenCalledWith('mailto_permission_alert');
       expect(fetchLogsSpy).toHaveBeenCalled();
-      expect(sendLogsSpy).toHaveBeenCalled();
+      expect(buildMailtoLinkSpy).toHaveBeenCalled();
       done();
     }, 0);
-  });
+});
  
  
  

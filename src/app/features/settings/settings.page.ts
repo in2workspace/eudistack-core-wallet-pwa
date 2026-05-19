@@ -50,15 +50,34 @@ export class SettingsPage {
     await this.pwaInstallService.promptInstall();
   }
 
-  public async sendCameraLogs() {
+  public async sendCameraLogs(): Promise<void> {
     this.translate.get('mailto_permission_alert').subscribe(async (translatedMsg: string) => {
       try {
-        alert(translatedMsg); //acceptable alert, not in PRD
+        alert(translatedMsg);
         await this.cameraLogsService.fetchCameraLogs();
-        this.cameraLogsService.sendCameraLogs();
+
+        const mailtoLink = this.cameraLogsService.buildMailtoLink();
+
+        if (!mailtoLink) {
+          this.translate.get('camera-logs.no-logs-found').subscribe((msg: string) => {
+            alert(msg);
+          });
+          return;
+        }
+
+        const anchor = document.createElement('a');
+        anchor.href = mailtoLink;
+        anchor.style.display = 'none';
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+
       } catch (error) {
         console.error('Error sending camera logs:', error);
+        this.translate.get('camera-logs.send-error').subscribe((msg: string) => {
+          alert(msg);
+        });
       }
-  });
-}
+    });
+  }
 }

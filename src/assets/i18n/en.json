@@ -65,7 +65,10 @@
   },
   "camera-logs": {
     "title": "Camera logs",
-    "no-more-logs": "No more camera logs to load."
+    "no-more-logs": "No more camera logs to load.",
+    "no-logs-found": "Could not find any stored log",
+    "send-error": "Error sending camera logs",
+    "send-success": "Camera logs sent successfully"
   },
   "mailto_permission_alert": "Please make sure you have the necessary permissions to send emails with your default email application. If the email service doesn't open, it is likely due to permission restrictions.",
   "auth": {
