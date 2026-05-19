@@ -7,6 +7,7 @@
  *  T-auth-3 — /api/v1/auth/* passes through without Authorization header
  *  T-auth-4 — /api/v1/auth/passkeys includes Authorization header (exception)
  *  T-auth-5 — external URL passes through without Authorization header
+ *  T-auth-6 — /assets/* bypasses AuthService (ThemeService bootstrap timing fix)
  */
 
 import { TestBed } from '@angular/core/testing';
@@ -103,6 +104,17 @@ describe('authInterceptor', () => {
   it('T-auth-5: external URL passes through without Authorization header', () => {
     mockAuth.setToken('test-jwt');
     const url = 'https://external.example.com/resource';
+
+    httpClient.get(url).subscribe();
+
+    const req = httpMock.expectOne(url);
+    expect(req.request.headers.has('Authorization')).toBe(false);
+    req.flush({});
+  });
+
+  it('T-auth-6: /assets/* bypasses auth header (ThemeService bootstrap timing)', () => {
+    mockAuth.setToken('test-jwt');
+    const url = '/assets/tenants/sandbox/theme.json';
 
     httpClient.get(url).subscribe();
 
