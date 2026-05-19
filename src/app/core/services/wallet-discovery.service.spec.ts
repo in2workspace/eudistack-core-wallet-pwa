@@ -174,12 +174,15 @@ describe('WalletDiscoveryService > resolve > falls back on HTTP 404', () => {
     const notFoundError = new HttpErrorResponse({ status: 404, statusText: 'Not Found' });
     configureTestBed(makeErrorGateway(notFoundError));
     const service = TestBed.inject(WalletDiscoveryService);
+    const telemetry = TestBed.inject(TelemetryService);
+    const trackSpy = jest.spyOn(telemetry, 'track');
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const snapshot = await service.resolve();
 
     expect(snapshot.source).toBe('fallback');
     expect(snapshot.fallbackReason).toBe('http_error');
+    expect(trackSpy).toHaveBeenCalledWith('wallet_discovery_fallback', { reason: 'http_error', httpStatus: 404 });
   });
 
   it('promise always resolves on 404', async () => {
@@ -207,12 +210,15 @@ describe('WalletDiscoveryService > resolve > falls back on HTTP 500', () => {
     });
     configureTestBed(makeErrorGateway(serverError));
     const service = TestBed.inject(WalletDiscoveryService);
+    const telemetry = TestBed.inject(TelemetryService);
+    const trackSpy = jest.spyOn(telemetry, 'track');
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const snapshot = await service.resolve();
 
     expect(snapshot.source).toBe('fallback');
     expect(snapshot.fallbackReason).toBe('http_error');
+    expect(trackSpy).toHaveBeenCalledWith('wallet_discovery_fallback', { reason: 'http_error', httpStatus: 500 });
   });
 });
 
@@ -404,6 +410,19 @@ describe('WalletDiscoveryService > resolve > emits telemetry events', () => {
       version: 1,
     });
     expect(trackSpy).not.toHaveBeenCalledWith('wallet_discovery_fallback', expect.anything());
+  });
+
+  it('emits wallet_discovery_fallback with reason and httpStatus on HTTP error (AC-009.4b)', async () => {
+    const httpError = new HttpErrorResponse({ status: 503, statusText: 'Service Unavailable' });
+    configureTestBed(makeErrorGateway(httpError));
+    const service = TestBed.inject(WalletDiscoveryService);
+    const telemetry = TestBed.inject(TelemetryService);
+    const trackSpy = jest.spyOn(telemetry, 'track');
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    await service.resolve();
+
+    expect(trackSpy).toHaveBeenCalledWith('wallet_discovery_fallback', { reason: 'http_error', httpStatus: 503 });
   });
 
   it('emits wallet_discovery_fallback with reason on network error', async () => {

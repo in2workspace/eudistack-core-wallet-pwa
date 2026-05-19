@@ -122,7 +122,7 @@ export class WalletDiscoveryService {
       const dto = await firstValueFrom(this.gateway.fetch());
 
       if (!isValidWalletConfigMetadataDto(dto)) {
-        snapshot = this.buildFallbackSnapshot('invalid_payload');
+        snapshot = this.buildFallbackSnapshot({ reason: 'invalid_payload' });
       } else {
         snapshot = {
           mode: dto.wallet_mode as WalletMode,
@@ -147,29 +147,29 @@ export class WalletDiscoveryService {
   }
 
   /**
-   * Classifies a caught error into a `WalletDiscoveryFallbackReason`.
+   * Classifies a caught error into a reason + optional HTTP status (W1, AC-009.4b).
    *
-   * - `TimeoutError`       → `'timeout'`         (AC-009.4c)
-   * - `status === 0`       → `'network_error'`   (AC-009.4a)
-   * - `status 4xx / 5xx`  → `'http_error'`       (AC-009.4b)
-   * - anything else        → `'network_error'`   (safe default)
+   * - `TimeoutError`       → `{ reason: 'timeout' }`                  (AC-009.4c)
+   * - `status === 0`       → `{ reason: 'network_error' }`            (AC-009.4a)
+   * - `status 4xx / 5xx`  → `{ reason: 'http_error', httpStatus }`   (AC-009.4b)
+   * - anything else        → `{ reason: 'network_error' }`            (safe default)
    */
-  private classifyError(err: unknown): WalletDiscoveryFallbackReason {
+  private classifyError(err: unknown): { reason: WalletDiscoveryFallbackReason; httpStatus?: number } {
     if (err instanceof TimeoutError) {
-      return 'timeout';
+      return { reason: 'timeout' };
     }
 
     if (err !== null && typeof err === 'object' && 'status' in err) {
       const status = (err as { status: number }).status;
       if (status === 0) {
-        return 'network_error';
+        return { reason: 'network_error' };
       }
       if (status >= 400) {
-        return 'http_error';
+        return { reason: 'http_error', httpStatus: status };
       }
     }
 
-    return 'network_error';
+    return { reason: 'network_error' };
   }
 
   /**
@@ -177,13 +177,20 @@ export class WalletDiscoveryService {
    * cascade defaults (E-1, E-2, AD-5).
    *
    * Emits `console.warn` + telemetry for every fallback (AC-009.4a–e).
+   * For HTTP errors the telemetry payload includes `httpStatus` (W1, AC-009.4b).
    */
-  private buildFallbackSnapshot(reason: WalletDiscoveryFallbackReason): WalletDiscoverySnapshot {
+  private buildFallbackSnapshot(
+    classification: { reason: WalletDiscoveryFallbackReason; httpStatus?: number }
+  ): WalletDiscoverySnapshot {
+    const { reason, httpStatus } = classification;
     const envSnap = this.resolveEnvMode();
 
     console.warn('[WalletDiscovery] fallback to environment.wallet_mode', { reason });
 
-    this.telemetry.track('wallet_discovery_fallback', { reason });
+    this.telemetry.track(
+      'wallet_discovery_fallback',
+      httpStatus !== undefined ? { reason, httpStatus } : { reason }
+    );
 
     return {
       mode: envSnap.mode,

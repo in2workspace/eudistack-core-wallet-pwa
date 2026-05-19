@@ -55,17 +55,5 @@
         "timeout": "3s"
       }
     },
-    {
-      "name": "well-known-ebw",
-      "urls": [
-        "/business-wallet/.well-known/*"
-      ],
-      "cacheConfig": {
-        "strategy": "freshness",
-        "maxSize": 1,
-        "maxAge": "0u",
-        "timeout": "3s"
-      }
-    }
   ]
 }
