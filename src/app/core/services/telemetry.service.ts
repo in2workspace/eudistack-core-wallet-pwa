@@ -3,7 +3,9 @@ import { Injectable, isDevMode } from '@angular/core';
 export type TelemetryEvent =
   | 'ios_onboarding_shown'
   | 'ios_onboarding_dismissed'
-  | 'ios_pwa_installed';
+  | 'ios_pwa_installed'
+  | 'wallet_discovery_resolved'
+  | 'wallet_discovery_fallback';
 
 /**
  * Anonymous telemetry for platform-level events (AC-008.10).

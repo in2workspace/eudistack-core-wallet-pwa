@@ -4,7 +4,7 @@ import { HTTP_INTERCEPTORS, HttpClient } from '@angular/common/http';
 import { ToastServiceHandler } from '../../shared/services/toast.service';
 import { HttpErrorInterceptor } from './error-handler.interceptor';
 import { AuthService } from '../services/auth.service';
-import { SERVER_PATH } from '../constants/api.constants';
+import { SERVER_PATH, WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import { environment } from 'src/environments/environment';
 
 class MockToastServiceHandler {
@@ -312,5 +312,22 @@ it('should keep backend message for REQUEST_CREDENTIAL when not a timeout', () =
   req.flush({ message: 'Bad pin format' }, { status: 400, statusText: 'Bad Request' });
 });
 
+it('WALLET_DISCOVERY_PATH 404 → handled silently (no toast, no console.error) [M1 fix]', () => {
+  // AD-2: well-known failures must never surface as user-visible toasts
+  const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
+  const consoleSpy = jest.spyOn(console, 'error');
+
+  const url = `${environment.server_url}${WALLET_DISCOVERY_PATH}`;
+  httpClient.get(url).subscribe({
+    error: (err) => {
+      expect(err).toBeTruthy();
+      expect(toastSpy).not.toHaveBeenCalled();
+      expect(consoleSpy).not.toHaveBeenCalledWith('Error occurred:', expect.anything());
+    }
+  });
+
+  const req = httpMock.expectOne(url);
+  req.flush({ message: 'Not Found' }, { status: 404, statusText: 'Not Found' });
+});
 
 });

@@ -9,7 +9,7 @@ import {
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ToastServiceHandler } from '../../shared/services/toast.service';
-import { SERVER_PATH } from '../constants/api.constants';
+import { SERVER_PATH, WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import { environment } from 'src/environments/environment';
 
 @Injectable()
@@ -48,6 +48,8 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         const shouldHandleSilently =
           // static assets (theme.json, i18n, etc.) — not real backend errors
           pathname.startsWith('/assets/') ||
+          // well-known wallet discovery endpoint — silent fallback by design (AD-2)
+          pathname.endsWith(WALLET_DISCOVERY_PATH) ||
           // get credentials endpoint
           (pathname.endsWith(SERVER_PATH.CREDENTIALS) &&
             errMessage?.startsWith('The credentials list is empty')) ||

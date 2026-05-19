@@ -23,6 +23,10 @@ import { KEY_STORAGE_PROVIDERS } from './app/core/spi-impl/key-storage.provider.
 import { AUTH_SERVICE_PROVIDER } from './app/core/services/auth.service';
 import { ThemeService } from './app/core/services/theme.service';
 import { PasskeyStoreService } from './app/core/services/passkey-store.service';
+import { WALLET_DISCOVERY_GATEWAY } from './app/core/gateways/wallet-discovery.gateway';
+import { HttpWalletDiscoveryGateway } from './app/core/gateways/http-wallet-discovery.gateway';
+import { walletDiscoveryInitializer } from './app/core/initializers/wallet-discovery.initializer';
+import { WalletDiscoveryService } from './app/core/services/wallet-discovery.service';
 
 function initializeTheme(themeService: ThemeService): () => Promise<void> {
   return () => themeService.load();
@@ -48,6 +52,17 @@ bootstrapApplication(AppComponent, {
     ),
     provideHttpClient(withInterceptorsFromDi(), withInterceptors([authInterceptor])),
     { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true },
+    // Wallet discovery gateway (infrastructure adapter for Task 5).
+    { provide: WALLET_DISCOVERY_GATEWAY, useClass: HttpWalletDiscoveryGateway },
+    // IMPORTANT — ordering: walletDiscoveryInitializer MUST be first so that
+    // WalletDiscoveryService.mode() is resolved before initializeTheme and
+    // initializePasskeyStore run (AD-1, AC-009.1a).
+    {
+      provide: APP_INITIALIZER,
+      useFactory: walletDiscoveryInitializer,
+      deps: [WalletDiscoveryService],
+      multi: true,
+    },
     {
       provide: APP_INITIALIZER,
       useFactory: initializeTheme,
