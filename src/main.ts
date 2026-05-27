@@ -27,6 +27,8 @@ import { WALLET_DISCOVERY_GATEWAY } from './app/core/gateways/wallet-discovery.g
 import { HttpWalletDiscoveryGateway } from './app/core/gateways/http-wallet-discovery.gateway';
 import { walletDiscoveryInitializer } from './app/core/initializers/wallet-discovery.initializer';
 import { WalletDiscoveryService } from './app/core/services/wallet-discovery.service';
+import { CredentialSyncPort } from './app/core/spi/credential-sync.port';
+import { DomeCredentialSyncAdapter } from './app/core/spi-impl/dome-credential-sync.adapter';
 
 function initializeTheme(themeService: ThemeService): () => Promise<void> {
   return () => themeService.load();
@@ -87,6 +89,7 @@ bootstrapApplication(AppComponent, {
     importProvidersFrom(IonicStorageModule.forRoot()),
     ...KEY_STORAGE_PROVIDERS,
     AUTH_SERVICE_PROVIDER,
+    { provide: CredentialSyncPort, useClass: DomeCredentialSyncAdapter },
     provideRouter(routes),
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),

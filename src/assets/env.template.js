@@ -12,4 +12,12 @@
   window["env"]["oid4vci_redirect_uri"] = "";
   window["env"]["wia"] = "${WIA}";
   window["env"]["wia_instance_key_jwk"] = '${WIA_INSTANCE_KEY_JWK}';
+  window["env"]["wallet"] = {
+    dome: {
+      auto_recovery: {
+        enabled: false // Cambiar a 'true' para activar la recuperación automática de carteras
+      },
+      mode_server: false // Cambiar a 'true' para modo servidor
+    }
+  };
 })(this);
