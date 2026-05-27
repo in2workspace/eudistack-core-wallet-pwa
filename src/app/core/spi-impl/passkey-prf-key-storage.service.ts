@@ -3,6 +3,7 @@ import { KeyStorageProvider } from '../spi/key-storage.provider.service';
 import { RawKeyAlgorithm, PublicKeyInfo, KeyInfo, StoredPublicKeyRecord } from '../models/StoredKeyRecord';
 import { PasskeyPrfService } from '../services/passkey-prf.service';
 import { AppError } from '../models/error/AppError';
+import { PostPasskeyRecoveryHook } from '../../features/auth/services/post-passkey-recovery-hook';
 
 /** Regex to detect ephemeral keyIds (UUIDs from DPoP / WIA). */
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -24,6 +25,7 @@ export class PasskeyPrfKeyStorageProvider extends KeyStorageProvider {
   private readonly DB_VERSION = 1;
 
   private readonly prfService = inject(PasskeyPrfService);
+  private readonly domeRecoveryHook = inject(PostPasskeyRecoveryHook);
 
   /** In-memory cache: keyId → CryptoKey (both PRF-derived and ephemeral). */
   private readonly keyCache = new Map<string, CryptoKey>();
@@ -173,6 +175,10 @@ export class PasskeyPrfKeyStorageProvider extends KeyStorageProvider {
     };
 
     await this.saveKeyRecord(record);
+
+    if (kid) {
+      this.domeRecoveryHook.execute(kid);
+    }
 
     return { keyId, algorithm, publicKeyJwk, kid, createdAt };
   }
