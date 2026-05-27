@@ -3,7 +3,6 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { timeout } from 'rxjs/operators';
 
-import { environment } from 'src/environments/environment';
 import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import { WalletConfigMetadataDto } from '../models/wallet-discovery.model';
 import { WalletDiscoveryGateway } from './wallet-discovery.gateway';
@@ -73,7 +72,7 @@ export class HttpWalletDiscoveryGateway implements WalletDiscoveryGateway {
   private readonly http = inject(HttpClient);
 
   fetch(): Observable<WalletConfigMetadataDto> {
-    const url = `${environment.server_url}${WALLET_DISCOVERY_PATH}`;
+    const url = `${window.location.origin}${WALLET_DISCOVERY_PATH}`;
 
     return this.http
       .get<WalletConfigMetadataDto>(url, {

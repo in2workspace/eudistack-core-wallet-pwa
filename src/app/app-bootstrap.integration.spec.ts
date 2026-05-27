@@ -49,7 +49,7 @@ import { TelemetryService } from './core/services/telemetry.service';
 // ---------------------------------------------------------------------------
 
 /** Full well-known URL constructed the same way as the production gateway. */
-const DISCOVERY_URL = `${environment.server_url}${WALLET_DISCOVERY_PATH}`;
+const DISCOVERY_URL = `${window.location.origin}${WALLET_DISCOVERY_PATH}`;
 
 /** Valid browser-mode DTO used to flush successful responses. */
 const BROWSER_DTO: WalletConfigMetadataDto = {
