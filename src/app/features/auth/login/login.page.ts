@@ -95,7 +95,7 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
             }
 
             <!-- Server mode: email + OTP + passkey flow -->
-            <ng-container *ngIf="!isBrowserMode && (!showInstallScreen || !(pwaInstall.installable$ | async))">
+            <ng-container *ngIf="!isBrowserMode && ((pwaInstall.installDecision$ | async) === false || !showInstallScreen)">
               <h2 class="auth-title">{{ 'auth.login.title' | translate }}</h2>
               <p class="auth-subtitle">
                 <span *ngIf="step === 'email'">{{ 'auth.login.enter-email' | translate }}</span>

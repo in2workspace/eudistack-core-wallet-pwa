@@ -24,9 +24,7 @@ export const WALLET_DISCOVERY_TIMEOUT_MS = 2000 as const;
  * Rules:
  *  - Value must be a non-null plain object (not an array).
  *  - `wallet_mode` must be the string `'browser'` or `'server'`.
- *  - `natural_persons_only` must be a boolean.
- *  - `supported_credentials` must be an array.
- *  - `version` must be a number.
+ *  - `key_manager` must be a string, null, or absent (EUDISTACK-413 contract).
  */
 export function isValidWalletConfigMetadataDto(value: unknown): value is WalletConfigMetadataDto {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
@@ -37,9 +35,9 @@ export function isValidWalletConfigMetadataDto(value: unknown): value is WalletC
 
   return (
     (candidate['wallet_mode'] === 'browser' || candidate['wallet_mode'] === 'server') &&
-    typeof candidate['natural_persons_only'] === 'boolean' &&
-    Array.isArray(candidate['supported_credentials']) &&
-    typeof candidate['version'] === 'number'
+    (candidate['key_manager'] === undefined ||
+      candidate['key_manager'] === null ||
+      typeof candidate['key_manager'] === 'string')
   );
 }
 
