@@ -32,9 +32,7 @@ import { WalletConfigMetadataDto } from '../models/wallet-discovery.model';
 /** Valid DTO for a browser-mode tenant. */
 const BROWSER_DTO: WalletConfigMetadataDto = {
   wallet_mode: 'browser',
-  natural_persons_only: false,
-  supported_credentials: [],
-  version: 1,
+  key_manager: null,
 };
 
 /** Expected full URL based on the origin + constant used by the gateway. */
