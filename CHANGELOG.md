@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.2] - 2026-05-28
+
+### Fixed
+
+- **Wallet discovery URL** (`HttpWalletDiscoveryGateway`): use `window.location.origin` as base
+  for the well-known endpoint instead of a hardcoded prefix that broke cross-origin deployments.
+- **`WalletConfigMetadataDto`**: remove stale fields (`version`, `natural_persons_only`,
+  `supported_credentials`) and align DTO to the current EBW contract
+  `{ wallet_mode, key_manager }` (EUDISTACK-412 / EUDISTACK-119).
+
 ## [3.7.1] - 2026-05-19
 
 ### Changed
