@@ -35,7 +35,7 @@ jobs:
         with:
           repository: in2workspace/eudistack-platform-dev
           token: ${{ secrets.PLATFORM_DEV_READ_TOKEN }}
-          path: ../eudistack-platform-dev
+          path: tmp/eudistack-platform-dev
           sparse-checkout: dev-tools/schemas
           sparse-checkout-cone-mode: false
 
@@ -69,6 +69,8 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          SCHEMAS_SRC: ${{ github.workspace }}/tmp/eudistack-platform-dev/dev-tools/schemas
         run: |
           npm run build -- \
             --output-path=./dist/out \
