@@ -1,7 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const src = path.resolve(__dirname, '../../eudistack-platform-dev/dev-tools/schemas');
+const src = process.env.SCHEMAS_SRC
+  ? path.resolve(process.env.SCHEMAS_SRC)
+  : path.resolve(__dirname, '../../eudistack-platform-dev/dev-tools/schemas');
 const dst = path.resolve(__dirname, '../src/assets/schemas');
 
 if (!fs.existsSync(src)) {
