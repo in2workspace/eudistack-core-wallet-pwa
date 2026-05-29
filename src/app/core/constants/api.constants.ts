@@ -13,11 +13,9 @@ export const SERVER_PATH = Object.freeze({
 /**
  * Path of the EBW public discovery endpoint (EUDISTACK-412).
  *
- * The full URL is `${environment.server_url}${WALLET_DISCOVERY_PATH}`.
- * In production `environment.server_url` expands to
- * `${window.location.origin}/business-wallet`, so the resolved URL is
- * `https://<tenant-host>/business-wallet/.well-known/wallet-config-metadata`.
- * In local dev `environment.server_url` is `http://localhost:8083` (EBW dev port,
- * which mounts the well-known under its own base-path `/business-wallet`).
+ * The full URL is `${window.location.origin}${WALLET_DISCOVERY_PATH}`.
+ * The Spring backend registers this route via RouterFunction OUTSIDE the
+ * `webflux.base-path=/business-wallet` prefix, so the correct resolved URL is
+ * `https://<tenant-host>/.well-known/wallet-config-metadata` (no /business-wallet).
  */
 export const WALLET_DISCOVERY_PATH = '/.well-known/wallet-config-metadata' as const;

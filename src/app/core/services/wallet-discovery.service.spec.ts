@@ -37,17 +37,13 @@ import { environment } from 'src/environments/environment';
 /** Valid DTO for a browser-mode tenant. */
 const BROWSER_DTO: WalletConfigMetadataDto = {
   wallet_mode: 'browser',
-  natural_persons_only: false,
-  supported_credentials: [],
-  version: 1,
+  key_manager: null,
 };
 
 /** Valid DTO for a server-mode tenant. */
 const SERVER_DTO: WalletConfigMetadataDto = {
   wallet_mode: 'server',
-  natural_persons_only: true,
-  supported_credentials: ['LEARCredentialEmployee'],
-  version: 2,
+  key_manager: 'db',
 };
 
 /** Creates a fake gateway that emits the given DTO synchronously. */
@@ -96,9 +92,7 @@ describe('WalletDiscoveryService > resolve > returns mode from gateway response'
 
     expect(snapshot.mode).toBe('browser');
     expect(snapshot.source).toBe('discovery');
-    expect(snapshot.version).toBe(1);
-    expect(snapshot.naturalPersonsOnly).toBe(false);
-    expect(snapshot.supportedCredentials).toEqual([]);
+    expect(snapshot.keyManager).toBeNull();
     expect(snapshot.fallbackReason).toBeUndefined();
     // signal is updated
     expect(service.snapshot()()).toEqual(snapshot);
@@ -114,9 +108,7 @@ describe('WalletDiscoveryService > resolve > returns mode from gateway response'
 
     expect(snapshot.mode).toBe('server');
     expect(snapshot.source).toBe('discovery');
-    expect(snapshot.version).toBe(2);
-    expect(snapshot.naturalPersonsOnly).toBe(true);
-    expect(snapshot.supportedCredentials).toEqual(['LEARCredentialEmployee']);
+    expect(snapshot.keyManager).toBe('db');
     expect(service.mode()).toBe('server');
   });
 });
@@ -141,9 +133,7 @@ describe('WalletDiscoveryService > resolve > falls back to environment on networ
     expect(snapshot.fallbackReason).toBe('network_error');
     // mode falls back to environment.wallet_mode (default 'browser' in test env)
     expect(snapshot.mode).toBe(environment.wallet_mode || 'browser');
-    expect(snapshot.version).toBeNull();
-    expect(snapshot.naturalPersonsOnly).toBe(false);
-    expect(snapshot.supportedCredentials).toEqual([]);
+    expect(snapshot.keyManager).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith(
       '[WalletDiscovery] fallback to environment.wallet_mode',
       { reason: 'network_error' },
@@ -263,10 +253,10 @@ describe('WalletDiscoveryService > resolve > rejects invalid payload shapes', ()
   const invalidPayloads: Array<{ label: string; dto: unknown }> = [
     { label: 'null body',                  dto: null },
     { label: 'array body',                 dto: [] },
-    { label: 'missing wallet_mode field',  dto: { foo: 1, natural_persons_only: true, supported_credentials: [], version: 1 } },
-    { label: 'unrecognised wallet_mode',   dto: { wallet_mode: 'lunatic', natural_persons_only: false, supported_credentials: [], version: 1 } },
+    { label: 'missing wallet_mode field',  dto: { key_manager: 'db' } },
+    { label: 'unrecognised wallet_mode',   dto: { wallet_mode: 'lunatic', key_manager: null } },
     { label: 'empty object',              dto: {} },
-    { label: 'wallet_mode is a number',   dto: { wallet_mode: 1, natural_persons_only: false, supported_credentials: [], version: 1 } },
+    { label: 'wallet_mode is a number',   dto: { wallet_mode: 1, key_manager: null } },
   ];
 
   afterEach(() => TestBed.resetTestingModule());
@@ -407,7 +397,7 @@ describe('WalletDiscoveryService > resolve > emits telemetry events', () => {
 
     expect(trackSpy).toHaveBeenCalledWith('wallet_discovery_resolved', {
       mode: 'browser',
-      version: 1,
+      keyManager: null,
     });
     expect(trackSpy).not.toHaveBeenCalledWith('wallet_discovery_fallback', expect.anything());
   });

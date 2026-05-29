@@ -53,22 +53,10 @@ export interface WalletDiscoverySnapshot {
   source: 'discovery' | 'fallback';
 
   /**
-   * `version` field from the well-known response, or `null` when the source is `'fallback'`
-   * (i.e. the endpoint was never reached successfully).
+   * Key manager configured for this tenant (`'db'`, `'hybrid'`, `'hsm'`, `'qtsp'`),
+   * or `null` when the source is `'fallback'` or the tenant has no key manager set.
    */
-  version: number | null;
-
-  /**
-   * Whether this tenant is restricted to natural persons only.
-   * `false` when the source is `'fallback'` (conservative default).
-   */
-  naturalPersonsOnly: boolean;
-
-  /**
-   * List of `credential_configuration_id` values supported by this tenant.
-   * Empty array when the source is `'fallback'`.
-   */
-  supportedCredentials: string[];
+  keyManager: string | null;
 
   /** `Date.now()` timestamp (ms) at the moment the snapshot was committed. */
   resolvedAt: number;
@@ -82,14 +70,13 @@ export interface WalletDiscoverySnapshot {
 
 /**
  * Data-transfer object that mirrors the JSON body of
- * `GET /business-wallet/.well-known/wallet-config-metadata` (EUDISTACK-412 contract).
+ * `GET /.well-known/wallet-config-metadata` (EUDISTACK-413 contract).
  *
+ * Contract: { wallet_mode: 'browser'|'server', key_manager: string|null }
  * This DTO is used only inside the gateway layer; the rest of the application
  * works with `WalletDiscoverySnapshot`.
  */
 export interface WalletConfigMetadataDto {
   wallet_mode: string;
-  natural_persons_only: boolean;
-  supported_credentials: string[];
-  version: number;
+  key_manager: string | null;
 }
