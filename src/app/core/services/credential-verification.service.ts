@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import * as pako from 'pako';
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import { VerifiableCredential } from '../models/verifiable-credential';
 
 export type CheckStatus = 'pending' | 'checking' | 'passed' | 'failed';
