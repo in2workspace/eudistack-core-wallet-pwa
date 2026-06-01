@@ -76,7 +76,7 @@
       "title": "Register your device",
       "subtitle": "Enter your email to get started",
       "passkey-button": "Sign in with Passkey",
-      "enter-email": "Enter your email to continue",
+      "enter-email": "Enter your email to get started",
       "verify-passkey": "Verify your identity with your passkey"
     },
     "register": {
