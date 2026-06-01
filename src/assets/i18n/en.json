@@ -74,31 +74,22 @@
   "auth": {
     "login": {
       "title": "Register your device",
+      "title-welcome": "Welcome back",
       "subtitle": "Enter your email to get started",
       "passkey-button": "Sign in with Passkey",
       "enter-email": "Enter your email to get started",
       "verify-passkey": "Verify your identity with your passkey"
     },
     "register": {
-      "title": "Register your device",
-      "subtitle": "Enter your email to get started",
-      "step-email": "Email",
-      "step-verify": "Verify",
-      "email": "Email",
       "email-placeholder": "Enter your email",
       "send-code": "Send verification code",
       "code-sent": "We sent a verification code to your email",
-      "code": "Verification code",
-      "code-placeholder": "Enter the 6-digit code",
       "verify": "Verify",
       "change-email": "Change email",
-      "passkey-subtitle": "Create a passkey to set up your wallet securely",
-      "create-wallet": "Create Wallet",
       "install-title": "Install the App",
       "install-subtitle": "For the best experience and offline access, install the wallet app on your device.",
       "install-button": "Install App",
-      "continue-browser": "Continue in browser",
-      "already-registered": "Already have an account? Log in"
+      "continue-browser": "Continue in browser"
     },
     "passkey": {
       "title": "Set up Passkey",
