@@ -95,6 +95,7 @@ export class Oid4vciEngineService {
 
       let jwtProof = null;
       let proofPublicJwk: JsonWebKey | null = null;
+      let holderKeyId: string | undefined;
 
       if (cfg.isCryptographicBindingSupported && credentialIssuerMetadata.credentialIssuer) {
         const proofContext = await this.issueProofJwt({
@@ -106,6 +107,7 @@ export class Oid4vciEngineService {
         });
         jwtProof = proofContext.jwt;
         proofPublicJwk = proofContext.publicKeyJwk;
+        holderKeyId = proofContext.holderKeyId;
       }
 
       const format = cfg.format;
@@ -147,7 +149,8 @@ export class Oid4vciEngineService {
         authorisationServerMetadata,
         tokenObtainedAt,
         format,
-        credentialConfigurationId
+        credentialConfigurationId,
+        holderKeyId,
       };
     }});
 
@@ -285,6 +288,7 @@ export class Oid4vciEngineService {
         jwt: keyInfo.prebuiltJwsProof,
         publicKeyJwk: keyInfo.publicKeyJwk,
         thumbprint: keyInfo.kid,
+        holderKeyId: keyInfo.keyId,
       };
     }
 
@@ -302,7 +306,7 @@ export class Oid4vciEngineService {
     return {
       jwt: `${signingInput}.${this.jwtService.base64UrlEncode(signature)}`,
       publicKeyJwk,
-      thumbprint: keyInfo.kid
+      thumbprint: keyInfo.kid,
     };
   }
 

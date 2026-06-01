@@ -26,22 +26,25 @@ interface KeyInfoResponseDto {
   createdAt: string;
 }
 
-interface KeyListItemResponseDto {
-  keyId: string;
-  algorithm: string;
-  kid: string;
-  createdAt: string;
+interface CredentialListItemDto {
+  id: string;
+  kid?: string;
+  holder_key_id?: string;
+  credentialFormat?: string;
 }
 
-const KEYS_API = '/api/v1/keys';
+const CREDENTIALS_API = '/api/v1/credentials';
 
 @Injectable()
 export class ServerKeyStorageProvider extends KeyStorageProvider {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = environment.server_url;
 
+  /** Session-scoped cache: kid (JWK thumbprint) → PublicKeyInfo. Populated on generateKeyPair. */
+  private readonly keyCache = new Map<string, PublicKeyInfo>();
+
   async generateKeyPair(algorithm: RawKeyAlgorithm, keyId: string, context?: OID4VCIKeyGenContext): Promise<PublicKeyInfo> {
-    const url = `${this.baseUrl}${KEYS_API}/generate`;
+    const url = `${this.baseUrl}/api/v1/keys/generate`;
     const body = context
       ? {
           credential_id: context.credentialId,
@@ -56,7 +59,7 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
     );
     const publicKeyJwk = response.public_jwk as JsonWebKey;
     const kid = await this.computeJwkThumbprint(publicKeyJwk);
-    return {
+    const info: PublicKeyInfo = {
       keyId: response.key_id,
       algorithm: 'ES256',
       publicKeyJwk,
@@ -64,10 +67,13 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
       createdAt: new Date().toISOString(),
       prebuiltJwsProof: response.jws_proof,
     };
+    this.keyCache.set(kid, info);
+    this.keyCache.set(response.key_id, info);
+    return info;
   }
 
   async sign(keyId: string, data: Uint8Array): Promise<Uint8Array> {
-    const url = `${this.baseUrl}${KEYS_API}/${encodeURIComponent(keyId)}/sign`;
+    const url = `${this.baseUrl}/api/v1/keys/${encodeURIComponent(keyId)}/sign`;
     const response = await firstValueFrom(
       this.http.post<SignResponseDto>(url, { data: base64UrlEncode(data) })
     );
@@ -76,7 +82,7 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
 
   async hasKey(keyId: string): Promise<boolean> {
     try {
-      const url = `${this.baseUrl}${KEYS_API}/${encodeURIComponent(keyId)}`;
+      const url = `${this.baseUrl}/api/v1/keys/${encodeURIComponent(keyId)}`;
       const response = await firstValueFrom(
         this.http.get<KeyInfoResponseDto>(url)
       );
@@ -87,20 +93,22 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
   }
 
   async deleteKey(keyId: string): Promise<void> {
-    const url = `${this.baseUrl}${KEYS_API}/${encodeURIComponent(keyId)}`;
+    const url = `${this.baseUrl}/api/v1/keys/${encodeURIComponent(keyId)}`;
     await firstValueFrom(this.http.delete<void>(url));
   }
 
   async listKeys(): Promise<KeyInfo[]> {
-    const url = `${this.baseUrl}${KEYS_API}`;
-    const response = await firstValueFrom(
-      this.http.get<KeyListItemResponseDto[]>(url)
+    const url = `${this.baseUrl}${CREDENTIALS_API}`;
+    const credentials = await firstValueFrom(
+      this.http.get<CredentialListItemDto[]>(url)
     );
-    return response.map(item => ({
-      keyId: item.keyId,
-      algorithm: item.algorithm as RawKeyAlgorithm,
-      createdAt: item.createdAt,
-    }));
+    return credentials
+      .filter(c => c.holder_key_id != null)
+      .map(c => ({
+        keyId: c.holder_key_id!,
+        algorithm: 'ES256' as RawKeyAlgorithm,
+        createdAt: '',
+      }));
   }
 
   async isCnfBoundToPublicKey(unparsedCnf: unknown, publicKeyJwk: JsonWebKey): Promise<boolean> {
@@ -117,21 +125,21 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
   }
 
   async resolveKeyIdByKid(kid: string): Promise<string | null> {
-    const url = `${this.baseUrl}${KEYS_API}`;
-    const keys = await firstValueFrom(
-      this.http.get<KeyListItemResponseDto[]>(url)
+    const url = `${this.baseUrl}${CREDENTIALS_API}`;
+    const credentials = await firstValueFrom(
+      this.http.get<CredentialListItemDto[]>(url)
     );
-    const match = keys.find(k => k.kid === kid);
-    return match?.keyId ?? null;
+    const match = credentials.find(c => c.kid === kid && c.holder_key_id != null);
+    return match?.holder_key_id ?? null;
   }
 
   async exportKey(keyId: string): Promise<JsonWebKey> {
-    const url = `${this.baseUrl}${KEYS_API}/${encodeURIComponent(keyId)}/export`;
+    const url = `${this.baseUrl}/api/v1/keys/${encodeURIComponent(keyId)}/export`;
     return firstValueFrom(this.http.get<JsonWebKey>(url));
   }
 
   async importKey(keyId: string, jwk: JsonWebKey): Promise<void> {
-    const url = `${this.baseUrl}${KEYS_API}/import`;
+    const url = `${this.baseUrl}/api/v1/keys/import`;
     await firstValueFrom(this.http.post<void>(url, { keyId, jwk }));
   }
 }
