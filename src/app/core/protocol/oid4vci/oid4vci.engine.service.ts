@@ -279,6 +279,15 @@ export class Oid4vciEngineService {
       : undefined;
     const keyInfo = await this.keyStorageProvider.generateKeyPair('ES256', keyId, context);
 
+    // Server mode: EBW already signed the proof internally — use it directly.
+    if (keyInfo.prebuiltJwsProof) {
+      return {
+        jwt: keyInfo.prebuiltJwsProof,
+        publicKeyJwk: keyInfo.publicKeyJwk,
+        thumbprint: keyInfo.kid,
+      };
+    }
+
     const publicKeyJwk = keyInfo.publicKeyJwk;
 
     const headerAndPayload = this.proofBuilderService.createHeaderAndPayload(
@@ -290,10 +299,10 @@ export class Oid4vciEngineService {
 
     const signature = await this.keyStorageProvider.sign(keyInfo.keyId, new TextEncoder().encode(signingInput));
 
-    return { 
-      jwt: `${signingInput}.${this.jwtService.base64UrlEncode(signature)}`, 
-      publicKeyJwk, 
-      thumbprint: keyInfo.kid 
+    return {
+      jwt: `${signingInput}.${this.jwtService.base64UrlEncode(signature)}`,
+      publicKeyJwk,
+      thumbprint: keyInfo.kid
     };
   }
 

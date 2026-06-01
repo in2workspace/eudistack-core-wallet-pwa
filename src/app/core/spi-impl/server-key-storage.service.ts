@@ -7,11 +7,10 @@ import { environment } from 'src/environments/environment';
 import { base64UrlEncode, base64UrlDecode } from '../utils/base64url';
 
 interface KeyGenerateResponseDto {
-  keyId: string;
-  algorithm: string;
-  publicKeyJwk: JsonWebKey;
-  kid: string;
-  createdAt: string;
+  key_id: string;
+  public_jwk: JsonWebKey;
+  jws_proof: string;
+  warning?: string;
 }
 
 interface SignResponseDto {
@@ -55,12 +54,15 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
     const response = await firstValueFrom(
       this.http.post<KeyGenerateResponseDto>(url, body)
     );
+    const publicKeyJwk = response.public_jwk as JsonWebKey;
+    const kid = await this.computeJwkThumbprint(publicKeyJwk);
     return {
-      keyId: response.keyId,
-      algorithm: response.algorithm as RawKeyAlgorithm,
-      publicKeyJwk: response.publicKeyJwk,
-      kid: response.kid,
-      createdAt: response.createdAt,
+      keyId: response.key_id,
+      algorithm: 'ES256',
+      publicKeyJwk,
+      kid,
+      createdAt: new Date().toISOString(),
+      prebuiltJwsProof: response.jws_proof,
     };
   }
 
