@@ -96,6 +96,7 @@ export class Oid4vciEngineService {
       let jwtProof = null;
       let proofPublicJwk: JsonWebKey | null = null;
       let holderKeyId: string | undefined;
+      let holderKid: string | undefined;
 
       if (cfg.isCryptographicBindingSupported && credentialIssuerMetadata.credentialIssuer) {
         const proofContext = await this.issueProofJwt({
@@ -108,6 +109,7 @@ export class Oid4vciEngineService {
         jwtProof = proofContext.jwt;
         proofPublicJwk = proofContext.publicKeyJwk;
         holderKeyId = proofContext.holderKeyId;
+        holderKid = proofContext.thumbprint;
       }
 
       const format = cfg.format;
@@ -151,6 +153,7 @@ export class Oid4vciEngineService {
         format,
         credentialConfigurationId,
         holderKeyId,
+        holderKid,
       };
     }});
 

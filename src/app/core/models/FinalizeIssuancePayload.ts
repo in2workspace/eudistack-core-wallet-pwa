@@ -12,4 +12,5 @@ export interface FinalizeIssuancePayload{
   format: string;
   credentialConfigurationId: string;
   holderKeyId?: string;
+  holderKid?: string;
 }
