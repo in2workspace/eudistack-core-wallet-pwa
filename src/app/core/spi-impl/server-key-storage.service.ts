@@ -73,11 +73,29 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
   }
 
   async sign(keyId: string, data: Uint8Array): Promise<Uint8Array> {
+    // Fallback path — not used when buildPresentationJws is available.
     const url = `${this.baseUrl}/api/v1/keys/${encodeURIComponent(keyId)}/sign`;
     const response = await firstValueFrom(
       this.http.post<SignResponseDto>(url, { data: base64UrlEncode(data) })
     );
     return base64UrlDecode(response.signature);
+  }
+
+  override async buildPresentationJws(
+    keyId: string,
+    payload: Record<string, unknown>,
+    signingType: 'KB_JWT' | 'VP_ENVELOPE'
+  ): Promise<string> {
+    const url = `${this.baseUrl}/api/v1/keys/${encodeURIComponent(keyId)}/sign`;
+    const signingInput = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+    const response = await firstValueFrom(
+      this.http.post<{ jws: string }>(url, {
+        signing_type: signingType,
+        purpose: 'PRESENTATION',
+        signing_input: signingInput,
+      })
+    );
+    return response.jws;
   }
 
   async hasKey(keyId: string): Promise<boolean> {

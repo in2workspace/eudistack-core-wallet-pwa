@@ -233,6 +233,12 @@ export class Oid4vpEngineService {
   }
 
   private async signJwt(header: Record<string, unknown>, payload: Record<string, unknown>, keyId: string): Promise<string> {
+    // Server mode: delegate full JWS construction (header + payload + sig) to the EBW.
+    if (this.keyStorageProvider.buildPresentationJws) {
+      const signingType = header['typ'] === 'kb+jwt' ? 'KB_JWT' : 'VP_ENVELOPE';
+      return this.keyStorageProvider.buildPresentationJws(keyId, payload, signingType);
+    }
+
     const encodedHeader = this.jwtService.base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
     const encodedPayload = this.jwtService.base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
 

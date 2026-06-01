@@ -14,6 +14,8 @@ export interface OID4VCIKeyGenContext {
 export abstract class KeyStorageProvider {
   abstract generateKeyPair(algorithm: RawKeyAlgorithm, keyId: string, context?: OID4VCIKeyGenContext): Promise<PublicKeyInfo>;
   abstract sign(keyId: string, data: Uint8Array): Promise<Uint8Array>;
+  /** Server mode only: build a complete JWS for a presentation payload (EBW builds header+sig). */
+  buildPresentationJws?(keyId: string, payload: Record<string, unknown>, signingType: 'KB_JWT' | 'VP_ENVELOPE'): Promise<string>;
   abstract hasKey(keyId: string): Promise<boolean>;
   abstract deleteKey(keyId: string): Promise<void>;
   abstract listKeys(): Promise<KeyInfo[]>;
