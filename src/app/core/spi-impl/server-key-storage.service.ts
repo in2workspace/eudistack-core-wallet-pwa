@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { KeyStorageProvider } from '../spi/key-storage.provider.service';
+import { KeyStorageProvider, OID4VCIKeyGenContext } from '../spi/key-storage.provider.service';
 import { RawKeyAlgorithm, PublicKeyInfo, KeyInfo } from '../models/StoredKeyRecord';
 import { environment } from 'src/environments/environment';
 import { base64UrlEncode, base64UrlDecode } from '../utils/base64url';
@@ -41,10 +41,19 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = environment.server_url;
 
-  async generateKeyPair(algorithm: RawKeyAlgorithm, keyId: string): Promise<PublicKeyInfo> {
+  async generateKeyPair(algorithm: RawKeyAlgorithm, keyId: string, context?: OID4VCIKeyGenContext): Promise<PublicKeyInfo> {
     const url = `${this.baseUrl}${KEYS_API}/generate`;
+    const body = context
+      ? {
+          credential_id: context.credentialId,
+          format: context.format,
+          supported_algs: context.supportedAlgs,
+          issuer_identifier: context.issuerIdentifier,
+          c_nonce: context.cNonce,
+        }
+      : { algorithm, keyId };
     const response = await firstValueFrom(
-      this.http.post<KeyGenerateResponseDto>(url, { algorithm, keyId })
+      this.http.post<KeyGenerateResponseDto>(url, body)
     );
     return {
       keyId: response.keyId,

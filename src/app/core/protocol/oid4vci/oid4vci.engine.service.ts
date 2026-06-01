@@ -6,7 +6,7 @@ import { PreAuthorizedTokenService } from './pre-authorized-token.service';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { ProofBuilderService } from './proof-builder.service';
-import { KeyStorageProvider } from '../../spi/key-storage.provider.service';
+import { KeyStorageProvider, OID4VCIKeyGenContext } from '../../spi/key-storage.provider.service';
 import { JwtService } from './jwt.service';
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { CredentialService } from './credential.service';
@@ -101,6 +101,8 @@ export class Oid4vciEngineService {
           nonce,
           credentialIssuer: credentialIssuerMetadata.credentialIssuer,
           credentialConfigurationId: cfg.credentialConfigurationId,
+          format: cfg.format,
+          supportedAlgs: cfg.supportedAlgs ?? ['ES256'],
         });
         jwtProof = proofContext.jwt;
         proofPublicJwk = proofContext.publicKeyJwk;
@@ -252,18 +254,30 @@ export class Oid4vciEngineService {
 
     const methods = configuration.cryptographic_binding_methods_supported;
     const isCryptographicBindingSupported = !!(methods && methods.length > 0);
+    const supportedAlgs: string[] =
+      (configuration as any).proof_types_supported?.jwt?.proof_signing_alg_values_supported ?? ['ES256'];
 
     return {
       credentialConfigurationId,
       configuration,
       format,
       isCryptographicBindingSupported,
+      supportedAlgs,
     };
   }
 
-  private async issueProofJwt(params: { nonce: string; credentialIssuer: string; credentialConfigurationId: string }): Promise<ProofJwtContext> {
+  private async issueProofJwt(params: { nonce: string; credentialIssuer: string; credentialConfigurationId: string; format?: string; supportedAlgs?: string[] }): Promise<ProofJwtContext> {
     const keyId = `${params.credentialIssuer}:${params.credentialConfigurationId}`;
-    const keyInfo = await this.keyStorageProvider.generateKeyPair('ES256', keyId);
+    const context: OID4VCIKeyGenContext | undefined = params.format
+      ? {
+          credentialId: keyId,
+          format: params.format,
+          supportedAlgs: params.supportedAlgs ?? ['ES256'],
+          issuerIdentifier: params.credentialIssuer,
+          cNonce: params.nonce || undefined,
+        }
+      : undefined;
+    const keyInfo = await this.keyStorageProvider.generateKeyPair('ES256', keyId, context);
 
     const publicKeyJwk = keyInfo.publicKeyJwk;
 
