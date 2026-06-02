@@ -67,32 +67,23 @@
   "mailto_permission_alert": "Assegureu-vos que teniu els permisos necessaris per enviar correus electrònics amb la vostra aplicació de correu predeterminada. Si el servei de correu no s'obre, probablement és a causa de restriccions de permisos.",
   "auth": {
     "login": {
-      "title": "Benvingut",
-      "subtitle": "Usa la teva passkey per accedir de forma segura",
+      "title": "Registra el teu dispositiu",
+      "title-welcome": "Benvingut",
+      "subtitle": "Introdueix el teu email per començar",
       "passkey-button": "Iniciar sessió amb Passkey",
-      "enter-email": "Introdueix el teu email per continuar",
+      "enter-email": "Introdueix el teu email per començar",
       "verify-passkey": "Verifica la teva identitat amb la teva passkey"
     },
     "register": {
-      "title": "Crear compte",
-      "subtitle": "Introdueix el teu email per començar",
-      "step-email": "Email",
-      "step-verify": "Verificar",
-      "email": "Email",
       "email-placeholder": "Introdueix el teu email",
       "send-code": "Enviar codi de verificació",
       "code-sent": "Hem enviat un codi de verificació al teu email",
-      "code": "Codi de verificació",
-      "code-placeholder": "Introdueix el codi de 6 dígits",
       "verify": "Verificar",
       "change-email": "Canviar email",
-      "passkey-subtitle": "Crea una passkey per configurar el teu wallet de forma segura",
-      "create-wallet": "Crear Wallet",
       "install-title": "Instal·lar l'App",
       "install-subtitle": "Per a la millor experiència i accés offline, instal·la l'app del wallet al teu dispositiu.",
       "install-button": "Instal·lar App",
-      "continue-browser": "Continuar al navegador",
-      "already-registered": "Ja tens un compte? Inicia sessió"
+      "continue-browser": "Continuar al navegador"
     },
     "passkey": {
       "title": "Configurar Passkey",

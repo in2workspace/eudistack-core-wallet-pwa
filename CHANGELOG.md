@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0] - 2026-06-02
+
+### Added
+
+- **Server-side wallet mode** (`wallet_mode=server`): `key-storage.provider.factory.ts` dynamically selects `ServerKeyStorageProvider` when the EBW reports server mode, keeping `PasskeyPrfKeyStorageProvider` for browser mode. No change to browser-mode behaviour.
+- **`ServerKeyStorageProvider`**: full implementation — `generateKeyPair` sends OID4VCI context (`format`, `supported_algs`, `issuer_identifier`, `c_nonce`) to `POST /api/v1/keys/generate`; `buildPresentationJws` delegates KB-JWT and VP-envelope signing to `POST /api/v1/keys/{keyId}/sign`; `resolveKeyIdByKid` resolves key IDs from `GET /api/v1/credentials`.
+- **OID4VCI issuance (server mode)**: `oid4vci.engine` passes `OID4VCIKeyGenContext` to `generateKeyPair` and uses the pre-built `jws_proof` returned by the EBW directly — no local signing step.
+- **OID4VP presentation (server mode)**: `oid4vp.engine.signJwt` delegates full JWS construction to `buildPresentationJws` when available, keeping the existing browser-mode path intact.
+- **`FinalizeIssuancePayload`**: new optional fields `holderKeyId` and `holderKid` propagate the EBW key reference through the issuance flow so the credential can be linked server-side.
+
+### Changed
+
+- **Unified auth UI**: both `/auth/login` and `/auth/register` routes now load `LoginPage` (single component). Entry screen title changed to "Register your device"; passkey step title is "Welcome back".
+- **i18n** (`en.json`, `es.json`, `ca.json`): 10 unused `auth.register.*` keys removed; `auth.login.title-welcome` added for the passkey step.
+
+### Fixed
+
+- **`DpopService`**: always uses `PasskeyPrfKeyStorageProvider` for ephemeral DPoP keys regardless of `wallet_mode` — prevents accidental routing to the EBW's holder-key endpoint.
+
+### Removed
+
+- **`RegisterPage`** (`register.page.ts`, `register.page.scss`) — replaced by unified `LoginPage`. 693 lines removed.
+
 ## [3.7.4] - 2026-05-31
 
 ### Fixed

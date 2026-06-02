@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { KeyStorageProvider } from '../../spi/key-storage.provider.service';
+import { PasskeyPrfKeyStorageProvider } from '../../spi-impl/passkey-prf-key-storage.service';
 import { JwtService } from './jwt.service';
 
 export interface DpopProof {
@@ -9,7 +9,10 @@ export interface DpopProof {
 
 @Injectable({ providedIn: 'root' })
 export class DpopService {
-  private readonly keyStorageProvider = inject(KeyStorageProvider);
+  // DPoP keys are session-ephemeral and must always be generated client-side,
+  // regardless of wallet_mode. Injecting PasskeyPrfKeyStorageProvider directly
+  // bypasses the server-mode factory and uses the local ephemeral key path.
+  private readonly keyStorageProvider = inject(PasskeyPrfKeyStorageProvider);
   private readonly jwtService = inject(JwtService);
 
   private dpopKeyId: string | null = null;

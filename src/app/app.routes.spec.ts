@@ -91,7 +91,7 @@ describe('App Routing', () => {
       expect(loginRoute!.loadComponent).toBeDefined();
     });
 
-    it('should define auth/register route with lazy-loaded RegisterPage', () => {
+    it('should define auth/register route reusing LoginPage component', () => {
       const authRoute = routes.find(r => r.path === 'auth');
       const registerRoute = authRoute!.children!.find((r: any) => r.path === 'register');
       expect(registerRoute).toBeDefined();
