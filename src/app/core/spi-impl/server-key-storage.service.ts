@@ -5,6 +5,7 @@ import { KeyStorageProvider, OID4VCIKeyGenContext } from '../spi/key-storage.pro
 import { RawKeyAlgorithm, PublicKeyInfo, KeyInfo } from '../models/StoredKeyRecord';
 import { environment } from 'src/environments/environment';
 import { base64UrlEncode, base64UrlDecode } from '../utils/base64url';
+import { SERVER_PATH } from '../constants/api.constants';
 
 interface KeyGenerateResponseDto {
   key_id: string;
@@ -33,8 +34,6 @@ interface CredentialListItemDto {
   credentialFormat?: string;
 }
 
-const CREDENTIALS_API = '/api/v1/credentials';
-
 @Injectable()
 export class ServerKeyStorageProvider extends KeyStorageProvider {
   private readonly http = inject(HttpClient);
@@ -44,7 +43,7 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
   private readonly keyCache = new Map<string, PublicKeyInfo>();
 
   async generateKeyPair(algorithm: RawKeyAlgorithm, keyId: string, context?: OID4VCIKeyGenContext): Promise<PublicKeyInfo> {
-    const url = `${this.baseUrl}/api/v1/keys/generate`;
+    const url = `${this.baseUrl}${SERVER_PATH.KEYS_GENERATE}`;
     const body = context
       ? {
           credential_id: context.credentialId,
@@ -74,7 +73,7 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
 
   async sign(keyId: string, data: Uint8Array): Promise<Uint8Array> {
     // Fallback path — not used when buildPresentationJws is available.
-    const url = `${this.baseUrl}/api/v1/keys/${encodeURIComponent(keyId)}/sign`;
+    const url = `${this.baseUrl}${SERVER_PATH.KEYS_SIGN(keyId)}`;
     const response = await firstValueFrom(
       this.http.post<SignResponseDto>(url, { data: base64UrlEncode(data) })
     );
@@ -86,7 +85,7 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
     payload: Record<string, unknown>,
     signingType: 'KB_JWT' | 'VP_ENVELOPE'
   ): Promise<string> {
-    const url = `${this.baseUrl}/api/v1/keys/${encodeURIComponent(keyId)}/sign`;
+    const url = `${this.baseUrl}${SERVER_PATH.KEYS_SIGN(keyId)}`;
     const signingInput = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
     const response = await firstValueFrom(
       this.http.post<{ jws: string }>(url, {
@@ -100,7 +99,7 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
 
   async hasKey(keyId: string): Promise<boolean> {
     try {
-      const url = `${this.baseUrl}/api/v1/keys/${encodeURIComponent(keyId)}`;
+      const url = `${this.baseUrl}${SERVER_PATH.KEYS_BY_ID(keyId)}`;
       const response = await firstValueFrom(
         this.http.get<KeyInfoResponseDto>(url)
       );
@@ -111,12 +110,12 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
   }
 
   async deleteKey(keyId: string): Promise<void> {
-    const url = `${this.baseUrl}/api/v1/keys/${encodeURIComponent(keyId)}`;
+    const url = `${this.baseUrl}${SERVER_PATH.KEYS_BY_ID(keyId)}`;
     await firstValueFrom(this.http.delete<void>(url));
   }
 
   async listKeys(): Promise<KeyInfo[]> {
-    const url = `${this.baseUrl}${CREDENTIALS_API}`;
+    const url = `${this.baseUrl}${SERVER_PATH.CREDENTIALS}`;
     const credentials = await firstValueFrom(
       this.http.get<CredentialListItemDto[]>(url)
     );
@@ -143,7 +142,7 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
   }
 
   async resolveKeyIdByKid(kid: string): Promise<string | null> {
-    const url = `${this.baseUrl}${CREDENTIALS_API}`;
+    const url = `${this.baseUrl}${SERVER_PATH.CREDENTIALS}`;
     const credentials = await firstValueFrom(
       this.http.get<CredentialListItemDto[]>(url)
     );
@@ -152,12 +151,12 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
   }
 
   async exportKey(keyId: string): Promise<JsonWebKey> {
-    const url = `${this.baseUrl}/api/v1/keys/${encodeURIComponent(keyId)}/export`;
+    const url = `${this.baseUrl}${SERVER_PATH.KEYS_EXPORT(keyId)}`;
     return firstValueFrom(this.http.get<JsonWebKey>(url));
   }
 
   async importKey(keyId: string, jwk: JsonWebKey): Promise<void> {
-    const url = `${this.baseUrl}/api/v1/keys/import`;
+    const url = `${this.baseUrl}${SERVER_PATH.KEYS_IMPORT}`;
     await firstValueFrom(this.http.post<void>(url, { keyId, jwk }));
   }
 }
