@@ -57,6 +57,7 @@
     "@angular/language-service": "^19.2.19",
     "@capacitor/cli": "6.1.2",
     "@ionic/angular-toolkit": "^12.1.1",
+    "@playwright/test": "^1.60.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.5.3",
     "@types/pako": "^2.0.4",
