@@ -69,7 +69,7 @@
     "login": {
       "title": "Registra tu dispositivo",
       "title-welcome": "Bienvenido",
-      "subtitle": "Introduce tu email para empezar",
+      "subtitle": "Usa tu passkey para acceder de forma segura",
       "create-passkey-subtitle": "Tu passkey mantiene tu wallet segura. La usarás para iniciar sesión.",
       "passkey-button": "Iniciar sesión con Passkey",
       "enter-email": "Introduce tu email para empezar",

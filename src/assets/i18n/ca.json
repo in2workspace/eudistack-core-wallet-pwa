@@ -69,7 +69,7 @@
     "login": {
       "title": "Registra el teu dispositiu",
       "title-welcome": "Benvingut",
-      "subtitle": "Introdueix el teu email per començar",
+      "subtitle": "Usa la teva passkey per accedir de forma segura",
       "create-passkey-subtitle": "La teva passkey manté el teu wallet segur. La faràs servir per iniciar sessió.",
       "passkey-button": "Iniciar sessió amb Passkey",
       "enter-email": "Introdueix el teu email per començar",
