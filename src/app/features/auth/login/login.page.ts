@@ -88,7 +88,7 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
             } @else {
               <ion-button
                 expand="block"
-                (click)="createPasskeyForDevice()"
+                (click)="createWalletBrowserMode()"
                 [disabled]="loading"
                 class="auth-button"
               >
@@ -269,6 +269,21 @@ export class LoginPage {
       this.navigateHome();
     } catch (err: any) {
       this.errorMessage = err?.message || 'Login failed';
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  // --- Browser mode: passkey creation (register) ---
+
+  async createWalletBrowserMode(): Promise<void> {
+    this.loading = true;
+    this.errorMessage = '';
+    try {
+      await (this.authService as LocalAuthService).setupPasskey();
+      this.navigateHome();
+    } catch (err: any) {
+      this.errorMessage = err?.message || 'Failed to create passkey';
     } finally {
       this.loading = false;
     }
