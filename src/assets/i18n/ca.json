@@ -70,6 +70,7 @@
       "title": "Registra el teu dispositiu",
       "title-welcome": "Benvingut",
       "subtitle": "Introdueix el teu email per començar",
+      "create-passkey-subtitle": "La teva passkey manté el teu wallet segur. La faràs servir per iniciar sessió.",
       "passkey-button": "Iniciar sessió amb Passkey",
       "enter-email": "Introdueix el teu email per començar",
       "verify-passkey": "Verifica la teva identitat amb la teva passkey"

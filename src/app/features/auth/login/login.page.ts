@@ -73,7 +73,7 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
             </div>
 
             <h2 class="auth-title">{{ (hasExistingPasskey ? 'auth.login.title-welcome' : 'auth.login.title') | translate }}</h2>
-            <p class="auth-subtitle">{{ 'auth.login.subtitle' | translate }}</p>
+            <p class="auth-subtitle">{{ (hasExistingPasskey ? 'auth.login.subtitle' : 'auth.login.create-passkey-subtitle') | translate }}</p>
 
             @if (hasExistingPasskey) {
               <ion-button

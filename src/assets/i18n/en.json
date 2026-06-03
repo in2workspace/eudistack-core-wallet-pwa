@@ -76,6 +76,7 @@
       "title": "Register your device",
       "title-welcome": "Welcome back",
       "subtitle": "Enter your email to get started",
+      "create-passkey-subtitle": "Your passkey keeps your wallet secure. You'll use it to sign in.",
       "passkey-button": "Sign in with Passkey",
       "enter-email": "Enter your email to get started",
       "verify-passkey": "Verify your identity with your passkey"
