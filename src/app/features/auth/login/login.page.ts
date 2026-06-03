@@ -72,18 +72,30 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
               </div>
             </div>
 
-            <h2 class="auth-title">{{ 'auth.login.title' | translate }}</h2>
+            <h2 class="auth-title">{{ (hasExistingPasskey ? 'auth.login.title-welcome' : 'auth.login.title') | translate }}</h2>
             <p class="auth-subtitle">{{ 'auth.login.subtitle' | translate }}</p>
 
-            <ion-button
-              expand="block"
-              (click)="loginBrowserMode()"
-              [disabled]="loading"
-              class="auth-button"
-            >
-              <ion-icon name="finger-print-outline" slot="start"></ion-icon>
-              {{ 'auth.login.passkey-button' | translate }}
-            </ion-button>
+            @if (hasExistingPasskey) {
+              <ion-button
+                expand="block"
+                (click)="loginBrowserMode()"
+                [disabled]="loading"
+                class="auth-button"
+              >
+                <ion-icon name="finger-print-outline" slot="start"></ion-icon>
+                {{ 'auth.login.passkey-button' | translate }}
+              </ion-button>
+            } @else {
+              <ion-button
+                expand="block"
+                (click)="createPasskeyForDevice()"
+                [disabled]="loading"
+                class="auth-button"
+              >
+                <ion-icon name="key-outline" slot="start"></ion-icon>
+                {{ 'auth.passkey.register-button' | translate }}
+              </ion-button>
+            }
 
             @if (loading) {
               <div class="auth-status">
@@ -219,6 +231,7 @@ export class LoginPage {
   private readonly translate = inject(TranslateService);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
+  readonly hasExistingPasskey = this.prfService.hasPasskey();
 
   ionViewWillEnter(): void {
     this.loading = false;
