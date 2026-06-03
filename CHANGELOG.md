@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.1] - 2026-06-03
+
+### Fixed
+
+- **`WalletDiscoveryService`**: changed discovery endpoint from `/.well-known/wallet-config-metadata` to `/business-wallet/.well-known/wallet-config-metadata` to align with EBW base-path and eliminate the need for special nginx/CloudFront routing.
+- **Auth — browser mode register**: `LoginPage` now shows "Create Passkey" button (`LocalAuthService.setupPasskey()`) on `/auth/register` when no passkey exists on the device, instead of incorrectly showing "Sign in with Passkey".
+- **Auth — browser mode titles/subtitles**: corrected per-state titles and subtitles for both login and register states in browser mode.
+- **Auth — server mode step 3b**: passkey setup on a new device (step 3b) now shows "Register your device" title instead of "Welcome back".
+
 ## [3.8.0] - 2026-06-02
 
 ### Added
