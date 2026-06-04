@@ -39,9 +39,10 @@ export class DomeCredentialSyncAdapter implements CredentialSyncPort {
       map(response => {
         return {
           status: response.credentials && response.credentials.length > 0 ? 'ok' : 'empty',
+          credentials: response.credentials || [],
           timestamp: new Date().toISOString(),
           idempotencyKey: request.idempotencyKey
-        } as RecoveryOutcome;
+        } as RecoveryOutcome;git
       }),
       catchError(error => {
         console.error('Error en la sincronización DOME:', error);

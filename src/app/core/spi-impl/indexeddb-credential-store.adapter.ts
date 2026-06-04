@@ -54,6 +54,37 @@ export class IndexedDbCredentialStoreAdapter {
     return await this.storage.get('dome_idempotency_key');
   }
 
-  // Nota: Si el puerto requiriera guardar credenciales en el futuro,
-  // añadiríamos aquí un método saveCredentials(...)
+  /**
+   * Guarda un array de credenciales en el almacenamiento local.
+   * Realiza una operación "Upsert" basada en el ID de la credencial.
+   */
+  async saveCredentials(newCredentials: any[]): Promise<void> {
+    await this.storageReady; // Esperamos a que la BBDD esté lista
+
+    // 1. Recuperamos la lista actual de credenciales (si existe)
+    let currentCredentials: any[] = await this.storage.get('credentials');
+
+    // Si no había nada guardado antes, inicializamos un array vacío
+    if (!currentCredentials || !Array.isArray(currentCredentials)) {
+      currentCredentials = [];
+    }
+
+    // 2. Hacemos el "Merge" (Upsert)
+    for (const newCred of newCredentials) {
+      // Buscamos si ya existe una credencial con el mismo ID
+      const existingIndex = currentCredentials.findIndex(c => c.id === newCred.id);
+
+      if (existingIndex >= 0) {
+        // Si existe, la sobreescribimos (actualización)
+        currentCredentials[existingIndex] = newCred;
+      } else {
+        // Si no existe, la añadimos al final de la lista
+        currentCredentials.push(newCred);
+      }
+    }
+
+    // 3. Volvemos a guardar el array completo y actualizado
+    await this.storage.set('credentials', currentCredentials);
+    console.log(`[IndexedDB Adapter] Guardadas/Actualizadas ${newCredentials.length} credenciales.`);
+  }
 }

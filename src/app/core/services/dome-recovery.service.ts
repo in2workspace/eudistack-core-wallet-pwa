@@ -109,11 +109,16 @@ export class DomeRecoveryService {
    * Helper para manejar el ES-08 (Fallo de IndexedDB durante el UPSERT)
    */
   private async persistInLocalDb(credentials: any[]): Promise<void> {
+    if (!credentials || credentials.length === 0) {
+      console.warn('[DOME] No se han recibido credenciales para guardar.');
+      return;
+    }
+
     try {
-      // Aquí harías un loop por 'credentials' y las guardarías con tu localStore.
-      // Ejemplo: UPSERT by credentialId
-      // await this.localStore.saveCredentials(credentials);
-      console.log('Credenciales guardadas en IndexedDB exitosamente.');
+      // 1. Ejecutamos la persistencia real usando el adaptador inyectado
+      await this.localStore.saveCredentials(credentials);
+
+      console.log(`[DOME] ${credentials.length} credenciales guardadas en IndexedDB exitosamente.`);
     } catch (dbError) {
       // ES-08 Fallo IndexedDB
       console.error('ES-08: Error crítico al escribir en IndexedDB', dbError);
