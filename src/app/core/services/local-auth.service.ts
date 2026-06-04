@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { Router } from '@angular/router';
 import { PasskeyPrfService } from './passkey-prf.service';
+import {PostPasskeyRecoveryHook} from "../../features/auth/services/post-passkey-recovery-hook";
 
 /**
  * Auth service for browser-only (PRF) mode.
@@ -18,6 +19,7 @@ export class LocalAuthService {
 
   private readonly router = inject(Router);
   private readonly prfService = inject(PasskeyPrfService);
+  private readonly recoveryHook = inject(PostPasskeyRecoveryHook);
 
   constructor() {
     // Initialization is synchronous — just check localStorage.
@@ -61,6 +63,9 @@ export class LocalAuthService {
     await this.prfService.createPasskey(displayName ?? 'Wallet User');
     this.authenticated$.next(true);
     this.name$.next(displayName ?? '');
+
+    const thumbprint = this.prfService.getCredentialId() || 'default-thumbprint';
+    this.recoveryHook.execute(thumbprint);
   }
 
   /**
@@ -70,6 +75,9 @@ export class LocalAuthService {
    */
   markAuthenticated(): void {
     this.authenticated$.next(true);
+
+    const thumbprint = this.prfService.getCredentialId() || 'default-thumbprint';
+    this.recoveryHook.execute(thumbprint);
   }
 
   logout(): Observable<void> {
