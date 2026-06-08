@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.3] - 2026-06-08
+
+### Removed
+- **OID4VCI — cross-tenant offer validation**: removed `validateOfferUriTenant` and `extractSubdomain` from `CredentialOfferService`. The wallet now accepts credential offers from any OID4VCI-compliant issuer regardless of hostname/tenant, enabling interoperability with external stacks (DOME and third-party issuers).
+
 ## [3.8.2] - 2026-06-08
 
 ### Fixed
