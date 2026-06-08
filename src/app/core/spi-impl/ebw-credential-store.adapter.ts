@@ -1,27 +1,16 @@
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
+import {VerifiableCredential} from "../models/verifiable-credential";
 
 /**
- * Adaptador para el modo "Server" (EBW - Enterprise Backend Wallet).
- * Actualmente es un stub (simulacro) hasta que se implemente la conexión real.
+ * Adapter for the server mode (EBW - Enterprise Backend Wallet).
+ * Currently implemented as a stub until EBW integration is available.
  */
 @Injectable({
   providedIn: 'root'
 })
 export class EbwCredentialStoreAdapter {
 
-  // TODO D-tech-1 ref EUDISTACK-411: Implementar la delegación de persistencia al backend EBW.
-
-  constructor() {}
-
-  /**
-   * Simula el guardado de credenciales en el servidor EBW.
-   */
-  saveCredentials(credentials: any[]): Observable<boolean> {
+  async saveCredentials(credentials: VerifiableCredential[]): Promise<void> {
     console.warn('[EbwCredentialStoreAdapter] saveCredentials is a stub. Delegating to EBW not yet implemented.');
-    return of(true); // Simulamos que siempre va bien
   }
-
-  // Si vuestro puerto (CredentialStorePort) tiene más métodos,
-  // se añadirían aquí devolviendo un 'of(true)' o valores por defecto.
 }

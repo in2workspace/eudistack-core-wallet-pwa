@@ -22,4 +22,12 @@ describe('UuidV7Util', () => {
     expect(generatedKeys.size).toBe(totalSamples);
   });
 
+  it('should set version bits to 7 and not generate UUID v4 or v5', () => {
+    const uuid = generateUuidV7();
+
+    expect(uuid.charAt(14)).toBe('7');
+    expect(uuid.charAt(14)).not.toBe('4');
+    expect(uuid.charAt(14)).not.toBe('5');
+  });
+
 })

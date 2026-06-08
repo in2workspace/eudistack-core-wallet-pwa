@@ -1,6 +1,6 @@
 /**
- * Genera un UUID versión 7 (RFC 9562).
- * Combina un timestamp de 48 bits (milisegundos) con 74 bits de aleatoriedad criptográfica.
+ * Generates an RFC 9562 UUID version 7.
+ * Combines a 48-bit Unix timestamp (milliseconds) with cryptographically secure random data.
  */
 export function generateUuidV7(): string {
   const getRandomValues = (array: Uint8Array) => window.crypto.getRandomValues(array);

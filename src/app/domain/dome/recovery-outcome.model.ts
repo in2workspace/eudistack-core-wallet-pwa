@@ -1,8 +1,10 @@
+import {VerifiableCredential} from "../../core/models/verifiable-credential";
+
 export type RecoveryStatus = 'ok' | 'empty' | 'error';
 
 export interface RecoveryOutcome {
   status: RecoveryStatus;
-  credentials?: any[];
+  credentials?: VerifiableCredential[];
   message?: string;
   timestamp: string;
   idempotencyKey?: string;

@@ -22,17 +22,16 @@ export class PostPasskeyRecoveryHook {
   }
 
   /**
-   * Hook invocado tras la recuperación de la cuenta con Passkey.
-   * @param thumbprint Huella digital de la clave PRF.
+   * Executes the DOME auto-recovery flow after a successful passkey login.
+   * @param thumbprint PRF-derived holder key thumbprint.
    */
   execute(thumbprint: string): void {
-    // 1. Evalúa si el Feature Flag está ON
+
     if (!this.featureFlags.isDomeAutoRecoveryEnabled) {
       console.log('[DOME] Auto-recovery disabled by feature flag.');
       return;
     }
 
-    // 2. AC-10: Verifica si ya se completó previamente para no repetir
     if (this.stateService.getDomeRecoveryCompleted()) {
       console.log('[DOME] Auto-recovery already completed previously.');
       return;
@@ -40,15 +39,14 @@ export class PostPasskeyRecoveryHook {
 
     const mode = this.featureFlags.isDomeModeServerEnabled ? 'server' : 'local';
 
-    // 3. Invoca la recuperación
     this.recoveryService.recover(thumbprint, mode).pipe(
       catchError(error => {
 
         if (error?.message?.includes('PRF unavailable') || error?.name === 'PrfNotAvailableError') {
           console.warn('[DOME] ES-09: PRF not available on this device. Aborting auto-recovery silently.');
-          return EMPTY; // Corta el flujo sin romper la app
+          return EMPTY;
         }
-        console.error('[DOME] Error inesperado en auto-recovery:', error);
+        console.error('[DOME] Unexpected error during auto-recovery.', error);
         return EMPTY;
       })
     ).subscribe();

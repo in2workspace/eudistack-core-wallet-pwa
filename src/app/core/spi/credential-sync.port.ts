@@ -4,9 +4,9 @@ import { RecoveryOutcome } from '../../domain/dome/recovery-outcome.model';
 
 export abstract class CredentialSyncPort {
   /**
-   * Envía la petición al Issuer para sincronizar (recuperar) las credenciales de DOME.
-   * @param request Datos de la petición (Idempotency Key y huella digital).
-   * @returns Un Observable con el resultado final estructurado para la UI.
+   * Sends a credential synchronization (recovery) request to the Issuer.
+   * @param request Request payload containing the idempotency key and holder key thumbprint.
+   * @returns An Observable containing the recovery outcome.
    */
   abstract syncCredentials(request: SyncCredentialsRequest): Observable<RecoveryOutcome>;
 }

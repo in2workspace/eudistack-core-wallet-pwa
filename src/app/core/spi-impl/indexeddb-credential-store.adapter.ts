@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Storage } from '@ionic/storage-angular';
+import {VerifiableCredential} from "../models/verifiable-credential";
 
 @Injectable({
   providedIn: 'root'
@@ -9,7 +10,6 @@ export class IndexedDbCredentialStoreAdapter {
   private storageReady: Promise<void>;
 
   constructor(private storage: Storage) {
-    // Ionic Storage requiere inicializar la base de datos antes de usarla
     this.storageReady = this.initStorage();
   }
 
@@ -17,74 +17,46 @@ export class IndexedDbCredentialStoreAdapter {
     await this.storage.create();
   }
 
-  // =====================================================================
-  // MÉTODOS PARA DOME RECOVERY (TAREA 19 - EUDISTACK-144)
-  // =====================================================================
-
-  /**
-   * Guarda el estado de finalización de la recuperación en el store local.
-   */
   async setDomeRecoveryCompleted(status: boolean): Promise<void> {
     await this.storageReady; // Esperamos a que la BBDD esté lista
     await this.storage.set('dome_recovery_completed', status);
   }
 
-  /**
-   * Recupera el estado de finalización. Si no existe, por defecto es false.
-   */
   async getDomeRecoveryCompleted(): Promise<boolean> {
     await this.storageReady;
     const status = await this.storage.get('dome_recovery_completed');
     return status === true;
   }
 
-  /**
-   * Guarda la clave de idempotencia actual para reintentos seguros.
-   */
   async setDomeIdempotencyKey(key: string): Promise<void> {
     await this.storageReady;
     await this.storage.set('dome_idempotency_key', key);
   }
 
-  /**
-   * Recupera la clave de idempotencia actual.
-   */
   async getDomeIdempotencyKey(): Promise<string | null> {
     await this.storageReady;
     return await this.storage.get('dome_idempotency_key');
   }
 
-  /**
-   * Guarda un array de credenciales en el almacenamiento local.
-   * Realiza una operación "Upsert" basada en el ID de la credencial.
-   */
-  async saveCredentials(newCredentials: any[]): Promise<void> {
-    await this.storageReady; // Esperamos a que la BBDD esté lista
+  async saveCredentials(newCredentials: VerifiableCredential[]): Promise<void> {
+    await this.storageReady;
 
-    // 1. Recuperamos la lista actual de credenciales (si existe)
-    let currentCredentials: any[] = await this.storage.get('credentials');
+    let currentCredentials: VerifiableCredential[] = await this.storage.get('credentials');
 
-    // Si no había nada guardado antes, inicializamos un array vacío
     if (!currentCredentials || !Array.isArray(currentCredentials)) {
       currentCredentials = [];
     }
 
-    // 2. Hacemos el "Merge" (Upsert)
     for (const newCred of newCredentials) {
-      // Buscamos si ya existe una credencial con el mismo ID
       const existingIndex = currentCredentials.findIndex(c => c.id === newCred.id);
 
       if (existingIndex >= 0) {
-        // Si existe, la sobreescribimos (actualización)
         currentCredentials[existingIndex] = newCred;
       } else {
-        // Si no existe, la añadimos al final de la lista
         currentCredentials.push(newCred);
       }
     }
-
-    // 3. Volvemos a guardar el array completo y actualizado
     await this.storage.set('credentials', currentCredentials);
-    console.log(`[IndexedDB Adapter] Guardadas/Actualizadas ${newCredentials.length} credenciales.`);
+    console.log(`[IndexedDB Adapter] Saved ${newCredentials.length} credentials.`);
   }
 }

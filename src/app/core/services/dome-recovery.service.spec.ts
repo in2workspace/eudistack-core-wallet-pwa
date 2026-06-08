@@ -80,13 +80,13 @@ describe('DomeRecoveryService', () => {
     }));
 
     jest.spyOn(service as any, 'persistInLocalDb')
-      .mockImplementation(() => Promise.reject(new Error('Fallo de almacenamiento local (IndexedDB)')));
+      .mockImplementation(() => Promise.reject(new Error('Local storage persistence failed (IndexedDB)')));
 
     service.recover('test-thumbprint', 'local').subscribe({
       next: () => done('Should not succeed if database fails'),
       error: (err) => {
         try {
-          expect(err.message).toContain('Fallo de almacenamiento local');
+          expect(err.message).toContain('Local storage persistence failed');
           expect(stateServiceMock.setRecoveryInProgress).toHaveBeenCalledWith(false);
           expect(stateServiceMock.recoveryError.set).toHaveBeenCalled();
           done();

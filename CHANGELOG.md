@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Added
+- **EUDISTACK-144:**
+  - Added DOME automatic credential recovery flow after successful Passkey authentication.
+  - Added `DomeRecoveryService` to orchestrate credential synchronization, persistence and idempotent recovery handling.
+  - Added `DomeCredentialSyncAdapter` with DPoP, Authorization and Idempotency-Key support.
+  - Added `CredentialSyncPort` abstraction for DOME credential synchronization.
+  - Added `DomeRecoveryStateService` for recovery status and idempotency state management.
+  - Added support for DOME recovery persistence in IndexedDB.
+  - Added server-mode persistence stub through `EbwCredentialStoreAdapter` (D-tech-1 / EUDISTACK-411).
+  - Added UUIDv7 utility and DPoP helper utilities.
+  - Added feature flags:
+    - `wallet.dome.auto_recovery.enabled`
+    - `wallet.dome.mode_server`
+  - Added unit test coverage for:
+    - DOME recovery services
+    - Post-passkey recovery hook
+    - UUIDv7 generation
+    - Feature flag configuration
+  - Performed manual end-to-end validation covering:
+    - AC-01 Browser-mode recovery
+    - AC-02 Credential content parity
+    - AC-03 Empty catalog handling
+    - AC-06 Server mode flow
+    - AC-09 Feature flag defaults
+
+## Changed
+- **EUDISTACK-144:**
+  - Extended IndexedDB storage adapter with DOME recovery state and idempotency support.
+  - Integrated post-passkey recovery hook into the authentication flow.
+
 ## [3.7.1] - 2026-05-19
 
 ### Changed

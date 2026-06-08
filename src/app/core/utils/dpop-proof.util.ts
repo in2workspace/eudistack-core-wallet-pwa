@@ -8,11 +8,11 @@ export interface DpopPayload {
 }
 
 /**
- * Genera los claims necesarios para construir la prueba DPoP (Proof of Possession).
- * Estos datos luego se firmarán con la clave privada del móvil (Web Crypto API)
- * para generar el JWT final que viaja en la cabecera 'DPoP'.
- * * @param httpMethod El mét-odo de la petición, por ejemplo 'POST' o 'GET'
- * @param url La URL de destino (ej. 'https://api.tudominio.com/internal/dome/sync-credentials')
+ * Builds the standard DPoP claims required to create a proof JWT.
+ * The returned payload is intended to be signed with the client's private key
+ * and included in the DPoP request header.
+ * @param httpMethod HTTP method of the request.
+ * @param url        Target request URL.
  */
 export function buildDpopClaims(httpMethod: string, url: string): DpopPayload {
   const cleanUrl = new URL(url);
