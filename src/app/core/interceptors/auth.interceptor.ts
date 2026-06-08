@@ -1,5 +1,7 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { throwError } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import { environment } from 'src/environments/environment';
@@ -38,10 +40,19 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   // Only inject AuthService here — all bootstrap requests have already returned above.
   // At this point APP_INITIALIZER has resolved and _snapshot is set (AD-1).
-  const token = inject(AuthService).getToken();
-  if (token) {
-    return next(req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }));
-  }
+  const authService = inject(AuthService);
+  const token = authService.getToken();
 
-  return next(req);
+  const authorizedReq = token
+    ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
+    : req;
+
+  return next(authorizedReq).pipe(
+    catchError((err: HttpErrorResponse) => {
+      if (err.status === 401) {
+        authService.forceLogout();
+      }
+      return throwError(() => err);
+    })
+  );
 };
