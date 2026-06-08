@@ -7,7 +7,7 @@ import { WalletConfigMetadataDto } from '../models/wallet-discovery.model';
  * Port (application layer) for fetching the tenant wallet configuration
  * from the public discovery endpoint.
  *
- * `GET /business-wallet/.well-known/wallet-config-metadata` (EUDISTACK-412)
+ * `GET /.well-known/wallet-config-metadata` (EUDISTACK-412)
  *
  * Separating HTTP access from `WalletDiscoveryService` allows tests to replace
  * the gateway with a fake/stub without touching `HttpClient` or `environment.ts`

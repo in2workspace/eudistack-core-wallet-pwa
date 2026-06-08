@@ -127,15 +127,13 @@ export class WalletDiscoveryService {
         snapshot = {
           mode: dto.wallet_mode as WalletMode,
           source: 'discovery',
-          version: dto.version,
-          naturalPersonsOnly: dto.natural_persons_only,
-          supportedCredentials: dto.supported_credentials,
+          keyManager: dto.key_manager,
           resolvedAt: Date.now(),
         };
 
         this.telemetry.track('wallet_discovery_resolved', {
           mode: snapshot.mode,
-          version: snapshot.version,
+          keyManager: snapshot.keyManager,
         });
       }
     } catch (err) {
@@ -195,9 +193,7 @@ export class WalletDiscoveryService {
     return {
       mode: envSnap.mode,
       source: 'fallback',
-      version: null,
-      naturalPersonsOnly: false,
-      supportedCredentials: [],
+      keyManager: null,
       resolvedAt: Date.now(),
       fallbackReason: reason,
     };

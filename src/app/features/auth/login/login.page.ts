@@ -72,18 +72,30 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
               </div>
             </div>
 
-            <h2 class="auth-title">{{ 'auth.login.title' | translate }}</h2>
-            <p class="auth-subtitle">{{ 'auth.login.subtitle' | translate }}</p>
+            <h2 class="auth-title">{{ (hasExistingPasskey ? 'auth.login.title-welcome' : 'auth.login.title') | translate }}</h2>
+            <p class="auth-subtitle">{{ (hasExistingPasskey ? 'auth.login.subtitle' : 'auth.login.create-passkey-subtitle') | translate }}</p>
 
-            <ion-button
-              expand="block"
-              (click)="loginBrowserMode()"
-              [disabled]="loading"
-              class="auth-button"
-            >
-              <ion-icon name="finger-print-outline" slot="start"></ion-icon>
-              {{ 'auth.login.passkey-button' | translate }}
-            </ion-button>
+            @if (hasExistingPasskey) {
+              <ion-button
+                expand="block"
+                (click)="loginBrowserMode()"
+                [disabled]="loading"
+                class="auth-button"
+              >
+                <ion-icon name="finger-print-outline" slot="start"></ion-icon>
+                {{ 'auth.login.passkey-button' | translate }}
+              </ion-button>
+            } @else {
+              <ion-button
+                expand="block"
+                (click)="createWalletBrowserMode()"
+                [disabled]="loading"
+                class="auth-button"
+              >
+                <ion-icon name="key-outline" slot="start"></ion-icon>
+                {{ 'auth.passkey.register-button' | translate }}
+              </ion-button>
+            }
 
             @if (loading) {
               <div class="auth-status">
@@ -95,8 +107,8 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
             }
 
             <!-- Server mode: email + OTP + passkey flow -->
-            <ng-container *ngIf="!isBrowserMode && (!showInstallScreen || !(pwaInstall.installable$ | async))">
-              <h2 class="auth-title">{{ 'auth.login.title' | translate }}</h2>
+            <ng-container *ngIf="!isBrowserMode && ((pwaInstall.installDecision$ | async) === false || !showInstallScreen)">
+              <h2 class="auth-title">{{ (step === 'passkey' && !needsPasskeySetup ? 'auth.login.title-welcome' : 'auth.login.title') | translate }}</h2>
               <p class="auth-subtitle">
                 <span *ngIf="step === 'email'">{{ 'auth.login.enter-email' | translate }}</span>
                 <span *ngIf="step === 'code'">{{ 'auth.register.code-sent' | translate }}</span>
@@ -219,6 +231,7 @@ export class LoginPage {
   private readonly translate = inject(TranslateService);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
+  readonly hasExistingPasskey = this.prfService.hasPasskey();
 
   ionViewWillEnter(): void {
     this.loading = false;
@@ -256,6 +269,21 @@ export class LoginPage {
       this.navigateHome();
     } catch (err: any) {
       this.errorMessage = err?.message || 'Login failed';
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  // --- Browser mode: passkey creation (register) ---
+
+  async createWalletBrowserMode(): Promise<void> {
+    this.loading = true;
+    this.errorMessage = '';
+    try {
+      await (this.authService as LocalAuthService).setupPasskey();
+      this.navigateHome();
+    } catch (err: any) {
+      this.errorMessage = err?.message || 'Failed to create passkey';
     } finally {
       this.loading = false;
     }

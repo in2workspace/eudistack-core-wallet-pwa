@@ -49,14 +49,12 @@ import { TelemetryService } from './core/services/telemetry.service';
 // ---------------------------------------------------------------------------
 
 /** Full well-known URL constructed the same way as the production gateway. */
-const DISCOVERY_URL = `${environment.server_url}${WALLET_DISCOVERY_PATH}`;
+const DISCOVERY_URL = `${window.location.origin}${WALLET_DISCOVERY_PATH}`;
 
 /** Valid browser-mode DTO used to flush successful responses. */
 const BROWSER_DTO: WalletConfigMetadataDto = {
   wallet_mode: 'browser',
-  natural_persons_only: false,
-  supported_credentials: [],
-  version: 1,
+  key_manager: null,
 };
 
 /** Minimal stub components used as route targets — no actual rendering needed. */
@@ -211,7 +209,7 @@ describe('bootstrap > discovery resolves once across navigation', () => {
     expect(snap).not.toBeNull();
     expect(snap!.source).toBe('discovery');
     expect(snap!.mode).toBe('browser');
-    expect(snap!.version).toBe(1);
+    expect(snap!.keyManager).toBeNull();
   });
 });
 

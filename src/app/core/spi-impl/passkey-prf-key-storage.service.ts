@@ -37,7 +37,7 @@ export class PasskeyPrfKeyStorageProvider extends KeyStorageProvider {
     }
   }
 
-  async generateKeyPair(algorithm: RawKeyAlgorithm, keyId: string): Promise<PublicKeyInfo> {
+  async generateKeyPair(algorithm: RawKeyAlgorithm, keyId: string, _context?: unknown): Promise<PublicKeyInfo> {
     this.assertES256(algorithm);
 
     if (this.isEphemeral(keyId)) {

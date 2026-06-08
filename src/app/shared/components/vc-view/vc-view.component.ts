@@ -19,7 +19,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ExtendedCredentialType, LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { IonicModule } from '@ionic/angular';
 import { DisplayField, DisplaySection } from 'src/app/core/models/display-field.model';
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
 import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';

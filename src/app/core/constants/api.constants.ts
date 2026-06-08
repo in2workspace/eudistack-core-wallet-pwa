@@ -1,4 +1,5 @@
 const apiV1Path = '/api/v1';
+const apiV1KeysPath = `${apiV1Path}/keys`;
 
 const OPENID_OFFER = `${apiV1Path}/openid-credential-offer` as const;
 
@@ -8,16 +9,17 @@ export const SERVER_PATH = Object.freeze({
   CREDENTIALS_SIGNED_BY_ID: `${apiV1Path}/request-signed-credential`,
   REQUEST_CREDENTIAL: OPENID_OFFER,
   CREDENTIAL_RESPONSE: `${OPENID_OFFER}/credential-response`,
+  KEYS_GENERATE: `${apiV1KeysPath}/generate`,
+  KEYS_IMPORT: `${apiV1KeysPath}/import`,
+  KEYS_BY_ID: (keyId: string) => `${apiV1KeysPath}/${encodeURIComponent(keyId)}`,
+  KEYS_SIGN: (keyId: string) => `${apiV1KeysPath}/${encodeURIComponent(keyId)}/sign`,
+  KEYS_EXPORT: (keyId: string) => `${apiV1KeysPath}/${encodeURIComponent(keyId)}/export`,
 });
 
 /**
  * Path of the EBW public discovery endpoint (EUDISTACK-412).
  *
- * The full URL is `${environment.server_url}${WALLET_DISCOVERY_PATH}`.
- * In production `environment.server_url` expands to
- * `${window.location.origin}/business-wallet`, so the resolved URL is
- * `https://<tenant-host>/business-wallet/.well-known/wallet-config-metadata`.
- * In local dev `environment.server_url` is `http://localhost:8083` (EBW dev port,
- * which mounts the well-known under its own base-path `/business-wallet`).
+ * The full URL is `${window.location.origin}${WALLET_DISCOVERY_PATH}`.
+ * Served under the /business-wallet base-path (consistent with all other EBW endpoints).
  */
-export const WALLET_DISCOVERY_PATH = '/.well-known/wallet-config-metadata' as const;
+export const WALLET_DISCOVERY_PATH = '/business-wallet/.well-known/wallet-config-metadata' as const;

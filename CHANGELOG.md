@@ -34,6 +34,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **EUDISTACK-144:**
   - Extended IndexedDB storage adapter with DOME recovery state and idempotency support.
   - Integrated post-passkey recovery hook into the authentication flow.
+## [3.8.2] - 2026-06-08
+
+### Fixed
+- **Auth interceptor — token expiry**: `authInterceptor` now intercepts 401 responses from the own-backend and calls `forceLogout()`, redirecting the user to the login screen. Previously, an expired access token returned a raw 401 error with no session cleanup — the user saw an error but was never redirected.
+
+## [3.8.1] - 2026-06-03
+
+### Fixed
+
+- **`WalletDiscoveryService`**: changed discovery endpoint from `/.well-known/wallet-config-metadata` to `/business-wallet/.well-known/wallet-config-metadata` to align with EBW base-path and eliminate the need for special nginx/CloudFront routing.
+- **Auth — browser mode register**: `LoginPage` now shows "Create Passkey" button (`LocalAuthService.setupPasskey()`) on `/auth/register` when no passkey exists on the device, instead of incorrectly showing "Sign in with Passkey".
+- **Auth — browser mode titles/subtitles**: corrected per-state titles and subtitles for both login and register states in browser mode.
+- **Auth — server mode step 3b**: passkey setup on a new device (step 3b) now shows "Register your device" title instead of "Welcome back".
+
+## [3.8.0] - 2026-06-02
+
+### Added
+
+- **Server-side wallet mode** (`wallet_mode=server`): `key-storage.provider.factory.ts` dynamically selects `ServerKeyStorageProvider` when the EBW reports server mode, keeping `PasskeyPrfKeyStorageProvider` for browser mode. No change to browser-mode behaviour.
+- **`ServerKeyStorageProvider`**: full implementation — `generateKeyPair` sends OID4VCI context (`format`, `supported_algs`, `issuer_identifier`, `c_nonce`) to `POST /api/v1/keys/generate`; `buildPresentationJws` delegates KB-JWT and VP-envelope signing to `POST /api/v1/keys/{keyId}/sign`; `resolveKeyIdByKid` resolves key IDs from `GET /api/v1/credentials`.
+- **OID4VCI issuance (server mode)**: `oid4vci.engine` passes `OID4VCIKeyGenContext` to `generateKeyPair` and uses the pre-built `jws_proof` returned by the EBW directly — no local signing step.
+- **OID4VP presentation (server mode)**: `oid4vp.engine.signJwt` delegates full JWS construction to `buildPresentationJws` when available, keeping the existing browser-mode path intact.
+- **`FinalizeIssuancePayload`**: new optional fields `holderKeyId` and `holderKid` propagate the EBW key reference through the issuance flow so the credential can be linked server-side.
+
+### Changed
+
+- **Unified auth UI**: both `/auth/login` and `/auth/register` routes now load `LoginPage` (single component). Entry screen title changed to "Register your device"; passkey step title is "Welcome back".
+- **i18n** (`en.json`, `es.json`, `ca.json`): 10 unused `auth.register.*` keys removed; `auth.login.title-welcome` added for the passkey step.
+
+### Fixed
+
+- **`DpopService`**: always uses `PasskeyPrfKeyStorageProvider` for ephemeral DPoP keys regardless of `wallet_mode` — prevents accidental routing to the EBW's holder-key endpoint.
+
+### Removed
+
+- **`RegisterPage`** (`register.page.ts`, `register.page.scss`) — replaced by unified `LoginPage`. 693 lines removed.
+
+## [3.7.4] - 2026-05-31
+
+### Fixed
+
+- **`dayjs` imports**: migrated from named to default import across `credential-verification.service.ts`, `credentials.page.ts` and `vc-view.component.ts` to align with the CommonJS module format of `dayjs`.
+- **`tsconfig.json`**: enabled `esModuleInterop` and `allowSyntheticDefaultImports` to support default imports from CommonJS modules without compile errors.
+
+## [3.7.3] - 2026-05-28
+
+### Fixed
+
+- **Wallet discovery URL** (`HttpWalletDiscoveryGateway`): use `window.location.origin` as base
+  for the well-known endpoint instead of a hardcoded prefix that broke cross-origin deployments.
+- **`WalletConfigMetadataDto`**: remove stale fields (`version`, `natural_persons_only`,
+  `supported_credentials`) and align DTO to the current EBW contract
+  `{ wallet_mode, key_manager }` (EUDISTACK-412 / EUDISTACK-119).
+
+## [3.7.2] - 2026-05-28
+
+### Changed
+
+- Migrated Angular build target from the legacy `browser` builder to the `application` builder (`@angular-devkit/build-angular:application`), aligning with the Angular 19 default and producing the `browser/` output subfolder expected by CI/CD.
 
 ## [3.7.1] - 2026-05-19
 

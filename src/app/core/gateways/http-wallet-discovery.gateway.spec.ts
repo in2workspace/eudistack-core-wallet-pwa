@@ -18,7 +18,6 @@ import {
 import { provideHttpClient } from '@angular/common/http';
 import { TimeoutError } from 'rxjs';
 
-import { environment } from 'src/environments/environment';
 import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import {
   HttpWalletDiscoveryGateway,
@@ -33,13 +32,11 @@ import { WalletConfigMetadataDto } from '../models/wallet-discovery.model';
 /** Valid DTO for a browser-mode tenant. */
 const BROWSER_DTO: WalletConfigMetadataDto = {
   wallet_mode: 'browser',
-  natural_persons_only: false,
-  supported_credentials: [],
-  version: 1,
+  key_manager: null,
 };
 
-/** Expected full URL based on the environment + constant used by the gateway. */
-const EXPECTED_URL = `${environment.server_url}${WALLET_DISCOVERY_PATH}`;
+/** Expected full URL based on the origin + constant used by the gateway. */
+const EXPECTED_URL = `${window.location.origin}${WALLET_DISCOVERY_PATH}`;
 
 function setup(): { gateway: HttpWalletDiscoveryGateway; httpMock: HttpTestingController } {
   TestBed.configureTestingModule({
@@ -67,7 +64,7 @@ describe('HttpWalletDiscoveryGateway > fetch > emits GET with correct URL and he
     TestBed.resetTestingModule();
   });
 
-  it('issues a GET to <server_url>/.well-known/wallet-config-metadata', () => {
+  it('issues a GET to <origin>/.well-known/wallet-config-metadata', () => {
     const { gateway, httpMock } = setup();
 
     gateway.fetch().subscribe();

@@ -8,6 +8,7 @@
  *  T-auth-4 — /api/v1/auth/passkeys includes Authorization header (exception)
  *  T-auth-5 — external URL passes through without Authorization header
  *  T-auth-6 — /assets/* bypasses AuthService (ThemeService bootstrap timing fix)
+ *  T-auth-7 — 401 response on own-backend triggers forceLogout
  */
 
 import { TestBed } from '@angular/core/testing';
@@ -15,7 +16,7 @@ import {
   HttpTestingController,
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpStatusCode, provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import { AuthService } from '../services/auth.service';
 import { authInterceptor } from './auth.interceptor';
@@ -121,5 +122,18 @@ describe('authInterceptor', () => {
     const req = httpMock.expectOne(url);
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({});
+  });
+
+  it('T-auth-7: 401 response on own-backend triggers forceLogout', () => {
+    const forceLogoutSpy = jest.spyOn(mockAuth, 'forceLogout');
+    mockAuth.setToken('expired-jwt');
+    const url = `${OWN_BACKEND}/api/v1/credentials`;
+
+    httpClient.get(url).subscribe({ error: () => {} });
+
+    const req = httpMock.expectOne(url);
+    req.flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
+
+    expect(forceLogoutSpy).toHaveBeenCalledTimes(1);
   });
 });

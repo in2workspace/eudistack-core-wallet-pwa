@@ -31,7 +31,7 @@ import { ActivityService } from 'src/app/core/services/activity.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { HapticService } from 'src/app/shared/services/haptic.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 //todo restore tests
 
 // TODO separate scan in another component/ page

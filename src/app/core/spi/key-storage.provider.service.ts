@@ -2,9 +2,20 @@ import { RawKeyAlgorithm, PublicKeyInfo, KeyInfo } from "../models/StoredKeyReco
 import { base64UrlEncode } from "../utils/base64url";
 import { AppError } from "src/app/core/models/error/AppError";
 
+/** OID4VCI context passed to server-mode key generation (ignored in browser mode). */
+export interface OID4VCIKeyGenContext {
+  credentialId: string;
+  format: string;
+  supportedAlgs: string[];
+  issuerIdentifier: string;
+  cNonce?: string;
+}
+
 export abstract class KeyStorageProvider {
-  abstract generateKeyPair(algorithm: RawKeyAlgorithm, keyId: string): Promise<PublicKeyInfo>;
+  abstract generateKeyPair(algorithm: RawKeyAlgorithm, keyId: string, context?: OID4VCIKeyGenContext): Promise<PublicKeyInfo>;
   abstract sign(keyId: string, data: Uint8Array): Promise<Uint8Array>;
+  /** Server mode only: build a complete JWS for a presentation payload (EBW builds header+sig). */
+  buildPresentationJws?(keyId: string, payload: Record<string, unknown>, signingType: 'KB_JWT' | 'VP_ENVELOPE'): Promise<string>;
   abstract hasKey(keyId: string): Promise<boolean>;
   abstract deleteKey(keyId: string): Promise<void>;
   abstract listKeys(): Promise<KeyInfo[]>;
