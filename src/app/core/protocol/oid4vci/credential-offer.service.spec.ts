@@ -14,7 +14,7 @@ const VALID_OFFER_JSON = JSON.stringify({
   },
 });
 
-describe('CredentialOfferService — validateOfferUriTenant', () => {
+describe('CredentialOfferService', () => {
   let service: CredentialOfferService;
   let walletServiceMock: jest.Mocked<Pick<WalletService, 'fetchTextFromUrl'>>;
 
@@ -37,19 +37,6 @@ describe('CredentialOfferService — validateOfferUriTenant', () => {
     jest.restoreAllMocks();
   });
 
-  it('rejects a credential offer from a different tenant', async () => {
-    Object.defineProperty(window, 'location', {
-      value: { hostname: 'sandbox.eudistack.net' },
-      configurable: true,
-    });
-
-    await expect(
-      service.getCredentialOfferFromCredentialOfferUri(
-        'https://kpmg.eudistack.net/issuer/credential-offer?id=abc'
-      )
-    ).rejects.toMatchObject({ translationKey: 'errors.cross-tenant-offer' });
-  });
-
   it('accepts a credential offer from the same tenant', async () => {
     Object.defineProperty(window, 'location', {
       value: { hostname: 'sandbox.eudistack.net' },
@@ -63,7 +50,33 @@ describe('CredentialOfferService — validateOfferUriTenant', () => {
     expect(offer.credentialIssuer).toBe('https://sandbox.eudistack.net/issuer');
   });
 
-  it('skips tenant validation when wallet runs on localhost (no subdomain)', async () => {
+  it('accepts a credential offer from a different tenant (cross-tenant interoperability)', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { hostname: 'sandbox.eudistack.net' },
+      configurable: true,
+    });
+
+    const offer = await service.getCredentialOfferFromCredentialOfferUri(
+      'https://kpmg.eudistack.net/issuer/credential-offer?id=abc'
+    );
+
+    expect(offer.credentialIssuer).toBe('https://sandbox.eudistack.net/issuer');
+  });
+
+  it('accepts a credential offer from an external issuer (any OID4VCI-compliant stack)', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { hostname: 'dome.eudistack.net' },
+      configurable: true,
+    });
+
+    const offer = await service.getCredentialOfferFromCredentialOfferUri(
+      'https://external-issuer.example.com/issuer/credential-offer?id=xyz'
+    );
+
+    expect(offer.credentialIssuer).toBe('https://sandbox.eudistack.net/issuer');
+  });
+
+  it('accepts a credential offer when wallet runs on localhost (no subdomain)', async () => {
     Object.defineProperty(window, 'location', {
       value: { hostname: 'localhost' },
       configurable: true,
@@ -76,13 +89,12 @@ describe('CredentialOfferService — validateOfferUriTenant', () => {
     expect(offer.credentialIssuer).toBe('https://sandbox.eudistack.net/issuer');
   });
 
-  it('skips tenant validation when offer comes from an internal hostname (no dots)', async () => {
+  it('accepts a credential offer from an internal hostname (no dots)', async () => {
     Object.defineProperty(window, 'location', {
       value: { hostname: 'sandbox.eudistack.net' },
       configurable: true,
     });
 
-    // 'issuer-service' has no dot → extractSubdomain returns null → early return
     const offer = await service.getCredentialOfferFromCredentialOfferUri(
       'http://issuer-service:8080/credential-offer?id=abc'
     );
@@ -90,13 +102,12 @@ describe('CredentialOfferService — validateOfferUriTenant', () => {
     expect(offer.credentialIssuer).toBe('https://sandbox.eudistack.net/issuer');
   });
 
-  it('does not throw cross-tenant error for a malformed offer URI', async () => {
+  it('does not throw for a malformed offer URI', async () => {
     Object.defineProperty(window, 'location', {
       value: { hostname: 'sandbox.eudistack.net' },
       configurable: true,
     });
 
-    // '::not-a-url' fails new URL() inside validateOfferUriTenant → catch → early return
     const offer = await service.getCredentialOfferFromCredentialOfferUri('::not-a-url');
 
     expect(offer.credentialIssuer).toBe('https://sandbox.eudistack.net/issuer');
