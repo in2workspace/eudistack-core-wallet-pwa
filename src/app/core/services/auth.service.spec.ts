@@ -9,6 +9,7 @@ import { WalletDiscoveryService } from './wallet-discovery.service';
 import { WALLET_DISCOVERY_GATEWAY } from '../gateways/wallet-discovery.gateway';
 import { LocalAuthService } from './local-auth.service';
 import { environment } from 'src/environments/environment';
+import { PostPasskeyRecoveryHook } from '../../features/auth/services/post-passkey-recovery-hook';
 
 const AUTH_BASE = `${environment.server_url}/api/v1/auth`;
 
@@ -277,6 +278,7 @@ describe('AUTH_SERVICE_PROVIDER', () => {
         { provide: Router, useValue: { navigate: jest.fn() } },
         { provide: PasskeyStoreService, useValue: { hasPasskey: jest.fn().mockReturnValue(false) } },
         { provide: PasskeyPrfService, useValue: {} },
+        { provide: PostPasskeyRecoveryHook, useValue: { execute: jest.fn() } },
       ],
     });
   }
