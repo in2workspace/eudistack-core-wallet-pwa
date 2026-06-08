@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.2] - 2026-06-08
+
+### Fixed
+- **Auth interceptor — token expiry**: `authInterceptor` now intercepts 401 responses from the own-backend and calls `forceLogout()`, redirecting the user to the login screen. Previously, an expired access token returned a raw 401 error with no session cleanup — the user saw an error but was never redirected.
+
 ## [3.8.1] - 2026-06-03
 
 ### Fixed
