@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Storage } from '@ionic/storage-angular';
 import {VerifiableCredential} from "../models/verifiable-credential";
+import {LocalCredentialStorageService} from "../services/local-credential-storage.service";
 
 @Injectable({
   providedIn: 'root'
@@ -9,7 +10,10 @@ export class IndexedDbCredentialStoreAdapter {
 
   private storageReady: Promise<void>;
 
-  constructor(private storage: Storage) {
+  constructor(
+    private storage: Storage,
+    private credentialStorage: LocalCredentialStorageService
+  ) {
     this.storageReady = this.initStorage();
   }
 
@@ -18,7 +22,7 @@ export class IndexedDbCredentialStoreAdapter {
   }
 
   async setDomeRecoveryCompleted(status: boolean): Promise<void> {
-    await this.storageReady; // Esperamos a que la BBDD esté lista
+    await this.storageReady;
     await this.storage.set('dome_recovery_completed', status);
   }
 
@@ -38,25 +42,22 @@ export class IndexedDbCredentialStoreAdapter {
     return await this.storage.get('dome_idempotency_key');
   }
 
+  /**
+   * Persists credentials into the wallet IndexedDB store.
+   * LocalCredentialStorageService already performs UPSERT operations
+   * using the credential id as the primary key.
+   */
   async saveCredentials(newCredentials: VerifiableCredential[]): Promise<void> {
-    await this.storageReady;
-
-    let currentCredentials: VerifiableCredential[] = await this.storage.get('credentials');
-
-    if (!currentCredentials || !Array.isArray(currentCredentials)) {
-      currentCredentials = [];
+    if (!newCredentials?.length) {
+      return;
     }
 
-    for (const newCred of newCredentials) {
-      const existingIndex = currentCredentials.findIndex(c => c.id === newCred.id);
-
-      if (existingIndex >= 0) {
-        currentCredentials[existingIndex] = newCred;
-      } else {
-        currentCredentials.push(newCred);
-      }
+    for (const credential of newCredentials) {
+      await this.credentialStorage.saveCredential(credential);
     }
-    await this.storage.set('credentials', currentCredentials);
-    console.log(`[IndexedDB Adapter] Saved ${newCredentials.length} credentials.`);
+
+    console.log(
+      `[IndexedDB Adapter] Saved ${newCredentials.length} credentials.`
+    );
   }
 }
