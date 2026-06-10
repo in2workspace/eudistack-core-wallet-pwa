@@ -2,7 +2,7 @@ import { CONTENT_TYPE } from './../constants/content-type.constants';
 
 import { HttpClient, HttpHeaders, HttpParams, HttpResponse} from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { from, Observable, of } from 'rxjs';
+import {from, map, Observable, of, switchMap} from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { LifeCycleStatus, VerifiableCredential } from '../models/verifiable-credential';
 import { SERVER_PATH } from '../constants/api.constants';
@@ -52,13 +52,30 @@ export class WalletService {
     );
   }
 
+  public getAllVCsFromServer(): Observable<VerifiableCredential[]> {
+    return this.http.get<VerifiableCredential[]>(
+      environment.server_url + SERVER_PATH.CREDENTIALS,
+      options
+    );
+  }
+
   public getAllVCs(): Observable<VerifiableCredential[]> {
     if (this.isBrowserMode()) {
       return from(this.credentialStorage.getAllCredentials());
     }
-    return this.http.get<VerifiableCredential[]>(
-      environment.server_url + SERVER_PATH.CREDENTIALS,
-      options
+    return this.getAllVCsFromServer();
+  }
+
+  public syncCredentialsOnLogin(): Observable<void> {
+    return this.getAllVCsFromServer().pipe(
+      switchMap(credentials =>
+        from(
+          Promise.all(
+            credentials.map(vc =>
+              this.credentialStorage.saveCredential(vc))
+          )
+        )),
+      map(() => void 0)
     );
   }
 
