@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Added local credential caching for server mode wallets using IndexedDB.
+
+### Changed
+- Credentials are now synchronized automatically after authentication.
+- Credential list is loaded from the local cache, reducing backend requests.
+- Credential creation, deletion and status updates now keep the local cache synchronized with the backend.
+
 ## [3.8.2] - 2026-06-08
 
 ### Fixed
