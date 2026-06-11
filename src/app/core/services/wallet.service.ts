@@ -60,21 +60,21 @@ export class WalletService {
   }
 
   public getAllVCs(): Observable<VerifiableCredential[]> {
-    if (this.isBrowserMode()) {
-      return from(this.credentialStorage.getAllCredentials());
-    }
-    return this.getAllVCsFromServer();
+    return from(this.credentialStorage.getAllCredentials());
   }
 
   public syncCredentialsOnLogin(): Observable<void> {
-    return this.getAllVCsFromServer().pipe(
+    return from(this.credentialStorage.clearAllCredentials()).pipe(
+      switchMap(() => this.getAllVCsFromServer()),
       switchMap(credentials =>
         from(
           Promise.all(
             credentials.map(vc =>
-              this.credentialStorage.saveCredential(vc))
+              this.credentialStorage.saveCredential(vc)
+            )
           )
-        )),
+        )
+      ),
       map(() => void 0)
     );
   }
@@ -134,14 +134,7 @@ export class WalletService {
               { ...credResponse },
               options
     ).pipe(
-      switchMap(() => {
-        const vc = this.credentialParser.parseCredentialResponse(
-          credResponse.credentialResponseWithStatus.credentialResponse,
-          credResponse.format
-        );
-
-        return from(this.credentialStorage.saveCredential(vc));
-      })
+      switchMap(() => this.syncCredentialsOnLogin())
     );
   }
 
