@@ -2,7 +2,7 @@ import { CONTENT_TYPE } from './../constants/content-type.constants';
 
 import { HttpClient, HttpHeaders, HttpParams, HttpResponse} from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { from, Observable, of } from 'rxjs';
+import {from, map, Observable, of, switchMap} from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { LifeCycleStatus, VerifiableCredential } from '../models/verifiable-credential';
 import { SERVER_PATH } from '../constants/api.constants';
@@ -52,13 +52,30 @@ export class WalletService {
     );
   }
 
-  public getAllVCs(): Observable<VerifiableCredential[]> {
-    if (this.isBrowserMode()) {
-      return from(this.credentialStorage.getAllCredentials());
-    }
+  public getAllVCsFromServer(): Observable<VerifiableCredential[]> {
     return this.http.get<VerifiableCredential[]>(
       environment.server_url + SERVER_PATH.CREDENTIALS,
       options
+    );
+  }
+
+  public getAllVCs(): Observable<VerifiableCredential[]> {
+    return from(this.credentialStorage.getAllCredentials());
+  }
+
+  public syncCredentialsOnLogin(): Observable<void> {
+    return from(this.credentialStorage.clearAllCredentials()).pipe(
+      switchMap(() => this.getAllVCsFromServer()),
+      switchMap(credentials =>
+        from(
+          Promise.all(
+            credentials.map(vc =>
+              this.credentialStorage.saveCredential(vc)
+            )
+          )
+        )
+      ),
+      map(() => void 0)
     );
   }
 
@@ -71,6 +88,10 @@ export class WalletService {
       SERVER_PATH.CREDENTIALS + '/' +
         credentialId,
       options
+    ).pipe(
+      switchMap(() =>
+        from(this.credentialStorage.deleteCredential(credentialId))
+      )
     );
   }
 
@@ -82,6 +103,10 @@ export class WalletService {
       `${environment.server_url}${SERVER_PATH.CREDENTIALS}/${credentialId}/status`,
       { status },
       options
+    ).pipe(
+      switchMap(() =>
+        from(this.credentialStorage.updateCredentialStatus(credentialId, status)),
+      )
     );
   }
 
@@ -108,7 +133,9 @@ export class WalletService {
               environment.server_url + SERVER_PATH.CREDENTIAL_RESPONSE,
               { ...credResponse },
               options
-            );
+    ).pipe(
+      switchMap(() => this.syncCredentialsOnLogin())
+    );
   }
 
   // --- Generic HTTP helpers (used by protocol services for external calls) ---

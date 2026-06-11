@@ -16,6 +16,7 @@ import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { LocalAuthService } from 'src/app/core/services/local-auth.service';
 import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input.component';
+import { WalletService } from 'src/app/core/services/wallet.service';
 
 @Component({
     selector: 'app-login',
@@ -229,6 +230,7 @@ export class LoginPage {
   private readonly passkeyApi = inject(PasskeyApiService);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
+  private readonly walletService = inject(WalletService);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
   readonly hasExistingPasskey = this.prfService.hasPasskey();
@@ -354,6 +356,7 @@ export class LoginPage {
         await firstValueFrom((this.authService as RemoteAuthService).refreshAccessToken());
       }
 
+      this.syncCredentialCache();
       this.navigateHome();
     } catch (err: any) {
       if (this.passkeyFromRefreshToken) {
@@ -374,7 +377,7 @@ export class LoginPage {
 
     try {
       await this.prfService.createPasskey(this.email || 'Wallet User');
-
+      this.syncCredentialCache();
       this.navigateHome();
 
       const credentialId = this.passkeyStore.getCredentialId();
@@ -435,5 +438,12 @@ export class LoginPage {
     if (/Windows/.test(ua)) return 'Windows PC';
     if (/Linux/.test(ua)) return 'Linux';
     return 'Unknown Device';
+  }
+
+  private syncCredentialCache(): void {
+    this.walletService.syncCredentialsOnLogin().subscribe({
+      next: () => console.log('Credentials synced'),
+      error: err => console.error('Sync failed', err)
+    });
   }
 }

@@ -80,6 +80,17 @@ export class LocalCredentialStorageService {
     }
   }
 
+  async clearAllCredentials(): Promise<void> {
+    const db = await this.openDatabase();
+    try {
+      const tx = db.transaction(this.STORE_NAME, 'readwrite');
+      tx.objectStore(this.STORE_NAME).clear();
+      await this.awaitTx(tx);
+    } finally {
+      db.close();
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // IndexedDB helpers
   // ---------------------------------------------------------------------------
