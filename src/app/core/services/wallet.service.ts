@@ -88,6 +88,10 @@ export class WalletService {
       SERVER_PATH.CREDENTIALS + '/' +
         credentialId,
       options
+    ).pipe(
+      switchMap(() =>
+        from(this.credentialStorage.deleteCredential(credentialId))
+      )
     );
   }
 
@@ -99,6 +103,10 @@ export class WalletService {
       `${environment.server_url}${SERVER_PATH.CREDENTIALS}/${credentialId}/status`,
       { status },
       options
+    ).pipe(
+      switchMap(() =>
+        from(this.credentialStorage.updateCredentialStatus(credentialId, status)),
+      )
     );
   }
 
@@ -125,7 +133,16 @@ export class WalletService {
               environment.server_url + SERVER_PATH.CREDENTIAL_RESPONSE,
               { ...credResponse },
               options
-            );
+    ).pipe(
+      switchMap(() => {
+        const vc = this.credentialParser.parseCredentialResponse(
+          credResponse.credentialResponseWithStatus.credentialResponse,
+          credResponse.format
+        );
+
+        return from(this.credentialStorage.saveCredential(vc));
+      })
+    );
   }
 
   // --- Generic HTTP helpers (used by protocol services for external calls) ---
