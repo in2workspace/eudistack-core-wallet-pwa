@@ -1,8 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import { TranslateModule } from '@ngx-translate/core';
-import { buildFallbackUrl } from 'src/app/core/constants/tenants.constants';
+import { TenantService } from 'src/app/core/services/tenant.service';
 
 @Component({
   selector: 'app-tenant-not-found',
@@ -12,7 +12,8 @@ import { buildFallbackUrl } from 'src/app/core/constants/tenants.constants';
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class TenantNotFoundPage {
-  public readonly fallbackUrl = buildFallbackUrl();
+  private readonly tenantService = inject(TenantService);
+  public readonly fallbackUrl = this.tenantService.buildFallbackUrl();
   public readonly hostname = window.location.hostname;
 
   public goToFallback(): void {
