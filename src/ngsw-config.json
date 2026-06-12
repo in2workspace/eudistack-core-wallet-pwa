@@ -23,7 +23,7 @@
           "/assets/**",
           "!/assets/env.js",
           "!/assets/env.template.js",
-          "!/assets/custom-domain.json",
+          "!/assets/tenants/custom-domain.json",
           "!/assets/tenants/**",
           "/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
         ]
@@ -35,7 +35,7 @@
       "name": "config",
       "urls": [
         "/assets/env.js",
-        "/assets/custom-domain.json",
+        "/assets/tenants/custom-domain.json",
         "/assets/tenants/*/theme.json"
       ],
       "cacheConfig": {

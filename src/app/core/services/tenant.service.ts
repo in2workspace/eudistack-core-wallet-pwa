@@ -21,7 +21,7 @@ export class TenantService {
    *
    * Resolution order:
    *  1. Hostname-based (first DNS label → strip env suffix → match KNOWN_TENANTS)
-   *  2. Custom-domain mapping via /assets/custom-domain.json
+   *  2. Custom-domain mapping via /assets/tenants/custom-domain.json
    *  3. null — unknown tenant; consumers should redirect to /tenant-not-found
    */
   resolve(): Promise<void> {
@@ -59,7 +59,7 @@ export class TenantService {
 
     try {
       const map = await firstValueFrom(
-        this.http.get<Record<string, string>>('/assets/custom-domain.json'),
+        this.http.get<Record<string, string>>('/assets/tenants/custom-domain.json'),
       );
       const tenantId = map[window.location.hostname];
       if (tenantId && KNOWN_TENANTS.includes(tenantId)) {

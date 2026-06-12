@@ -39,7 +39,7 @@ describe('TenantService', () => {
       setHostname('sandbox.eudistack.net');
       await service.resolve();
       expect(service.tenant()).toBe('sandbox');
-      http.expectNone('/assets/custom-domain.json');
+      http.expectNone('/assets/tenants/custom-domain.json');
     });
 
     it('normalitza el hostname a minúscules', async () => {
@@ -78,14 +78,14 @@ describe('TenantService', () => {
       await svc.resolve();
 
       expect(svc.tenant()).toBe(tenant);
-      ctrl.expectNone('/assets/custom-domain.json');
+      ctrl.expectNone('/assets/tenants/custom-domain.json');
       ctrl.verify();
     });
 
     it('no fa cap petició HTTP si el hostname ja es resol', async () => {
       setHostname('eudistack.eudistack.net');
       await service.resolve();
-      http.expectNone('/assets/custom-domain.json');
+      http.expectNone('/assets/tenants/custom-domain.json');
     });
   });
 
@@ -96,7 +96,7 @@ describe('TenantService', () => {
       setHostname('wallet.acme.com');
 
       const resolvePromise = service.resolve();
-      const req = http.expectOne('/assets/custom-domain.json');
+      const req = http.expectOne('/assets/tenants/custom-domain.json');
       req.flush({ 'wallet.acme.com': 'kpmg' });
       await resolvePromise;
 
@@ -107,7 +107,7 @@ describe('TenantService', () => {
       setHostname('wallet.acme.com');
 
       const resolvePromise = service.resolve();
-      const req = http.expectOne('/assets/custom-domain.json');
+      const req = http.expectOne('/assets/tenants/custom-domain.json');
       req.flush({ 'wallet.acme.com': 'unknown-tenant' });
       await resolvePromise;
 
@@ -118,7 +118,7 @@ describe('TenantService', () => {
       setHostname('wallet.acme.com');
 
       const resolvePromise = service.resolve();
-      const req = http.expectOne('/assets/custom-domain.json');
+      const req = http.expectOne('/assets/tenants/custom-domain.json');
       req.flush({ 'other.domain.com': 'sandbox' });
       await resolvePromise;
 
@@ -129,7 +129,7 @@ describe('TenantService', () => {
       setHostname('wallet.acme.com');
 
       const resolvePromise = service.resolve();
-      const req = http.expectOne('/assets/custom-domain.json');
+      const req = http.expectOne('/assets/tenants/custom-domain.json');
       req.flush({ 'wallet.acme.com': '' });
       await resolvePromise;
 
@@ -140,7 +140,7 @@ describe('TenantService', () => {
       setHostname('wallet.acme.com');
 
       const resolvePromise = service.resolve();
-      const req = http.expectOne('/assets/custom-domain.json');
+      const req = http.expectOne('/assets/tenants/custom-domain.json');
       req.flush('Not found', { status: 404, statusText: 'Not Found' });
       await resolvePromise;
 
@@ -151,7 +151,7 @@ describe('TenantService', () => {
       setHostname('wallet.acme.com');
 
       const resolvePromise = service.resolve();
-      const req = http.expectOne('/assets/custom-domain.json');
+      const req = http.expectOne('/assets/tenants/custom-domain.json');
       req.error(new ProgressEvent('network error'));
       await resolvePromise;
 
@@ -168,18 +168,18 @@ describe('TenantService', () => {
       const p2 = service.resolve();
       expect(p1).toBe(p2);
       // Flush for cleanup
-      http.expectOne('/assets/custom-domain.json').flush({});
+      http.expectOne('/assets/tenants/custom-domain.json').flush({});
     });
 
     it('no torna a fer la petició HTTP si ja s\'ha resolt', async () => {
       setHostname('wallet.acme.com');
 
       const p1 = service.resolve();
-      http.expectOne('/assets/custom-domain.json').flush({ 'wallet.acme.com': 'dome' });
+      http.expectOne('/assets/tenants/custom-domain.json').flush({ 'wallet.acme.com': 'dome' });
       await p1;
 
       await service.resolve(); // second call — no new HTTP request
-      http.expectNone('/assets/custom-domain.json');
+      http.expectNone('/assets/tenants/custom-domain.json');
       expect(service.tenant()).toBe('dome');
     });
   });
