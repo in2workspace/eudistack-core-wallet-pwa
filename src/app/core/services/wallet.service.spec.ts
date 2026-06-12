@@ -6,7 +6,7 @@ import {
 import { WalletService } from './wallet.service';
 import { environment } from 'src/environments/environment';
 import {
-  CredentialStatus,
+  CredentialStatus, LifeCycleStatus,
   VerifiableCredential,
 } from '../models/verifiable-credential';
 import { SERVER_PATH } from '../constants/api.constants';
@@ -15,6 +15,7 @@ import { CredentialParserService } from '../utils/credential-parser.util';
 import { WalletDiscoveryService } from './wallet-discovery.service';
 import { WALLET_DISCOVERY_GATEWAY } from '../gateways/wallet-discovery.gateway';
 import { of } from 'rxjs';
+import {FinalizeIssuancePayload} from "../models/FinalizeIssuancePayload";
 
 const mockCredential: VerifiableCredential = {
   '@context': ['https://www.w3.org/ns/credentials/v1'],
@@ -75,6 +76,7 @@ describe('WalletService', () => {
     deleteCredential: jest.Mock;
     updateCredentialStatus: jest.Mock;
     saveCredential: jest.Mock;
+    clearAllCredentials: jest.Mock;
   };
 
   function createModule(walletMode: 'browser' | 'server' = 'browser'): void {
@@ -83,6 +85,7 @@ describe('WalletService', () => {
       deleteCredential: jest.fn().mockResolvedValue(undefined),
       updateCredentialStatus: jest.fn().mockResolvedValue(undefined),
       saveCredential: jest.fn().mockResolvedValue(undefined),
+      clearAllCredentials: jest.fn().mockResolvedValue(undefined),
     };
 
     TestBed.configureTestingModule({
@@ -168,19 +171,33 @@ describe('WalletService', () => {
       });
     });
 
-    it('should call remote HTTP endpoint when discovery returns server mode', (done) => {
+    it('should read credentials from IndexedDB in server mode', (done) => {
       createModule('server');
 
       service.getAllVCs().subscribe((credentials) => {
-        expect(credentials).toBeDefined();
+        expect(credentials.length).toBe(1);
+        expect(mockCredentialStorage.getAllCredentials).toHaveBeenCalled();
         done();
       });
+    });
+
+    it('should sync credentials from server to IndexedDB on login', async () => {
+      createModule('server');
+
+      service.syncCredentialsOnLogin().subscribe();
+
+      await Promise.resolve();
 
       const req = httpTestingController.expectOne(
         environment.server_url + SERVER_PATH.CREDENTIALS
       );
+
       expect(req.request.method).toBe('GET');
+
       req.flush([mockCredential]);
+
+      expect(mockCredentialStorage.clearAllCredentials)
+        .toHaveBeenCalled();
     });
 
     it('should return credentialEncoded from local in browser mode (via discovery)', (done) => {
@@ -229,6 +246,83 @@ describe('WalletService', () => {
       );
       expect(req.request.method).toBe('DELETE');
       req.flush('');
+    });
+
+    it('should delete credential from IndexedDB after successful server delete', (done) => {
+      createModule('server');
+
+      service.deleteVC('cred-id').subscribe(() => {
+        expect(mockCredentialStorage.deleteCredential)
+          .toHaveBeenCalledWith('cred-id');
+
+        done();
+      });
+
+      const req = httpTestingController.expectOne(
+        environment.server_url + SERVER_PATH.CREDENTIALS + '/cred-id'
+      );
+
+      expect(req.request.method).toBe('DELETE');
+
+      req.flush('');
+    });
+
+    it('should update credential status in IndexedDB after successful server update', (done) => {
+      createModule('server');
+
+      service.updateCredentialStatus(
+        'cred-id',
+        'REVOKED' as LifeCycleStatus
+      ).subscribe(() => {
+
+        expect(mockCredentialStorage.updateCredentialStatus)
+          .toHaveBeenCalledWith(
+            'cred-id',
+            'REVOKED'
+          );
+
+        done();
+      });
+
+      const req = httpTestingController.expectOne(
+        `${environment.server_url}${SERVER_PATH.CREDENTIALS}/cred-id/status`
+      );
+
+      expect(req.request.method).toBe('PATCH');
+
+      req.flush({});
+    });
+
+    it('should resync IndexedDB after server credential issuance', async () => {
+      createModule('server');
+
+      const payload = {} as FinalizeIssuancePayload;
+
+      service.finalizeCredentialIssuance(payload).subscribe();
+
+      const postReq = httpTestingController.expectOne(
+        environment.server_url + SERVER_PATH.CREDENTIAL_RESPONSE
+      );
+
+      expect(postReq.request.method).toBe('POST');
+
+      postReq.flush({});
+
+      await Promise.resolve(); // <-- añade esto
+
+      const getReq = httpTestingController.expectOne(
+        environment.server_url + SERVER_PATH.CREDENTIALS
+      );
+
+      expect(getReq.request.method).toBe('GET');
+
+      getReq.flush([mockCredential]);
+
+      expect(mockCredentialStorage.clearAllCredentials)
+        .toHaveBeenCalled();
+
+      expect(mockCredentialStorage.saveCredential)
+        .toHaveBeenCalledWith(mockCredential);
     });
   });
 });
