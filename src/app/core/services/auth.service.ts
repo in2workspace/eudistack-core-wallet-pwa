@@ -7,6 +7,7 @@ import { Router } from '@angular/router';
 import { LocalAuthService } from './local-auth.service';
 import { PasskeyStoreService } from './passkey-store.service';
 import { WalletDiscoveryService } from './wallet-discovery.service';
+import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
 
 export interface TokenPairResponse {
   accessToken: string;
@@ -71,6 +72,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly passkeyStore = inject(PasskeyStoreService);
+  private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
 
   constructor() {
     super();
@@ -169,6 +171,9 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
     this.authenticated$.next(true);
     this.scheduleTokenRefresh(response.expiresIn);
+
+    const issuerUrl = `${window.location.origin}/issuer`;
+    void this.issuerMetadataCache.fetchAndCacheIfMissing(issuerUrl);
   }
 
   private scheduleTokenRefresh(expiresInSeconds: number): void {
