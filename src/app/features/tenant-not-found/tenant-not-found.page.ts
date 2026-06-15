@@ -13,8 +13,8 @@ import { TenantService } from 'src/app/core/services/tenant.service';
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class TenantNotFoundPage {
   private readonly tenantService = inject(TenantService);
+  public readonly tenant = this.tenantService.tenant();
   public readonly fallbackUrl = this.tenantService.buildFallbackUrl();
-  public readonly hostname = window.location.hostname;
 
   public goToFallback(): void {
     window.location.href = this.fallbackUrl;

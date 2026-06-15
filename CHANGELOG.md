@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.9.1] - 2026-06-15
+
+### Added
+
+- Added a fallback mechanism for tenant resolution that retrieves the tenant from the `custom-domain.json` configuration file when the primary resolution method from hostname is unavailable.
+
 ## [3.9.0] - 2026-06-12
 
 ### Added
