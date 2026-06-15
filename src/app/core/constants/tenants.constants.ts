@@ -5,6 +5,7 @@ export const KNOWN_TENANTS: readonly string[] = [
   'platform',
   'eudistack',
   'localhost',
+  'cgcom',
 ];
 
 export const FALLBACK_TENANT = 'sandbox';
