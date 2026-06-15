@@ -27,6 +27,8 @@ import { WALLET_DISCOVERY_GATEWAY } from './app/core/gateways/wallet-discovery.g
 import { HttpWalletDiscoveryGateway } from './app/core/gateways/http-wallet-discovery.gateway';
 import { walletDiscoveryInitializer } from './app/core/initializers/wallet-discovery.initializer';
 import { WalletDiscoveryService } from './app/core/services/wallet-discovery.service';
+import { TenantService } from './app/core/services/tenant.service';
+import { tenantInitializer } from './app/core/initializers/tenant.initializer';
 
 function initializeTheme(themeService: ThemeService): () => Promise<void> {
   return () => themeService.load();
@@ -61,6 +63,12 @@ bootstrapApplication(AppComponent, {
       provide: APP_INITIALIZER,
       useFactory: walletDiscoveryInitializer,
       deps: [WalletDiscoveryService],
+      multi: true,
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: tenantInitializer,
+      deps: [TenantService],
       multi: true,
     },
     {
