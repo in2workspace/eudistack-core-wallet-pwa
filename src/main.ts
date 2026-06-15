@@ -59,8 +59,6 @@ bootstrapApplication(AppComponent, {
     // IMPORTANT — ordering: walletDiscoveryInitializer MUST be first so that
     // WalletDiscoveryService.mode() is resolved before initializeTheme and
     // initializePasskeyStore run (AD-1, AC-009.1a).
-    // tenantInitializer MUST be second: ThemeService awaits TenantService.resolve()
-    // internally, but registering it here makes the dependency explicit.
     {
       provide: APP_INITIALIZER,
       useFactory: walletDiscoveryInitializer,
