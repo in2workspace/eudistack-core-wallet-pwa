@@ -23,6 +23,7 @@
           "/assets/**",
           "!/assets/env.js",
           "!/assets/env.template.js",
+          "!/assets/tenants/custom-domain.json",
           "!/assets/tenants/**",
           "/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
         ]
@@ -34,11 +35,12 @@
       "name": "config",
       "urls": [
         "/assets/env.js",
+        "/assets/tenants/custom-domain.json",
         "/assets/tenants/*/theme.json"
       ],
       "cacheConfig": {
         "strategy": "freshness",
-        "maxSize": 5,
+        "maxSize": 10,
         "maxAge": "1h",
         "timeout": "3s"
       }

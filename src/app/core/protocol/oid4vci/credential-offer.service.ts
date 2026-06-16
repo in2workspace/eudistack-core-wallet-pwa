@@ -3,6 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import { CredentialOffer, CredentialOfferCredential, CredentialOfferGrant } from '../../models/dto/CredentialOffer';
 import { PRE_AUTH_CODE_GRANT_TYPE } from 'src/app/core/constants/credential-offer.constants';
 import { WalletService } from 'src/app/core/services/wallet.service';
+import { TenantService } from 'src/app/core/services/tenant.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
 import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 
@@ -10,12 +11,13 @@ import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message'
 export class CredentialOfferService {
 
   private readonly walletService = inject(WalletService);
+  private readonly tenantService = inject(TenantService);
 
     async getCredentialOfferFromCredentialOfferUri(credentialOfferUri: string): Promise<CredentialOffer> {
     try {
       const parsedUri = this.parseCredentialOfferUri(credentialOfferUri);
 
-      this.validateOfferUriTenant(parsedUri);
+      await this.validateOfferUriTenant(parsedUri);
 
       const responseText = await this.fetchCredentialOffer(parsedUri);
 
@@ -177,36 +179,23 @@ export class CredentialOfferService {
     return typeof value === 'number' ? value : undefined;
   }
 
-  private validateOfferUriTenant(credentialOfferUri: string): void {
-    const walletTenant = this.extractSubdomain(window.location.hostname);
-    if (!walletTenant) return;
+  private async validateOfferUriTenant(credentialOfferUri: string): Promise<void> {
+    const walletTenant = this.tenantService.tenant();
 
-    let offerHostname: string;
-    try {
-      offerHostname = new URL(credentialOfferUri).hostname;
-    } catch {
-      return;
-    }
+    // Skip validation when tenant is unknown or when running on localhost.
+    if (!walletTenant || walletTenant === 'localhost') return;
 
-    const offerTenant = this.extractSubdomain(offerHostname);
+    const offerTenant = await this.tenantService.resolveTenantIdFromUrl(credentialOfferUri);
+
+    // Skip validation for invalid URLs, localhost, internal services or unknown domains.
     if (!offerTenant) return;
 
     if (walletTenant !== offerTenant) {
       throw new Oid4vciError(
         `Credential offer tenant '${offerTenant}' does not match wallet tenant '${walletTenant}'`,
-        { translationKey: 'errors.cross-tenant-offer' }
+        { translationKey: 'errors.cross-tenant-offer' },
       );
     }
-  }
-
-  // Intentionally does NOT strip env suffixes (e.g. -stg, -dev) and does NOT
-  // delegate to resolveTenant(). The full first label (e.g. "sandbox-stg") is
-  // the tenant identity here so that STG wallet and PROD issuer are treated as
-  // different tenants and cross-environment offers are rejected.
-  private extractSubdomain(hostname: string): string | null {
-    const dotIndex = hostname.indexOf('.');
-    if (dotIndex <= 0) return null;
-    return hostname.substring(0, dotIndex).toLowerCase();
   }
 
   private validateCredentialOffer(credentialOffer: CredentialOffer): void {
