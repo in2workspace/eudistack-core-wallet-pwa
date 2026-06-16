@@ -27,9 +27,17 @@ describe('credential type helpers', () => {
       expect(isValidCredentialType('gx.labelcredential.w3c.2' as any)).toBe(true);
     });
 
+    it('returns true for raw DOME legacy type aliases', () => {
+      // Real DOME legacy credentials carry the semantic type name in `type[]`
+      // (no `.w3c.N` suffix). The catalog recognises them so the wallet can
+      // display and present them during the sunset window.
+      expect(isValidCredentialType('LEARCredentialEmployee' as any)).toBe(true);
+      expect(isValidCredentialType('LEARCredentialMachine' as any)).toBe(true);
+    });
+
     it('returns false for an unknown credential type', () => {
       expect(isValidCredentialType('VerifiableCredential' as any)).toBe(false);
-      expect(isValidCredentialType('LEARCredentialEmployee' as any)).toBe(false);
+      expect(isValidCredentialType('SomeUnknownCredentialType' as any)).toBe(false);
     });
   });
 
