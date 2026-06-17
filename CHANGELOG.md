@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.5] - 2026-06-17
+
+### Fixed
+
+- **OID4VP — W3C VC presentation**: `Oid4vpEngineService` now resolves the holder ID from both VCDM 1.1 (`payload.vc.credentialSubject.id`) and VCDM 2.0 (`payload.credentialSubject.id`) JWT structures before falling back to the `sub` claim. Previously, credentials issued in VCDM 2.0 format (no `vc` wrapper) always failed with "Missing holder id in selected credential".
+
 ## [3.8.4] - 2026-06-17
 
 ### Changed (2026-06-17)
@@ -20,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (2026-06-15)
 - **`tenants.constants.ts`**: reduced to data-only (`KNOWN_TENANTS`, `FALLBACK_TENANT`); resolution functions moved to `TenantService` as private methods.
-- **`tenantGuard`**, **`tenatnNotFound`**, **`credentialOfferService`**: read the resolved tenant signal from `TenantService` instead of re-deriving it from the hostname on every navigation.
+- **`tenantGuard`**, **`tenantNotFound`**, **`credentialOfferService`**: read the resolved tenant signal from `TenantService` instead of re-deriving it from the hostname on every navigation.
 - **Service Worker cache (`ngsw-config.json`)**: `/assets/tenants/custom-domain.json` added to the `config` freshness group (1 h TTL, maxSize increased to 10).
 
 ## [3.8.2] - 2026-06-08
