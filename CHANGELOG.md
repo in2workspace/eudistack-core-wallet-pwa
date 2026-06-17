@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.4] - 2026-06-17
+
+### Changed (2026-06-17)
+- **Wallet API URL resolution** is resolved with the appropiate canonical or non-canonical URL.
+
+## [3.8.3] - 2026-06-15
 
 ### Added (2026-06-15)
 - Added `cgcom` to the list of known tenants.
