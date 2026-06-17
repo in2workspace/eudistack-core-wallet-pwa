@@ -27,7 +27,8 @@ export class MemoryService {
     const existing = this.cache.get(credentialId);
     if (existing) {
       clearTimeout(existing.timerId);
-      void crypto.subtle.deleteKey(existing.wrapKey);
+      const subtle = crypto.subtle as SubtleCrypto & { deleteKey?: (key: CryptoKey) => Promise<void> };
+      void subtle.deleteKey?.(existing.wrapKey);
     }
     const timerId = setTimeout(() => this.evict(credentialId), TTL_MS);
     this.cache.set(credentialId, { wrapKey, timerId });
@@ -45,7 +46,8 @@ export class MemoryService {
     const entry = this.cache.get(credentialId);
     if (!entry) return;
     clearTimeout(entry.timerId);
-    void crypto.subtle.deleteKey(entry.wrapKey);
+    const subtle = crypto.subtle as SubtleCrypto & { deleteKey?: (key: CryptoKey) => Promise<void> };
+    void subtle.deleteKey?.(entry.wrapKey);
     this.cache.delete(credentialId);
   }
 

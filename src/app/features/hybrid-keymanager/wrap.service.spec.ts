@@ -96,7 +96,9 @@ describe('WrapService', () => {
   // ------------------------------------------------------------------ NFR-S-534-02: zeroize
 
   it('zeroize calls crypto.subtle.deleteKey for each key', async () => {
-    const mockDeleteKey = jest.spyOn(crypto.subtle, 'deleteKey').mockResolvedValue(undefined);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const subtle: any = crypto.subtle;
+    const mockDeleteKey = jest.spyOn(subtle, 'deleteKey').mockResolvedValue(undefined);
 
     const key1 = {} as CryptoKey;
     const key2 = {} as CryptoKey;
@@ -111,9 +113,11 @@ describe('WrapService', () => {
   });
 
   it('zeroize does not throw if deleteKey rejects (best-effort)', async () => {
-    jest.spyOn(crypto.subtle, 'deleteKey').mockRejectedValue(new Error('already deleted'));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const subtle: any = crypto.subtle;
+    const mockDeleteKey = jest.spyOn(subtle, 'deleteKey').mockRejectedValue(new Error('already deleted'));
     const key = {} as CryptoKey;
     await expect(service.zeroize(key)).resolves.not.toThrow();
-    jest.spyOn(crypto.subtle, 'deleteKey').mockRestore();
+    mockDeleteKey.mockRestore();
   });
 });

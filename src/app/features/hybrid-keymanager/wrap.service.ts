@@ -44,7 +44,7 @@ export class WrapService {
   async deriveWrapKey(prfOutput: Uint8Array, credentialId: string): Promise<CryptoKey> {
     const baseKey = await crypto.subtle.importKey(
       'raw',
-      prfOutput,
+      new Uint8Array(prfOutput),
       { name: 'HKDF' },
       false,
       ['deriveKey'],
@@ -81,6 +81,7 @@ export class WrapService {
   }
 
   async zeroize(...keys: CryptoKey[]): Promise<void> {
-    await Promise.allSettled(keys.map(k => crypto.subtle.deleteKey(k)));
+    const subtle = crypto.subtle as SubtleCrypto & { deleteKey?: (key: CryptoKey) => Promise<void> };
+    await Promise.allSettled(keys.map(k => subtle.deleteKey?.(k) ?? Promise.resolve()));
   }
 }
