@@ -72,6 +72,14 @@ export class TenantService {
     return this.extractBaseTenantFromHostname(hostname);
   }
 
+  /**
+   * Returns true when the current hostname is a known-tenant subdomain (canonical deployment).
+   * Returns false for custom domains resolved via custom-domain.json.
+   */
+  isCanonicalDomain(hostname = window.location.hostname): boolean {
+    return this.resolveKnownTenantFromHostname(hostname.toLowerCase()) !== null;
+  }
+
   buildFallbackUrl(location: Location = window.location): string {
     const segments = location.hostname.split('.');
     const hasSubdomain = segments.length > 1;

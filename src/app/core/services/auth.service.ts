@@ -2,11 +2,11 @@ import { inject, Injectable, OnDestroy, Provider } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
-import { environment } from 'src/environments/environment';
 import { Router } from '@angular/router';
 import { LocalAuthService } from './local-auth.service';
 import { PasskeyStoreService } from './passkey-store.service';
 import { WalletDiscoveryService } from './wallet-discovery.service';
+import { UrlResolverService } from './url-resolver.service';
 
 export interface TokenPairResponse {
   accessToken: string;
@@ -47,7 +47,6 @@ export const AUTH_SERVICE_PROVIDER: Provider = {
   },
 };
 
-const AUTH_BASE = `${environment.server_url}/api/v1/auth`;
 
 /**
  * Auth service for server/enterprise mode.
@@ -71,6 +70,9 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly passkeyStore = inject(PasskeyStoreService);
+  private readonly urlResolver = inject(UrlResolverService);
+
+  private get authBase(): string { return `${this.urlResolver.serverUrl()}/api/v1/auth`; }
 
   constructor() {
     super();
@@ -82,11 +84,11 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   // --- Registration flow (email + OTP → JWT tokens) ---
 
   register(email: string, mode: 'register' | 'login' = 'register'): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${AUTH_BASE}/register`, { email, mode });
+    return this.http.post<{ message: string }>(`${this.authBase}/register`, { email, mode });
   }
 
   verifyEmail(email: string, code: string): Observable<TokenPairResponse> {
-    return this.http.post<TokenPairResponse>(`${AUTH_BASE}/verify-email`, { email, code }).pipe(
+    return this.http.post<TokenPairResponse>(`${this.authBase}/verify-email`, { email, code }).pipe(
       tap(response => this.handleTokenResponse(response))
     );
   }
@@ -97,7 +99,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     if (!this.refreshTokenValue) {
       return throwError(() => new Error('No refresh token'));
     }
-    return this.http.post<TokenPairResponse>(`${AUTH_BASE}/refresh`, {
+    return this.http.post<TokenPairResponse>(`${this.authBase}/refresh`, {
       refreshToken: this.refreshTokenValue
     }).pipe(
       tap(response => this.handleTokenResponse(response)),

@@ -3,8 +3,8 @@ import { CONTENT_TYPE } from './../constants/content-type.constants';
 import { HttpClient, HttpHeaders, HttpParams, HttpResponse} from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import {from, map, Observable, of, switchMap} from 'rxjs';
-import { environment } from 'src/environments/environment';
 import { LifeCycleStatus, VerifiableCredential } from '../models/verifiable-credential';
+import { UrlResolverService } from './url-resolver.service';
 import { SERVER_PATH } from '../constants/api.constants';
 import { FinalizeIssuancePayload } from '../models/FinalizeIssuancePayload';
 import { CredentialResponse } from '../models/dto/CredentialResponse';
@@ -30,6 +30,7 @@ export class WalletService {
   private credentialStorage = inject(LocalCredentialStorageService);
   private credentialParser = inject(CredentialParserService);
   private discovery = inject(WalletDiscoveryService);
+  private urlResolver = inject(UrlResolverService);
 
   /** Returns true when the wallet operates in browser (EUDIW) mode (AC-009.2c, AC-009.3c). */
   private isBrowserMode(): boolean {
@@ -46,7 +47,7 @@ export class WalletService {
       responseType: 'text' as const,
     };
     return this.http.post(
-      environment.server_url + SERVER_PATH.CBOR,
+      this.urlResolver.serverUrl() + SERVER_PATH.CBOR,
       credential,
       options
     );
@@ -54,7 +55,7 @@ export class WalletService {
 
   public getAllVCsFromServer(): Observable<VerifiableCredential[]> {
     return this.http.get<VerifiableCredential[]>(
-      environment.server_url + SERVER_PATH.CREDENTIALS,
+      this.urlResolver.serverUrl() + SERVER_PATH.CREDENTIALS,
       options
     );
   }
@@ -84,7 +85,7 @@ export class WalletService {
       return from(this.credentialStorage.deleteCredential(credentialId));
     }
     return this.http.delete<string>(
-      environment.server_url +
+      this.urlResolver.serverUrl() +
       SERVER_PATH.CREDENTIALS + '/' +
         credentialId,
       options
@@ -100,7 +101,7 @@ export class WalletService {
       return from(this.credentialStorage.updateCredentialStatus(credentialId, status));
     }
     return this.http.patch<void>(
-      `${environment.server_url}${SERVER_PATH.CREDENTIALS}/${credentialId}/status`,
+      `${this.urlResolver.serverUrl()}${SERVER_PATH.CREDENTIALS}/${credentialId}/status`,
       { status },
       options
     ).pipe(
@@ -120,7 +121,7 @@ export class WalletService {
     };
 
     return this.http.get<string>(
-      `${environment.server_url + SERVER_PATH.CREDENTIALS_SIGNED_BY_ID}?credentialId=${credentialId}`,
+      `${this.urlResolver.serverUrl() + SERVER_PATH.CREDENTIALS_SIGNED_BY_ID}?credentialId=${credentialId}`,
       options
     );
   }
@@ -130,7 +131,7 @@ export class WalletService {
       return from(this.finalizeLocally(credResponse));
     }
     return this.http.post<void>(
-              environment.server_url + SERVER_PATH.CREDENTIAL_RESPONSE,
+              this.urlResolver.serverUrl() + SERVER_PATH.CREDENTIAL_RESPONSE,
               { ...credResponse },
               options
     ).pipe(
