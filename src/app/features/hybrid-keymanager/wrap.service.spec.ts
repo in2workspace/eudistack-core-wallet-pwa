@@ -1,11 +1,23 @@
 import { TestBed } from '@angular/core/testing';
 import { WrapService } from './wrap.service';
 
+// JSDOM does not implement crypto.subtle; polyfill with Node's built-in WebCrypto API.
+if (!globalThis.crypto?.subtle) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { webcrypto } = require('crypto') as { webcrypto: Crypto };
+  Object.defineProperty(globalThis, 'crypto', {
+    value: webcrypto,
+    configurable: true,
+    writable: true,
+  });
+}
+
 /**
  * Tests for WrapService cryptographic operations.
  *
- * Uses the real SubtleCrypto API (jsdom exposes it in Node 19+ via globalThis.crypto).
- * Where SubtleCrypto is unavailable, individual methods are mocked per test.
+ * Uses the real SubtleCrypto API via Node's built-in WebCrypto polyfill (JSDOM does not
+ * expose crypto.subtle). Where individual methods require mocking, they are assigned
+ * directly on the subtle object (jest.spyOn requires the property to exist).
  *
  * Spec: EUDISTACK-534 AC-02, AC-03, EC-03, ES-04, NFR-S-534-02, NFR-S-534-05.
  */
@@ -96,28 +108,31 @@ describe('WrapService', () => {
   // ------------------------------------------------------------------ NFR-S-534-02: zeroize
 
   it('zeroize calls crypto.subtle.deleteKey for each key', async () => {
+    // jest.spyOn requires the property to exist; assign directly since deleteKey is non-standard.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const subtle: any = crypto.subtle;
-    const mockDeleteKey = jest.spyOn(subtle, 'deleteKey').mockResolvedValue(undefined);
+    subtle.deleteKey = jest.fn().mockResolvedValue(undefined);
 
     const key1 = {} as CryptoKey;
     const key2 = {} as CryptoKey;
 
     await service.zeroize(key1, key2);
 
-    expect(mockDeleteKey).toHaveBeenCalledWith(key1);
-    expect(mockDeleteKey).toHaveBeenCalledWith(key2);
-    expect(mockDeleteKey).toHaveBeenCalledTimes(2);
+    expect(subtle.deleteKey).toHaveBeenCalledWith(key1);
+    expect(subtle.deleteKey).toHaveBeenCalledWith(key2);
+    expect(subtle.deleteKey).toHaveBeenCalledTimes(2);
 
-    mockDeleteKey.mockRestore();
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete subtle.deleteKey;
   });
 
   it('zeroize does not throw if deleteKey rejects (best-effort)', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const subtle: any = crypto.subtle;
-    const mockDeleteKey = jest.spyOn(subtle, 'deleteKey').mockRejectedValue(new Error('already deleted'));
+    subtle.deleteKey = jest.fn().mockRejectedValue(new Error('already deleted'));
     const key = {} as CryptoKey;
     await expect(service.zeroize(key)).resolves.not.toThrow();
-    mockDeleteKey.mockRestore();
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete subtle.deleteKey;
   });
 });
