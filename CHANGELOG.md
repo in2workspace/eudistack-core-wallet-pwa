@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (2026-06-17)
 - **Wallet API URL resolution** is resolved with the appropiate canonical or non-canonical URL.
+- Updated custom-domain.json model.
 
 ## [3.8.3] - 2026-06-15
 
