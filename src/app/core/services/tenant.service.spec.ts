@@ -97,7 +97,7 @@ describe('TenantService', () => {
 
       const resolvePromise = service.resolve();
       const req = http.expectOne('/assets/tenants/custom-domain.json');
-      req.flush({ 'wallet.acme.com': 'kpmg' });
+      req.flush({ domains: { 'wallet.acme.com': { tenantId: 'kpmg', envId: 'pro' } }, env: {} });
       await resolvePromise;
 
       expect(service.tenant()).toBe('kpmg');
@@ -108,7 +108,7 @@ describe('TenantService', () => {
 
       const resolvePromise = service.resolve();
       const req = http.expectOne('/assets/tenants/custom-domain.json');
-      req.flush({ 'wallet.acme.com': 'unknown-tenant' });
+      req.flush({ domains: { 'wallet.acme.com': { tenantId: 'unknown-tenant', envId: 'pro' } }, env: {} });
       await resolvePromise;
 
       expect(service.tenant()).toBeNull();
@@ -119,18 +119,18 @@ describe('TenantService', () => {
 
       const resolvePromise = service.resolve();
       const req = http.expectOne('/assets/tenants/custom-domain.json');
-      req.flush({ 'other.domain.com': 'sandbox' });
+      req.flush({ domains: { 'other.domain.com': { tenantId: 'sandbox', envId: 'pro' } }, env: {} });
       await resolvePromise;
 
       expect(service.tenant()).toBeNull();
     });
 
-    it('retorna null si el JSON té el hostname però el valor és buit', async () => {
+    it('retorna null si el JSON té el hostname però el tenantId és buit', async () => {
       setHostname('wallet.acme.com');
 
       const resolvePromise = service.resolve();
       const req = http.expectOne('/assets/tenants/custom-domain.json');
-      req.flush({ 'wallet.acme.com': '' });
+      req.flush({ domains: { 'wallet.acme.com': { tenantId: '', envId: 'pro' } }, env: {} });
       await resolvePromise;
 
       expect(service.tenant()).toBeNull();
@@ -168,14 +168,17 @@ describe('TenantService', () => {
       const p2 = service.resolve();
       expect(p1).toBe(p2);
       // Flush for cleanup
-      http.expectOne('/assets/tenants/custom-domain.json').flush({});
+      http.expectOne('/assets/tenants/custom-domain.json').flush({ domains: {}, env: {} });
     });
 
     it('no torna a fer la petició HTTP si ja s\'ha resolt', async () => {
       setHostname('wallet.acme.com');
 
       const p1 = service.resolve();
-      http.expectOne('/assets/tenants/custom-domain.json').flush({ 'wallet.acme.com': 'dome' });
+      http.expectOne('/assets/tenants/custom-domain.json').flush({
+        domains: { 'wallet.acme.com': { tenantId: 'dome', envId: 'pro' } },
+        env: {},
+      });
       await p1;
 
       await service.resolve(); // second call — no new HTTP request
