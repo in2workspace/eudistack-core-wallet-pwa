@@ -6,11 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.8.4] - 2026-06-17
+## [3.8.5] - 2026-06-17
 
 ### Fixed
 
 - **OID4VP — W3C VC presentation**: `Oid4vpEngineService` now resolves the holder ID from both VCDM 1.1 (`payload.vc.credentialSubject.id`) and VCDM 2.0 (`payload.credentialSubject.id`) JWT structures before falling back to the `sub` claim. Previously, credentials issued in VCDM 2.0 format (no `vc` wrapper) always failed with "Missing holder id in selected credential".
+
+## [3.8.4] - 2026-06-17
+
+### Changed (2026-06-17)
+- **Wallet API URL resolution** is resolved with the appropiate canonical or non-canonical URL.
+- Updated custom-domain.json model.
 
 ## [3.8.3] - 2026-06-15
 
