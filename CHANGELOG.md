@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### Added (2026-06-15)
+- Added `cgcom` to the list of known tenants.
 - **Custom-domain tenant resolution (`TenantService`)**: the app now resolves the active tenant via a two-step lookup — first from the hostname subdomain (existing behaviour), then from `/assets/tenants/custom-domain.json` (a `{ "hostname": "tenantId" }` map) when the subdomain does not match a known tenant. The resolved tenant (or `null` for unknown origins) is stored in a `Signal<string | null>` initialised before theme loading and consumed by `ThemeService`, `tenantGuard` and `TenantNotFoundPage`.
 
 ### Changed (2026-06-15)
