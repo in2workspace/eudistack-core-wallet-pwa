@@ -6,24 +6,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.8.4] - 2026-06-16
+## [3.8.5] - 2026-06-17
 
 ### Added
 
 - **`IssuerMetadataCacheService.fetchAndCacheIfMissing(issuerUrl)`**: preloads the OID4VCI metadata of the wallet's own issuer right after a successful token exchange in `RemoteAuthService.handleTokenResponse`. Guarantees that credentials presented via OID4VP (including legacy ones migrated from another wallet or restored from backup) can resolve their display metadata (Mandator, Mandatee…) even when they were never accepted through the standard OID4VCI flow.
-- **Custom-domain tenant resolution (`TenantService`)**: the app now resolves the active tenant via a two-step lookup — first from the hostname subdomain (existing behaviour), then from `/assets/tenants/custom-domain.json` (a `{ "hostname": "tenantId" }` map) when the subdomain does not match a known tenant. The resolved tenant (or `null` for unknown origins) is stored in a `Signal<string | null>` initialised before theme loading and consumed by `ThemeService`, `tenantGuard` and `TenantNotFoundPage`.
-- **Tenants**: `cgcom` added to the list of known tenants.
 
 ### Changed
 
 - **`CREDENTIAL_TYPES_ARRAY`**: added `LEARCredentialEmployee` and `LEARCredentialMachine` aliases so the wallet recognises real DOME legacy credentials (which carry the bare semantic type in `type[]` instead of the versioned `learcredential.<role>.w3c.<n>` identifier). Required for display, selection and presentation flows during the DOME sunset window.
-- **`tenants.constants.ts`**: reduced to data-only (`KNOWN_TENANTS`, `FALLBACK_TENANT`); resolution functions moved to `TenantService` as private methods.
-- **`tenantGuard`**, **`TenantNotFoundPage`**, **`credentialOfferService`**: read the resolved tenant signal from `TenantService` instead of re-deriving it from the hostname on every navigation.
-- **Service Worker cache (`ngsw-config.json`)**: `/assets/tenants/custom-domain.json` added to the `config` freshness group (1 h TTL, maxSize increased to 10).
 
 ### Fixed
 
 - **OID4VP — Holder JWK fallback chain** (`Oid4vpEngineService.resolveHolderJwk`): when the selected credential lacks `cnf.jwk`, the engine now derives the holder public key from `cnf.kid` (legacy SD-JWT format with a `did:key` URI) or from `vc.credentialSubject.mandate.mandatee.id` (W3C VCDM) before bailing out. Aligns the wallet with the same fallback chain used by the verifier's `CryptographicBindingValidator`, enabling presentation of DOME legacy credentials that do not embed the holder JWK explicitly.
+
+## [3.8.4] - 2026-06-17
+
+### Changed (2026-06-17)
+- **Wallet API URL resolution** is resolved with the appropiate canonical or non-canonical URL.
+- Updated custom-domain.json model.
+
+## [3.8.3] - 2026-06-15
+
+### Added (2026-06-15)
+- Added `cgcom` to the list of known tenants.
+- **Custom-domain tenant resolution (`TenantService`)**: the app now resolves the active tenant via a two-step lookup — first from the hostname subdomain (existing behaviour), then from `/assets/tenants/custom-domain.json` (a `{ "hostname": "tenantId" }` map) when the subdomain does not match a known tenant. The resolved tenant (or `null` for unknown origins) is stored in a `Signal<string | null>` initialised before theme loading and consumed by `ThemeService`, `tenantGuard` and `TenantNotFoundPage`.
+
+### Changed (2026-06-15)
+- **`tenants.constants.ts`**: reduced to data-only (`KNOWN_TENANTS`, `FALLBACK_TENANT`); resolution functions moved to `TenantService` as private methods.
+- **`tenantGuard`**, **`tenatnNotFound`**, **`credentialOfferService`**: read the resolved tenant signal from `TenantService` instead of re-deriving it from the hostname on every navigation.
+- **Service Worker cache (`ngsw-config.json`)**: `/assets/tenants/custom-domain.json` added to the `config` freshness group (1 h TTL, maxSize increased to 10).
+
 
 ## [3.8.2] - 2026-06-08
 

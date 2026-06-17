@@ -18,11 +18,11 @@ import {
 import { provideHttpClient } from '@angular/common/http';
 import { TimeoutError } from 'rxjs';
 
-import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import {
   HttpWalletDiscoveryGateway,
   WALLET_DISCOVERY_TIMEOUT_MS,
 } from './http-wallet-discovery.gateway';
+import { UrlResolverService } from '../services/url-resolver.service';
 import { WalletConfigMetadataDto } from '../models/wallet-discovery.model';
 
 // ---------------------------------------------------------------------------
@@ -35,10 +35,7 @@ const BROWSER_DTO: WalletConfigMetadataDto = {
   key_manager: null,
 };
 
-/** Expected full URL based on the origin + constant used by the gateway. */
-const EXPECTED_URL = `${window.location.origin}${WALLET_DISCOVERY_PATH}`;
-
-function setup(): { gateway: HttpWalletDiscoveryGateway; httpMock: HttpTestingController } {
+function setup(): { gateway: HttpWalletDiscoveryGateway; httpMock: HttpTestingController; expectedUrl: string } {
   TestBed.configureTestingModule({
     providers: [
       provideHttpClient(),
@@ -50,6 +47,7 @@ function setup(): { gateway: HttpWalletDiscoveryGateway; httpMock: HttpTestingCo
   return {
     gateway: TestBed.inject(HttpWalletDiscoveryGateway),
     httpMock: TestBed.inject(HttpTestingController),
+    expectedUrl: `${window.location.origin}${TestBed.inject(UrlResolverService).walletDiscoveryPath()}`,
   };
 }
 
@@ -64,63 +62,63 @@ describe('HttpWalletDiscoveryGateway > fetch > emits GET with correct URL and he
     TestBed.resetTestingModule();
   });
 
-  it('issues a GET to <origin>/.well-known/wallet-config-metadata', () => {
-    const { gateway, httpMock } = setup();
+  it('issues a GET to <origin>/<walletDiscoveryPath>', () => {
+    const { gateway, httpMock, expectedUrl } = setup();
 
     gateway.fetch().subscribe();
 
-    const req = httpMock.expectOne(EXPECTED_URL);
+    const req = httpMock.expectOne(expectedUrl);
     expect(req.request.method).toBe('GET');
 
     req.flush(BROWSER_DTO);
   });
 
   it('sends Accept: application/json header', () => {
-    const { gateway, httpMock } = setup();
+    const { gateway, httpMock, expectedUrl } = setup();
 
     gateway.fetch().subscribe();
 
-    const req = httpMock.expectOne(EXPECTED_URL);
+    const req = httpMock.expectOne(expectedUrl);
     expect(req.request.headers.get('Accept')).toBe('application/json');
 
     req.flush(BROWSER_DTO);
   });
 
   it('does not send an Authorization header (endpoint is public — AC-009.1c)', () => {
-    const { gateway, httpMock } = setup();
+    const { gateway, httpMock, expectedUrl } = setup();
 
     gateway.fetch().subscribe();
 
-    const req = httpMock.expectOne(EXPECTED_URL);
+    const req = httpMock.expectOne(expectedUrl);
     expect(req.request.headers.has('Authorization')).toBe(false);
 
     req.flush(BROWSER_DTO);
   });
 
   it('does not send an X-Tenant-Id header (endpoint is public — AC-009.1c)', () => {
-    const { gateway, httpMock } = setup();
+    const { gateway, httpMock, expectedUrl } = setup();
 
     gateway.fetch().subscribe();
 
-    const req = httpMock.expectOne(EXPECTED_URL);
+    const req = httpMock.expectOne(expectedUrl);
     expect(req.request.headers.has('X-Tenant-Id')).toBe(false);
 
     req.flush(BROWSER_DTO);
   });
 
   it('does not set withCredentials (no cookies — AC-009.1c)', () => {
-    const { gateway, httpMock } = setup();
+    const { gateway, httpMock, expectedUrl } = setup();
 
     gateway.fetch().subscribe();
 
-    const req = httpMock.expectOne(EXPECTED_URL);
+    const req = httpMock.expectOne(expectedUrl);
     expect(req.request.withCredentials).toBe(false);
 
     req.flush(BROWSER_DTO);
   });
 
   it('emits the response body exactly once and completes', () => {
-    const { gateway, httpMock } = setup();
+    const { gateway, httpMock, expectedUrl } = setup();
 
     const emitted: WalletConfigMetadataDto[] = [];
     let completed = false;
@@ -130,7 +128,7 @@ describe('HttpWalletDiscoveryGateway > fetch > emits GET with correct URL and he
       complete: () => { completed = true; },
     });
 
-    const req = httpMock.expectOne(EXPECTED_URL);
+    const req = httpMock.expectOne(expectedUrl);
     req.flush(BROWSER_DTO);
 
     expect(emitted).toHaveLength(1);
@@ -152,7 +150,7 @@ describe('HttpWalletDiscoveryGateway > fetch > times out at 2000ms', () => {
   });
 
   it('errors with TimeoutError when the endpoint does not respond within 2000 ms', fakeAsync(() => {
-    const { gateway, httpMock } = setup();
+    const { gateway, httpMock, expectedUrl } = setup();
 
     let caughtError: unknown;
 
@@ -169,7 +167,7 @@ describe('HttpWalletDiscoveryGateway > fetch > times out at 2000ms', () => {
     tick(WALLET_DISCOVERY_TIMEOUT_MS + 1);
 
     // Drain the cancelled-but-still-queued request.
-    httpMock.match(EXPECTED_URL).forEach((req) => {
+    httpMock.match(expectedUrl).forEach((req) => {
       if (!req.cancelled) {
         req.flush(BROWSER_DTO);
       }
@@ -181,7 +179,7 @@ describe('HttpWalletDiscoveryGateway > fetch > times out at 2000ms', () => {
   }));
 
   it('does not error before the 2000 ms window elapses', fakeAsync(() => {
-    const { gateway, httpMock } = setup();
+    const { gateway, httpMock, expectedUrl } = setup();
 
     let caughtError: unknown;
 
@@ -195,7 +193,7 @@ describe('HttpWalletDiscoveryGateway > fetch > times out at 2000ms', () => {
     expect(caughtError).toBeUndefined();
 
     // Flush before the timeout fires to close the subscription cleanly.
-    httpMock.expectOne(EXPECTED_URL).flush(BROWSER_DTO);
+    httpMock.expectOne(expectedUrl).flush(BROWSER_DTO);
     httpMock.verify();
   }));
 });

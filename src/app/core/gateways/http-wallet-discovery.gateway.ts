@@ -3,9 +3,9 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { timeout } from 'rxjs/operators';
 
-import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import { WalletConfigMetadataDto } from '../models/wallet-discovery.model';
 import { WalletDiscoveryGateway } from './wallet-discovery.gateway';
+import { UrlResolverService } from '../services/url-resolver.service';
 
 /**
  * Time in milliseconds before a pending well-known fetch is cancelled.
@@ -68,9 +68,10 @@ export function isValidWalletConfigMetadataDto(value: unknown): value is WalletC
 @Injectable()
 export class HttpWalletDiscoveryGateway implements WalletDiscoveryGateway {
   private readonly http = inject(HttpClient);
+  private readonly urlResolver = inject(UrlResolverService);
 
   fetch(): Observable<WalletConfigMetadataDto> {
-    const url = `${window.location.origin}${WALLET_DISCOVERY_PATH}`;
+    const url = `${window.location.origin}${this.urlResolver.walletDiscoveryPath()}`;
 
     return this.http
       .get<WalletConfigMetadataDto>(url, {
