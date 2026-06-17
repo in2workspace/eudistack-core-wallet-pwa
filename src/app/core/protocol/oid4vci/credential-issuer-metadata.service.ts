@@ -2,8 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
-import { environment } from 'src/environments/environment';
 import { WalletService } from 'src/app/core/services/wallet.service';
+import { UrlResolverService } from 'src/app/core/services/url-resolver.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
 import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 
@@ -13,6 +13,7 @@ import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message'
 export class CredentialIssuerMetadataService {
 
   private readonly walletService = inject(WalletService);
+  private readonly urlResolver = inject(UrlResolverService);
 
   async getCredentialIssuerMetadataFromCredentialOffer(
   credentialOffer: CredentialOffer
@@ -61,7 +62,7 @@ export class CredentialIssuerMetadataService {
         credentialEndpoint: mapped.credentialEndpoint,
         credentialsSupported: mapped.credentialsSupported,
         deferredCredentialEndpoint: mapped.deferredCredentialEndpoint,
-        authorizationServer: environment.server_url,
+        authorizationServer: this.urlResolver.serverUrl(),
         credentialToken: mapped.credentialToken,
         credential_configurations_supported: mapped.credential_configurations_supported,
       };

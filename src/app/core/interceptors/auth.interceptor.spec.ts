@@ -20,7 +20,6 @@ import { HttpClient, HttpStatusCode, provideHttpClient, withInterceptors } from 
 
 import { AuthService } from '../services/auth.service';
 import { authInterceptor } from './auth.interceptor';
-import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import { environment } from 'src/environments/environment';
 
 const OWN_BACKEND = environment.server_url || 'http://localhost:8083';
@@ -60,7 +59,7 @@ describe('authInterceptor', () => {
   afterEach(() => httpMock.verify());
 
   it('T-auth-1: well-known endpoint passes through without Authorization header', () => {
-    const url = `${OWN_BACKEND}${WALLET_DISCOVERY_PATH}`;
+    const url = `${OWN_BACKEND}/business-wallet/.well-known/wallet-config-metadata`;
 
     httpClient.get(url).subscribe();
 
