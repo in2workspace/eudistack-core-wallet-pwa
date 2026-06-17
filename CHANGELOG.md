@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.8.5] - 2026-06-17
+## [3.8.6] - 2026-06-17
 
 ### Added
 
@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **OID4VP — Holder JWK fallback chain** (`Oid4vpEngineService.resolveHolderJwk`): when the selected credential lacks `cnf.jwk`, the engine now derives the holder public key from `cnf.kid` (legacy SD-JWT format with a `did:key` URI) or from `vc.credentialSubject.mandate.mandatee.id` (W3C VCDM) before bailing out. Aligns the wallet with the same fallback chain used by the verifier's `CryptographicBindingValidator`, enabling presentation of DOME legacy credentials that do not embed the holder JWK explicitly.
+
+## [3.8.5] - 2026-06-17
+
+### Fixed
+
+- **OID4VP — W3C VC presentation**: `Oid4vpEngineService` now resolves the holder ID from both VCDM 1.1 (`payload.vc.credentialSubject.id`) and VCDM 2.0 (`payload.credentialSubject.id`) JWT structures before falling back to the `sub` claim. Previously, credentials issued in VCDM 2.0 format (no `vc` wrapper) always failed with "Missing holder id in selected credential".
 
 ## [3.8.4] - 2026-06-17
 
@@ -34,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (2026-06-15)
 - **`tenants.constants.ts`**: reduced to data-only (`KNOWN_TENANTS`, `FALLBACK_TENANT`); resolution functions moved to `TenantService` as private methods.
-- **`tenantGuard`**, **`tenatnNotFound`**, **`credentialOfferService`**: read the resolved tenant signal from `TenantService` instead of re-deriving it from the hostname on every navigation.
+- **`tenantGuard`**, **`tenantNotFound`**, **`credentialOfferService`**: read the resolved tenant signal from `TenantService` instead of re-deriving it from the hostname on every navigation.
 - **Service Worker cache (`ngsw-config.json`)**: `/assets/tenants/custom-domain.json` added to the `config` freshness group (1 h TTL, maxSize increased to 10).
 
 

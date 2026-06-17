@@ -58,10 +58,11 @@ export class Oid4vpEngineService {
           await this.presentSdJwt(selectedVC, holderJwk, selectorResponse);
         } else {
           console.debug('[OID4VP] Step 4: Checking credentialSubject.id...');
-          const credentialSubjectId = credentialPayload?.vc?.credentialSubject?.id
-            ?? credentialPayload?.sub;
+          const credentialSubjectId = credentialPayload?.vc?.credentialSubject?.id   // VCDM 1.1 (vc wrapper)
+            ?? credentialPayload?.credentialSubject?.id                              // VCDM 2.0 (no vc wrapper)
+            ?? credentialPayload?.sub;                                               // JWT sub claim fallback
           if (!credentialSubjectId) {
-            console.error('[OID4VP] FAIL: Missing holder id. vc=', credentialPayload?.vc);
+            console.error('[OID4VP] FAIL: Missing holder id. vc=', credentialPayload?.vc, 'credentialSubject=', credentialPayload?.credentialSubject);
             throw new Oid4vpError('Missing holder id in selected credential', {
                 translationKey: 'errors.credential-validation-failed',
             });
