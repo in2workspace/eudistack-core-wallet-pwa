@@ -25,26 +25,6 @@ export class ProtocolCallbackPage implements OnInit {
     this.route.queryParams
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(params => {
-        const code = params['code'];
-        const state = params['state'];
-
-        // Running inside a hidden iframe or popup (cross-origin CORS fallback):
-        // relay the code to the parent/opener and let them handle the flow.
-        if (code && state) {
-          const isInIframe = window.parent !== window;
-          const isInPopup = !!window.opener;
-
-          if (isInIframe || isInPopup) {
-            const target = isInPopup ? window.opener : window.parent;
-            target.postMessage(
-              { type: 'oid4vci-auth-code', code, state },
-              window.location.origin
-            );
-            if (isInPopup) window.close();
-            return;
-          }
-        }
-
         const credentialOfferUri = params['credential_offer_uri'];
         if (credentialOfferUri) {
           this.router.navigate(['/tabs/credentials'], {

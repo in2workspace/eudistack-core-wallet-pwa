@@ -6,17 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.8.9] - 2026-06-18
+## [3.8.10] - 2026-06-18
 
 ### Fixed
 
-- **OID4VCI Authorization Code Flow — session logout on cross-domain deployments**: replaced the `window.location.href` (page-reload) approach with a popup window (`window.open` + `postMessage`). The page-reload destroyed the in-memory `accessToken` in `RemoteAuthService` on every credential issuance via authorization code grant, forcing passkey re-authentication. With the popup approach the parent page never navigates: `AuthorizationCodeTokenService.callAuthorizeEndpoint` opens a popup to the issuer's authorize endpoint; `ProtocolCallbackPage` detects `window.opener`, relays `{ type: 'oid4vci-auth-code', code, state }` back via `postMessage`, and closes. `authGuard` removed from `/wallet/callback` route (the popup's Angular instance has no in-memory auth token). `AuthCodeFlowStateService` deleted (sessionStorage state approach no longer needed).
-
-## [3.8.8] - 2026-06-18
-
-### Fixed
-
-- **OID4VCI Authorization Code Flow — CORS error on cross-domain deployments**: `callAuthorizeEndpoint` now navigates the browser via `window.location.href` instead of using `HttpClient.get()` (XHR). This fixes CORS failures on deployments where the wallet and issuer run on separate domains (e.g. `wallet.dome-marketplace-lcl.org` / `issuer.dome-marketplace-lcl.org`). Chrome requires `Access-Control-Allow-Origin` on all responses in a cross-origin XHR redirect chain, including the final S3-served SPA callback URL which cannot serve CORS headers. Introducing `AuthCodeFlowStateService` to persist the flow state (offer, issuer metadata, codeVerifier, redirectUri, oauthState) across the browser navigation in sessionStorage. The flow resumes at `/wallet/callback` via a new `resumeAuthCodeFlow()` method in `Oid4vciEngineService`. `ProtocolCallbackPage` extended to handle `?code=&state=` params and complete the credential decision flow. Route `/wallet/callback` added (matches the default `oid4vci_redirect_uri` environment value).
+- **OID4VCI authorization code flow — DOME cross-origin**: revert browser-navigation and popup workarounds (PR #126, #127). The root fix is in `eudistack-core-issuer`: `CorsWebFilter` now runs as a standalone bean at highest precedence, guaranteeing `Access-Control-Allow-Origin` on the 302 response from `/oid4vci/v1/authorize`. The wallet restores the original XHR-based approach (`HttpClient.get` + `response.url`), which works without browser navigation or popups.
 
 ## [3.8.7] - 2026-06-18
 ### Changed

@@ -5,7 +5,6 @@ import { AuthorisationServerMetadataService } from './authorisation-server-metad
 import { PreAuthorizedTokenService } from './pre-authorized-token.service';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
-import { AuthorisationServerMetadata } from '../../models/dto/AuthorisationServerMetadata';
 import { ProofBuilderService } from './proof-builder.service';
 import { KeyStorageProvider, OID4VCIKeyGenContext } from '../../spi/key-storage.provider.service';
 import { JwtService } from './jwt.service';
@@ -85,89 +84,79 @@ export class Oid4vciEngineService {
       }
 
       this.loader.addLoadingProcess();
+      const cfg = this.findCredentialConfigurationContext(credentialOffer, credentialIssuerMetadata);
 
-      return this.performPostTokenFlow(tokenResponse, credentialOffer, credentialIssuerMetadata, authorisationServerMetadata);
+      const nonceEndpoint = credentialIssuerMetadata.nonceEndpoint
+        ?? authorisationServerMetadata.nonceEndpoint;
+
+      const nonce = nonceEndpoint
+        ? await this.nonceService.fetchNonce(nonceEndpoint)
+        : '';
+
+      let jwtProof = null;
+      let proofPublicJwk: JsonWebKey | null = null;
+      let holderKeyId: string | undefined;
+      let holderKid: string | undefined;
+
+      if (cfg.isCryptographicBindingSupported && credentialIssuerMetadata.credentialIssuer) {
+        const proofContext = await this.issueProofJwt({
+          nonce,
+          credentialIssuer: credentialIssuerMetadata.credentialIssuer,
+          credentialConfigurationId: cfg.credentialConfigurationId,
+          format: cfg.format,
+          supportedAlgs: cfg.supportedAlgs ?? ['ES256'],
+        });
+        jwtProof = proofContext.jwt;
+        proofPublicJwk = proofContext.publicKeyJwk;
+        holderKeyId = proofContext.holderKeyId;
+        holderKid = proofContext.thumbprint;
+      }
+
+      const format = cfg.format;
+      const credentialConfigurationId = cfg.credentialConfigurationId;
+
+      // GET CREDENTIAL (with DPoP proof if token is DPoP-bound)
+      let credentialDpopJwt: string | undefined;
+      if (tokenResponse.token_type?.toLowerCase() === 'dpop' && credentialIssuerMetadata.credentialEndpoint) {
+        const dpopProof = await this.dpopService.issueProof('POST', credentialIssuerMetadata.credentialEndpoint);
+        credentialDpopJwt = dpopProof.jwt;
+      }
+
+      const credentialResponseWithStatus = await this.credentialService.getCredential({
+        jwtProof,
+        tokenResponse,
+        credentialIssuerMetadata,
+        format,
+        credentialConfigurationId,
+        dpopJwt: credentialDpopJwt,
+      });
+
+      // VALIDATE CNF FROM THE API RESPONSE
+      if (jwtProof && proofPublicJwk) {
+        await this.validateCredentialCnf(credentialResponseWithStatus, jwtProof, proofPublicJwk);
+      }else{
+        console.warn("Skipping cnf validation since no proof JWT was generated.");
+      }
+
+      const credentialResponseWithStatusCode: CredentialResponseWithStatusCode = {
+        statusCode: credentialResponseWithStatus.status, ...credentialResponseWithStatus
+      }
+
+      const tokenObtainedAt = Math.floor(Date.now() / 1000);
+
+      return {
+        credentialResponseWithStatus: credentialResponseWithStatusCode,
+        tokenResponse,
+        issuerMetadata: credentialIssuerMetadata,
+        authorisationServerMetadata,
+        tokenObtainedAt,
+        format,
+        credentialConfigurationId,
+        holderKeyId,
+        holderKid,
+      };
     }});
 
-  }
-
-  private async performPostTokenFlow(
-    tokenResponse: TokenResponse,
-    credentialOffer: CredentialOffer,
-    credentialIssuerMetadata: CredentialIssuerMetadata,
-    authorisationServerMetadata: AuthorisationServerMetadata,
-  ): Promise<FinalizeIssuancePayload> {
-    const cfg = this.findCredentialConfigurationContext(credentialOffer, credentialIssuerMetadata);
-
-    const nonceEndpoint = credentialIssuerMetadata.nonceEndpoint
-      ?? authorisationServerMetadata.nonceEndpoint;
-
-    const nonce = nonceEndpoint
-      ? await this.nonceService.fetchNonce(nonceEndpoint)
-      : '';
-
-    let jwtProof = null;
-    let proofPublicJwk: JsonWebKey | null = null;
-    let holderKeyId: string | undefined;
-    let holderKid: string | undefined;
-
-    if (cfg.isCryptographicBindingSupported && credentialIssuerMetadata.credentialIssuer) {
-      const proofContext = await this.issueProofJwt({
-        nonce,
-        credentialIssuer: credentialIssuerMetadata.credentialIssuer,
-        credentialConfigurationId: cfg.credentialConfigurationId,
-        format: cfg.format,
-        supportedAlgs: cfg.supportedAlgs ?? ['ES256'],
-      });
-      jwtProof = proofContext.jwt;
-      proofPublicJwk = proofContext.publicKeyJwk;
-      holderKeyId = proofContext.holderKeyId;
-      holderKid = proofContext.thumbprint;
-    }
-
-    const format = cfg.format;
-    const credentialConfigurationId = cfg.credentialConfigurationId;
-
-    // GET CREDENTIAL (with DPoP proof if token is DPoP-bound)
-    let credentialDpopJwt: string | undefined;
-    if (tokenResponse.token_type?.toLowerCase() === 'dpop' && credentialIssuerMetadata.credentialEndpoint) {
-      const dpopProof = await this.dpopService.issueProof('POST', credentialIssuerMetadata.credentialEndpoint);
-      credentialDpopJwt = dpopProof.jwt;
-    }
-
-    const credentialResponseWithStatus = await this.credentialService.getCredential({
-      jwtProof,
-      tokenResponse,
-      credentialIssuerMetadata,
-      format,
-      credentialConfigurationId,
-      dpopJwt: credentialDpopJwt,
-    });
-
-    // VALIDATE CNF FROM THE API RESPONSE
-    if (jwtProof && proofPublicJwk) {
-      await this.validateCredentialCnf(credentialResponseWithStatus, jwtProof, proofPublicJwk);
-    }else{
-      console.warn("Skipping cnf validation since no proof JWT was generated.");
-    }
-
-    const credentialResponseWithStatusCode: CredentialResponseWithStatusCode = {
-      statusCode: credentialResponseWithStatus.status, ...credentialResponseWithStatus
-    }
-
-    const tokenObtainedAt = Math.floor(Date.now() / 1000);
-
-    return {
-      credentialResponseWithStatus: credentialResponseWithStatusCode,
-      tokenResponse,
-      issuerMetadata: credentialIssuerMetadata,
-      authorisationServerMetadata,
-      tokenObtainedAt,
-      format,
-      credentialConfigurationId,
-      holderKeyId,
-      holderKid,
-    };
   }
 
   private shouldUsePreAuthorizedGrant(credentialOffer: CredentialOffer): boolean {

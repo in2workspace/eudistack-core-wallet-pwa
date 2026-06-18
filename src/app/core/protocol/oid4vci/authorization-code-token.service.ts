@@ -127,15 +127,6 @@ export class AuthorizationCodeTokenService {
     });
   }
 
-  // For same-origin deployments (issuer and wallet share domain), the authorize endpoint
-  // redirects immediately back to the callback with ?code=&state=. Angular's HttpClient
-  // follows the redirect and response.url contains the code — no browser navigation needed.
-  //
-  // For cross-origin deployments (e.g. DOME with separate domains), Chrome blocks the XHR
-  // redirect chain because the issuer's 302 response lacks CORS headers. In that case we
-  // fall back to a hidden iframe: browser navigation is not subject to CORS restrictions,
-  // so the iframe follows the redirect silently and the callback page relays the code back
-  // via postMessage without any visible UI change.
   private async callAuthorizeEndpoint(params: {
     metadata: AuthorisationServerMetadata;
     requestUri?: string;
@@ -169,7 +160,6 @@ export class AuthorizationCodeTokenService {
 
     const authorizeUrl = `${authEndpoint}?${queryParams.toString()}`;
 
-    // Primary path: programmatic HTTP request (same-origin deployments).
     try {
       const response = await firstValueFrom(
         this.http.get(authorizeUrl, { observe: 'response', responseType: 'text' })
@@ -194,59 +184,10 @@ export class AuthorizationCodeTokenService {
       return code;
     } catch (e: unknown) {
       if (e instanceof Oid4vciError) throw e;
-
-      // CORS failure on the XHR redirect: fall back to hidden iframe.
-      return this.callAuthorizeEndpointViaIframe(authorizeUrl, params.state);
+      wrapOid4vciHttpError(e, 'Authorization request failed', {
+        translationKey: 'errors.authorization-failed',
+      });
     }
-  }
-
-  // Hidden-iframe fallback for cross-origin deployments where the issuer's 302 redirect
-  // lacks CORS headers. The iframe performs browser navigation (no CORS restriction),
-  // lands on the same-origin /wallet/callback?code=&state=, and ProtocolCallbackPage
-  // relays the code back via postMessage.
-  private callAuthorizeEndpointViaIframe(authorizeUrl: string, state: string): Promise<string> {
-    return new Promise<string>((resolve, reject) => {
-      const iframe = document.createElement('iframe');
-      iframe.setAttribute('aria-hidden', 'true');
-      iframe.style.cssText = 'display:none;position:absolute;width:0;height:0;border:0;';
-      document.body.appendChild(iframe);
-
-      const cleanup = () => {
-        clearTimeout(timeoutId);
-        window.removeEventListener('message', messageHandler);
-        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-      };
-
-      const messageHandler = (event: MessageEvent) => {
-        if (event.origin !== window.location.origin) return;
-        if (!event.data || event.data.type !== 'oid4vci-auth-code') return;
-        cleanup();
-        if (event.data.state !== state) {
-          reject(new Oid4vciError('OAuth state mismatch in authorization callback', {
-            translationKey: 'errors.authorization-failed',
-          }));
-          return;
-        }
-        const code = event.data.code;
-        if (!code) {
-          reject(new Oid4vciError(`Authorization failed: ${event.data.error ?? 'missing code'}`, {
-            translationKey: 'errors.authorization-failed',
-          }));
-          return;
-        }
-        resolve(code);
-      };
-
-      const timeoutId = setTimeout(() => {
-        cleanup();
-        reject(new Oid4vciError('Authorization request timed out', {
-          translationKey: 'errors.authorization-failed',
-        }));
-      }, 30_000);
-
-      window.addEventListener('message', messageHandler);
-      iframe.src = authorizeUrl;
-    });
   }
 
   private async exchangeCodeForToken(params: {

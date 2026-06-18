@@ -7,7 +7,7 @@ import { BehaviorSubject } from 'rxjs';
 import { ProtocolCallbackPage } from './protocol-callback.page';
 
 class MockRouter {
-  public navigate = jest.fn().mockResolvedValue(true);
+  public navigate = jest.fn();
 }
 
 describe('ProtocolCallbackPage', () => {
@@ -20,10 +20,6 @@ describe('ProtocolCallbackPage', () => {
     mockRouter = new MockRouter();
     queryParamsSubject = new BehaviorSubject<Record<string, string>>({});
 
-    // Ensure default state: not in iframe, not in popup
-    Object.defineProperty(window, 'opener', { value: null, configurable: true });
-    Object.defineProperty(window, 'parent', { value: window, configurable: true });
-
     await TestBed.configureTestingModule({
       imports: [
         IonicModule.forRoot(),
@@ -31,17 +27,15 @@ describe('ProtocolCallbackPage', () => {
       ],
       providers: [
         { provide: Router, useValue: mockRouter },
-        { provide: ActivatedRoute, useValue: { queryParams: queryParamsSubject } },
+        {
+          provide: ActivatedRoute,
+          useValue: { queryParams: queryParamsSubject }
+        },
       ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(ProtocolCallbackPage);
     component = fixture.componentInstance;
-  });
-
-  afterEach(() => {
-    Object.defineProperty(window, 'opener', { value: null, configurable: true });
-    Object.defineProperty(window, 'parent', { value: window, configurable: true });
   });
 
   it('should create', () => {
@@ -81,45 +75,6 @@ describe('ProtocolCallbackPage', () => {
 
   it('should navigate to /tabs/home when no recognized query param is present', () => {
     queryParamsSubject.next({});
-    fixture.detectChanges();
-
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/home']);
-  });
-
-  it('should post auth code to parent and not navigate when code+state are present and running in iframe', () => {
-    const mockPostMessage = jest.fn();
-    const mockParent = { postMessage: mockPostMessage };
-    Object.defineProperty(window, 'parent', { value: mockParent, configurable: true });
-
-    queryParamsSubject.next({ code: 'auth-code-123', state: 'state-abc' });
-    fixture.detectChanges();
-
-    expect(mockPostMessage).toHaveBeenCalledWith(
-      { type: 'oid4vci-auth-code', code: 'auth-code-123', state: 'state-abc' },
-      window.location.origin
-    );
-    expect(mockRouter.navigate).not.toHaveBeenCalled();
-  });
-
-  it('should post auth code to opener and close when code+state are present and running in popup', () => {
-    const mockPostMessage = jest.fn();
-    const mockClose = jest.fn();
-    Object.defineProperty(window, 'opener', { value: { postMessage: mockPostMessage }, configurable: true });
-    Object.defineProperty(window, 'close', { value: mockClose, configurable: true });
-
-    queryParamsSubject.next({ code: 'auth-code-123', state: 'state-abc' });
-    fixture.detectChanges();
-
-    expect(mockPostMessage).toHaveBeenCalledWith(
-      { type: 'oid4vci-auth-code', code: 'auth-code-123', state: 'state-abc' },
-      window.location.origin
-    );
-    expect(mockClose).toHaveBeenCalled();
-    expect(mockRouter.navigate).not.toHaveBeenCalled();
-  });
-
-  it('should navigate to /tabs/home when code+state are present but not in iframe or popup', () => {
-    queryParamsSubject.next({ code: 'auth-code-123', state: 'state-abc' });
     fixture.detectChanges();
 
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/home']);
