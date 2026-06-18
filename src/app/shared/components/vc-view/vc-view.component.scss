@@ -30,7 +30,8 @@ ion-modal.stack-modal {
 
   &:hover {
     box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
-    transform: translateY(-3px);
+    transform: translateY(-8px) scale(1.02);
+    outline: 2px solid #ffcc00;
   }
 
   &--revoked,
@@ -141,7 +142,7 @@ ion-modal.stack-modal {
 
 .card-shield-icon {
   font-size: 20px;
-  color: color-mix(in srgb, var(--primary-contrast-color, #fff) 80%, transparent);  
+  color: color-mix(in srgb, var(--primary-contrast-color, #fff) 80%, transparent);
   flex-shrink: 0;
 }
 
@@ -162,7 +163,7 @@ ion-modal.stack-modal {
 }
 
 .card-field {
-  color: color-mix(in srgb, var(--primary-contrast-color, #fff) 80%, transparent);  
+  color: color-mix(in srgb, var(--primary-contrast-color, #fff) 80%, transparent);
   @include fluid-type(0.75rem, 0.8125rem);
   font-weight: 500;
   overflow: hidden;
@@ -329,7 +330,7 @@ ion-modal.detail-blurred::part(content) {
   font-size: 14px;
   &::part(native) {
     border: 2px solid var(--border-strong);
-  } 
+  }
 }
 
 // ── Verification Modal ───────────────────────────────
