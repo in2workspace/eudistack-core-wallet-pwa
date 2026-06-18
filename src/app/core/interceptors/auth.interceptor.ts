@@ -4,6 +4,7 @@ import { throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 import { UrlResolverService } from '../services/url-resolver.service';
+import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   // --- Early exits: never need a token, and must NOT trigger inject(AuthService)
@@ -12,7 +13,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const urlResolver = inject(UrlResolverService);
 
   // Public well-known endpoint (EUDISTACK-412)
-  if (req.url.endsWith(urlResolver.walletDiscoveryPath())) {
+  if (req.url.endsWith(WALLET_DISCOVERY_PATH)) {
     return next(req);
   }
 
