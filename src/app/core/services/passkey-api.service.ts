@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from 'src/environments/environment';
+import { UrlResolverService } from './url-resolver.service';
 
 export interface PasskeyInfo {
   id: string;
@@ -18,8 +18,6 @@ export interface RegisterPasskeyRequest {
   userAgent?: string;
 }
 
-const AUTH_BASE = `${environment.server_url}/api/v1/auth`;
-
 /**
  * Service to manage passkeys via the backend API.
  * Only used in server mode (wallet_mode === 'server').
@@ -34,13 +32,16 @@ const AUTH_BASE = `${environment.server_url}/api/v1/auth`;
 @Injectable({ providedIn: 'root' })
 export class PasskeyApiService {
   private readonly http = inject(HttpClient);
+  private readonly urlResolver = inject(UrlResolverService);
+
+  private get authBase(): string { return `${this.urlResolver.serverUrl()}/api/v1/auth`; }
 
   /**
    * Register a new passkey on the server after local WebAuthn creation.
    * US-005: POST /api/auth/passkeys
    */
   registerPasskey(request: RegisterPasskeyRequest): Observable<PasskeyInfo> {
-    return this.http.post<PasskeyInfo>(`${AUTH_BASE}/passkeys`, request);
+    return this.http.post<PasskeyInfo>(`${this.authBase}/passkeys`, request);
   }
 
   /**
@@ -48,7 +49,7 @@ export class PasskeyApiService {
    * US-006: GET /api/auth/passkeys
    */
   listPasskeys(): Observable<PasskeyInfo[]> {
-    return this.http.get<PasskeyInfo[]>(`${AUTH_BASE}/passkeys`);
+    return this.http.get<PasskeyInfo[]>(`${this.authBase}/passkeys`);
   }
 
   /**
@@ -56,7 +57,7 @@ export class PasskeyApiService {
    * US-008: PATCH /api/auth/passkeys/{id}
    */
   renamePasskey(id: string, displayName: string): Observable<PasskeyInfo> {
-    return this.http.patch<PasskeyInfo>(`${AUTH_BASE}/passkeys/${id}`, { displayName });
+    return this.http.patch<PasskeyInfo>(`${this.authBase}/passkeys/${id}`, { displayName });
   }
 
   /**
@@ -64,7 +65,7 @@ export class PasskeyApiService {
    * US-007: DELETE /api/auth/passkeys/{id}
    */
   deletePasskey(id: string): Observable<void> {
-    return this.http.delete<void>(`${AUTH_BASE}/passkeys/${id}`);
+    return this.http.delete<void>(`${this.authBase}/passkeys/${id}`);
   }
 
   /**
@@ -72,7 +73,7 @@ export class PasskeyApiService {
    * US-009: POST /api/auth/passkeys/{id}/revoke-sessions
    */
   revokeSessions(id: string): Observable<void> {
-    return this.http.post<void>(`${AUTH_BASE}/passkeys/${id}/revoke-sessions`, {});
+    return this.http.post<void>(`${this.authBase}/passkeys/${id}/revoke-sessions`, {});
   }
 }
 

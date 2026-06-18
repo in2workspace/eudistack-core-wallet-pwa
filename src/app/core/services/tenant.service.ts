@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { KNOWN_TENANTS, FALLBACK_TENANT } from '../constants/tenants.constants';
+import { CustomDomainConfig } from '../models/custom-domain.model';
 
 const ENV_SUFFIXES = ['-stg', '-dev', '-pre'] as const;
 const WALLET_HOME_PATH = '/wallet/';
@@ -13,7 +14,7 @@ export class TenantService {
   private readonly _tenant = signal<string | null>(null);
 
   private _resolvePromise: Promise<void> | null = null;
-  private _customDomainMapPromise: Promise<Record<string, string>> | null = null;
+  private _customDomainConfigPromise: Promise<CustomDomainConfig> | null = null;
 
   /** Resolved tenant id, or null if the hostname could not be mapped to a known tenant. */
   readonly tenant = this._tenant.asReadonly();
@@ -55,8 +56,8 @@ export class TenantService {
       return tenantFromHostname;
     }
 
-    const customDomainMap = await this.loadCustomDomainMap();
-    const tenantFromCustomDomain = customDomainMap[normalizedHostname];
+    const customDomainConfig = await this.loadCustomDomainConfig();
+    const tenantFromCustomDomain = customDomainConfig.domains[normalizedHostname]?.tenantId;
 
     return tenantFromCustomDomain && KNOWN_TENANTS.includes(tenantFromCustomDomain)
       ? tenantFromCustomDomain
@@ -70,6 +71,14 @@ export class TenantService {
   extractTenantIdFromHostname(hostname: string): string | null {
     if (!hostname.includes('.')) return null;
     return this.extractBaseTenantFromHostname(hostname);
+  }
+
+  /**
+   * Returns true when the current hostname is a known-tenant subdomain (canonical deployment).
+   * Returns false for custom domains resolved via custom-domain.json.
+   */
+  isCanonicalDomain(hostname = window.location.hostname): boolean {
+    return this.resolveKnownTenantFromHostname(hostname.toLowerCase()) !== null;
   }
 
   buildFallbackUrl(location: Location = window.location): string {
@@ -103,14 +112,14 @@ export class TenantService {
     return this.stripEnvSuffix(first).base;
   }
 
-  private loadCustomDomainMap(): Promise<Record<string, string>> {
-    if (!this._customDomainMapPromise) {
-      this._customDomainMapPromise = firstValueFrom(
-        this.http.get<Record<string, string>>(CUSTOM_DOMAIN_CONFIG_URL),
-      ).catch(() => ({}));
+  private loadCustomDomainConfig(): Promise<CustomDomainConfig> {
+    if (!this._customDomainConfigPromise) {
+      this._customDomainConfigPromise = firstValueFrom(
+        this.http.get<CustomDomainConfig>(CUSTOM_DOMAIN_CONFIG_URL),
+      ).catch(() => ({ domains: {}, env: {} }));
     }
 
-    return this._customDomainMapPromise;
+    return this._customDomainConfigPromise;
   }
 
   private stripEnvSuffix(tenant: string): { base: string; suffix: string } {

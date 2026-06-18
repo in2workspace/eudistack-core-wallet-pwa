@@ -3,16 +3,16 @@ import { inject } from '@angular/core';
 import { throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
-import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
-import { environment } from 'src/environments/environment';
+import { UrlResolverService } from '../services/url-resolver.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   // --- Early exits: never need a token, and must NOT trigger inject(AuthService)
   // because APP_INITIALIZER runs these requests before WalletDiscoveryService
   // resolves its snapshot (AUTH_SERVICE_PROVIDER factory timing, EUDISTACK-502).
+  const urlResolver = inject(UrlResolverService);
 
   // Public well-known endpoint (EUDISTACK-412)
-  if (req.url.endsWith(WALLET_DISCOVERY_PATH)) {
+  if (req.url.endsWith(urlResolver.walletDiscoveryPath())) {
     return next(req);
   }
 
@@ -29,11 +29,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   // External requests (e.g. verifier auth-response, issuer well-known)
-  // In nginx proxy mode server_url is empty, so any relative path is own-backend.
-  const serverUrl = environment.server_url;
-  const isOwnBackend = serverUrl
-    ? req.url.startsWith(serverUrl)
-    : req.url.startsWith('/');
+  const serverUrl = urlResolver.serverUrl();
+  const isOwnBackend = req.url.startsWith(serverUrl);
   if (!isOwnBackend) {
     return next(req);
   }

@@ -9,12 +9,13 @@ import {
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ToastServiceHandler } from '../../shared/services/toast.service';
-import { SERVER_PATH, WALLET_DISCOVERY_PATH } from '../constants/api.constants';
-import { environment } from 'src/environments/environment';
+import { SERVER_PATH } from '../constants/api.constants';
+import { UrlResolverService } from '../services/url-resolver.service';
 
 @Injectable()
 export class HttpErrorInterceptor implements HttpInterceptor {
   private readonly toastServiceHandler = inject(ToastServiceHandler);
+  private readonly urlResolver = inject(UrlResolverService);
 
   private logHandledSilentlyErrorMsg(errMsg: string) {
     console.error('Handled silently:', errMsg);
@@ -31,7 +32,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         // Normalize URL to ensure request params are not included in the conditionals below
         const urlObj = new URL(request.url, window.location.origin);
         const href = urlObj.href;
-        const isOwnBackend = href.startsWith(environment.server_url);
+        const isOwnBackend = href.startsWith(this.urlResolver.serverUrl());
         const pathname = urlObj.pathname;
 
         let errMessage =
@@ -49,7 +50,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           // static assets (theme.json, i18n, etc.) — not real backend errors
           pathname.startsWith('/assets/') ||
           // well-known wallet discovery endpoint — silent fallback by design (AD-2)
-          pathname.endsWith(WALLET_DISCOVERY_PATH) ||
+          pathname.endsWith(this.urlResolver.walletDiscoveryPath()) ||
           // get credentials endpoint
           (pathname.endsWith(SERVER_PATH.CREDENTIALS) &&
             errMessage?.startsWith('The credentials list is empty')) ||

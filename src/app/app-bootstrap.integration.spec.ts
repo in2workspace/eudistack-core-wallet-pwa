@@ -36,7 +36,6 @@ import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 
 import { environment } from 'src/environments/environment';
-import { WALLET_DISCOVERY_PATH } from './core/constants/api.constants';
 import { WALLET_DISCOVERY_GATEWAY, WalletDiscoveryGateway } from './core/gateways/wallet-discovery.gateway';
 import { WalletDiscoveryService } from './core/services/wallet-discovery.service';
 import { walletDiscoveryInitializer } from './core/initializers/wallet-discovery.initializer';
@@ -48,8 +47,8 @@ import { TelemetryService } from './core/services/telemetry.service';
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Full well-known URL constructed the same way as the production gateway. */
-const DISCOVERY_URL = `${window.location.origin}${WALLET_DISCOVERY_PATH}`;
+/** Full well-known URL for canonical (known-tenant) deployments, as the production gateway constructs it. */
+const DISCOVERY_URL = `${window.location.origin}/business-wallet/.well-known/wallet-config-metadata`;
 
 /** Valid browser-mode DTO used to flush successful responses. */
 const BROWSER_DTO: WalletConfigMetadataDto = {

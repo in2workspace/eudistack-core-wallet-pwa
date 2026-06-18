@@ -3,8 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { KeyStorageProvider, OID4VCIKeyGenContext } from '../spi/key-storage.provider.service';
 import { RawKeyAlgorithm, PublicKeyInfo, KeyInfo } from '../models/StoredKeyRecord';
-import { environment } from 'src/environments/environment';
 import { base64UrlEncode, base64UrlDecode } from '../utils/base64url';
+import { UrlResolverService } from '../services/url-resolver.service';
 import { SERVER_PATH } from '../constants/api.constants';
 
 interface KeyGenerateResponseDto {
@@ -37,7 +37,9 @@ interface CredentialListItemDto {
 @Injectable()
 export class ServerKeyStorageProvider extends KeyStorageProvider {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = environment.server_url;
+  private readonly urlResolver = inject(UrlResolverService);
+
+  private get baseUrl(): string { return this.urlResolver.serverUrl(); }
 
   /** Session-scoped cache: kid (JWK thumbprint) → PublicKeyInfo. Populated on generateKeyPair. */
   private readonly keyCache = new Map<string, PublicKeyInfo>();
