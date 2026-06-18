@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { TestBed } from '@angular/core/testing';
 import { WrapService } from './wrap.service';
 

@@ -4,11 +4,7 @@
   "compilerOptions": {
     "outDir": "./out-tsc/spec",
     "module": "CommonJs", //?
-    // "node" is required for wrap.service.spec.ts which polyfills crypto.subtle
-    // (JSDOM does not expose SubtleCrypto) using require('crypto').webcrypto.
-    // It is safe because "include" is restricted to *.spec.ts and *.d.ts — Node
-    // types do not leak into production Angular source compiled via tsconfig.app.json.
-    "types": ["jest", "node"]
+    "types": ["jest"]
   },
   //? "esModuleInterop": true,
   //? "emitDecoratorMetadata": true,
