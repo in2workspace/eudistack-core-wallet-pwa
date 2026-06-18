@@ -28,7 +28,7 @@
     "title": "Credenciales",
     "add": "Añade",
     "nocred": "No tienes ninguna credencial cargada",
-    "nocred-title": "Sin credenciales",
+    "nocred-title": "No hay credenciales",
     "nocred-subtitle": "Escanea un código QR o acepta una oferta de credencial para empezar.",
     "expiration": "Caducado",
     "expiring-soon": "Caduca pronto",

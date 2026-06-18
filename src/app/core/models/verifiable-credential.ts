@@ -3,8 +3,8 @@
 export interface VerifiableCredential {
   '@context': string[];
   id: string;
-  type?: ExtendedCredentialType[];  
-  lifeCycleStatus: LifeCycleStatus; 
+  type?: ExtendedCredentialType[];
+  lifeCycleStatus: LifeCycleStatus;
   name?: string;
   description?: string;
   issuer: Issuer;

@@ -29,15 +29,20 @@
 
   <div class="card-body">
     <div class="card-title-row">
-      <ion-icon name="shield-checkmark-outline" class="card-shield-icon" aria-hidden="true"></ion-icon>
-      <span class="card-title">{{ displayName() || credentialType }}</span>
+      <div class="custom-card-format" style="padding-left: 28px; margin-top: 4px;">
+        <small style="opacity: 0.8; font-size: 11px;">
+          Formato: {{ credentialInput.credentialFormat }}
+        </small>
+      </div>
+        <ion-icon name="shield-checkmark-outline" class="card-shield-icon" aria-hidden="true"></ion-icon>
+        <span class="card-title">{{ displayName() || credentialType }}</span>
     </div>
+  </div>
     <div class="card-fields" [class.card-blurred]="blurred()">
       @for(field of cardFields(); track field) {
         <span class="card-field">{{ field.value }}</span>
       }
     </div>
-  </div>
 
   <ion-alert
     [isOpen]="isAlertOpenNotFound"
