@@ -3,7 +3,6 @@ import { firstValueFrom } from 'rxjs';
 import { CredentialOffer, CredentialOfferCredential, CredentialOfferGrant } from '../../models/dto/CredentialOffer';
 import { PRE_AUTH_CODE_GRANT_TYPE } from 'src/app/core/constants/credential-offer.constants';
 import { WalletService } from 'src/app/core/services/wallet.service';
-import { TenantService } from 'src/app/core/services/tenant.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
 import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 
@@ -11,13 +10,10 @@ import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message'
 export class CredentialOfferService {
 
   private readonly walletService = inject(WalletService);
-  private readonly tenantService = inject(TenantService);
 
     async getCredentialOfferFromCredentialOfferUri(credentialOfferUri: string): Promise<CredentialOffer> {
     try {
       const parsedUri = this.parseCredentialOfferUri(credentialOfferUri);
-
-      await this.validateOfferUriTenant(parsedUri);
 
       const responseText = await this.fetchCredentialOffer(parsedUri);
 
@@ -177,25 +173,6 @@ export class CredentialOfferService {
 
   private asNumber(value: unknown): number | undefined {
     return typeof value === 'number' ? value : undefined;
-  }
-
-  private async validateOfferUriTenant(credentialOfferUri: string): Promise<void> {
-    const walletTenant = this.tenantService.tenant();
-
-    // Skip validation when tenant is unknown or when running on localhost.
-    if (!walletTenant || walletTenant === 'localhost') return;
-
-    const offerTenant = await this.tenantService.resolveTenantIdFromUrl(credentialOfferUri);
-
-    // Skip validation for invalid URLs, localhost, internal services or unknown domains.
-    if (!offerTenant) return;
-
-    if (walletTenant !== offerTenant) {
-      throw new Oid4vciError(
-        `Credential offer tenant '${offerTenant}' does not match wallet tenant '${walletTenant}'`,
-        { translationKey: 'errors.cross-tenant-offer' },
-      );
-    }
   }
 
   private validateCredentialOffer(credentialOffer: CredentialOffer): void {
