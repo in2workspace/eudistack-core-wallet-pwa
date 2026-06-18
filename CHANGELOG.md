@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## [3.8.7] - 2026-06-18
+### Changed
 - **URL resolution — removed canonical/non-canonical branching**: `UrlResolverService` no longer checks `isCanonicalDomain()` to pick between `/business-wallet/` and bare-origin paths. `serverUrl()` and `websocketUrl()` always apply the `/business-wallet` prefix (env override via `server_url` / `websocket_url` still wins). `walletDiscoveryPath()` method removed; its value is now the compile-time constant `WALLET_DISCOVERY_PATH` in `api.constants.ts`. All consumers (`authInterceptor`, `HttpErrorInterceptor`, `HttpWalletDiscoveryGateway`) updated accordingly.
+
+## [3.8.5] - 2026-06-18
+### Changed
+- Remove cross-tenant offer validation
 
 ## [3.8.5] - 2026-06-17
 
