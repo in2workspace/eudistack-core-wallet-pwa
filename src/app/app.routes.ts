@@ -72,7 +72,7 @@ export const routes: Routes = [
   },
   {
     path: 'wallet/callback',
-    canActivate: [tenantGuard, authGuard],
+    canActivate: [tenantGuard],
     loadComponent: () =>
       import('./features/protocol-callback/protocol-callback.page').then(
         m => m.ProtocolCallbackPage

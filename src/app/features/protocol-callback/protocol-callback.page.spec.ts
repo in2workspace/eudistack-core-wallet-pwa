@@ -3,16 +3,8 @@ import { IonicModule } from '@ionic/angular';
 import { RouterTestingModule } from '@angular/router/testing';
 import { Router } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
-import { BehaviorSubject, of } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import { ProtocolCallbackPage } from './protocol-callback.page';
-import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engine.service';
-import { WalletService } from 'src/app/core/services/wallet.service';
-import { CredentialPreviewBuilderService } from 'src/app/core/services/credential-preview-builder.service';
-import { CredentialDecisionService } from 'src/app/core/services/credential-decision.service';
-import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
-import { IssuerNotificationService } from 'src/app/core/services/issuer-notification.service';
-import { IssuerMetadataCacheService } from 'src/app/core/services/issuer-metadata-cache.service';
-import { ActivityService } from 'src/app/core/services/activity.service';
 
 class MockRouter {
   public navigate = jest.fn().mockResolvedValue(true);
@@ -23,12 +15,14 @@ describe('ProtocolCallbackPage', () => {
   let fixture: ComponentFixture<ProtocolCallbackPage>;
   let mockRouter: MockRouter;
   let queryParamsSubject: BehaviorSubject<Record<string, string>>;
-  let mockOid4vciEngineService: jest.Mocked<Pick<Oid4vciEngineService, 'resumeAuthCodeFlow'>>;
 
   beforeEach(async () => {
     mockRouter = new MockRouter();
     queryParamsSubject = new BehaviorSubject<Record<string, string>>({});
-    mockOid4vciEngineService = { resumeAuthCodeFlow: jest.fn() };
+
+    // Ensure default state: not in iframe, not in popup
+    Object.defineProperty(window, 'opener', { value: null, configurable: true });
+    Object.defineProperty(window, 'parent', { value: window, configurable: true });
 
     await TestBed.configureTestingModule({
       imports: [
@@ -38,19 +32,16 @@ describe('ProtocolCallbackPage', () => {
       providers: [
         { provide: Router, useValue: mockRouter },
         { provide: ActivatedRoute, useValue: { queryParams: queryParamsSubject } },
-        { provide: Oid4vciEngineService, useValue: mockOid4vciEngineService },
-        { provide: WalletService, useValue: { finalizeCredentialIssuance: jest.fn().mockReturnValue(of(null)) } },
-        { provide: CredentialPreviewBuilderService, useValue: { buildPreview: jest.fn().mockReturnValue({}) } },
-        { provide: CredentialDecisionService, useValue: { showDecisionDialog: jest.fn(), showTempMessage: jest.fn() } },
-        { provide: ToastServiceHandler, useValue: { showErrorAlertByTranslateLabel: jest.fn().mockReturnValue(of(null)) } },
-        { provide: IssuerNotificationService, useValue: { notifyIssuer: jest.fn().mockReturnValue(of(null)) } },
-        { provide: IssuerMetadataCacheService, useValue: { registerIssuance: jest.fn().mockResolvedValue(undefined) } },
-        { provide: ActivityService, useValue: { log: jest.fn() } },
       ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(ProtocolCallbackPage);
     component = fixture.componentInstance;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, 'opener', { value: null, configurable: true });
+    Object.defineProperty(window, 'parent', { value: window, configurable: true });
   });
 
   it('should create', () => {
@@ -95,29 +86,42 @@ describe('ProtocolCallbackPage', () => {
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/home']);
   });
 
-  it('should call resumeAuthCodeFlow with code and state when both params are present', async () => {
-    mockOid4vciEngineService.resumeAuthCodeFlow.mockResolvedValue({
-      credentialResponseWithStatus: {
-        statusCode: 200,
-        status: 200,
-        credentialResponse: { credentials: [], notification_id: undefined },
-      },
-      issuerMetadata: {
-        credentialIssuer: 'https://issuer.example.com',
-        credential_configurations_supported: {},
-        notification_endpoint: undefined,
-      },
-      tokenResponse: { access_token: 'token', token_type: 'Bearer' },
-      authorisationServerMetadata: {},
-      tokenObtainedAt: 0,
-      format: 'vc+sd-jwt',
-      credentialConfigurationId: 'PDA1',
-    } as any);
+  it('should post auth code to parent and not navigate when code+state are present and running in iframe', () => {
+    const mockPostMessage = jest.fn();
+    const mockParent = { postMessage: mockPostMessage };
+    Object.defineProperty(window, 'parent', { value: mockParent, configurable: true });
 
     queryParamsSubject.next({ code: 'auth-code-123', state: 'state-abc' });
     fixture.detectChanges();
-    await fixture.whenStable();
 
-    expect(mockOid4vciEngineService.resumeAuthCodeFlow).toHaveBeenCalledWith('auth-code-123', 'state-abc');
+    expect(mockPostMessage).toHaveBeenCalledWith(
+      { type: 'oid4vci-auth-code', code: 'auth-code-123', state: 'state-abc' },
+      window.location.origin
+    );
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+  });
+
+  it('should post auth code to opener and close when code+state are present and running in popup', () => {
+    const mockPostMessage = jest.fn();
+    const mockClose = jest.fn();
+    Object.defineProperty(window, 'opener', { value: { postMessage: mockPostMessage }, configurable: true });
+    Object.defineProperty(window, 'close', { value: mockClose, configurable: true });
+
+    queryParamsSubject.next({ code: 'auth-code-123', state: 'state-abc' });
+    fixture.detectChanges();
+
+    expect(mockPostMessage).toHaveBeenCalledWith(
+      { type: 'oid4vci-auth-code', code: 'auth-code-123', state: 'state-abc' },
+      window.location.origin
+    );
+    expect(mockClose).toHaveBeenCalled();
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+  });
+
+  it('should navigate to /tabs/home when code+state are present but not in iframe or popup', () => {
+    queryParamsSubject.next({ code: 'auth-code-123', state: 'state-abc' });
+    fixture.detectChanges();
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/home']);
   });
 });
