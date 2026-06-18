@@ -6,6 +6,7 @@ import { timeout } from 'rxjs/operators';
 import { WalletConfigMetadataDto } from '../models/wallet-discovery.model';
 import { WalletDiscoveryGateway } from './wallet-discovery.gateway';
 import { UrlResolverService } from '../services/url-resolver.service';
+import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 
 /**
  * Time in milliseconds before a pending well-known fetch is cancelled.
@@ -71,7 +72,7 @@ export class HttpWalletDiscoveryGateway implements WalletDiscoveryGateway {
   private readonly urlResolver = inject(UrlResolverService);
 
   fetch(): Observable<WalletConfigMetadataDto> {
-    const url = `${window.location.origin}${this.urlResolver.walletDiscoveryPath()}`;
+    const url = `${window.location.origin}${WALLET_DISCOVERY_PATH}`;
 
     return this.http
       .get<WalletConfigMetadataDto>(url, {

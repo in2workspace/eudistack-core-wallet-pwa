@@ -3,8 +3,6 @@
  *
  * These types are pure domain — no framework imports. They model the result of
  * querying the wallet-config-metadata well-known endpoint (EUDISTACK-412).
- * The actual path depends on the deployment type (canonical vs. custom domain)
- * and is resolved at runtime by `UrlResolverService.walletDiscoveryPath()`.
  * Falls back when that endpoint is unavailable.
  */
 
