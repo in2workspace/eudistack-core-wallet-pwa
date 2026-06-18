@@ -71,6 +71,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'wallet/callback',
+    canActivate: [tenantGuard, authGuard],
+    loadComponent: () =>
+      import('./features/protocol-callback/protocol-callback.page').then(
+        m => m.ProtocolCallbackPage
+      ),
+  },
+  {
     path: 'tabs',
     canActivate: [tenantGuard],
     loadChildren: () => import('./features/tabs/tabs.routes').then(m => m.default),

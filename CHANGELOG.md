@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.8] - 2026-06-18
+
+### Fixed
+
+- **OID4VCI Authorization Code Flow — CORS error on cross-domain deployments**: `callAuthorizeEndpoint` now navigates the browser via `window.location.href` instead of using `HttpClient.get()` (XHR). This fixes CORS failures on deployments where the wallet and issuer run on separate domains (e.g. `wallet.dome-marketplace-lcl.org` / `issuer.dome-marketplace-lcl.org`). Chrome requires `Access-Control-Allow-Origin` on all responses in a cross-origin XHR redirect chain, including the final S3-served SPA callback URL which cannot serve CORS headers. Introducing `AuthCodeFlowStateService` to persist the flow state (offer, issuer metadata, codeVerifier, redirectUri, oauthState) across the browser navigation in sessionStorage. The flow resumes at `/wallet/callback` via a new `resumeAuthCodeFlow()` method in `Oid4vciEngineService`. `ProtocolCallbackPage` extended to handle `?code=&state=` params and complete the credential decision flow. Route `/wallet/callback` added (matches the default `oid4vci_redirect_uri` environment value).
+
 ## [3.8.7] - 2026-06-18
 ### Changed
 - **URL resolution — removed canonical/non-canonical branching**: `UrlResolverService` no longer checks `isCanonicalDomain()` to pick between `/business-wallet/` and bare-origin paths. `serverUrl()` and `websocketUrl()` always apply the `/business-wallet` prefix (env override via `server_url` / `websocket_url` still wins). `walletDiscoveryPath()` method removed; its value is now the compile-time constant `WALLET_DISCOVERY_PATH` in `api.constants.ts`. All consumers (`authInterceptor`, `HttpErrorInterceptor`, `HttpWalletDiscoveryGateway`) updated accordingly.
