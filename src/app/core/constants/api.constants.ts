@@ -16,10 +16,3 @@ export const SERVER_PATH = Object.freeze({
   KEYS_EXPORT: (keyId: string) => `${apiV1KeysPath}/${encodeURIComponent(keyId)}/export`,
 });
 
-/**
- * Path of the EBW public discovery endpoint (EUDISTACK-412).
- *
- * The full URL is `${window.location.origin}${WALLET_DISCOVERY_PATH}`.
- * Served under the /business-wallet base-path (consistent with all other EBW endpoints).
- */
-export const WALLET_DISCOVERY_PATH = '/business-wallet/.well-known/wallet-config-metadata' as const;
