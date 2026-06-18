@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.8.9] - 2026-06-18
+
+### Fixed
+
+- **OID4VCI Authorization Code Flow — session logout on cross-domain deployments**: replaced the `window.location.href` (page-reload) approach with a popup window (`window.open` + `postMessage`). The page-reload destroyed the in-memory `accessToken` in `RemoteAuthService` on every credential issuance via authorization code grant, forcing passkey re-authentication. With the popup approach the parent page never navigates: `AuthorizationCodeTokenService.callAuthorizeEndpoint` opens a popup to the issuer's authorize endpoint; `ProtocolCallbackPage` detects `window.opener`, relays `{ type: 'oid4vci-auth-code', code, state }` back via `postMessage`, and closes. `authGuard` removed from `/wallet/callback` route (the popup's Angular instance has no in-memory auth token). `AuthCodeFlowStateService` deleted (sessionStorage state approach no longer needed).
+
 ## [3.8.8] - 2026-06-18
 
 ### Fixed
