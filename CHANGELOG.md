@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (2026-06-18)
+- Resolved multiple Critical and High severity vulnerabilities in Angular build dependencies.
+
 ## [3.8.4] - 2026-06-17
 
 ### Changed (2026-06-17)
