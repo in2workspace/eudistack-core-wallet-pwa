@@ -5,7 +5,6 @@ import { AuthorisationServerMetadataService } from './authorisation-server-metad
 import { PreAuthorizedTokenService } from './pre-authorized-token.service';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
-import { AuthorisationServerMetadata } from '../../models/dto/AuthorisationServerMetadata';
 import { ProofBuilderService } from './proof-builder.service';
 import { KeyStorageProvider, OID4VCIKeyGenContext } from '../../spi/key-storage.provider.service';
 import { JwtService } from './jwt.service';
@@ -20,7 +19,6 @@ import { AppError } from 'src/app/core/models/error/AppError';
 import { JwtParseError } from '../../models/error/JwtParseError';
 import { LoaderHandledFlowService } from 'src/app/shared/services/loader-handled-flow.service';
 import { AuthorizationCodeTokenService } from './authorization-code-token.service';
-import { AuthCodeFlowStateService } from './auth-code-flow-state.service';
 import { detectIssuanceProfile } from './issuance-profile.util';
 import { NonceService } from './nonce.service';
 import { DpopService } from './dpop.service';
@@ -30,7 +28,6 @@ import { environment } from 'src/environments/environment';
 @Injectable({ providedIn: 'root' })
 export class Oid4vciEngineService {
   private readonly authorizationCodeTokenService = inject(AuthorizationCodeTokenService);
-  private readonly authCodeFlowStateService = inject(AuthCodeFlowStateService);
   private readonly authorisationServerMetadataService = inject(AuthorisationServerMetadataService);
   private readonly dpopService = inject(DpopService);
   private readonly credentialIssuerMetadataService = inject(CredentialIssuerMetadataService);
@@ -81,137 +78,85 @@ export class Oid4vciEngineService {
           credentialOffer, authorisationServerMetadata
         );
       } else {
-        // getToken() navigates the browser to the authorize endpoint and never resolves.
-        // Execution resumes in resumeAuthCodeFlow() after the callback redirect.
         tokenResponse = await this.authorizationCodeTokenService.getToken(
-          credentialOffer, authorisationServerMetadata, profile, credentialIssuerMetadata
+          credentialOffer, authorisationServerMetadata, profile
         );
       }
 
       this.loader.addLoadingProcess();
+      const cfg = this.findCredentialConfigurationContext(credentialOffer, credentialIssuerMetadata);
 
-      return this.performPostTokenFlow(tokenResponse, credentialOffer, credentialIssuerMetadata, authorisationServerMetadata);
+      const nonceEndpoint = credentialIssuerMetadata.nonceEndpoint
+        ?? authorisationServerMetadata.nonceEndpoint;
+
+      const nonce = nonceEndpoint
+        ? await this.nonceService.fetchNonce(nonceEndpoint)
+        : '';
+
+      let jwtProof = null;
+      let proofPublicJwk: JsonWebKey | null = null;
+      let holderKeyId: string | undefined;
+      let holderKid: string | undefined;
+
+      if (cfg.isCryptographicBindingSupported && credentialIssuerMetadata.credentialIssuer) {
+        const proofContext = await this.issueProofJwt({
+          nonce,
+          credentialIssuer: credentialIssuerMetadata.credentialIssuer,
+          credentialConfigurationId: cfg.credentialConfigurationId,
+          format: cfg.format,
+          supportedAlgs: cfg.supportedAlgs ?? ['ES256'],
+        });
+        jwtProof = proofContext.jwt;
+        proofPublicJwk = proofContext.publicKeyJwk;
+        holderKeyId = proofContext.holderKeyId;
+        holderKid = proofContext.thumbprint;
+      }
+
+      const format = cfg.format;
+      const credentialConfigurationId = cfg.credentialConfigurationId;
+
+      // GET CREDENTIAL (with DPoP proof if token is DPoP-bound)
+      let credentialDpopJwt: string | undefined;
+      if (tokenResponse.token_type?.toLowerCase() === 'dpop' && credentialIssuerMetadata.credentialEndpoint) {
+        const dpopProof = await this.dpopService.issueProof('POST', credentialIssuerMetadata.credentialEndpoint);
+        credentialDpopJwt = dpopProof.jwt;
+      }
+
+      const credentialResponseWithStatus = await this.credentialService.getCredential({
+        jwtProof,
+        tokenResponse,
+        credentialIssuerMetadata,
+        format,
+        credentialConfigurationId,
+        dpopJwt: credentialDpopJwt,
+      });
+
+      // VALIDATE CNF FROM THE API RESPONSE
+      if (jwtProof && proofPublicJwk) {
+        await this.validateCredentialCnf(credentialResponseWithStatus, jwtProof, proofPublicJwk);
+      }else{
+        console.warn("Skipping cnf validation since no proof JWT was generated.");
+      }
+
+      const credentialResponseWithStatusCode: CredentialResponseWithStatusCode = {
+        statusCode: credentialResponseWithStatus.status, ...credentialResponseWithStatus
+      }
+
+      const tokenObtainedAt = Math.floor(Date.now() / 1000);
+
+      return {
+        credentialResponseWithStatus: credentialResponseWithStatusCode,
+        tokenResponse,
+        issuerMetadata: credentialIssuerMetadata,
+        authorisationServerMetadata,
+        tokenObtainedAt,
+        format,
+        credentialConfigurationId,
+        holderKeyId,
+        holderKid,
+      };
     }});
 
-  }
-
-  // Resumes the Authorization Code Flow after the browser returns to the callback URL.
-  // Validates the OAuth state parameter, exchanges the code for a token, then completes
-  // the credential issuance flow (nonce, proof, credential request, CNF validation).
-  public async resumeAuthCodeFlow(code: string, oauthState: string): Promise<FinalizeIssuancePayload> {
-    await this.init();
-
-    return this.loaderHandledFlowService.run({
-      logPrefix: '[Oid4vciEngine][AuthCode Resume]',
-      errorToTranslationKey: (e) => this.errorToTranslationKey(e),
-      fn: async () => {
-        const state = this.authCodeFlowStateService.load();
-        if (!state || state.oauthState !== oauthState) {
-          throw new Oid4vciError('OAuth state mismatch or missing pending flow state', {
-            translationKey: 'errors.authorization-failed',
-          });
-        }
-        this.authCodeFlowStateService.clear();
-
-        // DPoP keys are ephemeral (in-memory) — page reload re-initializes them.
-        // The issuer does not enforce key consistency between PAR and token exchange (dpopJkt = null).
-        this.dpopService.reset();
-
-        const tokenResponse = await this.authorizationCodeTokenService.exchangeCodeForToken({
-          metadata: state.authServerMetadata,
-          authCode: code,
-          redirectUri: state.redirectUri,
-          codeVerifier: state.codeVerifier,
-          profile: state.profile,
-        });
-
-        return this.performPostTokenFlow(
-          tokenResponse,
-          state.credentialOffer,
-          state.credentialIssuerMetadata,
-          state.authServerMetadata,
-        );
-      }
-    });
-  }
-
-  private async performPostTokenFlow(
-    tokenResponse: TokenResponse,
-    credentialOffer: CredentialOffer,
-    credentialIssuerMetadata: CredentialIssuerMetadata,
-    authorisationServerMetadata: AuthorisationServerMetadata,
-  ): Promise<FinalizeIssuancePayload> {
-    const cfg = this.findCredentialConfigurationContext(credentialOffer, credentialIssuerMetadata);
-
-    const nonceEndpoint = credentialIssuerMetadata.nonceEndpoint
-      ?? authorisationServerMetadata.nonceEndpoint;
-
-    const nonce = nonceEndpoint
-      ? await this.nonceService.fetchNonce(nonceEndpoint)
-      : '';
-
-    let jwtProof = null;
-    let proofPublicJwk: JsonWebKey | null = null;
-    let holderKeyId: string | undefined;
-    let holderKid: string | undefined;
-
-    if (cfg.isCryptographicBindingSupported && credentialIssuerMetadata.credentialIssuer) {
-      const proofContext = await this.issueProofJwt({
-        nonce,
-        credentialIssuer: credentialIssuerMetadata.credentialIssuer,
-        credentialConfigurationId: cfg.credentialConfigurationId,
-        format: cfg.format,
-        supportedAlgs: cfg.supportedAlgs ?? ['ES256'],
-      });
-      jwtProof = proofContext.jwt;
-      proofPublicJwk = proofContext.publicKeyJwk;
-      holderKeyId = proofContext.holderKeyId;
-      holderKid = proofContext.thumbprint;
-    }
-
-    const format = cfg.format;
-    const credentialConfigurationId = cfg.credentialConfigurationId;
-
-    // GET CREDENTIAL (with DPoP proof if token is DPoP-bound)
-    let credentialDpopJwt: string | undefined;
-    if (tokenResponse.token_type?.toLowerCase() === 'dpop' && credentialIssuerMetadata.credentialEndpoint) {
-      const dpopProof = await this.dpopService.issueProof('POST', credentialIssuerMetadata.credentialEndpoint);
-      credentialDpopJwt = dpopProof.jwt;
-    }
-
-    const credentialResponseWithStatus = await this.credentialService.getCredential({
-      jwtProof,
-      tokenResponse,
-      credentialIssuerMetadata,
-      format,
-      credentialConfigurationId,
-      dpopJwt: credentialDpopJwt,
-    });
-
-    // VALIDATE CNF FROM THE API RESPONSE
-    if (jwtProof && proofPublicJwk) {
-      await this.validateCredentialCnf(credentialResponseWithStatus, jwtProof, proofPublicJwk);
-    } else {
-      console.warn("Skipping cnf validation since no proof JWT was generated.");
-    }
-
-    const credentialResponseWithStatusCode: CredentialResponseWithStatusCode = {
-      statusCode: credentialResponseWithStatus.status, ...credentialResponseWithStatus
-    }
-
-    const tokenObtainedAt = Math.floor(Date.now() / 1000);
-
-    return {
-      credentialResponseWithStatus: credentialResponseWithStatusCode,
-      tokenResponse,
-      issuerMetadata: credentialIssuerMetadata,
-      authorisationServerMetadata,
-      tokenObtainedAt,
-      format,
-      credentialConfigurationId,
-      holderKeyId,
-      holderKid,
-    };
   }
 
   private shouldUsePreAuthorizedGrant(credentialOffer: CredentialOffer): boolean {
