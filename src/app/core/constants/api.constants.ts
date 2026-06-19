@@ -16,3 +16,4 @@ export const SERVER_PATH = Object.freeze({
   KEYS_EXPORT: (keyId: string) => `${apiV1KeysPath}/${encodeURIComponent(keyId)}/export`,
 });
 
+export const WALLET_DISCOVERY_PATH = '/business-wallet/.well-known/wallet-config-metadata' as const;

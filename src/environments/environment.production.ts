@@ -2,10 +2,8 @@
 // its values will be overwriten by env variables (see env.js & env.template.js)
 export const environment = {
   production: true,
-  // Empty string signals UrlResolverService to derive the base URL dynamically:
-  // canonical hostnames (KNOWN_TENANTS) → origin + /business-wallet;
-  // custom domains (non-canonical) → origin only (CloudFront handles routing).
-  // An explicit env.js / SERVER_URL override still wins.
+  // Derived from the current browser origin so the same build works across tenants
+  // (sandbox/kpmg/dome/…). Explicit override via env.js still wins if non-empty.
   server_url: window["env"]["server_url"] || '',
   websocket_url: window["env"]["websocket_url"] || '',
   logs_enabled: window["env"]["logs_enabled"] === "true", //OPTIONAL WITH fallback

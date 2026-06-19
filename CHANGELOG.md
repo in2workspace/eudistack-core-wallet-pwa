@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.8.6] - 2026-06-17
+## [3.8.11] - 2026-06-19
 
 ### Added
 
@@ -19,6 +19,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **OID4VP — Holder JWK fallback chain** (`Oid4vpEngineService.resolveHolderJwk`): when the selected credential lacks `cnf.jwk`, the engine now derives the holder public key from `cnf.kid` (legacy SD-JWT format with a `did:key` URI) or from `vc.credentialSubject.mandate.mandatee.id` (W3C VCDM) before bailing out. Aligns the wallet with the same fallback chain used by the verifier's `CryptographicBindingValidator`, enabling presentation of DOME legacy credentials that do not embed the holder JWK explicitly.
+
+## [3.8.10] - 2026-06-18
+
+### Fixed
+
+- **OID4VCI authorization code flow — DOME cross-origin**: revert browser-navigation and popup workarounds (PR #126, #127). The root fix is in `eudistack-core-issuer`: `CorsWebFilter` now runs as a standalone bean at highest precedence, guaranteeing `Access-Control-Allow-Origin` on the 302 response from `/oid4vci/v1/authorize`. The wallet restores the original XHR-based approach (`HttpClient.get` + `response.url`), which works without browser navigation or popups.
+
+## [3.8.7] - 2026-06-18
+### Changed
+- **URL resolution — removed canonical/non-canonical branching**: `UrlResolverService` no longer checks `isCanonicalDomain()` to pick between `/business-wallet/` and bare-origin paths. `serverUrl()` and `websocketUrl()` always apply the `/business-wallet` prefix (env override via `server_url` / `websocket_url` still wins). `walletDiscoveryPath()` method removed; its value is now the compile-time constant `WALLET_DISCOVERY_PATH` in `api.constants.ts`. All consumers (`authInterceptor`, `HttpErrorInterceptor`, `HttpWalletDiscoveryGateway`) updated accordingly.
+
+## [3.8.5] - 2026-06-18
+### Changed
+- Remove cross-tenant offer validation
 
 ## [3.8.5] - 2026-06-17
 
