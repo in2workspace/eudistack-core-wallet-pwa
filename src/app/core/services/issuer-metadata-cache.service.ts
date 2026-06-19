@@ -101,6 +101,44 @@ export class IssuerMetadataCacheService {
   }
 
   /**
+   * Fetches the OID4VCI metadata of `issuerUrl` and caches it locally if it
+   * is not already cached. No-op if there is already an entry for that issuer.
+   *
+   * Used after a successful OID4VP flow to ensure the issuer of the presented
+   * credential is known to the wallet, so that the display layer can resolve
+   * its claims (Mandator, Mandatee, etc.) for credentials that were not
+   * accepted via the standard OID4VCI flow (e.g. migrated from another
+   * wallet, injected for testing, restored from backup).
+   *
+   * Errors are swallowed: a failure here must NOT break the OID4VP flow,
+   * the worst case is the display layer falls back to the basic view.
+   */
+  public async fetchAndCacheIfMissing(issuerUrl: string): Promise<void> {
+    await this.ensureInit();
+    const existing: CachedIssuerMetadata | null = await this.storage.get(`${ISSUER_META_PREFIX}${issuerUrl}`);
+    if (existing) return;
+
+    try {
+      const wellKnownUrl = `${issuerUrl}/.well-known/openid-credential-issuer`;
+      const text = await firstValueFrom(this.http.get(wellKnownUrl, { responseType: 'text' }));
+      const metadata: CredentialIssuerMetadata = JSON.parse(text);
+      await this.storage.set(`${ISSUER_META_PREFIX}${issuerUrl}`, {
+        metadata,
+        fetchedAt: Date.now(),
+      } as CachedIssuerMetadata);
+
+      const knownIssuers: string[] = (await this.storage.get(KNOWN_ISSUERS_KEY)) ?? [];
+      if (!knownIssuers.includes(issuerUrl)) {
+        knownIssuers.push(issuerUrl);
+        await this.storage.set(KNOWN_ISSUERS_KEY, knownIssuers);
+      }
+      console.debug('[IssuerMetadataCache] Preloaded metadata for', issuerUrl);
+    } catch (e) {
+      console.warn('[IssuerMetadataCache] Failed to preload metadata for', issuerUrl, e);
+    }
+  }
+
+  /**
    * Refreshes metadata for all known issuers that are older than TTL.
    * Should be called on app init.
    */
