@@ -5,6 +5,7 @@ import { PENDING_DEEP_LINK_KEY } from './core/constants/deep-link.constants';
 import { authGuard } from './core/guards/auth.guard';
 import { tenantGuard } from './core/guards/tenant.guard';
 import { iosInstallGuard, iosInstallRouteGuard } from './core/guards/ios-install.guard';
+import { hybridOnboardingGuard, hybridOnboardingRouteGuard } from './core/guards/hybrid-onboarding.guard';
 import { PasskeyStoreService } from './core/services/passkey-store.service';
 import { IosInstallService } from './shared/services/ios-install.service';
 
@@ -44,6 +45,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'hybrid-onboarding',
+    canActivate: [tenantGuard, authGuard, hybridOnboardingRouteGuard],
+    loadComponent: () =>
+      import('./features/hybrid-onboarding/hybrid-onboarding.page').then(
+        m => m.HybridOnboardingPage
+      ),
+  },
+  {
     path: '',
     canActivate: [tenantGuard, authLandingGuard],
     children: [],
@@ -72,7 +81,7 @@ export const routes: Routes = [
   },
   {
     path: 'tabs',
-    canActivate: [tenantGuard],
+    canActivate: [tenantGuard, hybridOnboardingGuard],
     loadChildren: () => import('./features/tabs/tabs.routes').then(m => m.default),
   },
   {
