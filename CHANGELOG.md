@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.9.1] - 2026-06-22
+
+### Added
+
+- **EUDISTACK-538 US-06 — `HybridOnboardingPage`**: multi-step acceptance wizard shown to holders on hybrid tenants before any key operation. Guard (`hybridOnboardingGuard`) intercepts `tabs` activation when `key_manager=hybrid` and the session flag is absent; inverse guard (`hybridOnboardingRouteGuard`) prevents direct access on non-hybrid tenants. Route: `/hybrid-onboarding`.
+- **EUDISTACK-538 US-06 — `HybridAuditService`**: calls `POST /api/v1/keys/hybrid/constraint-accepted` after the holder taps "accept". Fire-and-forget with `catchError`; navigation to `/tabs` proceeds regardless of backend availability.
+- **EUDISTACK-538 US-06 — `HybridOnboardingService`**: sessionStorage-backed flag (`hybrid-onboarding-accepted`) so the wizard is shown once per session.
+- **EUDISTACK-538 US-06 — `HybridAdapterError`**: typed error class extending `AppError` with codes `wrap_unavailable_on_this_device` | `prepare_sign_failed`. `AppError` union type updated accordingly.
+- **EUDISTACK-538 US-06 — `HybridKeyStorageProvider`**: Angular DI provider for hybrid mode. Key generation delegates to `ServerKeyStorageProvider`; `sign()` is a typed stub pending US-04 (EUDISTACK-536). `key-storage.provider.factory.ts` selects this provider when `mode=server` and `keyManager=hybrid`.
+- **EUDISTACK-538 US-06 — `SignPromptComponent`**: error display component for `wrap_unavailable_on_this_device` failures — shown when the holder attempts to sign from a device that does not hold the PRF-bound key.
+- **EUDISTACK-538 US-06 — i18n**: `hybrid-onboarding.*` and `hybrid-errors.*` keys added to `es.json`, `en.json`, `ca.json`.
+- **`jest.config.js`**: added `/.claude/worktrees/` to `testPathIgnorePatterns` to prevent Jest scanning duplicate spec files from Claude Code git worktrees.
+
 ### [3.8.11] - (2026-06-17)
 
 ### Added
