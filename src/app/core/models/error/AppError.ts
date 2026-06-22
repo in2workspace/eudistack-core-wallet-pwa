@@ -1,5 +1,5 @@
-import { Oid4vciErrorCode } from "src/app/core/models/error/Oid4vciError";
-import { HybridAdapterErrorCode } from "src/app/core/models/error/HybridAdapterError";
+import type { Oid4vciErrorCode } from "src/app/core/models/error/Oid4vciError";
+import type { HybridAdapterErrorCode } from "src/app/core/models/error/HybridAdapterError";
 
 export type AppErrorCode = 'unknown' | 'warning' | Oid4vciErrorCode | HybridAdapterErrorCode;
 

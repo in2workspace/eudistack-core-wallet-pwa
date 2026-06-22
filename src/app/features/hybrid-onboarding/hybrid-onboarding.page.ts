@@ -36,13 +36,9 @@ export class HybridOnboardingPage implements OnInit {
 
   accept(): void {
     this.hybridOnboarding.markAccepted();
-    this.hybridAudit
-      .recordConstraintAccepted()
-      .pipe(catchError(() => of(null)))
-      .subscribe(() => {
-        this.telemetry.track('hybrid_onboarding_accepted');
-        this.router.navigateByUrl('/tabs');
-      });
+    this.telemetry.track('hybrid_onboarding_accepted');
+    this.router.navigateByUrl('/tabs');
+    this.hybridAudit.recordConstraintAccepted().pipe(catchError(() => of(null))).subscribe();
   }
 
   async openLearnMore(): Promise<void> {

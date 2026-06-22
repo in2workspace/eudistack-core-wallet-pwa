@@ -44,21 +44,20 @@ describe('HybridOnboardingPage', () => {
     expect(telemetry.track).toHaveBeenCalledWith('hybrid_onboarding_shown');
   });
 
-  it('marks accepted, calls audit, tracks and navigates on accept()', () => {
+  it('marks accepted, tracks, navigates immediately and fires audit in background', () => {
     component.accept();
 
     expect(hybridOnboarding.markAccepted).toHaveBeenCalled();
-    expect(hybridAudit.recordConstraintAccepted).toHaveBeenCalled();
     expect(telemetry.track).toHaveBeenCalledWith('hybrid_onboarding_accepted');
     expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs');
+    expect(hybridAudit.recordConstraintAccepted).toHaveBeenCalled();
   });
 
-  it('still navigates when audit call fails', () => {
+  it('navigates even when audit call fails', () => {
     hybridAudit.recordConstraintAccepted.mockReturnValue(throwError(() => new Error('network')));
 
     component.accept();
 
-    expect(hybridOnboarding.markAccepted).toHaveBeenCalled();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs');
   });
 });

@@ -55,10 +55,10 @@ describe('HybridKeyStorageProvider', () => {
     });
   });
 
-  it('buildPresentationJws() throws HybridAdapterError with code prepare_sign_failed', () => {
+  it('buildPresentationJws() rejects with HybridAdapterError code prepare_sign_failed', async () => {
     const { provider } = setup();
-    expect(() => provider.buildPresentationJws!('k1', {}, 'KB_JWT'))
-      .toThrow(HybridAdapterError);
+    await expect(provider.buildPresentationJws!('k1', {}, 'KB_JWT'))
+      .rejects.toBeInstanceOf(HybridAdapterError);
   });
 
   it('delegates hasKey to server', async () => {

@@ -44,15 +44,15 @@ export class HybridKeyStorageProvider extends KeyStorageProvider {
     return this.server.resolveKeyIdByKid(kid);
   }
 
-  override buildPresentationJws?(
+  override async buildPresentationJws?(
     keyId: string,
     payload: Record<string, unknown>,
     signingType: 'KB_JWT' | 'VP_ENVELOPE'
   ): Promise<string> {
-    throw new HybridAdapterError(
+    return Promise.reject(new HybridAdapterError(
       'Hybrid buildPresentationJws not yet implemented — pending US-04 (EUDISTACK-536)',
       { code: 'prepare_sign_failed' }
-    );
+    ));
   }
 
   override exportKey?(keyId: string): Promise<JsonWebKey> {
