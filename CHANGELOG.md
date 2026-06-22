@@ -9,6 +9,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed (2026-06-18)
 - Resolved multiple Critical and High severity vulnerabilities in Angular build dependencies.
 
+### [3.8.11] - (2026-06-17)
+
+### Added
+
+- **EUDISTACK-534 US-02 — `hybrid-keymanager` feature module**: new `src/app/features/hybrid-keymanager/` module implementing client-side holder key generation, PRF-based wrap, and hybrid onboarding commit.
+- **EUDISTACK-534 US-02 — `MemoryService`**: in-memory `Map<credentialId, CryptoKey>` cache for AES-256-GCM wrap keys. TTL=5 min via `setTimeout`; `SubtleCrypto.deleteKey` called on eviction and `beforeunload`. No write to `localStorage`/`sessionStorage`/IndexedDB (AC-02, EC-01, EC-02).
+- **EUDISTACK-534 US-02 — `PrfClientService`**: thin wrapper over `PasskeyPrfService.getCredentialId()` that evaluates the WebAuthn PRF extension with a server-supplied salt. Returns raw 32-byte PRF output; throws `AppError` if no passkey is registered, assertion is cancelled, or PRF output is absent (AC-01, ES-04).
+- **EUDISTACK-534 US-02 — `WrapService`**: `generateHolderKeyPair` (ECDSA P-256, extractable private key); `deriveWrapKey` (HKDF-SHA-256, `salt=credentialId`, `info="hybrid-wrap-v1"`, L=256); `wrapPrivateKey` (AES-256-GCM, random 12-byte IV, 16-byte tag split from output); `zeroize` (best-effort `deleteKey`). `cnf.jwk` never contains private parameter `d` (AC-02, AC-03, EC-03, NFR-05).
+- **EUDISTACK-534 US-02 — `OnboardingHybridApi`**: typed HTTP client for `POST /api/v1/keys/hybrid/onboarding/init` and `POST /api/v1/keys/hybrid/onboarding/commit`. DTOs aligned with EBW backend contract (AC-03, AC-04).
+- **EUDISTACK-534 US-02 — `OnboardingHybridComponent`**: orchestrates init → PRF ceremony → key generation → HKDF derivation → AES-GCM wrap → commit → zeroize. `try/finally` guarantees private key is always zeroized; wrap key cached on success, zeroized on error. Aborts before commit if PRF ceremony fails (AC-01, AC-02, AC-08, ES-04, ES-05).
+- **EUDISTACK-534 US-02 — Unit tests**: `memory.service.spec` (TTL eviction, `beforeunload`, no-persistence); `prf-client.service.spec` (salt propagation, AppError paths); `wrap.service.spec` (ECDSA P-256, HKDF, AES-GCM, unique IVs, no `d` in JWK, zeroize); `onboarding-hybrid.component.spec` (full flow, commit body public-only, ES-04 abort, ES-05 zeroize invariants).
+
+## [3.8.11] - 2026-06-19
+
+### Added
+
+- **`IssuerMetadataCacheService.fetchAndCacheIfMissing(issuerUrl)`**: preloads the OID4VCI metadata of the wallet's own issuer right after a successful token exchange in `RemoteAuthService.handleTokenResponse`. Guarantees that credentials presented via OID4VP (including legacy ones migrated from another wallet or restored from backup) can resolve their display metadata (Mandator, Mandatee…) even when they were never accepted through the standard OID4VCI flow.
+
+### Changed
+
+- **`CREDENTIAL_TYPES_ARRAY`**: added `LEARCredentialEmployee` and `LEARCredentialMachine` aliases so the wallet recognises real DOME legacy credentials (which carry the bare semantic type in `type[]` instead of the versioned `learcredential.<role>.w3c.<n>` identifier). Required for display, selection and presentation flows during the DOME sunset window.
+
+### Fixed
+
+- **OID4VP — Holder JWK fallback chain** (`Oid4vpEngineService.resolveHolderJwk`): when the selected credential lacks `cnf.jwk`, the engine now derives the holder public key from `cnf.kid` (legacy SD-JWT format with a `did:key` URI) or from `vc.credentialSubject.mandate.mandatee.id` (W3C VCDM) before bailing out. Aligns the wallet with the same fallback chain used by the verifier's `CryptographicBindingValidator`, enabling presentation of DOME legacy credentials that do not embed the holder JWK explicitly.
+
+## [3.8.10] - 2026-06-18
+
+### Fixed
+
+- **OID4VCI authorization code flow — DOME cross-origin**: revert browser-navigation and popup workarounds (PR #126, #127). The root fix is in `eudistack-core-issuer`: `CorsWebFilter` now runs as a standalone bean at highest precedence, guaranteeing `Access-Control-Allow-Origin` on the 302 response from `/oid4vci/v1/authorize`. The wallet restores the original XHR-based approach (`HttpClient.get` + `response.url`), which works without browser navigation or popups.
+
+## [3.8.7] - 2026-06-18
+### Changed
+- **URL resolution — removed canonical/non-canonical branching**: `UrlResolverService` no longer checks `isCanonicalDomain()` to pick between `/business-wallet/` and bare-origin paths. `serverUrl()` and `websocketUrl()` always apply the `/business-wallet` prefix (env override via `server_url` / `websocket_url` still wins). `walletDiscoveryPath()` method removed; its value is now the compile-time constant `WALLET_DISCOVERY_PATH` in `api.constants.ts`. All consumers (`authInterceptor`, `HttpErrorInterceptor`, `HttpWalletDiscoveryGateway`) updated accordingly.
+
+## [3.8.5] - 2026-06-18
+### Changed
+- Remove cross-tenant offer validation
 
 ## [3.8.5] - 2026-06-17
 
@@ -32,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`tenants.constants.ts`**: reduced to data-only (`KNOWN_TENANTS`, `FALLBACK_TENANT`); resolution functions moved to `TenantService` as private methods.
 - **`tenantGuard`**, **`tenantNotFound`**, **`credentialOfferService`**: read the resolved tenant signal from `TenantService` instead of re-deriving it from the hostname on every navigation.
 - **Service Worker cache (`ngsw-config.json`)**: `/assets/tenants/custom-domain.json` added to the `config` freshness group (1 h TTL, maxSize increased to 10).
+
 
 ## [3.8.2] - 2026-06-08
 

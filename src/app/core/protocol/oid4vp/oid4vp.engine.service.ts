@@ -13,6 +13,7 @@ import { WalletService } from 'src/app/core/services/wallet.service';
 import { LoaderHandledFlowService } from 'src/app/shared/services/loader-handled-flow.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
+import { didKeyToJwk } from '../../utils/did-key.utils';
 
 @Injectable({
   providedIn: 'root'
@@ -42,19 +43,19 @@ export class Oid4vpEngineService {
         const credentialPayload = this.extractJwtPayloadOrThrow(selectedVC, 'Selected credential JWT payload could not be parsed');
         console.debug('[OID4VP] Step 2 OK: Parsed payload. Keys:', Object.keys(credentialPayload));
 
-        console.debug('[OID4VP] Step 3: Checking cnf.jwk...');
-        const cnf = credentialPayload?.cnf;
-        if (!cnf?.jwk) {
-          console.error('[OID4VP] FAIL: Missing cnf.jwk. cnf=', cnf, 'Full payload=', credentialPayload);
-          throw new Oid4vpError('Missing cnf.jwk in selected credential', {
+        console.debug('[OID4VP] Step 3: Resolving holder JWK...');
+        const holderJwk = await this.resolveHolderJwk(credentialPayload);
+        if (!holderJwk) {
+          console.error('[OID4VP] FAIL: Cannot resolve holder JWK. cnf=', credentialPayload?.cnf, 'Full payload=', credentialPayload);
+          throw new Oid4vpError('Missing holder key in selected credential (no cnf.jwk, cnf.kid, or mandate.mandatee.id)', {
               translationKey: 'errors.credential-validation-failed',
           });
         }
-        console.debug('[OID4VP] Step 3 OK: cnf.jwk present');
+        console.debug('[OID4VP] Step 3 OK: holder JWK resolved');
 
         if (this.sdJwtParser.isSdJwt(selectedVC)) {
           console.debug('[OID4VP] Detected SD-JWT credential, using KB-JWT presentation.');
-          await this.presentSdJwt(selectedVC, cnf.jwk, selectorResponse);
+          await this.presentSdJwt(selectedVC, holderJwk, selectorResponse);
         } else {
           console.debug('[OID4VP] Step 4: Checking credentialSubject.id...');
           const credentialSubjectId = credentialPayload?.vc?.credentialSubject?.id   // VCDM 1.1 (vc wrapper)
@@ -67,7 +68,7 @@ export class Oid4vpEngineService {
             });
           }
           console.debug('[OID4VP] Step 4 OK: credentialSubject.id=', credentialSubjectId);
-          await this.presentJwtVc(selectedVC, credentialSubjectId, cnf.jwk, selectorResponse);
+          await this.presentJwtVc(selectedVC, credentialSubjectId, holderJwk, selectorResponse);
         }
 
         const selectedVc = selectorResponse.selectedVcList[0];
@@ -305,5 +306,32 @@ export class Oid4vpEngineService {
         translationKey: 'errors.invalid-jwt',
       });
     }
+  }
+
+  /**
+   * Resolves the holder public JWK from a VC JWT payload using the same
+   * fallback chain as the verifier's CryptographicBindingValidator:
+   *   1. cnf.jwk  — current SD-JWT VC standard
+   *   2. cnf.kid  — legacy format (did:key URI)
+   *   3. mandate.mandatee.id — W3C (credentialSubject.mandate) or SD-JWT flat (top-level mandate)
+   */
+  private async resolveHolderJwk(payload: any): Promise<JsonWebKey | null> {
+    if (payload?.cnf?.jwk) return payload.cnf.jwk as JsonWebKey;
+
+    const cnfKid: unknown = payload?.cnf?.kid;
+    if (typeof cnfKid === 'string' && cnfKid.startsWith('did:key:'))
+      return didKeyToJwk(this.normalizeDid(cnfKid));
+
+    const mandateeId: unknown = payload?.vc?.credentialSubject?.mandate?.mandatee?.id
+      ?? payload?.mandate?.mandatee?.id;
+    if (typeof mandateeId === 'string' && mandateeId.startsWith('did:key:'))
+      return didKeyToJwk(this.normalizeDid(mandateeId));
+
+    return null;
+  }
+
+  private normalizeDid(did: string): string {
+    const fragmentIndex = did.indexOf('#');
+    return fragmentIndex !== -1 ? did.substring(0, fragmentIndex) : did;
   }
 }

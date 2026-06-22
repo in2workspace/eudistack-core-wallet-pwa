@@ -24,6 +24,7 @@ import {
 } from './http-wallet-discovery.gateway';
 import { UrlResolverService } from '../services/url-resolver.service';
 import { WalletConfigMetadataDto } from '../models/wallet-discovery.model';
+import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -47,7 +48,7 @@ function setup(): { gateway: HttpWalletDiscoveryGateway; httpMock: HttpTestingCo
   return {
     gateway: TestBed.inject(HttpWalletDiscoveryGateway),
     httpMock: TestBed.inject(HttpTestingController),
-    expectedUrl: `${window.location.origin}${TestBed.inject(UrlResolverService).walletDiscoveryPath()}`,
+    expectedUrl: `${window.location.origin}${WALLET_DISCOVERY_PATH}`,
   };
 }
 

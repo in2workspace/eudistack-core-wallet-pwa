@@ -8,7 +8,18 @@ import { PasskeyPrfService } from './passkey-prf.service';
 import { WalletDiscoveryService } from './wallet-discovery.service';
 import { WALLET_DISCOVERY_GATEWAY } from '../gateways/wallet-discovery.gateway';
 import { LocalAuthService } from './local-auth.service';
+import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
 import { environment } from 'src/environments/environment';
+
+/**
+ * Minimal stub for IssuerMetadataCacheService. RemoteAuthService schedules a
+ * `fetchAndCacheIfMissing` after a successful token exchange (login-time
+ * metadata preload). Tests don't exercise that path, so a resolved-promise
+ * stub keeps the constructor happy and the test surface focused.
+ */
+function issuerMetadataCacheStub(): Pick<IssuerMetadataCacheService, 'fetchAndCacheIfMissing'> {
+  return { fetchAndCacheIfMissing: jest.fn().mockResolvedValue(undefined) };
+}
 
 const AUTH_BASE = `${environment.server_url}/api/v1/auth`;
 
@@ -49,6 +60,7 @@ describe('RemoteAuthService', () => {
         RemoteAuthService,
         { provide: Router, useValue: routerMock },
         { provide: PasskeyStoreService, useValue: passkeyStoreMock },
+        { provide: IssuerMetadataCacheService, useValue: issuerMetadataCacheStub() },
       ],
     });
 
@@ -277,6 +289,7 @@ describe('AUTH_SERVICE_PROVIDER', () => {
         { provide: Router, useValue: { navigate: jest.fn() } },
         { provide: PasskeyStoreService, useValue: { hasPasskey: jest.fn().mockReturnValue(false) } },
         { provide: PasskeyPrfService, useValue: {} },
+        { provide: IssuerMetadataCacheService, useValue: issuerMetadataCacheStub() },
       ],
     });
   }
