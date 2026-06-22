@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **EUDISTACK-538 US-06 — `HybridKeyStorageProvider`**: Angular DI provider for hybrid mode. Key generation delegates to `ServerKeyStorageProvider`; `sign()` is a typed stub pending US-04 (EUDISTACK-536). `key-storage.provider.factory.ts` selects this provider when `mode=server` and `keyManager=hybrid`.
 - **EUDISTACK-538 US-06 — `SignPromptComponent`**: error display component for `wrap_unavailable_on_this_device` failures — shown when the holder attempts to sign from a device that does not hold the PRF-bound key.
 - **EUDISTACK-538 US-06 — i18n**: `hybrid-onboarding.*` and `hybrid-errors.*` keys added to `es.json`, `en.json`, `ca.json`.
-- **`jest.config.js`**: added `/.claude/worktrees/` to `testPathIgnorePatterns` to prevent Jest scanning duplicate spec files from Claude Code git worktrees.
+- **`jest.config.js`**: extended `collectCoverageFrom` to include the new hybrid onboarding/signing components and related core services/guards in coverage reporting.
 
 ### [3.8.11] - (2026-06-17)
 
