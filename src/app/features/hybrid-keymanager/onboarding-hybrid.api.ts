@@ -30,6 +30,15 @@ export interface CommitResponse {
   credential_id: string;
 }
 
+export interface BlockRequest {
+  credential_id: string;
+  correlation_id: string;
+}
+
+export interface BlockResponse {
+  credential_id: string;
+}
+
 /**
  * HTTP client for the hybrid onboarding endpoints on the EBW backend.
  *
@@ -53,5 +62,11 @@ export class OnboardingHybridApi {
     return firstValueFrom(
       this.http.post<CommitResponse>(`${this.baseUrl}${BASE_PATH}/commit`, req),
     );
+  }
+
+  block(req: BlockRequest): Promise<BlockResponse> {
+    return firstValueFrom(
+      this.http.post<BlockResponse>(`${this.baseUrl}${BASE_PATH}/block`, req),
+    )
   }
 }
