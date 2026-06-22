@@ -6,7 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added (2026-06-17)
+### [3.8.11] - (2026-06-17)
+
+### Added
 
 - **EUDISTACK-534 US-02 — `hybrid-keymanager` feature module**: new `src/app/features/hybrid-keymanager/` module implementing client-side holder key generation, PRF-based wrap, and hybrid onboarding commit.
 - **EUDISTACK-534 US-02 — `MemoryService`**: in-memory `Map<credentialId, CryptoKey>` cache for AES-256-GCM wrap keys. TTL=5 min via `setTimeout`; `SubtleCrypto.deleteKey` called on eviction and `beforeunload`. No write to `localStorage`/`sessionStorage`/IndexedDB (AC-02, EC-01, EC-02).
