@@ -12,9 +12,79 @@ import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
  *
  * Spec: EUDISTACK-534 AC-01; technical-design.md §3.2 T13.
  */
+
+export type PrfDetectionResult =
+  | 'enabled'
+  | 'disabled'
+  | 'inconclusive';
+const PRF_DETECTION_PROBE = new Uint8Array(32);
+
 @Injectable({ providedIn: 'root' })
 export class PrfClientService {
   private readonly prfService = inject(PasskeyPrfService);
+
+  async detectPrfSupport(): Promise<PrfDetectionResult> {
+    const credentialId = this.prfService.getCredentialId();
+
+    if (!credentialId) {
+      return 'inconclusive';
+    }
+
+    try {
+      const result = await navigator.credentials.get({
+        publicKey: {
+          challenge: crypto.getRandomValues(new Uint8Array(32)),
+          allowCredentials: [
+            {
+              type: 'public-key',
+              id: Uint8Array.from(
+                atob(
+                  credentialId
+                    .replace(/-/g, '+')
+                    .replace(/_/g, '/')
+                ),
+                c => c.charCodeAt(0)
+              ),
+            },
+          ],
+          extensions: {
+            prf: {
+              eval: {
+                first: PRF_DETECTION_PROBE,
+              },
+            },
+          } as AuthenticationExtensionsClientInputs,
+          userVerification: 'required',
+        },
+      } as CredentialRequestOptions);
+
+      if (!result) {
+        return 'inconclusive';
+      }
+
+      const assertion = result as PublicKeyCredential;
+
+      const prfResults =
+        assertion.getClientExtensionResults() as {
+          prf?: {
+            results?: {
+              first?: ArrayBuffer;
+            };
+          };
+        };
+
+      return prfResults?.prf?.results?.first
+        ? 'enabled'
+        : 'disabled';
+    } catch (err) {
+
+      if (err instanceof DOMException) {
+        return 'inconclusive';
+      }
+
+      return 'inconclusive';
+    }
+  }
 
   async evaluateForWrap(prfSalt: Uint8Array): Promise<Uint8Array> {
     const credentialId = this.prfService.getCredentialId();

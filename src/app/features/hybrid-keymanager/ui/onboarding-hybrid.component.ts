@@ -6,7 +6,7 @@ import { PrfClientService } from '../prf-client.service';
 import { WrapService } from '../wrap.service';
 import { OnboardingHybridApi } from '../onboarding-hybrid.api';
 
-export type OnboardingState = 'idle' | 'loading' | 'done' | 'error';
+export type OnboardingState = 'idle' | 'loading' | 'done' | 'error' | 'prf-unsupported' | 'prf-inconclusive';
 
 /**
  * Orchestrates the full hybrid onboarding flow for a given credential:
@@ -51,6 +51,28 @@ export class OnboardingHybridComponent {
   async enroll(): Promise<void> {
     if (this.state === 'loading') return;
     this.state = 'loading';
+
+    const prfSupport = await this.prfClientService.detectPrfSupport();
+
+    if (prfSupport === 'disabled') {
+      this.state = 'prf-unsupported';
+      this.enrollmentError.emit(
+        new AppError('Authenticator does not support PRF', {
+          code: 'unknown',
+        })
+      );
+      return;
+    }
+
+    if (prfSupport === 'inconclusive') {
+      this.state = 'prf-inconclusive';
+      this.enrollmentError.emit(
+        new AppError('Unable to determine PRF support', {
+          code: 'unknown',
+        })
+      );
+      return;
+    }
 
     let privateKey: CryptoKey | undefined;
     let wrapKey: CryptoKey | undefined;

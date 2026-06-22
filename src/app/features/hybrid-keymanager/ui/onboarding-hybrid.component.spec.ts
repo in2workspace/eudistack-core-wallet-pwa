@@ -12,7 +12,10 @@ describe('OnboardingHybridComponent', () => {
 
   let mockApi: { init: jest.Mock; commit: jest.Mock };
   let mockMemory: { set: jest.Mock };
-  let mockPrf: { evaluateForWrap: jest.Mock };
+  let mockPrf: {
+    evaluateForWrap: jest.Mock,
+    detectPrfSupport: jest.Mock,
+  };
   let mockWrap: { generateHolderKeyPair: jest.Mock; deriveWrapKey: jest.Mock; wrapPrivateKey: jest.Mock; zeroize: jest.Mock };
 
   const CRED_ID = 'cred-component-test';
@@ -34,7 +37,10 @@ describe('OnboardingHybridComponent', () => {
       commit: jest.fn().mockResolvedValue({ credential_id: CRED_ID }),
     };
     mockMemory = { set: jest.fn() };
-    mockPrf = { evaluateForWrap: jest.fn().mockResolvedValue(PRF_OUTPUT) };
+    mockPrf = {
+      detectPrfSupport: jest.fn().mockResolvedValue('enabled'),
+      evaluateForWrap: jest.fn().mockResolvedValue(PRF_OUTPUT),
+    };
     mockWrap = {
       generateHolderKeyPair: jest.fn().mockResolvedValue({ privateKey: PRIVATE_KEY, publicKeyJwk: PUBLIC_KEY_JWK }),
       deriveWrapKey: jest.fn().mockResolvedValue(WRAP_KEY),
@@ -135,6 +141,54 @@ describe('OnboardingHybridComponent', () => {
     expect(mockWrap.zeroize).toHaveBeenCalledTimes(1);
     expect(mockWrap.zeroize).toHaveBeenCalledWith(PRIVATE_KEY);
     expect(mockWrap.zeroize).not.toHaveBeenCalledWith(WRAP_KEY);
+  });
+
+  it('blocks onboarding when PRF support is disabled', async () => {
+    mockPrf.detectPrfSupport.mockResolvedValue('disabled');
+
+    const errorSpy = jest.fn();
+    component.enrollmentError.subscribe(errorSpy);
+
+    await component.enroll();
+
+    expect(component.state).toBe('prf-unsupported');
+
+    expect(mockApi.init).not.toHaveBeenCalled();
+    expect(mockPrf.evaluateForWrap).not.toHaveBeenCalled();
+    expect(mockWrap.generateHolderKeyPair).not.toHaveBeenCalled();
+    expect(mockApi.commit).not.toHaveBeenCalled();
+
+    expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it('does not continue onboarding when PRF detection is inconclusive', async () => {
+    mockPrf.detectPrfSupport.mockResolvedValue('inconclusive');
+
+    const errorSpy = jest.fn();
+    component.enrollmentError.subscribe(errorSpy);
+
+    await component.enroll();
+
+    expect(component.state).toBe('prf-inconclusive');
+
+    expect(mockApi.init).not.toHaveBeenCalled();
+    expect(mockPrf.evaluateForWrap).not.toHaveBeenCalled();
+    expect(mockWrap.generateHolderKeyPair).not.toHaveBeenCalled();
+    expect(mockApi.commit).not.toHaveBeenCalled();
+
+    expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it('checks PRF support before generating holder keys', async () => {
+    await component.enroll();
+
+    expect(mockPrf.detectPrfSupport).toHaveBeenCalled();
+
+    expect(
+      mockPrf.detectPrfSupport.mock.invocationCallOrder[0]
+    ).toBeLessThan(
+      mockWrap.generateHolderKeyPair.mock.invocationCallOrder[0]
+    );
   });
 
   // ------------------------------------------------------------------ state guard
