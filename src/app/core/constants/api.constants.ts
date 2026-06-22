@@ -1,5 +1,6 @@
 const apiV1Path = '/api/v1';
 const apiV1KeysPath = `${apiV1Path}/keys`;
+const apiV1HybridPath = `${apiV1KeysPath}/hybrid`;
 
 const OPENID_OFFER = `${apiV1Path}/openid-credential-offer` as const;
 
@@ -14,5 +15,8 @@ export const SERVER_PATH = Object.freeze({
   KEYS_BY_ID: (keyId: string) => `${apiV1KeysPath}/${encodeURIComponent(keyId)}`,
   KEYS_SIGN: (keyId: string) => `${apiV1KeysPath}/${encodeURIComponent(keyId)}/sign`,
   KEYS_EXPORT: (keyId: string) => `${apiV1KeysPath}/${encodeURIComponent(keyId)}/export`,
+  HYBRID_SIGN_PREPARE: `${apiV1HybridPath}/sign/prepare`,
+  HYBRID_SIGN_SUBMIT: `${apiV1HybridPath}/sign/submit`,
+  HYBRID_CONSTRAINT_ACCEPTED: `${apiV1HybridPath}/constraint-accepted`,
 });
 

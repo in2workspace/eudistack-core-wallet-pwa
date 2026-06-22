@@ -1,0 +1,23 @@
+@if (errorCode === WRAP_UNAVAILABLE) {
+  <div class="sign-prompt-error-card" role="alert">
+    <div class="sign-prompt-error-icon" aria-hidden="true">
+      <ion-icon name="alert-circle-outline"></ion-icon>
+    </div>
+
+    <h2 class="sign-prompt-error-title">
+      {{ 'hybrid-errors.wrap-unavailable-title' | translate }}
+    </h2>
+
+    <p class="sign-prompt-error-body">
+      {{ 'hybrid-errors.wrap-unavailable-body' | translate }}
+    </p>
+
+    <button
+      class="sign-prompt-dismiss-btn"
+      type="button"
+      (click)="dismiss()"
+      (keydown.enter)="dismiss()">
+      {{ 'hybrid-errors.wrap-unavailable-cta' | translate }}
+    </button>
+  </div>
+}
