@@ -4,14 +4,6 @@ import { IonicModule } from '@ionic/angular';
 import { TranslateModule } from '@ngx-translate/core';
 import { HybridAdapterErrorCode } from 'src/app/core/models/error/HybridAdapterError';
 
-/**
- * Displays error UX for hybrid adapter failures during signing (US-06, EUDISTACK-538).
- *
- * Usage: embed in any component that triggers hybrid signing and catch
- * HybridAdapterError, then bind its code to [errorCode].
- *
- * The full signing flow (prepareSign → PRF unwrap → submit) is wired in US-04.
- */
 @Component({
   selector: 'app-sign-prompt',
   standalone: true,

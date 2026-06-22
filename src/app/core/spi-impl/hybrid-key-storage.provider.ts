@@ -4,13 +4,6 @@ import { KeyStorageProvider, OID4VCIKeyGenContext } from '../spi/key-storage.pro
 import { RawKeyAlgorithm, PublicKeyInfo, KeyInfo } from '../models/StoredKeyRecord';
 import { ServerKeyStorageProvider } from './server-key-storage.service';
 
-/**
- * KeyStorageProvider for hybrid key management (US-06 skeleton, US-04 completes sign()).
- *
- * Key generation and read operations delegate to the server (same as DB mode).
- * The two-step signing handshake (prepareSign → PRF unwrap → submitSignedAssertion)
- * is implemented in US-04 (EUDISTACK-536).
- */
 @Injectable()
 export class HybridKeyStorageProvider extends KeyStorageProvider {
   private readonly server = inject(ServerKeyStorageProvider);
@@ -25,12 +18,6 @@ export class HybridKeyStorageProvider extends KeyStorageProvider {
 
   override async sign(_keyId: string, _data: Uint8Array): Promise<Uint8Array> {
     // TODO(EUDISTACK-536 / US-04): implement two-step hybrid signing:
-    //   1. POST /api/v1/keys/hybrid/sign/prepare → prf_salt, wrapped_blob, iv, tag, correlation_id
-    //   2. Derive unwrap key via PasskeyPrfService.deriveSigningKey(prf_salt)
-    //   3. AES-GCM decrypt wrapped_blob → private key bytes
-    //      throws HybridAdapterError('wrap_unavailable_on_this_device') on GCM tag mismatch
-    //   4. Sign locally with derived private key
-    //   5. POST /api/v1/keys/hybrid/sign/submit with signature + correlation_id
     throw new HybridAdapterError(
       'Hybrid sign not yet implemented — pending US-04 (EUDISTACK-536)',
       { code: 'prepare_sign_failed' }
@@ -62,7 +49,6 @@ export class HybridKeyStorageProvider extends KeyStorageProvider {
     payload: Record<string, unknown>,
     signingType: 'KB_JWT' | 'VP_ENVELOPE'
   ): Promise<string> {
-    // Presentation JWS also needs the hybrid two-step flow — US-04 will override this.
     throw new HybridAdapterError(
       'Hybrid buildPresentationJws not yet implemented — pending US-04 (EUDISTACK-536)',
       { code: 'prepare_sign_failed' }
