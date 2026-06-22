@@ -18,6 +18,8 @@ export interface VerifiableCredential {
 
 // Must match credential_configuration_id in assets/schemas/*.json
 export const CREDENTIAL_TYPES_ARRAY = [
+  'LEARCredentialEmployee',
+  'LEARCredentialMachine',
   'learcredential.employee.w3c.4',
   'learcredential.employee.sd.1',
   'learcredential.machine.w3c.3',
