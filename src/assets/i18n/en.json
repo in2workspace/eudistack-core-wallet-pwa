@@ -441,5 +441,22 @@
     "step2-detail": "Look for the share icon (box with an arrow) at the bottom of Safari",
     "step1": "Tap the three dots in Safari",
     "step1-detail": "Look for them next to the address bar to open the options menu"
+  },
+  "hybrid-onboarding": {
+    "title": "Signing from multiple devices",
+    "subtitle": "This tenant uses a hybrid key manager. Credentials are signed with a passkey bound to this device. Signing from another device will fail.",
+    "warning-icon-aria": "Multi-device limitation warning",
+    "bullet-1": "The signing key is bound to this device",
+    "bullet-2": "You will not be able to present credentials from another device",
+    "bullet-3": "If you change devices, contact support",
+    "accept": "Got it, continue",
+    "learn-more": "Why this limitation?",
+    "learn-more-body": "This tenant uses passkeys with the PRF extension to protect the holder's private key. The passkey only exists on this device and cannot be transferred to another for security reasons.",
+    "learn-more-close": "Got it"
+  },
+  "hybrid-errors": {
+    "wrap-unavailable-title": "Cannot sign on this device",
+    "wrap-unavailable-body": "The signing key was created on another device and cannot be used here. Use the original device to present your credentials.",
+    "wrap-unavailable-cta": "Close"
   }
 }
