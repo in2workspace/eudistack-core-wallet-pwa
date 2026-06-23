@@ -97,7 +97,7 @@ describe('TenantService', () => {
 
       const resolvePromise = service.resolve();
       const req = http.expectOne('/assets/tenants/custom-domain.json');
-      req.flush({ domains: { 'wallet.acme.com': { tenantId: 'kpmg', envId: 'pro' } }, env: {} });
+      req.flush({ domains: { 'wallet.acme.com': { tenantId: 'kpmg', envId: 'pro' } }, tenants: {} });
       await resolvePromise;
 
       expect(service.tenant()).toBe('kpmg');
@@ -108,7 +108,7 @@ describe('TenantService', () => {
 
       const resolvePromise = service.resolve();
       const req = http.expectOne('/assets/tenants/custom-domain.json');
-      req.flush({ domains: { 'wallet.acme.com': { tenantId: 'unknown-tenant', envId: 'pro' } }, env: {} });
+      req.flush({ domains: { 'wallet.acme.com': { tenantId: 'unknown-tenant', envId: 'pro' } }, tenants: {} });
       await resolvePromise;
 
       expect(service.tenant()).toBeNull();
@@ -119,7 +119,7 @@ describe('TenantService', () => {
 
       const resolvePromise = service.resolve();
       const req = http.expectOne('/assets/tenants/custom-domain.json');
-      req.flush({ domains: { 'other.domain.com': { tenantId: 'sandbox', envId: 'pro' } }, env: {} });
+      req.flush({ domains: { 'other.domain.com': { tenantId: 'sandbox', envId: 'pro' } }, tenants: {} });
       await resolvePromise;
 
       expect(service.tenant()).toBeNull();
@@ -130,7 +130,7 @@ describe('TenantService', () => {
 
       const resolvePromise = service.resolve();
       const req = http.expectOne('/assets/tenants/custom-domain.json');
-      req.flush({ domains: { 'wallet.acme.com': { tenantId: '', envId: 'pro' } }, env: {} });
+      req.flush({ domains: { 'wallet.acme.com': { tenantId: '', envId: 'pro' } }, tenants: {} });
       await resolvePromise;
 
       expect(service.tenant()).toBeNull();
@@ -168,7 +168,7 @@ describe('TenantService', () => {
       const p2 = service.resolve();
       expect(p1).toBe(p2);
       // Flush for cleanup
-      http.expectOne('/assets/tenants/custom-domain.json').flush({ domains: {}, env: {} });
+      http.expectOne('/assets/tenants/custom-domain.json').flush({ domains: {}, tenants: {} });
     });
 
     it('no torna a fer la petició HTTP si ja s\'ha resolt', async () => {
@@ -184,6 +184,70 @@ describe('TenantService', () => {
       await service.resolve(); // second call — no new HTTP request
       http.expectNone('/assets/tenants/custom-domain.json');
       expect(service.tenant()).toBe('dome');
+    });
+  });
+
+  // ── resolveEnvConfig() ───────────────────────────────────────────────
+
+  describe('resolveEnvConfig()', () => {
+    const TENANT_CONFIG = {
+      domains: {},
+      tenants: {
+        dome: {
+          defaultEnv: 'pro',
+          env: {
+            pro: { issuer: 'https://issuer.pro', verifier: 'https://verifier.pro', wallet: 'https://wallet.pro' },
+            stg: { issuer: 'https://issuer.stg', verifier: 'https://verifier.stg', wallet: 'https://wallet.stg' },
+          },
+        },
+      },
+    };
+
+    function flushConfig(payload = TENANT_CONFIG): void {
+      http.expectOne('/assets/tenants/custom-domain.json').flush(payload);
+    }
+
+    it('retorna la config de l\'entorn demanat si existeix', async () => {
+      setHostname('wallet.acme.com');
+      const promise = service.resolveEnvConfig('dome', 'stg');
+      flushConfig();
+      const result = await promise;
+      expect(result).toEqual(TENANT_CONFIG.tenants.dome.env.stg);
+    });
+
+    it('fa fallback a defaultEnv si l\'envId demanat no existeix', async () => {
+      setHostname('wallet.acme.com');
+      const promise = service.resolveEnvConfig('dome', 'unknown');
+      flushConfig();
+      const result = await promise;
+      expect(result).toEqual(TENANT_CONFIG.tenants.dome.env.pro);
+    });
+
+    it('retorna null si el tenant no existeix al JSON', async () => {
+      setHostname('wallet.acme.com');
+      const promise = service.resolveEnvConfig('unknown-tenant', 'pro');
+      flushConfig();
+      const result = await promise;
+      expect(result).toBeNull();
+    });
+
+    it('retorna null si l\'envId no existeix i no hi ha defaultEnv', async () => {
+      setHostname('wallet.acme.com');
+      const promise = service.resolveEnvConfig('dome', 'unknown');
+      flushConfig({
+        domains: {},
+        tenants: { dome: { env: { pro: TENANT_CONFIG.tenants.dome.env.pro } } },
+      });
+      const result = await promise;
+      expect(result).toBeNull();
+    });
+
+    it('retorna null si la petició al JSON falla', async () => {
+      setHostname('wallet.acme.com');
+      const promise = service.resolveEnvConfig('dome', 'pro');
+      http.expectOne('/assets/tenants/custom-domain.json').flush('Not found', { status: 404, statusText: 'Not Found' });
+      const result = await promise;
+      expect(result).toBeNull();
     });
   });
 

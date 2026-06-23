@@ -9,7 +9,12 @@ export interface CustomDomainEnv {
   wallet: string;
 }
 
+export interface CustomDomainTenant {
+  defaultEnv?: string;
+  env: Record<string, CustomDomainEnv>;
+}
+
 export interface CustomDomainConfig {
   domains: Record<string, CustomDomainEntry>;
-  env: Record<string, CustomDomainEnv>;
+  tenants: Record<string, CustomDomainTenant>;
 }

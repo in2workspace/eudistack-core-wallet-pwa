@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { KNOWN_TENANTS, FALLBACK_TENANT } from '../constants/tenants.constants';
-import { CustomDomainConfig } from '../models/custom-domain.model';
+import { CustomDomainConfig, CustomDomainEnv } from '../models/custom-domain.model';
 
 const ENV_SUFFIXES = ['-stg', '-dev', '-pre'] as const;
 const WALLET_HOME_PATH = '/wallet/';
@@ -112,11 +112,22 @@ export class TenantService {
     return this.stripEnvSuffix(first).base;
   }
 
+  /**
+   * Resolves the env config for a given tenant and envId.
+   * Falls back to the tenant's defaultEnv if the specific envId is not found.
+   */
+  async resolveEnvConfig(tenantId: string, envId: string): Promise<CustomDomainEnv | null> {
+    const config = await this.loadCustomDomainConfig();
+    const tenant = config.tenants[tenantId];
+    if (!tenant) return null;
+    return tenant.env[envId] ?? (tenant.defaultEnv ? (tenant.env[tenant.defaultEnv] ?? null) : null);
+  }
+
   private loadCustomDomainConfig(): Promise<CustomDomainConfig> {
     if (!this._customDomainConfigPromise) {
       this._customDomainConfigPromise = firstValueFrom(
         this.http.get<CustomDomainConfig>(CUSTOM_DOMAIN_CONFIG_URL),
-      ).catch(() => ({ domains: {}, env: {} }));
+      ).catch(() => ({ domains: {}, tenants: {} }));
     }
 
     return this._customDomainConfigPromise;
