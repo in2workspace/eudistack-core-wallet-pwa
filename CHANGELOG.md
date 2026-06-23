@@ -6,13 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.9.1] - (2026-06-23)
-
-### Changed
-- Updated custom-domain.json model.
-
-
-## [3.9.0] - (2026-06-17)
+### [3.8.11] - (2026-06-17)
 
 ### Added
 
