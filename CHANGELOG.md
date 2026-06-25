@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **EUDISTACK-359 US-07:**
+  - Added PRF support detection before starting hybrid onboarding.
+  - Blocked onboarding when the authenticator does not support PRF.
+  - Added onboarding block endpoint integration (`/block`) for unsupported PRF authenticators.
+  - Prevented holder key generation and credential enrollment when PRF support is unavailable.
+  - Added onboarding state handling and unit tests for PRF unsupported and inconclusive scenarios.
+
 ### [3.8.11] - (2026-06-17)
 
 ### Added
