@@ -10,7 +10,7 @@ describe('OnboardingHybridComponent', () => {
   let fixture: ComponentFixture<OnboardingHybridComponent>;
   let component: OnboardingHybridComponent;
 
-  let mockApi: { init: jest.Mock; commit: jest.Mock };
+  let mockApi: { init: jest.Mock; commit: jest.Mock; block: jest.Mock };
   let mockMemory: { set: jest.Mock };
   let mockPrf: {
     evaluateForWrap: jest.Mock,
@@ -35,6 +35,7 @@ describe('OnboardingHybridComponent', () => {
         signing_pubkey_envelope_format: 'SD-JWT',
       }),
       commit: jest.fn().mockResolvedValue({ credential_id: CRED_ID }),
+      block: jest.fn().mockResolvedValue({}),
     };
     mockMemory = { set: jest.fn() };
     mockPrf = {
@@ -189,6 +190,20 @@ describe('OnboardingHybridComponent', () => {
     ).toBeLessThan(
       mockWrap.generateHolderKeyPair.mock.invocationCallOrder[0]
     );
+  });
+
+  it('calls block endpoint when PRF support is disabled', async () => {
+    mockPrf.detectPrfSupport.mockResolvedValue('disabled');
+
+    await component.enroll();
+
+    expect(mockApi.block).toHaveBeenCalledWith({
+      credential_id: CRED_ID,
+      correlation_id: expect.any(String),
+    });
+
+    expect(mockApi.init).not.toHaveBeenCalled();
+    expect(mockApi.commit).not.toHaveBeenCalled();
   });
 
   // ------------------------------------------------------------------ state guard

@@ -31,6 +31,13 @@ export type OnboardingState = 'idle' | 'loading' | 'done' | 'error' | 'prf-unsup
       <p>{{ 'hybrid.onboarding.done' | translate }}</p>
     } @else if (state === 'error') {
       <p>{{ 'hybrid.onboarding.error' | translate }}</p>
+    } @else if (state === 'prf-unsupported') {
+       <p>{{ 'hybrid.error.prfUnsupported' | translate }}</p>
+    }
+    @else if (state === 'prf-inconclusive') {
+       <p>
+         {{ 'hybrid.error.prfInconclusive' | translate }}
+       </p>
     }
   `,
 })
@@ -55,10 +62,20 @@ export class OnboardingHybridComponent {
     const prfSupport = await this.prfClientService.detectPrfSupport();
 
     if (prfSupport === 'disabled') {
+      try {
+        await this.api.block({
+          credential_id: this.credentialId,
+          correlation_id: crypto.randomUUID(),
+        });
+      } catch {
+        // esperamos 422 prf_unsupported
+      }
       this.state = 'prf-unsupported';
+
       this.enrollmentError.emit(
         new AppError('Authenticator does not support PRF', {
           code: 'unknown',
+          translationKey: 'errors.prf-unsupported',
         })
       );
       return;
@@ -69,6 +86,7 @@ export class OnboardingHybridComponent {
       this.enrollmentError.emit(
         new AppError('Unable to determine PRF support', {
           code: 'unknown',
+          translationKey: 'errors.prf-inconclusive',
         })
       );
       return;

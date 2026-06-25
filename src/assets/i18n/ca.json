@@ -171,7 +171,9 @@
       "type": "Error de configuració: la sol·licitud de la càmera no és vàlida. Intenta refrescar la pàgina o comprovar la configuració de la càmera.",
       "not-supported": "El teu navegador no admet l'accés a la càmera. Considera utilitzar un navegador diferent.",
       "default": "Error inesperat. Comprova els permisos del teu navegador i assegura't que cap altra aplicació estigui utilitzant la càmera. Intenta refrescar la pàgina."
-    }
+    },
+    "prf-unsupported": "El teu autenticador no és compatible amb PRF. Aquest tenant requereix una passkey compatible amb PRF per completar el procés d'activació. Utilitza un altre dispositiu o contacta amb l'administrador.",
+    "prf-inconclusive": "No s'ha pogut verificar si el teu autenticador és compatible amb PRF. Torna-ho a intentar o utilitza un altre dispositiu."
   },
   "privacy-policy": {
     "title": "Política de Privacitat"
