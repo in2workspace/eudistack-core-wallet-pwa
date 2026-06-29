@@ -1,6 +1,7 @@
-import { Oid4vciErrorCode } from "src/app/core/models/error/Oid4vciError";
+import type { Oid4vciErrorCode } from "src/app/core/models/error/Oid4vciError";
+import type { HybridAdapterErrorCode } from "src/app/core/models/error/HybridAdapterError";
 
-export type AppErrorCode = 'unknown' | 'warning' | Oid4vciErrorCode;
+export type AppErrorCode = 'unknown' | 'warning' | Oid4vciErrorCode | HybridAdapterErrorCode;
 
 export class AppError extends Error {
   public readonly code: AppErrorCode;

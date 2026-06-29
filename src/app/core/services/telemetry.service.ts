@@ -5,7 +5,9 @@ export type TelemetryEvent =
   | 'ios_onboarding_dismissed'
   | 'ios_pwa_installed'
   | 'wallet_discovery_resolved'
-  | 'wallet_discovery_fallback';
+  | 'wallet_discovery_fallback'
+  | 'hybrid_onboarding_shown'
+  | 'hybrid_onboarding_accepted';
 
 /**
  * Anonymous telemetry for platform-level events (AC-008.10).
