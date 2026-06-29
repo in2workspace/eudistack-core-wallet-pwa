@@ -312,6 +312,40 @@ it('should keep backend message for REQUEST_CREDENTIAL when not a timeout', () =
   req.flush({ message: 'Bad pin format' }, { status: 400, statusText: 'Bad Request' });
 });
 
+it('hybrid sign prepare 500 → handled silently, no toast, no error body logged (B1/NFR-S-536-03)', () => {
+  const testUrl = `${environment.server_url}${SERVER_PATH.HYBRID_SIGN_PREPARE}`;
+  const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
+  const consoleSpy = jest.spyOn(console, 'error');
+
+  httpClient.post(testUrl, {}).subscribe({
+    error: (err) => {
+      expect(err).toBeTruthy();
+      expect(toastSpy).not.toHaveBeenCalled();
+      expect(consoleSpy).not.toHaveBeenCalledWith('Error occurred:', expect.anything());
+    },
+  });
+
+  const req = httpMock.expectOne(testUrl);
+  req.flush({ message: 'Internal error' }, { status: 500, statusText: 'Internal Server Error' });
+});
+
+it('hybrid sign submit 500 → handled silently, no toast, no error body logged (B1/NFR-S-536-03)', () => {
+  const testUrl = `${environment.server_url}${SERVER_PATH.HYBRID_SIGN_SUBMIT}`;
+  const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
+  const consoleSpy = jest.spyOn(console, 'error');
+
+  httpClient.post(testUrl, {}).subscribe({
+    error: (err) => {
+      expect(err).toBeTruthy();
+      expect(toastSpy).not.toHaveBeenCalled();
+      expect(consoleSpy).not.toHaveBeenCalledWith('Error occurred:', expect.anything());
+    },
+  });
+
+  const req = httpMock.expectOne(testUrl);
+  req.flush({ message: 'Internal error' }, { status: 500, statusText: 'Internal Server Error' });
+});
+
 it('wallet discovery 404 → handled silently (no toast, no console.error) [M1 fix]', () => {
   // AD-2: well-known failures must never surface as user-visible toasts
   const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');

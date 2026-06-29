@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { HYBRID_WRAP_KDF_PARAMS } from './hybrid-kdf.const';
 
 export interface HolderKeyPair {
   privateKey: CryptoKey;
@@ -10,8 +11,6 @@ export interface WrappedKeyMaterial {
   iv: Uint8Array;
   tag: Uint8Array;
 }
-
-const HKDF_INFO = new TextEncoder().encode('hybrid-wrap-v1');
 
 /**
  * Client-side cryptographic operations for hybrid onboarding.
@@ -53,9 +52,9 @@ export class WrapService {
     const salt = new TextEncoder().encode(credentialId);
 
     return crypto.subtle.deriveKey(
-      { name: 'HKDF', hash: 'SHA-256', salt, info: HKDF_INFO },
+      { name: 'HKDF', hash: HYBRID_WRAP_KDF_PARAMS.hash, salt, info: HYBRID_WRAP_KDF_PARAMS.info },
       baseKey,
-      { name: 'AES-GCM', length: 256 },
+      { name: 'AES-GCM', length: HYBRID_WRAP_KDF_PARAMS.aesLength },
       false, // wrap key is not extractable
       ['wrapKey'],
     );

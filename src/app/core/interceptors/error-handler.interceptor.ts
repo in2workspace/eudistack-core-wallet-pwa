@@ -59,7 +59,10 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           // REQUEST SIGNATURE endpoint
           pathname.endsWith(SERVER_PATH.CREDENTIALS_SIGNED_BY_ID) ||
           // Auth endpoints
-          pathname.startsWith('/api/v1/auth/');
+          pathname.startsWith('/api/v1/auth/') ||
+          // Hybrid signing endpoints — never toast or expose body (NFR-S-536-03 defense-in-depth)
+          pathname.endsWith(SERVER_PATH.HYBRID_SIGN_PREPARE) ||
+          pathname.endsWith(SERVER_PATH.HYBRID_SIGN_SUBMIT);
 
         if (shouldHandleSilently) {
           this.logHandledSilentlyErrorMsg(errMessage);
