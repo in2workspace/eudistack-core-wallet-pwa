@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.9.1] - 2026-06-22
+## [3.9.2] - 2026-06-29
 
 ### Added
 
@@ -19,7 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **EUDISTACK-538 US-06 — i18n**: `hybrid-onboarding.*` and `hybrid-errors.*` keys added to `es.json`, `en.json`, `ca.json`.
 - **`jest.config.js`**: extended `collectCoverageFrom` to include the new hybrid onboarding/signing components and related core services/guards in coverage reporting.
 
-### [3.8.11] - (2026-06-17)
+## [3.9.1] - (2026-06-23)
+
+### Changed
+- Updated custom-domain.json model.
+
+## [3.9.0] - (2026-06-17)
 
 ### Added
 

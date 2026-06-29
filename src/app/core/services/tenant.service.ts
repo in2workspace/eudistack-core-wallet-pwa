@@ -116,7 +116,7 @@ export class TenantService {
     if (!this._customDomainConfigPromise) {
       this._customDomainConfigPromise = firstValueFrom(
         this.http.get<CustomDomainConfig>(CUSTOM_DOMAIN_CONFIG_URL),
-      ).catch(() => ({ domains: {}, env: {} }));
+      ).catch(() => ({ domains: {}, tenants: {} }));
     }
 
     return this._customDomainConfigPromise;
