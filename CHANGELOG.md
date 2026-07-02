@@ -26,6 +26,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **EUDISTACK-534 US-02 — `OnboardingHybridComponent`**: orchestrates init → PRF ceremony → key generation → HKDF derivation → AES-GCM wrap → commit → zeroize. `try/finally` guarantees private key is always zeroized; wrap key cached on success, zeroized on error. Aborts before commit if PRF ceremony fails (AC-01, AC-02, AC-08, ES-04, ES-05).
 - **EUDISTACK-534 US-02 — Unit tests**: `memory.service.spec` (TTL eviction, `beforeunload`, no-persistence); `prf-client.service.spec` (salt propagation, AppError paths); `wrap.service.spec` (ECDSA P-256, HKDF, AES-GCM, unique IVs, no `d` in JWK, zeroize); `onboarding-hybrid.component.spec` (full flow, commit body public-only, ES-04 abort, ES-05 zeroize invariants).
 
+### Added
+
+- **EUDISTACK-536 US-04 — `hybrid-kdf.const.ts`**: shared HKDF-SHA-256 KDF parameters (`HKDF_INFO`, `HYBRID_WRAP_KDF_PARAMS`) for both wrap (US-02) and unwrap (US-04). Guarantees DELTA-01 binding: both services must derive the same AES-256-GCM key or systematic GCM-tag failures result.
+- **EUDISTACK-536 US-04 — `UnwrapService`**: client-side AES-256-GCM unwrap of the holder's ECDSA P-256 private key. `deriveUnwrapKey` mirrors `WrapService.deriveWrapKey` with `['unwrapKey']` usage (HKDF-SHA-256, salt=UTF8(credentialId), info='hybrid-wrap-v1'). `unwrap` reconstructs the ciphertext‖tag split produced by US-02 and calls `crypto.subtle.unwrapKey`; on GCM-tag failure throws `HybridAdapterError(wrap_unavailable_on_this_device)` — fail-closed (AC-06/ES-03).
+- **EUDISTACK-536 US-04 — `SignApi`**: HTTP client for the hybrid signing handshake endpoints. `prepareSign` → `POST /api/v1/keys/hybrid/sign/prepare`; `submitSignedAssertion` → `POST /api/v1/keys/hybrid/sign/submit`. Mirrors `OnboardingHybridApi` pattern.
+- **EUDISTACK-536 US-04 — `SignService`**: orchestrates the full delegated signing handshake. Cache hit (AC-04) reuses the cached AES-GCM unwrap key, skipping the PRF ceremony; cache miss (EC-01) runs the PRF ceremony, derives and caches the unwrap key. The holder private key is unwrapped, used for a single `SubtleCrypto.sign(ECDSA/SHA-256)`, and zeroized in `finally` (AC-05). The private key is never cached — only the unwrap key enters `MemoryService`. Fails closed if unwrap throws before submit is called (ES-03).
+
+### Changed
+
+- **`WrapService`**: imports `HKDF_INFO` from `hybrid-kdf.const.ts` instead of declaring it inline (no behavioral change).
+
 ## [3.9.2] - 2026-06-29
 
 ### Added
