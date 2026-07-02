@@ -439,5 +439,22 @@
     "step2-detail": "Busca la icona de compartir (quadre amb una fletxa) a la part inferior de Safari",
     "step1": "Toca els tres punts a Safari",
     "step1-detail": "Cerca'ls al costat de la barra d'adreces per obrir el menú d'opcions"
+  },
+  "hybrid-onboarding": {
+    "title": "Signatura des de múltiples dispositius",
+    "subtitle": "Aquest tenant fa servir un gestor de claus híbrid. Les credencials es signen amb una passkey vinculada a aquest dispositiu. Si intentes signar des d'un altre dispositiu, l'operació fallarà.",
+    "warning-icon-aria": "Advertència de limitació multi-dispositiu",
+    "bullet-1": "La clau de signatura queda vinculada a aquest dispositiu",
+    "bullet-2": "No podràs presentar credencials des d'un altre dispositiu",
+    "bullet-3": "Si canvies de dispositiu, contacta amb el suport",
+    "accept": "Entès, continuar",
+    "learn-more": "Per què aquesta limitació?",
+    "learn-more-body": "Aquest tenant fa servir passkeys amb l'extensió PRF per protegir la clau privada del titular. La passkey només existeix en aquest dispositiu i no es pot transferir per raons de seguretat.",
+    "learn-more-close": "Entès"
+  },
+  "hybrid-errors": {
+    "wrap-unavailable-title": "No es pot signar en aquest dispositiu",
+    "wrap-unavailable-body": "La clau de signatura es va crear en un altre dispositiu i no es pot utilitzar aquí. Usa el dispositiu original per presentar les teves credencials.",
+    "wrap-unavailable-cta": "Tancar"
   }
 }

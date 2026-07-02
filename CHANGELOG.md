@@ -26,6 +26,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **EUDISTACK-534 US-02 — `OnboardingHybridComponent`**: orchestrates init → PRF ceremony → key generation → HKDF derivation → AES-GCM wrap → commit → zeroize. `try/finally` guarantees private key is always zeroized; wrap key cached on success, zeroized on error. Aborts before commit if PRF ceremony fails (AC-01, AC-02, AC-08, ES-04, ES-05).
 - **EUDISTACK-534 US-02 — Unit tests**: `memory.service.spec` (TTL eviction, `beforeunload`, no-persistence); `prf-client.service.spec` (salt propagation, AppError paths); `wrap.service.spec` (ECDSA P-256, HKDF, AES-GCM, unique IVs, no `d` in JWK, zeroize); `onboarding-hybrid.component.spec` (full flow, commit body public-only, ES-04 abort, ES-05 zeroize invariants).
 
+## [3.9.2] - 2026-06-29
+
+### Added
+
+- **EUDISTACK-538 US-06 — `HybridOnboardingPage`**: multi-step acceptance wizard shown to holders on hybrid tenants before any key operation. Guard (`hybridOnboardingGuard`) intercepts `tabs` activation when `key_manager=hybrid` and the session flag is absent; inverse guard (`hybridOnboardingRouteGuard`) prevents direct access on non-hybrid tenants. Route: `/hybrid-onboarding`.
+- **EUDISTACK-538 US-06 — `HybridAuditService`**: calls `POST /api/v1/keys/hybrid/constraint-accepted` after the holder taps "accept". Fire-and-forget with `catchError`; navigation to `/tabs` proceeds regardless of backend availability.
+- **EUDISTACK-538 US-06 — `HybridOnboardingService`**: sessionStorage-backed flag (`hybrid-onboarding-accepted`) so the wizard is shown once per session.
+- **EUDISTACK-538 US-06 — `HybridAdapterError`**: typed error class extending `AppError` with codes `wrap_unavailable_on_this_device` | `prepare_sign_failed`. `AppError` union type updated accordingly.
+- **EUDISTACK-538 US-06 — `HybridKeyStorageProvider`**: Angular DI provider for hybrid mode. Key generation delegates to `ServerKeyStorageProvider`; `sign()` is a typed stub pending US-04 (EUDISTACK-536). `key-storage.provider.factory.ts` selects this provider when `mode=server` and `keyManager=hybrid`.
+- **EUDISTACK-538 US-06 — `SignPromptComponent`**: error display component for `wrap_unavailable_on_this_device` failures — shown when the holder attempts to sign from a device that does not hold the PRF-bound key.
+- **EUDISTACK-538 US-06 — i18n**: `hybrid-onboarding.*` and `hybrid-errors.*` keys added to `es.json`, `en.json`, `ca.json`.
+- **`jest.config.js`**: extended `collectCoverageFrom` to include the new hybrid onboarding/signing components and related core services/guards in coverage reporting.
+
+## [3.9.1] - (2026-06-23)
+
+### Changed
+- Updated custom-domain.json model.
+
+## [3.9.0] - (2026-06-17)
+
+### Added
+
+- **EUDISTACK-534 US-02 — `hybrid-keymanager` feature module**: new `src/app/features/hybrid-keymanager/` module implementing client-side holder key generation, PRF-based wrap, and hybrid onboarding commit.
+- **EUDISTACK-534 US-02 — `MemoryService`**: in-memory `Map<credentialId, CryptoKey>` cache for AES-256-GCM wrap keys. TTL=5 min via `setTimeout`; `SubtleCrypto.deleteKey` called on eviction and `beforeunload`. No write to `localStorage`/`sessionStorage`/IndexedDB (AC-02, EC-01, EC-02).
+- **EUDISTACK-534 US-02 — `PrfClientService`**: thin wrapper over `PasskeyPrfService.getCredentialId()` that evaluates the WebAuthn PRF extension with a server-supplied salt. Returns raw 32-byte PRF output; throws `AppError` if no passkey is registered, assertion is cancelled, or PRF output is absent (AC-01, ES-04).
+- **EUDISTACK-534 US-02 — `WrapService`**: `generateHolderKeyPair` (ECDSA P-256, extractable private key); `deriveWrapKey` (HKDF-SHA-256, `salt=credentialId`, `info="hybrid-wrap-v1"`, L=256); `wrapPrivateKey` (AES-256-GCM, random 12-byte IV, 16-byte tag split from output); `zeroize` (best-effort `deleteKey`). `cnf.jwk` never contains private parameter `d` (AC-02, AC-03, EC-03, NFR-05).
+- **EUDISTACK-534 US-02 — `OnboardingHybridApi`**: typed HTTP client for `POST /api/v1/keys/hybrid/onboarding/init` and `POST /api/v1/keys/hybrid/onboarding/commit`. DTOs aligned with EBW backend contract (AC-03, AC-04).
+- **EUDISTACK-534 US-02 — `OnboardingHybridComponent`**: orchestrates init → PRF ceremony → key generation → HKDF derivation → AES-GCM wrap → commit → zeroize. `try/finally` guarantees private key is always zeroized; wrap key cached on success, zeroized on error. Aborts before commit if PRF ceremony fails (AC-01, AC-02, AC-08, ES-04, ES-05).
+- **EUDISTACK-534 US-02 — Unit tests**: `memory.service.spec` (TTL eviction, `beforeunload`, no-persistence); `prf-client.service.spec` (salt propagation, AppError paths); `wrap.service.spec` (ECDSA P-256, HKDF, AES-GCM, unique IVs, no `d` in JWK, zeroize); `onboarding-hybrid.component.spec` (full flow, commit body public-only, ES-04 abort, ES-05 zeroize invariants).
+
 ## [3.8.11] - 2026-06-19
 
 ### Added
