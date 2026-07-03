@@ -357,7 +357,10 @@
     "last-passkey-error": "No puedes eliminar tu última passkey. Registra un nuevo dispositivo primero.",
     "load-error": "No se pudieron cargar tus dispositivos. Inténtalo de nuevo.",
     "retry": "Reintentar",
-    "no-passkeys": "No hay passkeys registradas."
+    "no-passkeys": "No hay passkeys registradas.",
+    "last-used": "Último uso: {{date}}",
+    "last-used-never": "Sin uso registrado",
+    "this-device": "Este dispositivo"
   },
   "verification": {
     "button": "Verificar Credencial",
