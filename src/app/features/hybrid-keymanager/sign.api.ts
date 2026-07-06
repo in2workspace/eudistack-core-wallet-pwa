@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { environment } from 'src/environments/environment';
 import { SERVER_PATH } from 'src/app/core/constants/api.constants';
+import { UrlResolverService } from 'src/app/core/services/url-resolver.service';
 
 export interface PrepareSignRequest {
   credential_id: string;
@@ -44,12 +44,12 @@ export interface SubmitSignedResponse {
 @Injectable({ providedIn: 'root' })
 export class SignApi {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = environment.server_url;
+  private readonly urlResolver = inject(UrlResolverService);
 
   prepareSign(req: PrepareSignRequest): Promise<PrepareSignResponse> {
     return firstValueFrom(
       this.http.post<PrepareSignResponse>(
-        `${this.baseUrl}${SERVER_PATH.HYBRID_SIGN_PREPARE}`,
+        `${this.urlResolver.serverUrl()}${SERVER_PATH.HYBRID_SIGN_PREPARE}`,
         req,
       ),
     );
@@ -58,7 +58,7 @@ export class SignApi {
   submitSignedAssertion(req: SubmitSignedRequest): Promise<SubmitSignedResponse> {
     return firstValueFrom(
       this.http.post<SubmitSignedResponse>(
-        `${this.baseUrl}${SERVER_PATH.HYBRID_SIGN_SUBMIT}`,
+        `${this.urlResolver.serverUrl()}${SERVER_PATH.HYBRID_SIGN_SUBMIT}`,
         req,
       ),
     );
