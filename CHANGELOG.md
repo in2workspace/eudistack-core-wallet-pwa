@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.10.2] - 2026-07-06
+
+### Fixed
+
+- **EUD-143 US-01 — Badge/icon invisible on tenants with a light `--primary-color`**: the "This device" badge and the device icon hardcoded `color: white` against a `background: var(--primary-color)`. `--primary-color` is tenant-themed by `ThemeService`; on tenants whose brand primary is white/near-white (e.g. `cgcom`), this rendered white text/icon on a white background. Found in production after merge (worked on `dome`, broken on `cgcom`). Replaced `white` with `var(--primary-contrast-color)`, the contrast token `ThemeService` already sets as a pair with `--primary-color` for every tenant.
+
 ## [3.10.1] - 2026-07-03
 
 ### Added
@@ -24,17 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **EUD-143 US-01 — undefined `--action-primary` CSS variable**: the "This device" badge and the device icon on the Devices page referenced `var(--action-primary)`, a token that does not exist in `theme/variables.scss` (only `--primary-color` is defined). The undefined variable made `background` resolve to nothing, rendering the badge as invisible white text and the device icon as an empty circle. Found during manual QA of AC-03. Replaced both usages with `var(--primary-color)`.
 - **EUD-143 US-01 — Devices page subtitle not centered**: `.devices-subtitle` had no `text-align`, so it rendered left-aligned while the empty/loading/error states below it are centered. Added `text-align: center` for visual consistency. Found during manual QA of AC-05.
 - **EUD-143 US-01 — Duplicate page header leaving a blank bar**: `DevicesPage` was the only screen in the app defining its own `<ion-header>`/`<ion-toolbar>`, rendered as a second, empty bar below the app's shared header (no other page under `/tabs/*` defines one). Removed it; the page no longer shows a blank strip below the header.
-
-### Added
-
-- **EUDISTACK-536 US-04 — `hybrid-kdf.const.ts`**: shared HKDF-SHA-256 KDF parameters (`HKDF_INFO`, `HYBRID_WRAP_KDF_PARAMS`) for both wrap (US-02) and unwrap (US-04). Guarantees DELTA-01 binding: both services must derive the same AES-256-GCM key or systematic GCM-tag failures result.
-- **EUDISTACK-536 US-04 — `UnwrapService`**: client-side AES-256-GCM unwrap of the holder's ECDSA P-256 private key. `deriveUnwrapKey` mirrors `WrapService.deriveWrapKey` with `['unwrapKey']` usage (HKDF-SHA-256, salt=UTF8(credentialId), info='hybrid-wrap-v1'). `unwrap` reconstructs the ciphertext‖tag split produced by US-02 and calls `crypto.subtle.unwrapKey`; on GCM-tag failure throws `HybridAdapterError(wrap_unavailable_on_this_device)` — fail-closed (AC-06/ES-03).
-- **EUDISTACK-536 US-04 — `SignApi`**: HTTP client for the hybrid signing handshake endpoints. `prepareSign` → `POST /api/v1/keys/hybrid/sign/prepare`; `submitSignedAssertion` → `POST /api/v1/keys/hybrid/sign/submit`. Mirrors `OnboardingHybridApi` pattern.
-- **EUDISTACK-536 US-04 — `SignService`**: orchestrates the full delegated signing handshake. Cache hit (AC-04) reuses the cached AES-GCM unwrap key, skipping the PRF ceremony; cache miss (EC-01) runs the PRF ceremony, derives and caches the unwrap key. The holder private key is unwrapped, used for a single `SubtleCrypto.sign(ECDSA/SHA-256)`, and zeroized in `finally` (AC-05). The private key is never cached — only the unwrap key enters `MemoryService`. Fails closed if unwrap throws before submit is called (ES-03).
-
-### Changed
-
-- **`WrapService`**: imports `HKDF_INFO` from `hybrid-kdf.const.ts` instead of declaring it inline (no behavioral change).
 
 ## [3.9.2] - 2026-06-29
 

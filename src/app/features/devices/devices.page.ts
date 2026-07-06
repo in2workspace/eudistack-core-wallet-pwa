@@ -164,7 +164,7 @@ import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.s
       margin-right: 12px;
 
       ion-icon {
-        color: white;
+        color: var(--primary-contrast-color);
         font-size: 20px;
       }
     }
@@ -216,7 +216,7 @@ import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.s
       padding: 2px 8px;
       border-radius: 10px;
       background: var(--primary-color);
-      color: white;
+      color: var(--primary-contrast-color);
       white-space: nowrap;
     }
 
