@@ -1,10 +1,29 @@
 # Changelog
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [3.10.1] - 2026-07-03
+
+### Added
+
+- **EUD-143 US-01 — List registered devices**: Added display of `lastUsedAt` (with explicit "Never used" fallback for null values) in the Devices page.
+- **EUD-143 US-01 — Current device identification**: Added "This device" textual badge (WCAG 2.1 AA compliant) to the Devices list, mapping `currentCredentialId` with the passkey's `credentialId`.
+- **EUD-143 US-01 — i18n**: Added `devices.last-used`, `devices.last-used-never` and `devices.this-device` keys to `en.json`, `es.json` and `ca.json`.
+
+### Changed
+
+- **EUD-143 US-01 — Devices list layout**: each device now renders as its own separate card (background, rounded corners, spacing between entries) instead of all devices sharing one continuous card with row separators.
+
+### Fixed
+
+- **EUD-143 US-01 — undefined `--action-primary` CSS variable**: the "This device" badge and the device icon on the Devices page referenced `var(--action-primary)`, a token that does not exist in `theme/variables.scss` (only `--primary-color` is defined). The undefined variable made `background` resolve to nothing, rendering the badge as invisible white text and the device icon as an empty circle. Found during manual QA of AC-03. Replaced both usages with `var(--primary-color)`.
+- **EUD-143 US-01 — Devices page subtitle not centered**: `.devices-subtitle` had no `text-align`, so it rendered left-aligned while the empty/loading/error states below it are centered. Added `text-align: center` for visual consistency. Found during manual QA of AC-05.
+- **EUD-143 US-01 — Duplicate page header leaving a blank bar**: `DevicesPage` was the only screen in the app defining its own `<ion-header>`/`<ion-toolbar>`, rendered as a second, empty bar below the app's shared header (no other page under `/tabs/*` defines one). Removed it; the page no longer shows a blank strip below the header.
 
 ### Added
 
@@ -33,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.9.1] - (2026-06-23)
 
 ### Changed
+
 - Updated custom-domain.json model.
 
 ## [3.9.0] - (2026-06-17)
@@ -68,11 +88,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OID4VCI authorization code flow — DOME cross-origin**: revert browser-navigation and popup workarounds (PR #126, #127). The root fix is in `eudistack-core-issuer`: `CorsWebFilter` now runs as a standalone bean at highest precedence, guaranteeing `Access-Control-Allow-Origin` on the 302 response from `/oid4vci/v1/authorize`. The wallet restores the original XHR-based approach (`HttpClient.get` + `response.url`), which works without browser navigation or popups.
 
 ## [3.8.7] - 2026-06-18
+
 ### Changed
+
 - **URL resolution — removed canonical/non-canonical branching**: `UrlResolverService` no longer checks `isCanonicalDomain()` to pick between `/business-wallet/` and bare-origin paths. `serverUrl()` and `websocketUrl()` always apply the `/business-wallet` prefix (env override via `server_url` / `websocket_url` still wins). `walletDiscoveryPath()` method removed; its value is now the compile-time constant `WALLET_DISCOVERY_PATH` in `api.constants.ts`. All consumers (`authInterceptor`, `HttpErrorInterceptor`, `HttpWalletDiscoveryGateway`) updated accordingly.
 
 ## [3.8.5] - 2026-06-18
+
 ### Changed
+
 - Remove cross-tenant offer validation
 
 ## [3.8.5] - 2026-06-17
@@ -84,24 +108,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.8.4] - 2026-06-17
 
 ### Changed (2026-06-17)
+
 - **Wallet API URL resolution** is resolved with the appropiate canonical or non-canonical URL.
 - Updated custom-domain.json model.
 
 ## [3.8.3] - 2026-06-15
 
 ### Added (2026-06-15)
+
 - Added `cgcom` to the list of known tenants.
 - **Custom-domain tenant resolution (`TenantService`)**: the app now resolves the active tenant via a two-step lookup — first from the hostname subdomain (existing behaviour), then from `/assets/tenants/custom-domain.json` (a `{ "hostname": "tenantId" }` map) when the subdomain does not match a known tenant. The resolved tenant (or `null` for unknown origins) is stored in a `Signal<string | null>` initialised before theme loading and consumed by `ThemeService`, `tenantGuard` and `TenantNotFoundPage`.
 
 ### Changed (2026-06-15)
+
 - **`tenants.constants.ts`**: reduced to data-only (`KNOWN_TENANTS`, `FALLBACK_TENANT`); resolution functions moved to `TenantService` as private methods.
 - **`tenantGuard`**, **`tenantNotFound`**, **`credentialOfferService`**: read the resolved tenant signal from `TenantService` instead of re-deriving it from the hostname on every navigation.
 - **Service Worker cache (`ngsw-config.json`)**: `/assets/tenants/custom-domain.json` added to the `config` freshness group (1 h TTL, maxSize increased to 10).
 
-
 ## [3.8.2] - 2026-06-08
 
 ### Fixed
+
 - **Auth interceptor — token expiry**: `authInterceptor` now intercepts 401 responses from the own-backend and calls `forceLogout()`, redirecting the user to the login screen. Previously, an expired access token returned a raw 401 error with no session cleanup — the user saw an error but was never redirected.
 
 ## [3.8.1] - 2026-06-03
@@ -162,6 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.7.1] - 2026-05-19
 
 ### Changed
+
 - Accept gx.labelcredential.w3c.2 instead of gx.labelcredential.w3c.1.
 
 ## [3.7.0] - 2026-05-18
@@ -225,6 +253,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.6.4] - 2026-05-13
 
 ### Added
+
 - **VC Selector**: Integrated verifier information display within the `vc-selector` view to improve transparency during credential selection.
 - **Testing**: implemented new test suites for `vc-selector` page specifically targeting metadata rendering and edge cases.
 - Added 5 new tests for single-instance service to cover the new logic for installed PWA and follower notification.
@@ -232,7 +261,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Single-instance:** Ensure installed PWA shows the duplicate-instance UI instead of silently closing; follower now notifies leader and renders a contextual message in standalone mode.
-
 
 ## [3.6.3] - 2026-04-30
 
@@ -265,11 +293,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   4. Tap "Add"
   5. Open Wallet from your home screen
   6. Scan the QR from inside Wallet
-  Step 6 explicitly tells the user to use Wallet's `Escáner QR` / `QR Scan` option — not the iPhone
-  native camera — because scanning from the OS camera reopens Safari and loses the offer due to the
-  Safari ↔ standalone storage isolation. Title and subtitle updated to frame the wizard as the
-  credential activation flow rather than a generic install prompt. i18n keys renumbered `step1`–`step6`
-  in `en.json`, `es.json`, `ca.json`.
+     Step 6 explicitly tells the user to use Wallet's `Escáner QR` / `QR Scan` option — not the iPhone
+     native camera — because scanning from the OS camera reopens Safari and loses the offer due to the
+     Safari ↔ standalone storage isolation. Title and subtitle updated to frame the wizard as the
+     credential activation flow rather than a generic install prompt. i18n keys renumbered `step1`–`step6`
+     in `en.json`, `es.json`, `ca.json`.
 
 - **QR scan support for `authorization_request=` URLs (proximity verifier same-device flow)**
   (`credentials.page.ts`). `qrCodeEmit()` now extracts the inner `openid4vp://` URI from
@@ -290,17 +318,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.5.0] - 2026-04-28
 
 ### Added
+
 - Add tests for single-instance and auth service.
 - Unit tests for `CredentialOfferService` tenant validation.
 
 ### Fixed
+
 - **PasskeyPrf key storage** — wallet always uses `PasskeyPrf` key storage until EUDI-041 (key management) is ready, preventing fallback to weaker storage in server mode.
 - **Passkey handling for device registration** — improved passkey flow and user-facing error states during device registration to avoid dead-ends when the authenticator interaction fails.
 - **OTP input** — removed spurious `completed` event emission that triggered double-submit in some flows.
 - **`settings.page.spec.ts`** — added `ThemeService` stub (null snapshot) to `TestBed`. The spec was failing in CI with `NullInjectorError: No provider for HttpClient` since commit 596f3a0 because `ThemeService` injects `HttpClient` and the spec did not provide it.
 - **OID4VCI `redirect_uri` multi-tenant** — removed the build-time `OID4VCI_REDIRECT_URI` variable. The same bundle is deployed to all tenants and `redirect_uri` is now derived at runtime from `window.location.origin`. Root cause of the reported 504: the hardcoded host (`wallet-stg.altia.eudistack.net`) did not resolve in DNS after EUDI-094.
 - **Multi-tab (Single Instance)** — fixed infinite login redirection loop in the main tab when a second Wallet tab was opened; secondary tab now correctly detects the leader and halts cleanly without corrupting session tokens.
-
 
 ### Changed
 
@@ -311,7 +340,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Wallet API URLs derived from `window.location`** — `server_url` and `websocket_url` are now derived from the origin at runtime. This allows the same bundle to serve all tenants, assuming CloudFront/nginx proxies `/business-wallet/*` to the corresponding tenant's EBW.
 - **Multi-tab single-instance** — simplified single-instance handling: removed unreliable cross-tab focus attempts; duplicate tabs now show a clear "close this tab" UI; deep-links are processed by the already-open tab.
 
-
 ## [3.4.0] - 2026-04-28
 
 ### Added
@@ -320,13 +348,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Session master handling for PRF** — implements session master key derivation to reuse existing PRF material across operations, reducing the number of biometric prompts required per session.
 - **Registration flow `mode` parameter** — registration route accepts a `mode` query param to distinguish device-passkey vs browser flows; UI text updated accordingly for clearer user guidance.
 - **Settings → Wallet type badge** — la página de Ajustes muestra ahora un indicador del modo del wallet (`EUDIW` cuando `wallet_mode === 'browser'`, `Business Wallet` cuando `wallet_mode === 'server'`). Permite al usuario distinguir de un vistazo en qué tipo de wallet está operando, alineado con la documentación pública (`docs.eudistack.net`).
-  - `settings.page.{ts,html}` — nuevo `walletModeKey` y `<ion-badge>` justo encima del item *About*.
+  - `settings.page.{ts,html}` — nuevo `walletModeKey` y `<ion-badge>` justo encima del item _About_.
   - `i18n/{en,es,ca}.json` — claves `settings.wallet-mode-label`, `wallet-mode-eudiw`, `wallet-mode-business`.
 - **Settings → Knowledge base link** — item visible cuando el `theme.json` del tenant define `content.knowledgeBaseUrl`. Todos los tenants EUDIStack ahora apuntan a `https://docs.eudistack.net` (excepto DOME, que mantiene su KB propia).
 
 ### Fixed
 
-- **`appVersion` hardcoded a 3.0.0** — `environment{,.production}.ts` y `package.json` desincronizados desde hace varias releases; *About* siempre mostraba `v3.0.0` independientemente del bundle desplegado. Bumpeado a `3.4.0` en los tres ficheros (follow-up: derivar `appVersion` de `package.json` en build-time para no volver a olvidarlo).
+- **`appVersion` hardcoded a 3.0.0** — `environment{,.production}.ts` y `package.json` desincronizados desde hace varias releases; _About_ siempre mostraba `v3.0.0` independientemente del bundle desplegado. Bumpeado a `3.4.0` en los tres ficheros (follow-up: derivar `appVersion` de `package.json` en build-time para no volver a olvidarlo).
 - **`settings.page.spec.ts`** — añadido stub de `ThemeService` (snapshot null) en el `TestBed`. El spec fallaba en CI con `NullInjectorError: No provider for HttpClient` desde el commit 596f3a0 (knowledge base link), porque `ThemeService` inyecta `HttpClient` y el spec no lo proveía.
 
 ### Changed (Wallet API URLs derived from window.location — multi-tenant)
@@ -396,6 +424,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI and Deploy workflows sparse-checkout `eudistack-platform-dev` as a sibling so the sync step has a real source on every build.
 
 ### Added
+
 - Login and register with Wallet EBS in server mode
 
 ### Fixed
@@ -409,7 +438,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 8 legacy schemas absent from canonical source: `eu.europa.ec.eudi.{employee,pid,por}.1.{json,profile.json}` and orphan `learcredential.{employee,machine}.w3c.1.profile.json`.
 
 ## [3.0.2] - 2026-04-20
+
 ### Changed
+
 - Standardize query parameter detection to `credential_offer_uri` to align with OIDC4VCI standards.
 - Integrate `CredentialOfferService` to correctly parse and decode nested/double-encoded offer URIs.
 
@@ -457,21 +488,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Back the primary color for verify button (it changed the contrast color in the commit 46bfd21).
 - Remove --action-primary CSS variable and its hue/lightness computation function, using --primary-color instead.
 - Remove color variables from theme.service.ts that duplicated values already defined in variables.scss.
-- Add brand-independent neutral color variables	to variables.scss.
+- Add brand-independent neutral color variables to variables.scss.
 
 ### Removed
+
 - Removed several unused dependencies from the repository (cleaned up `package.json` and removed unused libraries):
-	- `@simplewebauthn/browser`
-	- `@zxing/browser`
-	- `wallet-ui`
-	- `@babel/plugin-proposal-decorators`
-	- `jasmine-spec-reporter`
-	- `ng-mocks`
+  - `@simplewebauthn/browser`
+  - `@zxing/browser`
+  - `wallet-ui`
+  - `@babel/plugin-proposal-decorators`
+  - `jasmine-spec-reporter`
+  - `ng-mocks`
 
 ### Fixed
+
 - Clean up mixed/incorrect translations across EN/ES/CA.
 - Fixed popup after vc delete.
-- Fix credential detail modal and verification modal closing incorrectly when the browser back button is pressed. 
+- Fix credential detail modal and verification modal closing incorrectly when the browser back button is pressed.
 - Dark theme.
 - Translate revoke state URL from vc detail modal to verification detail modal.
 - Fix minor spelling issues in es/ca/en.
@@ -491,6 +524,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.0.0] - 2026-03-24
 
 ### Added
+
 - Add `tenantDomain` field to Theme interface and expose it as a public getter in ThemeService.
 - Add per-context color tokens in ThemeService (header, card, button, auth overrides) for tenant-specific theming.
 - Add DoctorID credential type support (`doctorid.sd.1`) with type registry, schema registry, normalizer, and type map.
@@ -500,6 +534,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Align CI/CD workflows: build automatic (with Jest coverage), deploy and release manual.
 
 ### Changed
+
 - Move branding configuration (colors, logo, favicon, default language) from env.js to theme.json for multi-tenant runtime theming.
 - Remove branding variables from env.template.js, env.js, and global.d.ts Window type.
 - Replace hardcoded `action-primary` and `rgba(37,99,235,...)` colors with CSS custom properties across auth, home, tabs, vc-selector, and vc-view SCSS files.
@@ -511,238 +546,344 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Security
+
 - Add hex color validation in ThemeService to prevent CSS injection via theme.json.
 - Add relative path validation for favicon and PWA icon URLs to prevent external URL hijacking.
 - Type `updateCredentialStatus` chain with `LifeCycleStatus` instead of `string`, removing `as any` casts.
 - Remove direct signal input mutation in VcViewComponent; parent now owns state changes.
 
 ## [2.1.1](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.1.1)
+
 ### Changed
+
 - The OID4VCI and OID4VP flows use the Web Crypto API and the Indexed DB for the signature.
 
 ## [2.1.0](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.1.0)
+
 ### Added
+
 - Enable optional OID4VCI flow which generates signature Web Crypto API and stores it in the browser (dev-mode).
 
 ## [2.0.10](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.0.10)
+
 ### Changed
+
 - Make the selected tab bar button color depend on the secondary custom color.
 
 ## [2.0.9](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.0.9)
+
 ### Changed
+
 - Make primary and secondary ionic color variables fully configurable.
 
 ## [2.0.8](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.0.8)
+
 ### Changed
+
 - Configure logo and favicon using the `ASSETS_BASE_URL` environment variable combined with asset-specific paths.
 
 ## [2.0.7](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.0.7)
+
 ### Added
+
 - Altia and ISBE favicons.
 
 ### Changed
+
 - Rename DOME favicon.
 
 ## [v2.0.6](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v2.0.6)
+
 ### Fixed
+
 - Add missing translations.
 
 ## [v2.0.5](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v2.0.5)
+
 ### Fixed
+
 - Add missing translations.
 
 ## [v2.0.4](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v2.0.4)
+
 ### Fixed
+
 - Fix "product offering" power action translation.
 
 ## [v2.0.3](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v2.0.3)
+
 ### Fixed
+
 - Add missing translations.
 
 ## [v2.0.2](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v2.0.2)
+
 ### Changed
+
 - Get PIN code description from i18n files, not from API websocket message.
 
 ## [v2.0.1](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v2.0.1)
+
 ### Added
+
 - Get default language from environment.
 
 ### Fixed
+
 - Add missing translations.
 
 ## [v2.0.0](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v2.0.0)
+
 ### Changed
+
 - Changed VC card view.
 - Request signature by credential procedure id.
 - Issuer field can be string or object.
 
 ### Added
+
 - Credential Status
 - Show LEARCredentialMachine mandatee details.
 
 ### Fixed
+
 - Don't show "Credentials not found" message while loading credentials.
 - Don't show error popup when credential signature request fails.
 - Fix error message when trying to login without credentials.
 
 ### Removed
+
 - Scan button in credentials page.
 
 ## [v1.9.9](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.9)
+
 ### Added
+
 - Added loading spinner for async operations.
 
 ### Changed
+
 - Don't close PIN popup on backdrop click.
 - Disable device selector while selected device is being switched.
 
 ### Fixed
+
 - Don't show credentials tab after clicking on scan button.
 - Avoid error when switching devices.
 - Show credentials list when scanner is open and credentials tab button is clicked.
 
 ## [v1.9.8](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.8)
+
 ### Fixed
+
 - Don't redirect to home when navigating right after login.
 
 ## [v1.9.7](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.7)
+
 ### Fixed
+
 - Fix error handling for auth errors
 
 ## [v1.9.6](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.6)
+
 ### Fixed
+
 - Fix delete credential endpoint.
 
 ## [v1.9.5](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.5)
+
 ### Fixed
+
 - In the credentials selector page, show the updated credentials list
 
 ### Changed
+
 - Enhance credentials selector page: show a text indicating to select a credential and show the list in the same order than in credentials page
 
 ## [v1.9.4](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.4)
+
 ### Changed
+
 - Changed env variable name: "WALLET_API_EXTERNAL_URL" > "WALLET_API_INTERNAL_URL"
 
 ## [v1.9.3](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.3)
+
 ### Fixed
+
 - Changed support URL from "-prd.org" to ".eu"
 
 ## [v1.9.2](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.2)
+
 ### Fixed
+
 - Don't show popup for "No internet connection" error
 
 ## [v1.9.1](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.1)
+
 ### Modified
+
 - Modify API env variables names
 
 ### Fixed
+
 - Don't enable logs if LOGS_ENABLED env var is false
 
 ## [v1.9.0](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.0)
+
 ### Modified
+
 - Modify configurable variables names, make some of them constants
 - Remove unused images and ebsi references
 
 ## [v1.8.0](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.8.0)
+
 ### Changed
+
 - Unsigned credentials are now automaticly updated if issuer has signed them
 - Added info button when credential is unsigned
 - Minor visual adjustments
+
 ### Fixed
+
 - Minor Fixes
 
 ## [v1.7.0](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.7.0)
+
 ### Added
+
 - Compatibility for LEARCredentialEmployee V2
 
 ## [v1.6.3](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.6.3)
+
 ### Fixed
+
 - Load translations on initialization
 
 ## [v1.6.2](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.6.2)
+
 ### Fixed
+
 - Camera selector
 - Deactivate camera when switching fast between tabs
 
 ## [v1.6.1](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.6.1)
+
 ### Added
+
 - Added customized colors for navbar and logo.
 
 ## [v1.5.0](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.5.0)
+
 ### Added
+
 - New route to execute same-device credential issuance workflow.
 - Timeout counter added to "Enter PIN" popup
 - More informative messages in case of error in the process of sending PIN to get credential
 
 ## [v1.4.0](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.4.0)
+
 ### Changed
+
 - Refactor architecture to standalone.
 - Changed callback page design.
+
 ### Fixed
+
 - Fixed the persistent callback page when state is invalid or other reasons.
 - Fixed routing issues.
 - Fixed some styles.
 
 ## [v1.3.7](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.3.7)
+
 ### Fixed
+
 - Added clean refresh to logout.
 
 ## [v1.3.6](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.3.6)
+
 ### Fixed
+
 - Add expired view for credentials when the credential is expired.
 
 ## [v1.3.5](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.3.5)
+
 ### Fixed
+
 - Successful login and Error messages style.
+
 ### Updated
+
 - Credential added message slyle.
 
 ## [v1.3.4](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.3.4)
+
 ### Fixed
+
 - Refresh credentials list after deleting credential.
+
 ### Updated
+
 - No credentials and Settings views slyle.
 
 ## [v1.3.3]
+
 ### Fixed
+
 - The Error popup is shown when the user has no credentials.
 
 ## [v1.3.2] - ()
+
 ### Fixed
+
 - The Error popup is shown when the user has no credentials.
 - Expiration messages of credentials view are hidden
 
 ## [v1.3.1] - ()
+
 ### Fixed
+
 - Error popup isn't shown when an already used login QR is used.
 
 ## [v1.3.0] - ()
+
 ### Added
+
 - Pop up error message on unsuccessful login.
+
 ### Updated
+
 - Update an Angular and scanner version.
+
 ### Fixed
+
 - Translations
 - Multiple Vcs send.
 - Camera remains activated when leaving scanner page.
 
 ## [v1.2.0] - (https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.2.0)
+
 ### Added
+
 - New endpoint for credential retrieval.
 - User alerts for credential status.
 - Pop-up dialogs for user interactions.
 - Improved accessibility for QR components.
+
 ### Fixed
+
 - Error handling for 202 and 204 status codes.
 - Default camera selection issues.
 - Text corrections for better translations.
+
 ### Updated
+
 - Refined page refresh and redirection logic.
 - Enhanced button behavior and UI components.
 
 ## [1.1.0] - (https://github.com/in2workspace/wallet-ui/releases/tag/v1.1.0)
+
 ### Added
+
 - New oidc login connection config.
 - Support for GitHub Actions for CI/CD.
 - Added SonarCloud for code quality.
@@ -750,20 +891,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Websocket connection.
 - Ebsi implementation.
 - CBOR presentation Credential support.
+
 ### Fixed
+
 - UI/UX issues.
 - SonarCloud issues.
 - Error handling issues.
 - Translation issues.
 - SonarCloud issues.
+
 ### Updated
+
 - Verifiable Credential Interface.
+
 ### Deleted
+
 - Registration
 - User DID management
 
 ## [1.0.0](https://github.com/in2workspace/wallet-ui/releases/tag/v1.0.0) - 2023-11-21
+
 ### Added
+
 - User registration
 - User login
 - User logout

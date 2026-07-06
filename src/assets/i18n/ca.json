@@ -353,7 +353,10 @@
     "last-passkey-error": "No pots eliminar la teva última passkey. Registra un nou dispositiu primer.",
     "load-error": "No s'han pogut carregar els teus dispositius. Torna-ho a provar.",
     "retry": "Tornar a provar",
-    "no-passkeys": "No hi ha passkeys registrades."
+    "no-passkeys": "No hi ha passkeys registrades.",
+    "last-used": "Darrer ús: {{date}}",
+    "last-used-never": "Sense ús registrat",
+    "this-device": "Aquest dispositiu"
   },
   "verification": {
     "button": "Verificar Credencial",
