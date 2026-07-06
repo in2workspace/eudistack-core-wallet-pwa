@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **EUD-143 US-01 — Badge/icon invisible on tenants with a light `--primary-color`**: the "This device" badge and the device icon hardcoded `color: white` against a `background: var(--primary-color)`. `--primary-color` is tenant-themed by `ThemeService`; on tenants whose brand primary is white/near-white (e.g. `cgcom`), this rendered white text/icon on a white background. Found in production after merge (worked on `dome`, broken on `cgcom`). Replaced `white` with `var(--primary-contrast-color)`, the contrast token `ThemeService` already sets as a pair with `--primary-color` for every tenant.
 
-## [3.10.0] - 2026-07-03
+## [3.10.1] - 2026-07-03
 
 ### Added
 
