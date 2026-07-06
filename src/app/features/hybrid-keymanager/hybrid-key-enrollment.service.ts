@@ -43,6 +43,7 @@ export class HybridKeyEnrollmentService {
   async enroll(context: OID4VCIKeyGenContext): Promise<HybridEnrollmentResult> {
     let privateKey: CryptoKey | undefined;
     let wrapKey: CryptoKey | undefined;
+    let prfOutput: Uint8Array | undefined;
     let success = false;
 
     try {
@@ -55,7 +56,7 @@ export class HybridKeyEnrollmentService {
       // Step 2: single PRF ceremony — doubles as the PRF-support gate. Aborts
       // (ES-04) before any key material is generated if PRF is unavailable.
       const prfSalt = base64UrlDecode(initResponse.prf_salt);
-      const prfOutput = await this.evaluateForWrapOrBlock(prfSalt, context.credentialId);
+      prfOutput = await this.evaluateForWrapOrBlock(prfSalt, context.credentialId);
 
       // Step 3: generate holder key pair
       const { privateKey: pk, publicKeyJwk } = await this.wrapService.generateHolderKeyPair();
@@ -94,6 +95,10 @@ export class HybridKeyEnrollmentService {
       if (privateKey) await this.wrapService.zeroize(privateKey);
       // Wrap key zeroized on failure; on success it lives in MemoryService
       if (!success && wrapKey) await this.wrapService.zeroize(wrapKey);
+      // Raw PRF output (IKM) MUST also be zeroed — it re-derives the wrap key deterministically
+      // via HKDF with a known salt/info, so leaving it live is equivalent to leaving the wrap
+      // key live (security audit finding, 2026-07-06 — was zeroed in sign.service.ts but not here).
+      prfOutput?.fill(0);
     }
   }
 

@@ -43,9 +43,12 @@ describe('HybridKeyEnrollmentService', () => {
     cNonce: 'nonce-1',
   };
   const PRF_SALT_B64 = 'AAEC'; // short valid base64url
-  const PRF_OUTPUT = new Uint8Array(32).fill(0x11);
+  // Fresh instance per test (not a shared const): enroll() now zeroes it in its finally
+  // block (F3 security fix, 2026-07-06) — a shared array would leak zeroing across tests.
+  let PRF_OUTPUT: Uint8Array;
 
   beforeEach(() => {
+    PRF_OUTPUT = new Uint8Array(32).fill(0x11);
     mockApi = {
       init: jest.fn().mockResolvedValue({
         prf_salt: PRF_SALT_B64,
@@ -169,5 +172,21 @@ describe('HybridKeyEnrollmentService', () => {
     await service.enroll(CONTEXT);
 
     expect(mockPrf.evaluateForWrap).toHaveBeenCalledTimes(1);
+  });
+
+  // ------------------------------------------------------------------ ES-05: raw PRF output zeroized (security fix, 2026-07-06)
+
+  it('zeroizes the raw PRF output (IKM) on a successful enroll', async () => {
+    await service.enroll(CONTEXT);
+
+    expect(PRF_OUTPUT.every(b => b === 0)).toBe(true);
+  });
+
+  it('zeroizes the raw PRF output (IKM) even on a mid-flow failure', async () => {
+    mockApi.commit.mockRejectedValue(new Error('network error'));
+
+    await expect(service.enroll(CONTEXT)).rejects.toBeInstanceOf(AppError);
+
+    expect(PRF_OUTPUT.every(b => b === 0)).toBe(true);
   });
 });

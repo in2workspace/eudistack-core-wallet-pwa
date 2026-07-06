@@ -6,7 +6,9 @@ import { UrlResolverService } from 'src/app/core/services/url-resolver.service';
 
 export interface PrepareSignRequest {
   credential_id: string;
-  vp_challenge: string;
+  /** Full presentation payload assembled by the OID4VP engine ({iat, aud, nonce, sd_hash} for
+   * KB-JWT, or the VP envelope claims for jwt_vc_json) — opaque to the EBW (architecture.md §6.2). */
+  payload: Record<string, unknown>;
   format: string;
 }
 

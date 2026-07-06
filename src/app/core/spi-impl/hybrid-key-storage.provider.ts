@@ -5,11 +5,13 @@ import { KeyStorageProvider, OID4VCIKeyGenContext } from '../spi/key-storage.pro
 import { RawKeyAlgorithm, PublicKeyInfo, KeyInfo } from '../models/StoredKeyRecord';
 import { ServerKeyStorageProvider } from './server-key-storage.service';
 import { HybridKeyEnrollmentService } from 'src/app/features/hybrid-keymanager/hybrid-key-enrollment.service';
+import { SignService } from 'src/app/features/hybrid-keymanager/sign.service';
 
 @Injectable()
 export class HybridKeyStorageProvider extends KeyStorageProvider {
   private readonly server = inject(ServerKeyStorageProvider);
   private readonly enrollment = inject(HybridKeyEnrollmentService);
+  private readonly signService = inject(SignService);
 
   /**
    * Generates the holder key for a credential client-side (PRF wrap + EBW onboarding
@@ -40,13 +42,12 @@ export class HybridKeyStorageProvider extends KeyStorageProvider {
 
     return {
       // Hybrid has no server-side `holder_key` row (the wrapped key lives in
-      // `hybrid_wrapped_key_handle`, keyed by (holder_id, credential_id) — not
-      // by a key_id UUID). The engine's `keyId` param is `credentialIssuer:
-      // credentialConfigurationId`, far longer than the `wallet_credential.
-      // holder_key_id VARCHAR(36)` column it ends up in — using it verbatim
-      // overflows that column. Generate an opaque UUID instead; nothing
-      // dereferences it server-side for hybrid credentials today.
-      keyId: crypto.randomUUID(),
+      // `hybrid_wrapped_key_handle`, keyed by (holder_id, credential_id)). Using
+      // the real credentialId as keyId lets buildPresentationJws() round-trip it
+      // straight back via resolveKeyIdByKid() — no separate mapping table needed.
+      // wallet_credential.holder_key_id was widened to VARCHAR(512) to fit it
+      // (V5__widen_holder_key_id_for_hybrid.sql).
+      keyId: context.credentialId,
       algorithm: 'ES256',
       publicKeyJwk,
       kid,
@@ -55,10 +56,16 @@ export class HybridKeyStorageProvider extends KeyStorageProvider {
     };
   }
 
+  /**
+   * Signing a raw payload (not a full presentation) is not a hybrid use case today —
+   * `buildPresentationJws` covers OID4VP, and the OID4VCI proof is signed inline during
+   * `generateKeyPair` (`prebuiltJwsProof`). Kept as an explicit, typed failure rather than
+   * silently delegating to `sign.service`'s two-step handshake with a raw byte payload it
+   * cannot turn into a valid signing_input.
+   */
   override async sign(_keyId: string, _data: Uint8Array): Promise<Uint8Array> {
-    // TODO(EUDISTACK-536 / US-04): implement two-step hybrid signing:
     throw new HybridAdapterError(
-      'Hybrid sign not yet implemented — pending US-04 (EUDISTACK-536)',
+      'Hybrid sign() is not supported — use buildPresentationJws for OID4VP presentations',
       { code: 'prepare_sign_failed' }
     );
   }
@@ -83,15 +90,19 @@ export class HybridKeyStorageProvider extends KeyStorageProvider {
     return this.server.resolveKeyIdByKid(kid);
   }
 
+  /**
+   * `keyId` is the real `credentialId` (see generateKeyPair) — passed straight through to
+   * `SignService.sign()`, which drives the prepare/PRF-unwrap/sign/submit handshake (US-04).
+   * `signingType` maps 1:1 to the credential `format` the backend expects (inverse of
+   * `PrepareSignUseCase.formatFrom`, EUDISTACK-536).
+   */
   override async buildPresentationJws?(
     keyId: string,
     payload: Record<string, unknown>,
     signingType: 'KB_JWT' | 'VP_ENVELOPE'
   ): Promise<string> {
-    return Promise.reject(new HybridAdapterError(
-      'Hybrid buildPresentationJws not yet implemented — pending US-04 (EUDISTACK-536)',
-      { code: 'prepare_sign_failed' }
-    ));
+    const format = signingType === 'KB_JWT' ? 'vc+sd-jwt' : 'jwt_vc_json';
+    return this.signService.sign(keyId, payload, format);
   }
 
   override exportKey?(keyId: string): Promise<JsonWebKey> {

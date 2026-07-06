@@ -6,6 +6,7 @@ import { HybridAdapterError } from '../models/error/HybridAdapterError';
 import { AppError } from '../models/error/AppError';
 import { KeyInfo } from '../models/StoredKeyRecord';
 import { HybridKeyEnrollmentService, HybridEnrollmentResult } from 'src/app/features/hybrid-keymanager/hybrid-key-enrollment.service';
+import { SignService } from 'src/app/features/hybrid-keymanager/sign.service';
 import { OID4VCIKeyGenContext } from '../spi/key-storage.provider.service';
 
 // JSDOM does not implement crypto.subtle; polyfill with Node's built-in WebCrypto API
@@ -55,21 +56,30 @@ function buildEnrollmentMock(): jest.Mocked<HybridKeyEnrollmentService> {
   } as unknown as jest.Mocked<HybridKeyEnrollmentService>;
 }
 
+function buildSignServiceMock(): jest.Mocked<SignService> {
+  return {
+    sign: jest.fn().mockResolvedValue('header.payload.signature'),
+  } as unknown as jest.Mocked<SignService>;
+}
+
 function setup(): {
   provider: HybridKeyStorageProvider;
   server: jest.Mocked<ServerKeyStorageProvider>;
   enrollment: jest.Mocked<HybridKeyEnrollmentService>;
+  signService: jest.Mocked<SignService>;
 } {
   const server = buildServerMock();
   const enrollment = buildEnrollmentMock();
+  const signService = buildSignServiceMock();
   TestBed.configureTestingModule({
     providers: [
       HybridKeyStorageProvider,
       { provide: ServerKeyStorageProvider, useValue: server },
       { provide: HybridKeyEnrollmentService, useValue: enrollment },
+      { provide: SignService, useValue: signService },
     ],
   });
-  return { provider: TestBed.inject(HybridKeyStorageProvider), server, enrollment };
+  return { provider: TestBed.inject(HybridKeyStorageProvider), server, enrollment, signService };
 }
 
 describe('HybridKeyStorageProvider', () => {
@@ -84,16 +94,16 @@ describe('HybridKeyStorageProvider', () => {
     expect(result.kid).toEqual(expect.any(String));
   });
 
-  it('generateKeyPair() returns a fresh opaque UUID, not the caller-supplied keyId', async () => {
-    // The engine's keyId (`credentialIssuer:credentialConfigurationId`) does not fit
-    // wallet_credential.holder_key_id VARCHAR(36) — see PostgresqlBadGrammarException
-    // 22001 regression. Hybrid has no server-side holder_key row to reference anyway.
+  it('generateKeyPair() returns the real credentialId as keyId, not the engine-supplied keyId', async () => {
+    // context.credentialId round-trips through resolveKeyIdByKid -> buildPresentationJws,
+    // so SignService.sign() can call the hybrid handshake without a separate lookup.
+    // wallet_credential.holder_key_id was widened to VARCHAR(512) to fit it
+    // (V5__widen_holder_key_id_for_hybrid.sql — was VARCHAR(36), see the 22001 regression).
     const { provider } = setup();
     const result = await provider.generateKeyPair('ES256', 'k1', CONTEXT);
 
     expect(result.keyId).not.toBe('k1');
-    expect(result.keyId.length).toBeLessThanOrEqual(36);
-    expect(result.keyId).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(result.keyId).toBe(CONTEXT.credentialId);
   });
 
   it('generateKeyPair() rejects with AppError when called without an OID4VCI context', async () => {
@@ -113,10 +123,23 @@ describe('HybridKeyStorageProvider', () => {
     });
   });
 
-  it('buildPresentationJws() rejects with HybridAdapterError code prepare_sign_failed', async () => {
-    const { provider } = setup();
-    await expect(provider.buildPresentationJws!('k1', {}, 'KB_JWT'))
-      .rejects.toBeInstanceOf(HybridAdapterError);
+  it('buildPresentationJws() delegates to SignService with format mapped from signingType', async () => {
+    const { provider, signService } = setup();
+    const payload = { nonce: 'n1', aud: 'https://verifier.example', sd_hash: 'hash1', iat: 123 };
+
+    const result = await provider.buildPresentationJws!(CONTEXT.credentialId, payload, 'KB_JWT');
+
+    expect(signService.sign).toHaveBeenCalledWith(CONTEXT.credentialId, payload, 'vc+sd-jwt');
+    expect(result).toBe('header.payload.signature');
+  });
+
+  it('buildPresentationJws() maps VP_ENVELOPE signingType to jwt_vc_json format', async () => {
+    const { provider, signService } = setup();
+    const payload = { id: 'vp-1', vp: {} };
+
+    await provider.buildPresentationJws!(CONTEXT.credentialId, payload, 'VP_ENVELOPE');
+
+    expect(signService.sign).toHaveBeenCalledWith(CONTEXT.credentialId, payload, 'jwt_vc_json');
   });
 
   it('delegates hasKey to server', async () => {
