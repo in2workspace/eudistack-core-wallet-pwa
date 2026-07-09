@@ -323,7 +323,9 @@
       "type": "Error de configuración: la solicitud de la cámara no es válida. Intenta actualizar la página o revisar la configuración de la cámara.",
       "not-supported": "Tu navegador no admite el acceso a la cámara. Considera utilizar un navegador diferente.",
       "default": "Error inesperado. Revisa los permisos de tu navegador y asegúrate de que ninguna otra aplicación esté utilizando la cámara. Intenta actualizar la página."
-    }
+    },
+    "prf-unsupported": "Tu autenticador no soporta PRF. Este tenant requiere una passkey compatible con PRF para completar el proceso de activación. Utiliza otro dispositivo o contacta con tu administrador.",
+    "prf-inconclusive": "No se ha podido verificar si tu autenticador soporta PRF. Inténtalo de nuevo o utiliza otro dispositivo."
   },
   "activity": {
     "title": "Actividad",

@@ -56,7 +56,12 @@ export class WrapService {
       baseKey,
       { name: 'AES-GCM', length: HYBRID_WRAP_KDF_PARAMS.aesLength },
       false, // wrap key is not extractable
-      ['wrapKey'],
+      // Both usages: this key is cached in MemoryService keyed by credentialId and reused
+      // as-is by SignService.sign() (US-04) to unwrap the same private key later in the
+      // same TTL window — a single-usage key here throws InvalidAccessError on that path
+      // (key.usages does not permit this operation), misreported downstream as a GCM tag
+      // failure. See UnwrapService.deriveUnwrapKey (mirrors this for the derive-fresh path).
+      ['wrapKey', 'unwrapKey'],
     );
   }
 
@@ -79,6 +84,15 @@ export class WrapService {
     return { wrappedBlob, iv, tag };
   }
 
+  /**
+   * Best-effort only: `SubtleCrypto.deleteKey` is not implemented by any mainstream browser
+   * today, so this is currently a no-op in production (`deleteKey?.(k) ?? Promise.resolve()`).
+   * The real security guarantee is that every key passed here is `extractable: false` — raw
+   * key bytes never exist in JS-reachable memory in the first place, so there is nothing to
+   * "leak" even though the CryptoKey object itself lingers until GC. Do not treat this method
+   * as a hard "clears memory" guarantee; treat it as a hint for engines that do implement
+   * `deleteKey`, on top of the non-extractability that actually carries the invariant.
+   */
   async zeroize(...keys: CryptoKey[]): Promise<void> {
     const subtle = crypto.subtle as SubtleCrypto & { deleteKey?: (key: CryptoKey) => Promise<void> };
     await Promise.allSettled(keys.map(k => subtle.deleteKey?.(k) ?? Promise.resolve()));

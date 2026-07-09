@@ -118,4 +118,57 @@ describe('UnwrapService', () => {
 
     await wrapSvc.zeroize(unwrapKey);
   });
+
+  // ------------------------------------------------------------------ MemoryService cache reuse regression
+  //
+  // HybridKeyEnrollmentService caches WrapService.deriveWrapKey()'s output in MemoryService
+  // keyed by credentialId; SignService.sign() later reads that same cache entry (TTL 5 min)
+  // and hands it straight to unwrap() as the unwrapKey. A single-usage ['wrapKey'] key made
+  // that throw InvalidAccessError ("key.usages does not permit this operation"), which the
+  // broad catch-all mislabeled as a GCM tag failure ("wrong device") — same device, same
+  // passkey, purely a WebCrypto usages bug. See WrapService.deriveWrapKey.
+
+  it('a key derived by WrapService.deriveWrapKey (cached by enroll) is directly usable by unwrap()', async () => {
+    const { privateKey } = await wrapSvc.generateHolderKeyPair();
+    const wrapKey = await wrapSvc.deriveWrapKey(PRF_OUTPUT, CREDENTIAL_ID);
+    const { wrappedBlob, iv, tag } = await wrapSvc.wrapPrivateKey(privateKey, wrapKey);
+
+    // Simulates SignService.sign()'s cache-hit path: memory.get(credentialId) returns the
+    // enrollment-time wrap key as-is, with no fresh deriveUnwrapKey() call in between.
+    const holderKey = await unwrapSvc.unwrap(wrappedBlob, iv, tag, wrapKey);
+
+    expect(holderKey.usages).toContain('sign');
+
+    await wrapSvc.zeroize(privateKey, wrapKey, holderKey);
+  });
+
+  // ------------------------------------------------------------------ W2: non-OperationError path (2026-07-06)
+  //
+  // unwrap()'s catch must not mislabel every failure as a GCM tag mismatch — only a genuine
+  // OperationError (bad auth tag) should map to wrap_unavailable_on_this_device. Anything
+  // else (e.g. a key.usages mismatch, InvalidAccessError) must surface as prepare_sign_failed
+  // so a holder isn't sent down the "re-sync your passkey" recovery path for a bug that
+  // syncing can never fix.
+
+  it('a non-OperationError cause (e.g. key.usages mismatch) maps to prepare_sign_failed, not wrap_unavailable_on_this_device', async () => {
+    const { privateKey } = await wrapSvc.generateHolderKeyPair();
+    const wrapKey = await wrapSvc.deriveWrapKey(PRF_OUTPUT, CREDENTIAL_ID);
+    const { wrappedBlob, iv, tag } = await wrapSvc.wrapPrivateKey(privateKey, wrapKey);
+
+    // A key deliberately missing the 'unwrapKey' usage — crypto.subtle.unwrapKey rejects
+    // with InvalidAccessError before ever touching the ciphertext/tag.
+    const baseKey = await crypto.subtle.importKey('raw', PRF_OUTPUT, { name: 'HKDF' }, false, ['deriveKey']);
+    const usageMismatchedKey = await crypto.subtle.deriveKey(
+      { name: 'HKDF', hash: 'SHA-256', salt: new TextEncoder().encode(CREDENTIAL_ID), info: new TextEncoder().encode('hybrid-wrap-v1') },
+      baseKey,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt'], // deliberately NOT 'unwrapKey'
+    );
+
+    await expect(unwrapSvc.unwrap(wrappedBlob, iv, tag, usageMismatchedKey))
+      .rejects.toMatchObject({ code: 'prepare_sign_failed' } satisfies Partial<HybridAdapterError>);
+
+    await wrapSvc.zeroize(privateKey, wrapKey, usageMismatchedKey);
+  });
 });

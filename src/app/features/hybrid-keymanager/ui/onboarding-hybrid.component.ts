@@ -6,7 +6,7 @@ import { PrfClientService } from '../prf-client.service';
 import { WrapService } from '../wrap.service';
 import { OnboardingHybridApi } from '../onboarding-hybrid.api';
 
-export type OnboardingState = 'idle' | 'loading' | 'done' | 'error';
+export type OnboardingState = 'idle' | 'loading' | 'done' | 'error' | 'prf-unsupported' | 'prf-inconclusive';
 
 /**
  * Orchestrates the full hybrid onboarding flow for a given credential:
@@ -31,6 +31,13 @@ export type OnboardingState = 'idle' | 'loading' | 'done' | 'error';
       <p>{{ 'hybrid.onboarding.done' | translate }}</p>
     } @else if (state === 'error') {
       <p>{{ 'hybrid.onboarding.error' | translate }}</p>
+    } @else if (state === 'prf-unsupported') {
+       <p>{{ 'hybrid.error.prfUnsupported' | translate }}</p>
+    }
+    @else if (state === 'prf-inconclusive') {
+       <p>
+         {{ 'hybrid.error.prfInconclusive' | translate }}
+       </p>
     }
   `,
 })
@@ -51,6 +58,39 @@ export class OnboardingHybridComponent {
   async enroll(): Promise<void> {
     if (this.state === 'loading') return;
     this.state = 'loading';
+
+    const prfSupport = await this.prfClientService.detectPrfSupport();
+
+    if (prfSupport === 'disabled') {
+      try {
+        await this.api.block({
+          credential_id: this.credentialId,
+          correlation_id: crypto.randomUUID(),
+        });
+      } catch {
+        // esperamos 422 prf_unsupported
+      }
+      this.state = 'prf-unsupported';
+
+      this.enrollmentError.emit(
+        new AppError('Authenticator does not support PRF', {
+          code: 'unknown',
+          translationKey: 'errors.prf-unsupported',
+        })
+      );
+      return;
+    }
+
+    if (prfSupport === 'inconclusive') {
+      this.state = 'prf-inconclusive';
+      this.enrollmentError.emit(
+        new AppError('Unable to determine PRF support', {
+          code: 'unknown',
+          translationKey: 'errors.prf-inconclusive',
+        })
+      );
+      return;
+    }
 
     let privateKey: CryptoKey | undefined;
     let wrapKey: CryptoKey | undefined;

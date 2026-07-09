@@ -16,6 +16,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.10.1] - 2026-07-03
 
 ### Added
+- **EUDISTACK-359 US-07:**
+  - Added PRF support detection before starting hybrid onboarding.
+  - Blocked onboarding when the authenticator does not support PRF.
+  - Added onboarding block endpoint integration (`/block`) for unsupported PRF authenticators.
+  - Prevented holder key generation and credential enrollment when PRF support is unavailable.
+  - Added onboarding state handling and unit tests for PRF unsupported and inconclusive scenarios.
+
+### Fixed
+- **EUDISTACK-534 US-02 — hybrid key generation was never wired to the SPI**: `HybridKeyStorageProvider.generateKeyPair()` delegated to `ServerKeyStorageProvider` (the DB-only `/api/v1/keys/generate` endpoint), which always 403s for `key_manager=hybrid` tenants. Now delegates to the new `HybridKeyEnrollmentService`, orchestrating init → single PRF ceremony → key generation → inline OID4VCI proof signing → wrap → commit → zeroize, and returns `prebuiltJwsProof` so the OID4VCI engine never needs `sign()` for issuance.
+- **EUDISTACK-534 US-02 — `holder_key_id` overflow**: `generateKeyPair()` returned the OID4VCI engine's `keyId` (`credentialIssuer:credentialConfigurationId`) as the SPI `keyId`, overflowing `wallet_credential.holder_key_id VARCHAR(36)` (`PostgresqlBadGrammarException` 22001). Now returns `context.credentialId` (still round-trips via `resolveKeyIdByKid`); backend column widened to `VARCHAR(512)` (see companion `eudistack-core-wallet-ebw` migration `V5`).
+- **EUDISTACK-534 US-02 — `OnboardingHybridApi` used the wrong base URL**: read `environment.server_url` directly instead of `UrlResolverService`, producing a relative path missing the `/business-wallet` nginx prefix (404) in real deployments where `server_url` is empty by design. Fixed to match the existing `HybridAuditService` pattern. Same latent bug preventively fixed in `SignApi`.
+- **EUDISTACK-534 US-02 — double PRF/WebAuthn prompt per credential**: `HybridKeyEnrollmentService.enroll()` ran `detectPrfSupport()` (a separate dummy-salt probe) before `evaluateForWrap()` (the real ceremony), forcing two passkey prompts. `evaluateForWrap()`'s own `hybrid.error.prfUnavailable` failure is an equally valid "unsupported" signal that still fires before any key material exists — merged into a single ceremony.
+- **EUDISTACK-536 US-04 — `buildPresentationJws()` was never wired to the SPI**: threw `HybridAdapterError` unconditionally. Now delegates to `SignService.sign()`, driving the prepare/PRF-unwrap/sign/submit handshake for OID4VP presentations.
+- **EUDISTACK-536 US-04 — `prepareSign` contract corrected** (architecture.md §6.2, 2026-07-03): `vp_challenge` → `payload`, the full presentation payload assembled by the OID4VP engine, matching the corrected EBW contract. A KB-JWT built from `{nonce, iat}` alone (the old contract) is invalid per RFC 9901 §4.1.2 (missing `aud`/`sd_hash`).
+- **Security (2026-07-06 audit) — signing oracle**: `SignService.sign()` signed the `signing_input` returned by the EBW without verifying it encoded the `payload` actually submitted; a compromised/malicious EBW could substitute different claims and get a valid holder signature over content it chose. Now verifies header (`alg`/`typ`) and payload (order-independent) match before ever running the PRF ceremony.
+- **Security (2026-07-06 audit) — raw PRF output not zeroized**: `HybridKeyEnrollmentService.enroll()` never zeroed the raw PRF output (IKM) after deriving the wrap key. Now zeroed in `finally`, matching `SignService`.
+- **Security (2026-07-06 audit) — PRF zeroize skipped on error path**: `SignService.sign()`'s cache-miss path only zeroed the raw PRF output on success. Now zeroed in `finally`.
+- **Security (2026-07-06 audit) — AES-GCM `usages` cache-reuse bug**: `WrapService.deriveWrapKey()`/`UnwrapService.deriveUnwrapKey()` derived single-purpose keys (`['wrapKey']`/`['unwrapKey']`), but `MemoryService` caches the same key under `credentialId` across both the enrollment (write) and signing (read) flows — a cache-hit cross-use threw `InvalidAccessError`, mislabeled by `UnwrapService.unwrap()`'s catch-all as `wrap_unavailable_on_this_device` ("wrong device"), sending holders down the wrong recovery path for a WebCrypto API bug, not a passkey mismatch. Fixed: both derive with `['wrapKey', 'unwrapKey']`; `unwrap()`'s catch now only maps a genuine `OperationError` (bad GCM tag) to that error code, anything else to `prepare_sign_failed`.
+
+### [3.8.11] - (2026-06-17)
+
+### Added
+
+- **EUDISTACK-534 US-02 — `hybrid-keymanager` feature module**: new `src/app/features/hybrid-keymanager/` module implementing client-side holder key generation, PRF-based wrap, and hybrid onboarding commit.
+- **EUDISTACK-534 US-02 — `MemoryService`**: in-memory `Map<credentialId, CryptoKey>` cache for AES-256-GCM wrap keys. TTL=5 min via `setTimeout`; `SubtleCrypto.deleteKey` called on eviction and `beforeunload`. No write to `localStorage`/`sessionStorage`/IndexedDB (AC-02, EC-01, EC-02).
+- **EUDISTACK-534 US-02 — `PrfClientService`**: thin wrapper over `PasskeyPrfService.getCredentialId()` that evaluates the WebAuthn PRF extension with a server-supplied salt. Returns raw 32-byte PRF output; throws `AppError` if no passkey is registered, assertion is cancelled, or PRF output is absent (AC-01, ES-04).
+- **EUDISTACK-534 US-02 — `WrapService`**: `generateHolderKeyPair` (ECDSA P-256, extractable private key); `deriveWrapKey` (HKDF-SHA-256, `salt=credentialId`, `info="hybrid-wrap-v1"`, L=256); `wrapPrivateKey` (AES-256-GCM, random 12-byte IV, 16-byte tag split from output); `zeroize` (best-effort `deleteKey`). `cnf.jwk` never contains private parameter `d` (AC-02, AC-03, EC-03, NFR-05).
+- **EUDISTACK-534 US-02 — `OnboardingHybridApi`**: typed HTTP client for `POST /api/v1/keys/hybrid/onboarding/init` and `POST /api/v1/keys/hybrid/onboarding/commit`. DTOs aligned with EBW backend contract (AC-03, AC-04).
+- **EUDISTACK-534 US-02 — `OnboardingHybridComponent`**: orchestrates init → PRF ceremony → key generation → HKDF derivation → AES-GCM wrap → commit → zeroize. `try/finally` guarantees private key is always zeroized; wrap key cached on success, zeroized on error. Aborts before commit if PRF ceremony fails (AC-01, AC-02, AC-08, ES-04, ES-05).
+- **EUDISTACK-534 US-02 — Unit tests**: `memory.service.spec` (TTL eviction, `beforeunload`, no-persistence); `prf-client.service.spec` (salt propagation, AppError paths); `wrap.service.spec` (ECDSA P-256, HKDF, AES-GCM, unique IVs, no `d` in JWK, zeroize); `onboarding-hybrid.component.spec` (full flow, commit body public-only, ES-04 abort, ES-05 zeroize invariants).
+
+### Added
 
 - **EUD-143 US-01 — List registered devices**: Added display of `lastUsedAt` (with explicit "Never used" fallback for null values) in the Devices page.
 - **EUD-143 US-01 — Current device identification**: Added "This device" textual badge (WCAG 2.1 AA compliant) to the Devices list, mapping `currentCredentialId` with the passkey's `credentialId`.

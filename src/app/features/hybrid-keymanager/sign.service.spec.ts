@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import { TestBed } from '@angular/core/testing';
 import { HybridAdapterError } from 'src/app/core/models/error/HybridAdapterError';
+import { base64UrlEncode } from 'src/app/core/utils/base64url';
 import { MemoryService } from './memory.service';
 import { PrfClientService } from './prf-client.service';
 import { PrepareSignResponse, SignApi } from './sign.api';
@@ -20,19 +21,28 @@ if (!globalThis.crypto?.subtle) {
 }
 
 const CRED_ID = 'cred-sign-test-001';
-const VP_CHALLENGE = 'test-challenge-abc';
+const PAYLOAD = { nonce: 'test-challenge-abc', iat: 1_700_000_000, aud: 'https://verifier.example', sd_hash: 'test-sd-hash' };
 const CORRELATION_ID = 'corr-id-001';
 const KB_JWT = 'header.payload.signature';
 
+/** Mirrors PrepareSignUseCase.buildSigningInput — header.payload, both base64url JSON. */
+function buildSigningInput(payload: Record<string, unknown>, typ: 'kb+jwt' | 'vp+jwt' = 'kb+jwt'): string {
+  const enc = new TextEncoder();
+  const header = base64UrlEncode(enc.encode(JSON.stringify({ alg: 'ES256', typ })));
+  const body = base64UrlEncode(enc.encode(JSON.stringify(payload)));
+  return `${header}.${body}`;
+}
+
 // Valid base64url values for the mock PrepareSignResponse fields.
-// The bytes are passed to mocked services so their content does not matter.
+// wrapped_blob/iv/tag bytes are passed to mocked services so their content does not matter;
+// signing_input MUST encode PAYLOAD (verifySigningInput checks it against what sign() submits).
 const PREPARE_RESPONSE: PrepareSignResponse = {
   prf_salt: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',      // 32 bytes
   wrapped_blob: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', // 48 bytes
   iv: 'AAAAAAAAAAAAAAAA',                                        // 12 bytes
   tag: 'AAAAAAAAAAAAAAAAAAAAAA',                                 // 16 bytes
   kdf_params: 'HKDF-SHA-256',
-  signing_input: 'eyJhbGciOiJFUzI1NiJ9.eyJub25jZSI6InRlc3QifQ',
+  signing_input: buildSigningInput(PAYLOAD),
   correlation_id: CORRELATION_ID,
 };
 
@@ -98,9 +108,22 @@ describe('SignService', () => {
     api.submitSignedAssertion.mockResolvedValue({ kb_jwt: KB_JWT });
     wrapSvc.zeroize.mockResolvedValue();
 
-    await service.sign(CRED_ID, VP_CHALLENGE);
+    await service.sign(CRED_ID, PAYLOAD);
 
     expect(prfBuf.every(b => b === 0)).toBe(true); // W2: raw IKM zeroed after deriveUnwrapKey
+  });
+
+  it('cache miss: PRF IKM buffer is zeroed even when deriveUnwrapKey throws (F6 security fix, 2026-07-06)', async () => {
+    const prfBuf = new Uint8Array(32).fill(0xab);
+    memory.get.mockReturnValue(undefined);
+    prfClient.evaluateForWrap.mockResolvedValue(prfBuf);
+    unwrapSvc.deriveUnwrapKey.mockRejectedValue(new Error('derive failed'));
+    api.prepareSign.mockResolvedValue(PREPARE_RESPONSE);
+
+    await expect(service.sign(CRED_ID, PAYLOAD)).rejects.toThrow('derive failed');
+
+    expect(prfBuf.every(b => b === 0)).toBe(true);
+    expect(memory.set).not.toHaveBeenCalled();
   });
 
   it('cache miss: runs PRF ceremony, derives key, caches unwrapKey, signs and submits', async () => {
@@ -112,7 +135,7 @@ describe('SignService', () => {
     api.submitSignedAssertion.mockResolvedValue({ kb_jwt: KB_JWT });
     wrapSvc.zeroize.mockResolvedValue();
 
-    const result = await service.sign(CRED_ID, VP_CHALLENGE);
+    const result = await service.sign(CRED_ID, PAYLOAD);
 
     expect(result).toBe(KB_JWT);
     expect(prfClient.evaluateForWrap).toHaveBeenCalledTimes(1);
@@ -133,7 +156,7 @@ describe('SignService', () => {
     api.submitSignedAssertion.mockResolvedValue({ kb_jwt: KB_JWT });
     wrapSvc.zeroize.mockResolvedValue();
 
-    await service.sign(CRED_ID, VP_CHALLENGE);
+    await service.sign(CRED_ID, PAYLOAD);
 
     expect(prfClient.evaluateForWrap).not.toHaveBeenCalled(); // AC-04
     expect(unwrapSvc.deriveUnwrapKey).not.toHaveBeenCalled();
@@ -154,7 +177,7 @@ describe('SignService', () => {
     api.submitSignedAssertion.mockResolvedValue({ kb_jwt: KB_JWT });
     wrapSvc.zeroize.mockResolvedValue();
 
-    await service.sign(CRED_ID, VP_CHALLENGE);
+    await service.sign(CRED_ID, PAYLOAD);
 
     expect(memory.set).toHaveBeenCalledTimes(1);
     expect(memory.set).toHaveBeenCalledWith(CRED_ID, fakeUnwrapKey);
@@ -174,7 +197,7 @@ describe('SignService', () => {
     api.prepareSign.mockResolvedValue(PREPARE_RESPONSE);
     wrapSvc.zeroize.mockResolvedValue();
 
-    await expect(service.sign(CRED_ID, VP_CHALLENGE)).rejects.toThrow(HybridAdapterError);
+    await expect(service.sign(CRED_ID, PAYLOAD)).rejects.toThrow(HybridAdapterError);
 
     expect(api.submitSignedAssertion).not.toHaveBeenCalled(); // ES-03 fail-closed
     expect(memory.delete).toHaveBeenCalledWith(CRED_ID); // W3: stale key evicted on GCM fail
@@ -187,7 +210,7 @@ describe('SignService', () => {
     prfClient.evaluateForWrap.mockRejectedValue(new Error('Passkey assertion cancelled'));
     api.prepareSign.mockResolvedValue(PREPARE_RESPONSE);
 
-    await expect(service.sign(CRED_ID, VP_CHALLENGE)).rejects.toThrow();
+    await expect(service.sign(CRED_ID, PAYLOAD)).rejects.toThrow();
 
     expect(api.submitSignedAssertion).not.toHaveBeenCalled(); // ES-05
     expect(memory.set).not.toHaveBeenCalled();
@@ -204,9 +227,55 @@ describe('SignService', () => {
     api.submitSignedAssertion.mockRejectedValue(new Error('Network error'));
     wrapSvc.zeroize.mockResolvedValue();
 
-    await expect(service.sign(CRED_ID, VP_CHALLENGE)).rejects.toThrow('Network error');
+    await expect(service.sign(CRED_ID, PAYLOAD)).rejects.toThrow('Network error');
 
     expect(wrapSvc.zeroize).toHaveBeenCalledWith(holderKey); // AC-05: always zeroize
     expect(memory.delete).not.toHaveBeenCalled(); // W3: submit failure keeps valid cached key for retry
+  });
+
+  // ------------------------------------------------------------------ security fix (2026-07-06): signing oracle
+
+  it('refuses to sign when signing_input payload does not match what was submitted', async () => {
+    memory.get.mockReturnValue(fakeUnwrapKey);
+    api.prepareSign.mockResolvedValue({
+      ...PREPARE_RESPONSE,
+      // EBW returned a DIFFERENT payload (e.g. a different aud) than PAYLOAD.
+      signing_input: buildSigningInput({ ...PAYLOAD, aud: 'https://attacker.example' }),
+    });
+
+    await expect(service.sign(CRED_ID, PAYLOAD)).rejects.toMatchObject({ code: 'prepare_sign_failed' });
+
+    expect(unwrapSvc.unwrap).not.toHaveBeenCalled();
+    expect(api.submitSignedAssertion).not.toHaveBeenCalled();
+    expect(prfClient.evaluateForWrap).not.toHaveBeenCalled(); // aborts before spending a PRF ceremony
+  });
+
+  it('refuses to sign when signing_input header typ does not match the requested format', async () => {
+    memory.get.mockReturnValue(fakeUnwrapKey);
+    api.prepareSign.mockResolvedValue({
+      ...PREPARE_RESPONSE,
+      // format is 'vc+sd-jwt' (default) → expects typ=kb+jwt, EBW returned vp+jwt instead.
+      signing_input: buildSigningInput(PAYLOAD, 'vp+jwt'),
+    });
+
+    await expect(service.sign(CRED_ID, PAYLOAD)).rejects.toMatchObject({ code: 'prepare_sign_failed' });
+
+    expect(unwrapSvc.unwrap).not.toHaveBeenCalled();
+    expect(api.submitSignedAssertion).not.toHaveBeenCalled();
+  });
+
+  it('accepts signing_input whose payload matches regardless of object key order', async () => {
+    memory.get.mockReturnValue(fakeUnwrapKey);
+    unwrapSvc.unwrap.mockResolvedValue(holderKey);
+    api.submitSignedAssertion.mockResolvedValue({ kb_jwt: KB_JWT });
+    wrapSvc.zeroize.mockResolvedValue();
+    // Same claims, different key order — Jackson's Map<String,Object> re-serialization
+    // order is not something the client should have to rely on byte-for-byte.
+    const reordered = { sd_hash: PAYLOAD.sd_hash, nonce: PAYLOAD.nonce, aud: PAYLOAD.aud, iat: PAYLOAD.iat };
+    api.prepareSign.mockResolvedValue({ ...PREPARE_RESPONSE, signing_input: buildSigningInput(reordered) });
+
+    const result = await service.sign(CRED_ID, PAYLOAD);
+
+    expect(result).toBe(KB_JWT);
   });
 });
