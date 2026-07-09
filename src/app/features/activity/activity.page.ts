@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule, AlertController } from '@ionic/angular';
+import { SegmentValue } from '@ionic/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ACTIVITY_FILTERS, ActivityEntry, ActivityFilter } from 'src/app/core/models/activity.model';
 import { ActivityService } from 'src/app/core/services/activity.service';
@@ -39,8 +40,10 @@ export class ActivityPage implements OnInit {
     this.loading.set(false);
   }
 
-  setFilter(filter: ActivityFilter): void {
-    this.activeFilter.set(filter);
+  setFilter(value: SegmentValue | undefined): void {
+    if (typeof value === 'string' && (ACTIVITY_FILTERS as string[]).includes(value)) {
+      this.activeFilter.set(value as ActivityFilter);
+    }
   }
 
   async confirmClear(): Promise<void> {
