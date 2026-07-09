@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **EUD-138 US-03 — Activity filter control**: Added an `IonSegment`/`IonSegmentButton` control (scrollable) to `ActivityPage` with four options — "Todas" (default), "Recibidas", "Presentadas", "Eliminadas" — backed by the new `ActivityFilter` type and `ACTIVITY_FILTERS` constant in `activity.model.ts` (AC-01).
+- **EUD-138 US-03 — Client-side filtering**: `ActivityPage` migrated to signals (`entries`, `loading`, `activeFilter`) with a `filteredEntries` computed that selects entries by `activeFilter()`, preserving the most-recent-first order returned by `ActivityService.findAll()`. Filtering is purely client-side and read-only: switching filters never calls `ActivityService.findAll()` again nor `clear()`/`confirmClear()`, and never mutates the `entries()` set (AC-02, AC-04).
+- **EUD-138 US-03 — Contextual empty states**: Added a per-filter empty state (`activity.empty-issued` / `-presented` / `-deleted`) shown when the active filter has no matching events, reusing the existing `.state-container` pattern without error styling; the existing generic empty state (`activity.empty`) still shows when the whole history is empty under "Todas". The three render states (loading, generic empty, contextual empty, list) are mutually exclusive (AC-03, EC-01, EC-02).
+- **EUD-138 US-03 — i18n**: Added `activity.filter-all`, `filter-issued`, `filter-presented`, `filter-deleted`, `empty-issued`, `empty-presented`, `empty-deleted` keys to `es.json`, `en.json`, `ca.json`.
+- **EUD-138 US-03 — Tests**: Added component tests covering the filter control render and default ("Todas"), filtering/round-trip preserving order (AC-02, AC-03), read-only guarantees (AC-04), disjoint empty states (EC-01, EC-02), large datasets (200 entries / `MAX_ENTRIES`) and filter re-selection idempotence (EC-03, EC-04), and resilience to an unknown/missing entry `type` and to `findAll()` resolving `[]` (ES-01, ES-02).
+
 ## [3.10.2] - 2026-07-06
 
 ### Fixed
