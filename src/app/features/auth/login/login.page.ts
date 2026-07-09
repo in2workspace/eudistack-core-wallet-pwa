@@ -148,6 +148,7 @@ import { WalletService } from 'src/app/core/services/wallet.service';
                   [length]="6"
                   [autofocus]="true"
                   [error]="!!errorMessage"
+                  [errorMessage]="errorMessage"
                   (changed)="otpValue = $event; errorMessage = ''"
                 ></app-otp-input>
 
@@ -185,7 +186,20 @@ import { WalletService } from 'src/app/core/services/wallet.service';
                   </div>
                 </div>
 
-                <ion-button expand="block" (click)="createPasskeyForDevice()" [disabled]="loading" class="auth-button">
+                <div class="input-group">
+                  <ion-icon name="phone-portrait-outline" class="input-icon"></ion-icon>
+                  <ion-input
+                    [(ngModel)]="deviceName"
+                    type="text"
+                    maxlength="100"
+                    [attr.aria-label]="'auth.passkey.device-name-label' | translate"
+                    [placeholder]="'auth.passkey.device-name-placeholder' | translate"
+                    class="modern-input"
+                    (keyup.enter)="deviceName.trim() && !loading && createPasskeyForDevice()"
+                  ></ion-input>
+                </div>
+
+                <ion-button expand="block" (click)="createPasskeyForDevice()" [disabled]="loading || !deviceName.trim()" class="auth-button">
                   <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
                   <ion-icon *ngIf="!loading" name="finger-print-outline" slot="start"></ion-icon>
                   <span *ngIf="!loading">{{ 'auth.passkey.register-button' | translate }}</span>
@@ -222,6 +236,7 @@ export class LoginPage {
   otpValue = '';
   step: 'email' | 'code' | 'passkey' = 'email';
   needsPasskeySetup = false;
+  deviceName = '';
   private passkeyFromRefreshToken = false;
 
   private readonly authService = inject(AuthService);
@@ -243,6 +258,9 @@ export class LoginPage {
       this.step = 'passkey';
       this.passkeyFromRefreshToken = true;
       this.needsPasskeySetup = !this.prfService.hasPasskey();
+      if (this.needsPasskeySetup) {
+        this.deviceName = this.getDeviceName();
+      }
     } else {
       this.step = 'email';
       this.passkeyFromRefreshToken = false;
@@ -334,6 +352,9 @@ export class LoginPage {
         this.loading = false;
         this.passkeyFromRefreshToken = false;
         this.needsPasskeySetup = !this.prfService.hasPasskey();
+        if (this.needsPasskeySetup) {
+          this.deviceName = this.getDeviceName();
+        }
         this.step = 'passkey';
       },
       error: (err) => {
@@ -375,23 +396,33 @@ export class LoginPage {
     this.loading = true;
     this.errorMessage = '';
 
+    let credentialId: string | null;
     try {
       await this.prfService.createPasskey(this.email || 'Wallet User');
       this.syncCredentialCache();
-      this.navigateHome();
-
-      const credentialId = this.passkeyStore.getCredentialId();
-      if (credentialId) {
-        this.passkeyApi.registerPasskey({
-          credentialId,
-          displayName: this.getDeviceName(),
-          userAgent: navigator.userAgent
-        }).subscribe({
-          error: (err: any) => console.warn('Failed to register passkey on server:', err)
-        });
-      }
+      credentialId = this.passkeyStore.getCredentialId();
     } catch (err: any) {
       this.errorMessage = err?.message || 'Failed to create passkey';
+      this.loading = false;
+      return;
+    }
+
+    if (!credentialId) {
+      this.errorMessage = 'Failed to create passkey';
+      this.loading = false;
+      return;
+    }
+
+    try {
+      await firstValueFrom(this.passkeyApi.registerPasskey({
+        credentialId,
+        displayName: this.deviceName.trim() || this.getDeviceName(),
+        userAgent: navigator.userAgent
+      }));
+      this.navigateHome();
+    } catch {
+      this.errorMessage = this.translate.instant('auth.errors.passkey-register-failed');
+    } finally {
       this.loading = false;
     }
   }

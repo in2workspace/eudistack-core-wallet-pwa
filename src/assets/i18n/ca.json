@@ -90,6 +90,8 @@
       "title": "Configurar Passkey",
       "description": "Crea una passkey per iniciar sessió de forma segura sense contrasenya. El teu dispositiu farà servir biometria o un PIN per verificar la teva identitat.",
       "register-button": "Crear Passkey",
+      "device-name-label": "Nom del dispositiu",
+      "device-name-placeholder": "Nom del dispositiu",
       "email-verified": "Email verificat",
       "success": "Passkey registrada correctament!",
       "status-connecting": "Preparant...",
@@ -98,8 +100,12 @@
     },
     "errors": {
       "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",
-      "too-many-attempts-otp": "Massa intents incorrectes. Si us plau, sol·licita un nou codi."
+      "too-many-attempts-otp": "Massa intents incorrectes. Si us plau, sol·licita un nou codi.",
+      "passkey-register-failed": "No s'ha pogut registrar aquest dispositiu. Torna-ho a provar."
     }
+  },
+  "otp-input": {
+    "digit-aria": "Dígit {{index}} de {{length}}"
   },
   "login": {
     "title": "Login",
