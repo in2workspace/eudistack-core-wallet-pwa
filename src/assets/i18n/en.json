@@ -359,7 +359,10 @@
     "last-passkey-error": "You cannot delete your last passkey. Register a new device first.",
     "load-error": "Could not load your devices. Please try again.",
     "retry": "Retry",
-    "no-passkeys": "No passkeys registered."
+    "no-passkeys": "No passkeys registered.",
+    "last-used": "Last used: {{date}}",
+    "last-used-never": "Never used",
+    "this-device": "This device"
   },
   "verification": {
     "button": "Verify Credential",
