@@ -16,6 +16,23 @@
   font-size: 0.85rem;
 }
 
+.activity-filter {
+  --background: var(--surface-muted);
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+
+  ion-segment-button {
+    --color: var(--text-secondary);
+    --color-checked: var(--text-primary);
+    --background-checked: var(--surface-card);
+    --indicator-color: var(--surface-card);
+    --border-radius: var(--radius-sm);
+    min-height: 32px;
+    font-size: 0.8rem;
+    text-transform: none;
+  }
+}
+
 .activity-list {
   width: 100%;
   --ion-item-background: var(--surface-card);

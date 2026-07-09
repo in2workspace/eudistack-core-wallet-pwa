@@ -1,8 +1,8 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule, AlertController } from '@ionic/angular';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { ActivityEntry } from 'src/app/core/models/activity.model';
+import { ACTIVITY_FILTERS, ActivityEntry, ActivityFilter } from 'src/app/core/models/activity.model';
 import { ActivityService } from 'src/app/core/services/activity.service';
 
 @Component({
@@ -13,8 +13,17 @@ import { ActivityService } from 'src/app/core/services/activity.service';
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class ActivityPage implements OnInit {
-  entries: ActivityEntry[] = [];
-  loading = true;
+  entries = signal<ActivityEntry[]>([]);
+  loading = signal<boolean>(true);
+  activeFilter = signal<ActivityFilter>('all');
+
+  readonly filters = ACTIVITY_FILTERS;
+
+  filteredEntries = computed(() =>
+    this.activeFilter() === 'all'
+      ? this.entries()
+      : this.entries().filter((e) => e.type === this.activeFilter())
+  );
 
   private readonly activityService = inject(ActivityService);
   private readonly alertController = inject(AlertController);
@@ -25,9 +34,13 @@ export class ActivityPage implements OnInit {
   }
 
   async load(): Promise<void> {
-    this.loading = true;
-    this.entries = await this.activityService.findAll();
-    this.loading = false;
+    this.loading.set(true);
+    this.entries.set(await this.activityService.findAll());
+    this.loading.set(false);
+  }
+
+  setFilter(filter: ActivityFilter): void {
+    this.activeFilter.set(filter);
   }
 
   async confirmClear(): Promise<void> {
@@ -61,6 +74,6 @@ export class ActivityPage implements OnInit {
 
   private async clearAll(): Promise<void> {
     await this.activityService.clear();
-    this.entries = [];
+    this.entries.set([]);
   }
 }
