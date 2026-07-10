@@ -3,8 +3,7 @@
     <div class="activity-header">
       <b class="settings-pages-title">{{ "activity.title" | translate }}</b>
       @if (entries.length > 0) {
-        <ion-button fill="clear" size="small" (click)="confirmClear()" class="clear-btn">
-          <ion-icon name="trash-outline" slot="start"></ion-icon>
+        <ion-button fill="clear" color="danger" (click)="confirmClear()" class="clear-btn">
           {{ "activity.clear" | translate }}
         </ion-button>
       }
@@ -31,7 +30,7 @@
             <span class="activity-dot activity-dot--{{ entry.type }}" slot="start"></span>
             <ion-label>
               <h2>{{ "activity.type-" + entry.type | translate }}</h2>
-              <p>{{ entry.credentialName }}{{ entry.counterparty ? ' — ' + entry.counterparty : '' }}</p>
+              <p>{{ entry.credentialName }}{{ formatCounterparty(entry) ? ' — ' + formatCounterparty(entry) : '' }}</p>
             </ion-label>
             <ion-note slot="end" class="activity-time">{{ formatTime(entry.timestamp) }}</ion-note>
           </ion-item>
