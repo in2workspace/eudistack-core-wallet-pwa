@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.10.3] - 2026-07-10
+
+### Added
+
+- **EUD-137 US-02 — Activity history tests**: `activity.service.spec.ts` and `activity.page.spec.ts`, covering all 13 AC/EC/ES cases (0% → full coverage on both files).
+
+### Changed
+
+- **EUD-137 US-02 — Verifier/Issuer legibility**: `formatCounterparty()` now reduces URLs to hostname and truncates long `did:key` identifiers (e.g. `did:key:z6Mk…sdvktH`) instead of showing them raw.
+- **EUD-137 US-02 — Activity UI polish**: "Clear" button enlarged and switched to the wallet's `color="danger"` convention; confirm popup now reads "Sí, limpiar" (lowercase, red); "deleted" event dot changed from orange to red.
+
+### Fixed
+
+- **EUD-137 US-02 — Activity list not refreshing**: `ActivityPage` only loaded data on first tab entry; Ionic keeps tab pages alive, so events logged from other tabs (present/issue/delete) needed a manual page reload to show up. Added `ionViewWillEnter()` to reload on every re-entry.
+
 ## [3.10.2] - 2026-07-06
 
 ### Fixed
