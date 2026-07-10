@@ -37,7 +37,11 @@ export class UnwrapService {
       baseKey,
       { name: 'AES-GCM', length: HYBRID_WRAP_KDF_PARAMS.aesLength },
       false,
-      ['unwrapKey'],
+      // Both usages, symmetric with WrapService.deriveWrapKey — this key is cached in
+      // MemoryService keyed by credentialId and may be reused by a later wrap operation
+      // within the same TTL window (e.g. re-enrollment). See that method for the incident
+      // this fixes (InvalidAccessError misreported as a GCM tag failure).
+      ['wrapKey', 'unwrapKey'],
     );
   }
 
@@ -74,10 +78,23 @@ export class UnwrapService {
         ['sign'],
       );
     } catch (cause) {
-      throw new HybridAdapterError('GCM tag invalid — wrong device or corrupted key material', {
-        code: 'wrap_unavailable_on_this_device',
+      // WebCrypto throws OperationError specifically for a failed AES-GCM auth tag —
+      // that is the genuine "wrong device / corrupted blob" case. Anything else (e.g.
+      // InvalidAccessError from a key.usages mismatch) is a programming error, not a
+      // device/passkey mismatch — mislabeling it here sends holders down the wrong
+      // recovery path (re-sync passkey) for a bug that syncing can never fix.
+      // Duck-typed on `.name` (not `instanceof DOMException`) — Node's webcrypto and
+      // jsdom's DOMException are distinct constructors in the Jest test environment.
+      if ((cause as { name?: string } | undefined)?.name === 'OperationError') {
+        throw new HybridAdapterError('GCM tag invalid — wrong device or corrupted key material', {
+          code: 'wrap_unavailable_on_this_device',
+          cause,
+          translationKey: 'hybrid-errors.wrap-unavailable-body',
+        });
+      }
+      throw new HybridAdapterError('Unwrap failed for a reason other than an invalid GCM tag', {
+        code: 'prepare_sign_failed',
         cause,
-        translationKey: 'hybrid-errors.wrap-unavailable-body',
       });
     }
   }

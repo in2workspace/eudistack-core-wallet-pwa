@@ -171,7 +171,9 @@
       "type": "Error de configuració: la sol·licitud de la càmera no és vàlida. Intenta refrescar la pàgina o comprovar la configuració de la càmera.",
       "not-supported": "El teu navegador no admet l'accés a la càmera. Considera utilitzar un navegador diferent.",
       "default": "Error inesperat. Comprova els permisos del teu navegador i assegura't que cap altra aplicació estigui utilitzant la càmera. Intenta refrescar la pàgina."
-    }
+    },
+    "prf-unsupported": "El teu autenticador no és compatible amb PRF. Aquest tenant requereix una passkey compatible amb PRF per completar el procés d'activació. Utilitza un altre dispositiu o contacta amb l'administrador.",
+    "prf-inconclusive": "No s'ha pogut verificar si el teu autenticador és compatible amb PRF. Torna-ho a intentar o utilitza un altre dispositiu."
   },
   "privacy-policy": {
     "title": "Política de Privacitat"
@@ -323,14 +325,26 @@
   },
   "activity": {
     "title": "Activitat",
+    "filter-all": "Totes",
+    "filter-issued": "Rebudes",
+    "filter-presented": "Presentades",
+    "filter-deleted": "Eliminades",
     "empty": "Sense activitat",
     "empty-hint": "L'activitat de les teves credencials apareixerà aquí",
+    "empty-issued": "Sense credencials rebudes",
+    "empty-presented": "Sense credencials presentades",
+    "empty-deleted": "Sense credencials eliminades",
     "clear": "Netejar",
     "clear-confirm": "Netejar tota l'activitat?",
-    "clear-yes": "Sí, netejar",
+    "clear-title": "Vols esborrar el teu historial d'activitat?",
+    "clear-description": "Això eliminarà permanentment tots els registres d'activitat del teu moneder. Aquesta acció no es pot desfer.",
+    "clear-cancel": "Cancel·la",
+    "clear-action": "Sí, netejar",
     "type-issued": "Credencial rebuda",
     "type-presented": "Credencial presentada",
     "type-deleted": "Credencial eliminada",
+    "subtitle-issued": "Rebut de {{counterparty}}",
+    "subtitle-presented": "Presentat a {{counterparty}}",
     "time-now": "Ara",
     "time-minutes": "Fa {{count}}min",
     "time-hours": "Fa {{count}}h",

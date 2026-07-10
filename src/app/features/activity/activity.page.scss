@@ -2,6 +2,12 @@
 
 .activity-content {
   --ion-background-color: var(--surface-page);
+
+  .settings-pages-grid {
+    max-width: 900px;
+    margin: 0 auto;
+    padding-inline: var(--space-lg);
+  }
 }
 
 .activity-header {
@@ -20,65 +26,90 @@
   --padding-end: 12px;
 }
 
-.activity-list {
-  width: 100%;
-  --ion-item-background: var(--surface-card);
-  --ion-item-color: var(--text-secondary);
-  border-radius: var(--radius-lg);
-  background-color: var(--surface-card);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-  padding: 0;
+.activity-filter {
+  --background: var(--surface-muted);
+  border-radius: 999px;
+  padding: 4px;
+  margin-bottom: 16px;
+
+  ion-segment-button {
+    --color: var(--text-secondary);
+    --color-checked: var(--primary-contrast-color);
+    --background-checked: var(--primary-color);
+    --indicator-color: transparent;
+    --border-radius: 999px;
+    min-height: 34px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: none;
+  }
 }
 
-.activity-item {
-  --border-width: 0px;
-  --inner-border-width: 0 0 1px 0;
-  --border-color: var(--border-default);
+// Cards, spaced apart, one per activity entry
+.activity-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  background-color: var(--surface-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+  border-left: 4px solid transparent;
+
+  &--issued {
+    border-left-color: var(--status-success);
+  }
+
+  &--presented {
+    border-left-color: var(--status-warning);
+  }
+
+  &--deleted {
+    border-left-color: var(--status-error);
+  }
+}
+
+.activity-card-content {
+  min-width: 0;
 
   h2 {
     @include fluid-type(0.875rem, 0.95rem);
     font-weight: 600;
     color: var(--text-primary);
+    margin: 0;
   }
 
   p {
-    @include fluid-type(0.75rem, 0.82rem);
-    color: var(--text-secondary);
-    margin-top: 2px;
+    margin: 2px 0 0;
   }
 }
 
-.activity-item:last-child {
-  --inner-border-width: 0;
+.activity-subtitle {
+  @include fluid-type(0.7rem, 0.78rem);
+  color: var(--text-secondary);
 }
 
-// Colored dot indicator per activity type
-.activity-dot {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-right: 12px;
-  flex-shrink: 0;
-
-  &--issued {
-    background-color: var(--status-success);
-  }
-
-  &--presented {
-    background-color: var(--status-info);
-  }
-
-  &--deleted {
-    background-color: var(--status-error);
-  }
+.activity-credential-name {
+  @include fluid-type(0.78rem, 0.85rem);
+  color: var(--text-primary);
+  font-weight: 500;
+  word-break: break-word;
 }
 
 .activity-time {
   font-size: 0.75rem;
   color: var(--text-disabled);
   white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .state-container {

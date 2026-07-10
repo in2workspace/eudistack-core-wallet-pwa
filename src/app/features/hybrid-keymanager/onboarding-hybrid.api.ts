@@ -1,9 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { environment } from 'src/environments/environment';
-
-const BASE_PATH = '/api/v1/keys/hybrid/onboarding';
+import { SERVER_PATH } from 'src/app/core/constants/api.constants';
+import { UrlResolverService } from 'src/app/core/services/url-resolver.service';
 
 export interface InitRequest {
   credential_id: string;
@@ -30,6 +29,15 @@ export interface CommitResponse {
   credential_id: string;
 }
 
+export interface BlockRequest {
+  credential_id: string;
+  correlation_id: string;
+}
+
+export interface BlockResponse {
+  credential_id: string;
+}
+
 /**
  * HTTP client for the hybrid onboarding endpoints on the EBW backend.
  *
@@ -41,17 +49,20 @@ export interface CommitResponse {
 @Injectable({ providedIn: 'root' })
 export class OnboardingHybridApi {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = environment.server_url;
+  private readonly urlResolver = inject(UrlResolverService);
 
   init(req: InitRequest): Promise<InitResponse> {
-    return firstValueFrom(
-      this.http.post<InitResponse>(`${this.baseUrl}${BASE_PATH}/init`, req),
-    );
+    const url = `${this.urlResolver.serverUrl()}${SERVER_PATH.HYBRID_ONBOARDING_INIT}`;
+    return firstValueFrom(this.http.post<InitResponse>(url, req));
   }
 
   commit(req: CommitRequest): Promise<CommitResponse> {
-    return firstValueFrom(
-      this.http.post<CommitResponse>(`${this.baseUrl}${BASE_PATH}/commit`, req),
-    );
+    const url = `${this.urlResolver.serverUrl()}${SERVER_PATH.HYBRID_ONBOARDING_COMMIT}`;
+    return firstValueFrom(this.http.post<CommitResponse>(url, req));
+  }
+
+  block(req: BlockRequest): Promise<BlockResponse> {
+    const url = `${this.urlResolver.serverUrl()}${SERVER_PATH.HYBRID_ONBOARDING_BLOCK}`;
+    return firstValueFrom(this.http.post<BlockResponse>(url, req));
   }
 }
