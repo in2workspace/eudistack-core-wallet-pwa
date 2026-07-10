@@ -1,9 +1,11 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IonicModule, AlertController } from '@ionic/angular';
+import { IonicModule, ModalController } from '@ionic/angular';
+import { SegmentValue } from '@ionic/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { ActivityEntry } from 'src/app/core/models/activity.model';
+import { ACTIVITY_FILTERS, ActivityEntry, ActivityFilter } from 'src/app/core/models/activity.model';
 import { ActivityService } from 'src/app/core/services/activity.service';
+import { ConfirmModalComponent } from 'src/app/shared/components/confirm-modal/confirm-modal.component';
 
 @Component({
     selector: 'app-activity',
@@ -13,11 +15,20 @@ import { ActivityService } from 'src/app/core/services/activity.service';
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class ActivityPage implements OnInit {
-  entries: ActivityEntry[] = [];
-  loading = true;
+  entries = signal<ActivityEntry[]>([]);
+  loading = signal<boolean>(true);
+  activeFilter = signal<ActivityFilter>('all');
+
+  readonly filters = ACTIVITY_FILTERS;
+
+  filteredEntries = computed(() =>
+    this.activeFilter() === 'all'
+      ? this.entries()
+      : this.entries().filter((e) => e.type === this.activeFilter())
+  );
 
   private readonly activityService = inject(ActivityService);
-  private readonly alertController = inject(AlertController);
+  private readonly modalController = inject(ModalController);
   private readonly translate = inject(TranslateService);
 
   ngOnInit(): void {
@@ -25,24 +36,38 @@ export class ActivityPage implements OnInit {
   }
 
   async load(): Promise<void> {
-    this.loading = true;
-    this.entries = await this.activityService.findAll();
-    this.loading = false;
+    this.loading.set(true);
+    this.entries.set(await this.activityService.findAll());
+    this.loading.set(false);
+  }
+
+  setFilter(value: SegmentValue | undefined): void {
+    if (typeof value === 'string' && (ACTIVITY_FILTERS as string[]).includes(value)) {
+      this.activeFilter.set(value as ActivityFilter);
+    }
   }
 
   async confirmClear(): Promise<void> {
-    const alert = await this.alertController.create({
-      header: this.translate.instant('activity.clear-confirm'),
-      buttons: [
-        { text: this.translate.instant('devices.cancel'), role: 'cancel' },
-        {
-          text: this.translate.instant('activity.clear'),
-          cssClass: 'danger',
-          handler: () => this.clearAll(),
-        },
-      ],
+    const modal = await this.modalController.create({
+      component: ConfirmModalComponent,
+      componentProps: {
+        icon: 'trash-outline',
+        titleKey: 'activity.clear-title',
+        descriptionKey: 'activity.clear-description',
+        cancelKey: 'activity.clear-cancel',
+        actionKey: 'activity.clear-action',
+      },
+      backdropDismiss: false,
+      showBackdrop: false,
+      cssClass: 'confirm-modal',
     });
-    await alert.present();
+
+    await modal.present();
+
+    const { role } = await modal.onWillDismiss();
+    if (role === 'confirm') {
+      await this.clearAll();
+    }
   }
 
   formatTime(timestamp: number): string {
@@ -61,6 +86,6 @@ export class ActivityPage implements OnInit {
 
   private async clearAll(): Promise<void> {
     await this.activityService.clear();
-    this.entries = [];
+    this.entries.set([]);
   }
 }

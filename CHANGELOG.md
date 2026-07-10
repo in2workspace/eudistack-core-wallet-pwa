@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.11.0] - 2026-07-10
+
+### Added
+
+- **EUD-138 US-03 — Activity filter control**: Added an `IonSegment`/`IonSegmentButton` control (scrollable) to `ActivityPage` with four options — "Todas" (default), "Recibidas", "Presentadas", "Eliminadas" — backed by the new `ActivityFilter` type and `ACTIVITY_FILTERS` constant in `activity.model.ts` (AC-01).
+- **EUD-138 US-03 — Client-side filtering**: `ActivityPage` migrated to signals (`entries`, `loading`, `activeFilter`) with a `filteredEntries` computed that selects entries by `activeFilter()`, preserving the most-recent-first order returned by `ActivityService.findAll()`. Filtering is purely client-side and read-only: switching filters never calls `ActivityService.findAll()` again nor `clear()`/`confirmClear()`, and never mutates the `entries()` set (AC-02, AC-04).
+- **EUD-138 US-03 — Contextual empty states**: Added a per-filter empty state (`activity.empty-issued` / `-presented` / `-deleted`) shown when the active filter has no matching events, reusing the existing `.state-container` pattern without error styling; the existing generic empty state (`activity.empty`) still shows when the whole history is empty under "Todas". The three render states (loading, generic empty, contextual empty, list) are mutually exclusive (AC-03, EC-01, EC-02).
+- **EUD-138 US-03 — i18n**: Added `activity.filter-all`, `filter-issued`, `filter-presented`, `filter-deleted`, `empty-issued`, `empty-presented`, `empty-deleted` keys to `es.json`, `en.json`, `ca.json`.
+- **EUD-138 US-03 — Tests**: Added component tests covering the filter control render and default ("Todas"), filtering/round-trip preserving order (AC-02, AC-03), read-only guarantees (AC-04), disjoint empty states (EC-01, EC-02), large datasets (200 entries / `MAX_ENTRIES`) and filter re-selection idempotence (EC-03, EC-04), and resilience to an unknown/missing entry `type` and to `findAll()` resolving `[]` (ES-01, ES-02).
+- **EUD-138 US-03 — `ConfirmModalComponent`**: Replaced the native `AlertController` confirmation for "borrar historial" with a reusable custom modal (`src/app/shared/components/confirm-modal/`), parameterized via `@Input() icon`, `titleKey`, `descriptionKey`, `cancelKey`, `actionKey` so other features can present the same confirm/cancel pattern with their own copy — consumers pass those as `componentProps` to `ModalController.create()`, following the existing `TxCodeModalComponent` convention. Presented via `ModalController`, dismissing with role `confirm`/`cancel`; `ActivityPage.confirmClear()` now only calls `clearAll()` when the modal resolves with role `confirm`. Added `activity.clear-title`, `clear-description`, `clear-cancel`, `clear-action` i18n keys to `es.json`, `en.json`, `ca.json`, and matching styles in `theme/customAlert.scss` (`ion-modal.confirm-modal`).
+- **EUD-138 US-03 — Activity list redesign**: `ActivityPage`'s history list migrated from `ion-list`/`ion-item` rows to a card-based layout (`activity-card` / `activity-card-content`), showing a contextual subtitle with the counterparty (`activity.subtitle-issued`, `subtitle-presented`) for received/presented entries. Added matching i18n keys to `es.json`, `en.json`, `ca.json`.
+
+### Fixed
+
+- **EUD-138 US-03 — `ActivityPage.setFilter` type safety**: `setFilter` now accepts `SegmentValue | undefined` (the type emitted by `IonSegment`'s `ionChange`) and only updates `activeFilter` when the value is a known member of `ACTIVITY_FILTERS`, avoiding an unsafe cast from an untyped segment change event.
+
 ## [3.10.2] - 2026-07-06
 
 ### Fixed
