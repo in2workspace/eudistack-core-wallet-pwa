@@ -5,7 +5,7 @@ import { SegmentValue } from '@ionic/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ACTIVITY_FILTERS, ActivityEntry, ActivityFilter } from 'src/app/core/models/activity.model';
 import { ActivityService } from 'src/app/core/services/activity.service';
-import { ClearActivityModalComponent } from 'src/app/shared/components/clear-activity-modal/clear-activity-modal.component';
+import { ConfirmModalComponent } from 'src/app/shared/components/confirm-modal/confirm-modal.component';
 
 @Component({
     selector: 'app-activity',
@@ -49,10 +49,17 @@ export class ActivityPage implements OnInit {
 
   async confirmClear(): Promise<void> {
     const modal = await this.modalController.create({
-      component: ClearActivityModalComponent,
+      component: ConfirmModalComponent,
+      componentProps: {
+        icon: 'trash-outline',
+        titleKey: 'activity.clear-title',
+        descriptionKey: 'activity.clear-description',
+        cancelKey: 'activity.clear-cancel',
+        actionKey: 'activity.clear-action',
+      },
       backdropDismiss: false,
       showBackdrop: false,
-      cssClass: 'clear-activity-modal',
+      cssClass: 'confirm-modal',
     });
 
     await modal.present();

@@ -139,8 +139,8 @@ ion-modal.credential-confirmation-modal {
   --border-radius: 0;
 }
 
-// Clear activity modal — transparent wrapper so the component controls its own backdrop
-ion-modal.clear-activity-modal {
+// Confirm modal — transparent wrapper so the component controls its own backdrop
+ion-modal.confirm-modal {
   --background: transparent;
   --box-shadow: none;
   --width: 100%;
