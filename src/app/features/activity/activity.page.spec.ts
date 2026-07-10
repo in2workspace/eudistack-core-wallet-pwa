@@ -1,6 +1,6 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { ActivityPage } from './activity.page';
-import { IonicModule, AlertController } from '@ionic/angular';
+import { IonicModule, ModalController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { EventEmitter } from '@angular/core';
 import { LangChangeEvent, TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -29,8 +29,11 @@ const mockActivityService = {
   clear: jest.fn().mockResolvedValue(undefined),
 };
 
-const mockAlertController = {
-  create: jest.fn().mockResolvedValue({ present: jest.fn().mockResolvedValue(undefined) }),
+const mockModalController = {
+  create: jest.fn().mockResolvedValue({
+    present: jest.fn().mockResolvedValue(undefined),
+    onWillDismiss: jest.fn().mockResolvedValue({ role: 'cancel' }),
+  }),
 };
 
 /** Entries as returned by the service: most-recent-first (id-4 is newest). */
@@ -59,7 +62,7 @@ async function createModule(): Promise<ComponentFixture<ActivityPage>> {
     imports: [ActivityPage, IonicModule.forRoot(), CommonModule, TranslateModule.forRoot()],
     providers: [
       { provide: ActivityService, useValue: mockActivityService },
-      { provide: AlertController, useValue: mockAlertController },
+      { provide: ModalController, useValue: mockModalController },
       { provide: TranslateService, useValue: translateServiceMock },
     ],
   }).compileComponents();
@@ -79,8 +82,8 @@ function selectFilter(fixture: ComponentFixture<ActivityPage>, value: string): v
 }
 
 function credentialNames(fixture: ComponentFixture<ActivityPage>): string[] {
-  const paragraphs: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.activity-item p');
-  return Array.from(paragraphs).map((p) => p.textContent!.split('—')[0].trim());
+  const names: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.activity-credential-name');
+  return Array.from(names).map((p) => p.textContent!.trim());
 }
 
 describe('ActivityPage > filtro de actividad por tipo (EUD-138)', () => {
@@ -116,9 +119,9 @@ describe('ActivityPage > filtro de actividad por tipo (EUD-138)', () => {
     expect(fixture.componentInstance.filteredEntries()).toEqual([ENTRIES[1], ENTRIES[3]]);
 
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.querySelectorAll('.activity-dot--issued').length).toBe(2);
-    expect(el.querySelectorAll('.activity-dot--deleted').length).toBe(0);
-    expect(el.querySelectorAll('.activity-dot--presented').length).toBe(0);
+    expect(el.querySelectorAll('.activity-card--issued').length).toBe(2);
+    expect(el.querySelectorAll('.activity-card--deleted').length).toBe(0);
+    expect(el.querySelectorAll('.activity-card--presented').length).toBe(0);
     expect(credentialNames(fixture)).toEqual(['Cred C', 'Cred A']);
   });
 
@@ -155,7 +158,7 @@ describe('ActivityPage > filtro de actividad por tipo (EUD-138)', () => {
     selectFilter(fixture, 'all');
 
     expect(mockActivityService.clear).not.toHaveBeenCalled();
-    expect(mockAlertController.create).not.toHaveBeenCalled();
+    expect(mockModalController.create).not.toHaveBeenCalled();
   });
 
   it('AC-04: cambiar de filtro no muta el conjunto de entries()', async () => {

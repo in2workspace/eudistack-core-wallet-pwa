@@ -345,6 +345,8 @@
     "type-issued": "Credencial recibida",
     "type-presented": "Credencial presentada",
     "type-deleted": "Credencial eliminada",
+    "subtitle-issued": "Recibido de {{counterparty}}",
+    "subtitle-presented": "Presentado a {{counterparty}}",
     "time-now": "Ahora",
     "time-minutes": "Hace {{count}}min",
     "time-hours": "Hace {{count}}h",

@@ -345,6 +345,8 @@
     "type-issued": "Credential received",
     "type-presented": "Credential presented",
     "type-deleted": "Credential deleted",
+    "subtitle-issued": "Received from {{counterparty}}",
+    "subtitle-presented": "Presented to {{counterparty}}",
     "time-now": "Just now",
     "time-minutes": "{{count}}m ago",
     "time-hours": "{{count}}h ago",

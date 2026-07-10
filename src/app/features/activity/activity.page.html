@@ -40,18 +40,22 @@
     }
 
     @if (!loading() && filteredEntries().length > 0) {
-      <ion-list class="activity-list">
+      <div class="activity-list">
         @for (entry of filteredEntries(); track entry.id) {
-          <ion-item class="activity-item">
-            <span class="activity-dot activity-dot--{{ entry.type }}" slot="start"></span>
-            <ion-label>
+          <div class="activity-card activity-card--{{ entry.type }}">
+            <div class="activity-card-content">
               <h2>{{ "activity.type-" + entry.type | translate }}</h2>
-              <p>{{ entry.credentialName }}{{ entry.counterparty ? ' — ' + entry.counterparty : '' }}</p>
-            </ion-label>
-            <ion-note slot="end" class="activity-time">{{ formatTime(entry.timestamp) }}</ion-note>
-          </ion-item>
+              @if (entry.counterparty && entry.type !== 'deleted') {
+                <p class="activity-subtitle">
+                  {{ "activity.subtitle-" + entry.type | translate: { counterparty: entry.counterparty } }}
+                </p>
+              }
+              <p class="activity-credential-name">{{ entry.credentialName }}</p>
+            </div>
+            <span class="activity-time">{{ formatTime(entry.timestamp) }}</span>
+          </div>
         }
-      </ion-list>
+      </div>
     }
   </ion-grid>
 </ion-content>
