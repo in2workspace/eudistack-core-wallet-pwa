@@ -66,3 +66,8 @@ h2 {
   background: var(--primary-color);
   color: var(--primary-contrast-color);
 }
+
+.btn-danger {
+  background: var(--status-error);
+  color: var(--primary-contrast-color);
+}
