@@ -1,10 +1,11 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IonicModule, AlertController } from '@ionic/angular';
+import { IonicModule, ModalController } from '@ionic/angular';
 import { SegmentValue } from '@ionic/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ACTIVITY_FILTERS, ActivityEntry, ActivityFilter } from 'src/app/core/models/activity.model';
 import { ActivityService } from 'src/app/core/services/activity.service';
+import { ClearActivityModalComponent } from 'src/app/shared/components/clear-activity-modal/clear-activity-modal.component';
 
 @Component({
     selector: 'app-activity',
@@ -27,7 +28,7 @@ export class ActivityPage implements OnInit {
   );
 
   private readonly activityService = inject(ActivityService);
-  private readonly alertController = inject(AlertController);
+  private readonly modalController = inject(ModalController);
   private readonly translate = inject(TranslateService);
 
   ngOnInit(): void {
@@ -47,18 +48,19 @@ export class ActivityPage implements OnInit {
   }
 
   async confirmClear(): Promise<void> {
-    const alert = await this.alertController.create({
-      header: this.translate.instant('activity.clear-confirm'),
-      buttons: [
-        { text: this.translate.instant('devices.cancel'), role: 'cancel' },
-        {
-          text: this.translate.instant('activity.clear'),
-          cssClass: 'danger',
-          handler: () => this.clearAll(),
-        },
-      ],
+    const modal = await this.modalController.create({
+      component: ClearActivityModalComponent,
+      backdropDismiss: false,
+      showBackdrop: false,
+      cssClass: 'clear-activity-modal',
     });
-    await alert.present();
+
+    await modal.present();
+
+    const { role } = await modal.onWillDismiss();
+    if (role === 'confirm') {
+      await this.clearAll();
+    }
   }
 
   formatTime(timestamp: number): string {
