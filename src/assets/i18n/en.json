@@ -331,6 +331,7 @@
     "empty-hint": "Your credential activity will appear here",
     "clear": "Clear",
     "clear-confirm": "Clear all activity?",
+    "clear-yes": "Yes, clear",
     "type-issued": "Credential received",
     "type-presented": "Credential presented",
     "type-deleted": "Credential deleted",
