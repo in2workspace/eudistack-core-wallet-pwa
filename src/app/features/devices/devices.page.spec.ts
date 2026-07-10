@@ -1,6 +1,6 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { DevicesPage } from './devices.page';
-import { IonicModule, NavController } from '@ionic/angular';
+import { AlertController, IonicModule, NavController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterTestingModule } from '@angular/router/testing';
@@ -10,6 +10,7 @@ import { EventEmitter, NO_ERRORS_SCHEMA } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 import { WALLET_DISCOVERY_GATEWAY } from 'src/app/core/gateways/wallet-discovery.gateway';
+import { AuthService } from 'src/app/core/services/auth.service';
 import { PasskeyApiService, PasskeyInfo } from 'src/app/core/services/passkey-api.service';
 import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
 
@@ -41,6 +42,16 @@ const mockPasskeyApi = {
 
 const mockPasskeyStore = {
   getCredentialId: jest.fn().mockReturnValue('current-cred-id'),
+  clearCredentialId: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockAuthService = {
+  forceLogout: jest.fn(),
+};
+
+/** Default: resolves the alert without invoking any button handler (acts as a no-op cancel). */
+const mockAlertController = {
+  create: jest.fn().mockResolvedValue({ present: jest.fn() }),
 };
 
 async function createModule(walletMode: 'browser' | 'server' = 'server'): Promise<ComponentFixture<DevicesPage>> {
@@ -62,6 +73,8 @@ async function createModule(walletMode: 'browser' | 'server' = 'server'): Promis
       { provide: WALLET_DISCOVERY_GATEWAY, useValue: fakeGateway },
       { provide: PasskeyApiService, useValue: mockPasskeyApi },
       { provide: PasskeyStoreService, useValue: mockPasskeyStore },
+      { provide: AuthService, useValue: mockAuthService },
+      { provide: AlertController, useValue: mockAlertController },
       { provide: Router, useValue: routerSpy },
       { provide: NavController, useValue: navCtrlMock },
       { provide: TranslateService, useValue: translateServiceMock },
@@ -388,5 +401,354 @@ describe('T8: DevicesPage > error scenarios (EUD-143)', () => {
     // Component should be in error state, not loading — navigation is unblocked
     expect(fixture.componentInstance.loading()).toBe(false);
     expect(fixture.componentInstance.error()).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// EUD-144 T8: DevicesPage > revoke device — happy path
+//     Covers AC-01, AC-02, AC-03, EC-04
+// ---------------------------------------------------------------------------
+
+/** Finds the given role's button in the captured alert options and invokes its handler. */
+function pressAlertButton(opts: { buttons: Array<{ role?: string; handler?: () => void }> }, role: string): void {
+  const button = opts.buttons.find(b => b.role === role);
+  button?.handler?.();
+}
+
+const OTHER_PASSKEY: PasskeyInfo = {
+  id: '2',
+  credentialId: 'cred-other',
+  displayName: 'Work Phone',
+  createdAt: '2024-02-10T10:00:00Z',
+  lastUsedAt: '2024-06-02T08:30:00Z',
+  activeSessions: 0,
+};
+
+describe('EUD-144 T8: DevicesPage > revoke device — happy path', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([OTHER_PASSKEY]));
+    mockPasskeyApi.deletePasskey.mockReturnValue(of(undefined));
+    mockPasskeyStore.getCredentialId.mockReturnValue('current-cred-id');
+    mockPasskeyStore.clearCredentialId.mockResolvedValue(undefined);
+    mockAlertController.create.mockResolvedValue({ present: jest.fn() });
+  });
+
+  afterEach(() => {
+    TestBed.resetTestingModule();
+  });
+
+  // --- AC-01 -------------------------------------------------------------
+
+  it('AC-01: should call deletePasskey with the target id when revoking a device other than the current one', async () => {
+    mockAlertController.create.mockImplementation((opts) => {
+      pressAlertButton(opts, 'destructive');
+      return Promise.resolve({ present: jest.fn() });
+    });
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
+
+    expect(mockPasskeyApi.deletePasskey).toHaveBeenCalledWith(OTHER_PASSKEY.id);
+  });
+
+  it('AC-01: should keep the session active after revoking a device other than the current one', async () => {
+    mockAlertController.create.mockImplementation((opts) => {
+      pressAlertButton(opts, 'destructive');
+      return Promise.resolve({ present: jest.fn() });
+    });
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
+
+    expect(mockPasskeyStore.clearCredentialId).not.toHaveBeenCalled();
+    expect(mockAuthService.forceLogout).not.toHaveBeenCalled();
+  });
+
+  // --- AC-02 ---------------------------------------------------------------
+
+  it('AC-02: should show a confirmation dialog with the standard message before revoking a device other than the current one', async () => {
+    mockAlertController.create.mockResolvedValue({ present: jest.fn() });
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
+
+    expect(mockAlertController.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        header: 'devices.delete-header',
+        message: 'devices.delete-message',
+      })
+    );
+  });
+
+  it('AC-02: should not call the API when the confirmation dialog is dismissed without confirming', async () => {
+    // Default mock resolves the alert without invoking any button handler.
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
+
+    expect(mockPasskeyApi.deletePasskey).not.toHaveBeenCalled();
+  });
+
+  // --- AC-03 ---------------------------------------------------------------
+
+  it('AC-03: should remove the revoked device from the list after a successful revoke', async () => {
+    mockAlertController.create.mockImplementation((opts) => {
+      pressAlertButton(opts, 'destructive');
+      return Promise.resolve({ present: jest.fn() });
+    });
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
+
+    expect(fixture.componentInstance.passkeys().some(p => p.id === OTHER_PASSKEY.id)).toBe(false);
+  });
+
+  // --- EC-04 ---------------------------------------------------------------
+
+  it('EC-04: should not force logout when revoking another device while the current device is also listed', async () => {
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([BASE_PASSKEY, OTHER_PASSKEY]));
+    mockPasskeyStore.getCredentialId.mockReturnValue(BASE_PASSKEY.credentialId);
+    mockAlertController.create.mockImplementation((opts) => {
+      pressAlertButton(opts, 'destructive');
+      return Promise.resolve({ present: jest.fn() });
+    });
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
+
+    expect(mockPasskeyStore.clearCredentialId).not.toHaveBeenCalled();
+    expect(mockAuthService.forceLogout).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.passkeys().some(p => p.id === BASE_PASSKEY.id)).toBe(true);
+  });
+
+  it('EC-04: should use the standard (non-reinforced) message when revoking another device while the current device is also listed', async () => {
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([BASE_PASSKEY, OTHER_PASSKEY]));
+    mockPasskeyStore.getCredentialId.mockReturnValue(BASE_PASSKEY.credentialId);
+    mockAlertController.create.mockResolvedValue({ present: jest.fn() });
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
+
+    expect(mockAlertController.create).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'devices.delete-message' })
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// EUD-144 T9: DevicesPage > self-revoke
+//     Covers AC-06, EC-03
+// ---------------------------------------------------------------------------
+
+const CURRENT_PASSKEY: PasskeyInfo = {
+  id: '1',
+  credentialId: 'current-cred-id',
+  displayName: 'My Laptop',
+  createdAt: '2024-01-15T10:00:00Z',
+  lastUsedAt: '2024-06-01T08:30:00Z',
+  activeSessions: 0,
+};
+
+describe('EUD-144 T9: DevicesPage > self-revoke', () => {
+  let callOrder: string[];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    callOrder = [];
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([CURRENT_PASSKEY]));
+    mockPasskeyApi.deletePasskey.mockReturnValue(of(undefined));
+    mockPasskeyStore.getCredentialId.mockReturnValue(CURRENT_PASSKEY.credentialId);
+    mockPasskeyStore.clearCredentialId.mockImplementation(async () => {
+      callOrder.push('clearCredentialId');
+    });
+    mockAuthService.forceLogout.mockImplementation(() => {
+      callOrder.push('forceLogout');
+    });
+    mockAlertController.create.mockImplementation((opts) => {
+      pressAlertButton(opts, 'destructive');
+      return Promise.resolve({ present: jest.fn() });
+    });
+  });
+
+  afterEach(() => {
+    TestBed.resetTestingModule();
+  });
+
+  // --- AC-06 ---------------------------------------------------------------
+
+  it('AC-06: should show the reinforced confirmation message when revoking the current device', async () => {
+    mockAlertController.create.mockResolvedValue({ present: jest.fn() });
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(CURRENT_PASSKEY);
+
+    expect(mockAlertController.create).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'devices.delete-self-message' })
+    );
+  });
+
+  it('AC-06: should clear the local credential id and force logout after revoking the current device', async () => {
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(CURRENT_PASSKEY);
+
+    expect(mockPasskeyStore.clearCredentialId).toHaveBeenCalled();
+    expect(mockAuthService.forceLogout).toHaveBeenCalled();
+  });
+
+  it('AC-06 (R-2): should clear the local credential id before forcing logout', async () => {
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(CURRENT_PASSKEY);
+
+    expect(callOrder).toEqual(['clearCredentialId', 'forceLogout']);
+  });
+
+  // --- EC-03 ---------------------------------------------------------------
+
+  it('EC-03: should not clear the credential id or force logout when the local credential id cannot be resolved (null)', async () => {
+    mockPasskeyStore.getCredentialId.mockReturnValue(null);
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(CURRENT_PASSKEY);
+
+    expect(mockPasskeyStore.clearCredentialId).not.toHaveBeenCalled();
+    expect(mockAuthService.forceLogout).not.toHaveBeenCalled();
+  });
+
+  it('EC-03: should use the standard (non-reinforced) message when the local credential id cannot be resolved (null)', async () => {
+    mockPasskeyStore.getCredentialId.mockReturnValue(null);
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(CURRENT_PASSKEY);
+
+    expect(mockAlertController.create).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'devices.delete-message' })
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// EUD-144 T10: DevicesPage > revoke device — error/edge scenarios
+//     Covers EC-01/ES-03 (409 last-passkey), EC-02 (cancel), ES-04 (5xx), ES-05 (timeout)
+// ---------------------------------------------------------------------------
+
+describe('EUD-144 T10: DevicesPage > revoke device — error/edge scenarios', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([OTHER_PASSKEY]));
+    mockPasskeyStore.getCredentialId.mockReturnValue('current-cred-id');
+    mockPasskeyStore.clearCredentialId.mockResolvedValue(undefined);
+    mockAlertController.create.mockImplementation((opts) => {
+      pressAlertButton(opts, 'destructive');
+      return Promise.resolve({ present: jest.fn() });
+    });
+  });
+
+  afterEach(() => {
+    TestBed.resetTestingModule();
+  });
+
+  // --- EC-01 / ES-03 — 409 last passkey ------------------------------------
+
+  it('EC-01/ES-03: should show the last-passkey error message when the backend responds 409', async () => {
+    mockPasskeyApi.deletePasskey.mockReturnValue(throwError(() => ({ status: 409 })));
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
+    await Promise.resolve();
+
+    expect(mockAlertController.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        header: 'devices.error-header',
+        message: 'devices.last-passkey-error',
+      })
+    );
+  });
+
+  it('EC-01/ES-03: should not remove the device from the list when the backend responds 409', async () => {
+    mockPasskeyApi.deletePasskey.mockReturnValue(throwError(() => ({ status: 409 })));
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
+    await Promise.resolve();
+
+    expect(fixture.componentInstance.passkeys().some(p => p.id === OTHER_PASSKEY.id)).toBe(true);
+  });
+
+  // --- EC-02 — cancel the confirmation dialog ------------------------------
+
+  it('EC-02: should not call deletePasskey when the confirmation dialog is cancelled', async () => {
+    // Simulates pressing the 'cancel' button: no handler is wired for it (Ionic just dismisses).
+    mockAlertController.create.mockImplementation(() => Promise.resolve({ present: jest.fn() }));
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
+
+    expect(mockPasskeyApi.deletePasskey).not.toHaveBeenCalled();
+  });
+
+  it('EC-02: should leave the devices list unchanged when the confirmation dialog is cancelled', async () => {
+    mockAlertController.create.mockImplementation(() => Promise.resolve({ present: jest.fn() }));
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
+
+    expect(fixture.componentInstance.passkeys()).toEqual([OTHER_PASSKEY]);
+  });
+
+  // --- ES-04 — backend 5xx --------------------------------------------------
+
+  it('ES-04: should not remove the device from the list when the backend responds 5xx', async () => {
+    mockPasskeyApi.deletePasskey.mockReturnValue(throwError(() => ({ status: 500 })));
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
+    await Promise.resolve();
+
+    expect(fixture.componentInstance.passkeys().some(p => p.id === OTHER_PASSKEY.id)).toBe(true);
+  });
+
+  it('ES-04: should not force logout on a failed self-revoke when the backend responds 5xx', async () => {
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([CURRENT_PASSKEY]));
+    mockPasskeyStore.getCredentialId.mockReturnValue(CURRENT_PASSKEY.credentialId);
+    mockPasskeyApi.deletePasskey.mockReturnValue(throwError(() => ({ status: 500 })));
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(CURRENT_PASSKEY);
+    await Promise.resolve();
+
+    expect(mockPasskeyStore.clearCredentialId).not.toHaveBeenCalled();
+    expect(mockAuthService.forceLogout).not.toHaveBeenCalled();
+  });
+
+  // --- ES-05 — timeout --------------------------------------------------
+
+  it('ES-05: should not remove the device from the list when the request times out', async () => {
+    mockPasskeyApi.deletePasskey.mockReturnValue(
+      throwError(() => ({ name: 'TimeoutError', message: 'Timeout' }))
+    );
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
+    await Promise.resolve();
+
+    expect(fixture.componentInstance.passkeys().some(p => p.id === OTHER_PASSKEY.id)).toBe(true);
+  });
+
+  it('ES-05: should not force logout on a failed self-revoke when the request times out', async () => {
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([CURRENT_PASSKEY]));
+    mockPasskeyStore.getCredentialId.mockReturnValue(CURRENT_PASSKEY.credentialId);
+    mockPasskeyApi.deletePasskey.mockReturnValue(
+      throwError(() => ({ name: 'TimeoutError', message: 'Timeout' }))
+    );
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(CURRENT_PASSKEY);
+    await Promise.resolve();
+
+    expect(mockPasskeyStore.clearCredentialId).not.toHaveBeenCalled();
+    expect(mockAuthService.forceLogout).not.toHaveBeenCalled();
   });
 });

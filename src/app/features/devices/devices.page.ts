@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { IonicModule, AlertController } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { AuthService } from 'src/app/core/services/auth.service';
 import { PasskeyApiService, PasskeyInfo } from 'src/app/core/services/passkey-api.service';
 import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
@@ -235,6 +236,7 @@ import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.s
 export class DevicesPage implements OnInit {
   private readonly passkeyApi = inject(PasskeyApiService);
   private readonly passkeyStore = inject(PasskeyStoreService);
+  private readonly authService = inject(AuthService);
   private readonly alertController = inject(AlertController);
   private readonly translate = inject(TranslateService);
   private readonly router = inject(Router);
@@ -312,9 +314,10 @@ export class DevicesPage implements OnInit {
   }
 
   async deletePasskey(passkey: PasskeyInfo): Promise<void> {
+    const selfRevoke = this.isSelfRevoke(passkey);
     const alert = await this.alertController.create({
       header: this.translate.instant('devices.delete-header'),
-      message: this.translate.instant('devices.delete-message'),
+      message: this.translate.instant(selfRevoke ? 'devices.delete-self-message' : 'devices.delete-message'),
       buttons: [
         {
           text: this.translate.instant('devices.cancel'),
@@ -325,8 +328,14 @@ export class DevicesPage implements OnInit {
           role: 'destructive',
           handler: () => {
             this.passkeyApi.deletePasskey(passkey.id).subscribe({
-              next: () => {
+              next: async () => {
                 this.passkeys.update(list => list.filter(p => p.id !== passkey.id));
+                // Self-revoke detection lives only here (success), never in `error` (R-3):
+                // a failed/timed-out revocation must not force a logout that didn't happen.
+                if (selfRevoke) {
+                  await this.passkeyStore.clearCredentialId();
+                  this.authService.forceLogout();
+                }
               },
               error: async (err) => {
                 if (err.status === 409) {
@@ -356,6 +365,15 @@ export class DevicesPage implements OnInit {
       },
       error: (err) => console.error('Failed to revoke sessions:', err)
     });
+  }
+
+  /**
+   * A passkey is the current device's only when its credentialId matches the locally
+   * stored one. If the local credentialId can't be resolved (EC-03), fail safe to `false`
+   * rather than risk forcing a logout that doesn't correspond to the revoked device.
+   */
+  private isSelfRevoke(passkey: PasskeyInfo): boolean {
+    return !!this.currentCredentialId && passkey.credentialId === this.currentCredentialId;
   }
 }
 
