@@ -349,7 +349,7 @@
     "clear-title": "¿Borrar tu historial de actividad?",
     "clear-description": "Esto eliminará permanentemente todos los registros de actividad de tu wallet. Esta acción no se puede deshacer.",
     "clear-cancel": "Cancelar",
-    "clear-action": "Borrar historial",
+    "clear-action": "Sí, borrar",
     "type-issued": "Credencial recibida",
     "type-presented": "Credencial presentada",
     "type-deleted": "Credencial eliminada",

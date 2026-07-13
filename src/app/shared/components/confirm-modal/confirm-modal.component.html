@@ -20,7 +20,7 @@
       <button class="btn btn-outline" (click)="onCancel()">
         {{ cancelKey | translate }}
       </button>
-      <button class="btn btn-primary" (click)="onConfirm()">
+      <button class="btn btn-primary" [class.btn-danger]="actionVariant === 'danger'" (click)="onConfirm()">
         {{ actionKey | translate }}
       </button>
     </div>

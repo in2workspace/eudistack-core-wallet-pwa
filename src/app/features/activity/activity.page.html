@@ -3,8 +3,7 @@
     <div class="activity-header">
       <b class="settings-pages-title">{{ "activity.title" | translate }}</b>
       @if (entries().length > 0) {
-        <ion-button fill="clear" size="small" (click)="confirmClear()" class="clear-btn">
-          <ion-icon name="trash-outline" slot="start"></ion-icon>
+        <ion-button fill="clear" color="danger" (click)="confirmClear()" class="clear-btn">
           {{ "activity.clear" | translate }}
         </ion-button>
       }
@@ -45,9 +44,10 @@
           <div class="activity-card activity-card--{{ entry.type }}">
             <div class="activity-card-content">
               <h2>{{ "activity.type-" + entry.type | translate }}</h2>
-              @if (entry.counterparty && entry.type !== 'deleted') {
+              @let counterparty = formatCounterparty(entry);
+              @if (counterparty && entry.type !== 'deleted') {
                 <p class="activity-subtitle">
-                  {{ "activity.subtitle-" + entry.type | translate: { counterparty: entry.counterparty } }}
+                  {{ "activity.subtitle-" + entry.type | translate: { counterparty: counterparty } }}
                 </p>
               }
               <p class="activity-credential-name">{{ entry.credentialName }}</p>

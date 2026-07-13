@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IonicModule, ModalController } from '@ionic/angular';
+import { IonicModule, ModalController, ViewWillEnter } from '@ionic/angular';
 import { SegmentValue } from '@ionic/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ACTIVITY_FILTERS, ActivityEntry, ActivityFilter } from 'src/app/core/models/activity.model';
@@ -14,7 +14,7 @@ import { ConfirmModalComponent } from 'src/app/shared/components/confirm-modal/c
     imports: [IonicModule, CommonModule, TranslateModule]
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
-export class ActivityPage implements OnInit {
+export class ActivityPage implements OnInit, ViewWillEnter {
   entries = signal<ActivityEntry[]>([]);
   loading = signal<boolean>(true);
   activeFilter = signal<ActivityFilter>('all');
@@ -32,6 +32,10 @@ export class ActivityPage implements OnInit {
   private readonly translate = inject(TranslateService);
 
   ngOnInit(): void {
+    this.load();
+  }
+
+  ionViewWillEnter(): void {
     this.load();
   }
 
@@ -56,6 +60,7 @@ export class ActivityPage implements OnInit {
         descriptionKey: 'activity.clear-description',
         cancelKey: 'activity.clear-cancel',
         actionKey: 'activity.clear-action',
+        actionVariant: 'danger',
       },
       backdropDismiss: false,
       showBackdrop: false,
@@ -67,6 +72,25 @@ export class ActivityPage implements OnInit {
     const { role } = await modal.onWillDismiss();
     if (role === 'confirm') {
       await this.clearAll();
+    }
+  }
+
+  formatCounterparty(entry: ActivityEntry): string {
+    const raw = entry.counterparty?.trim() ?? '';
+    if (!raw) {
+      return '';
+    }
+    try {
+      const url = new URL(raw);
+      if (url.hostname) {
+        return url.hostname;
+      }
+      if (url.protocol === 'did:') {
+        return this.truncateDid(raw);
+      }
+      return raw;
+    } catch {
+      return raw;
     }
   }
 
@@ -82,6 +106,18 @@ export class ActivityPage implements OnInit {
     if (hours < 24) return this.translate.instant('activity.time-hours', { count: hours });
     if (days < 7) return this.translate.instant('activity.time-days', { count: days });
     return new Date(timestamp).toLocaleDateString();
+  }
+
+  private truncateDid(did: string): string {
+    const match = did.match(/^(did:[a-z0-9]+:)(.+)$/i);
+    if (!match) {
+      return did;
+    }
+    const [, prefix, identifier] = match;
+    if (identifier.length <= 14) {
+      return did;
+    }
+    return `${prefix}${identifier.slice(0, 4)}…${identifier.slice(-6)}`;
   }
 
   private async clearAll(): Promise<void> {

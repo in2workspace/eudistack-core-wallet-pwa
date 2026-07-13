@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.11.2] - 2026-07-10
+
+### Added
+
+- **EUD-137 US-02 — Activity history tests**: `activity.service.spec.ts` and `activity.page.spec.ts`, covering all 13 AC/EC/ES cases (0% → full coverage on both files), merged alongside EUD-138's filter test suite in the same spec file.
+
+### Changed
+
+- **EUD-137 US-02 — Verifier/Issuer legibility**: `formatCounterparty()` reduces URLs to hostname and truncates long `did:key` identifiers (e.g. `did:key:z6Mk…sdvktH`) instead of showing them raw. Wired into EUD-138's card subtitle (`activity.subtitle-issued`/`subtitle-presented`) so the normalized value, not the raw counterparty, is what gets interpolated into the translation.
+- **EUD-137 US-02 — Activity UI polish**: "Clear" button enlarged and switched to the wallet's `color="danger"` convention.
+- **EUD-137 — `ConfirmModalComponent` danger variant**: added `@Input() actionVariant: 'primary' | 'danger'` (`.btn-danger` style) so the "clear activity" confirmation renders its action button in red, matching the wallet's destructive-action convention; `ActivityPage.confirmClear()` passes `actionVariant: 'danger'`.
+
+### Fixed
+
+- **EUD-137 US-02 — Activity list not refreshing**: `ActivityPage` only loaded data on first tab entry; Ionic keeps tab pages alive, so events logged from other tabs (present/issue/delete) needed a manual page reload to show up. Added `ionViewWillEnter()` to reload on every re-entry.
+
 ## [3.11.1]
 
 ### Added

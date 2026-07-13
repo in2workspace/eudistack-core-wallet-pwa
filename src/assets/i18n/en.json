@@ -349,7 +349,7 @@
     "clear-title": "Delete your activity history?",
     "clear-description": "This will permanently remove all activity records from your wallet. This action cannot be undone.",
     "clear-cancel": "Cancel",
-    "clear-action": "Clear history",
+    "clear-action": "Yes, clear",
     "type-issued": "Credential received",
     "type-presented": "Credential presented",
     "type-deleted": "Credential deleted",

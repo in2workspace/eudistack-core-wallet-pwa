@@ -16,6 +16,7 @@ export class ConfirmModalComponent {
   @Input() descriptionKey!: string;
   @Input() cancelKey!: string;
   @Input() actionKey!: string;
+  @Input() actionVariant: 'primary' | 'danger' = 'primary';
 
   private readonly modalCtrl = inject(ModalController);
 
