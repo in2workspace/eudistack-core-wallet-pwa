@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.10.3] - 2026-07-13
+
+### Added - 2026-07-13
+
+- **EUD-144 US-02 — Self-revoke: reinforced confirmation, forced logout and re-onboarding**: `DevicesPage.deletePasskey()` now detects when the passkey being revoked belongs to the device currently in use (`isSelfRevoke`, matched against `PasskeyStoreService.getCredentialId()`) and shows a reinforced confirmation message (new i18n key `devices.delete-self-message`) instead of the standard one — a single conditional dialog per AD-1, not two separate flows. On a successful self-revoke, `PasskeyStoreService.clearCredentialId()` runs before `AuthService.forceLogout()`, so the forced logout routes the holder to re-onboarding (`/auth/register`) instead of login. Detection lives solely in the success (`next`) handler — a failed or timed-out revocation never forces a logout or clears local state. If the local credential id can't be resolved, the action fails safe to a regular (non-self) revoke.
+- **EUD-144 US-02 — test coverage for device revocation**: `devices.page.spec.ts` extended with 20 new tests covering the full revoke flow — revoking another device (API call, dialog content, list update, session unaffected), self-revoke (reinforced message, `clearCredentialId` → `forceLogout` order, unresolved credential id fails safe), and error/edge cases (409 last-passkey message, cancelling the dialog, 5xx/timeout leaving the list and session untouched).
+
 ## [3.10.2] - 2026-07-06
 
 ### Fixed
