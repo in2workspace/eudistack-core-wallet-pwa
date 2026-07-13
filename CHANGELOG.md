@@ -7,12 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.10.3] - 2026-07-13
+## [3.11.3] - 2026-07-13
 
 ### Added - 2026-07-13
 
 - **EUD-144 US-02 — Self-revoke: reinforced confirmation, forced logout and re-onboarding**: `DevicesPage.deletePasskey()` now detects when the passkey being revoked belongs to the device currently in use (`isSelfRevoke`, matched against `PasskeyStoreService.getCredentialId()`) and shows a reinforced confirmation message (new i18n key `devices.delete-self-message`) instead of the standard one — a single conditional dialog per AD-1, not two separate flows. On a successful self-revoke, `PasskeyStoreService.clearCredentialId()` runs before `AuthService.forceLogout()`, so the forced logout routes the holder to re-onboarding (`/auth/register`) instead of login. Detection lives solely in the success (`next`) handler — a failed or timed-out revocation never forces a logout or clears local state. If the local credential id can't be resolved, the action fails safe to a regular (non-self) revoke.
 - **EUD-144 US-02 — test coverage for device revocation**: `devices.page.spec.ts` extended with 20 new tests covering the full revoke flow — revoking another device (API call, dialog content, list update, session unaffected), self-revoke (reinforced message, `clearCredentialId` → `forceLogout` order, unresolved credential id fails safe), and error/edge cases (409 last-passkey message, cancelling the dialog, 5xx/timeout leaving the list and session untouched).
+
+## [3.11.2] - 2026-07-10
+
+### Added
+
+- **EUD-137 US-02 — Activity history tests**: `activity.service.spec.ts` and `activity.page.spec.ts`, covering all 13 AC/EC/ES cases (0% → full coverage on both files), merged alongside EUD-138's filter test suite in the same spec file.
+
+### Changed
+
+- **EUD-137 US-02 — Verifier/Issuer legibility**: `formatCounterparty()` reduces URLs to hostname and truncates long `did:key` identifiers (e.g. `did:key:z6Mk…sdvktH`) instead of showing them raw. Wired into EUD-138's card subtitle (`activity.subtitle-issued`/`subtitle-presented`) so the normalized value, not the raw counterparty, is what gets interpolated into the translation.
+- **EUD-137 US-02 — Activity UI polish**: "Clear" button enlarged and switched to the wallet's `color="danger"` convention.
+- **EUD-137 — `ConfirmModalComponent` danger variant**: added `@Input() actionVariant: 'primary' | 'danger'` (`.btn-danger` style) so the "clear activity" confirmation renders its action button in red, matching the wallet's destructive-action convention; `ActivityPage.confirmClear()` passes `actionVariant: 'danger'`.
+
+### Fixed
+
+- **EUD-137 US-02 — Activity list not refreshing**: `ActivityPage` only loaded data on first tab entry; Ionic keeps tab pages alive, so events logged from other tabs (present/issue/delete) needed a manual page reload to show up. Added `ionViewWillEnter()` to reload on every re-entry.
+
+## [3.11.1]
+
+### Added
+
+- **EUD-103 — editable device name during server-mode onboarding**: the passkey/device step of `LoginPage` now shows an editable `ion-input` prefilled with the auto-detected device name (e.g. "Windows PC", "iPhone"), with an associated `aria-label` (WCAG 2.1 AA). The value is trimmed, validated non-empty, and sent as `displayName` when the passkey is registered — before this, the name was fixed and never shown to the user (AC-05, EC-04).
+- **EUD-103 — accessibility for `OtpInputComponent`**: added a translated `aria-label` per digit box ("Digit {i} of {n}") and an `aria-live="assertive"` region announcing verification errors (NFR-A-01).
+- **EUD-103 — i18n**: added `auth.passkey.device-name-label`, `auth.passkey.device-name-placeholder` and `auth.errors.passkey-register-failed` to `en.json`, `es.json` and `ca.json`.
+- **EUD-103 — test coverage for the server-mode onboarding flow**: `login.page.spec.ts` (new) covers the edited/default device name (AC-05/EC-04), resuming with a refresh token but no local passkey (EC-05), and recoverable errors on `register`/`verifyEmail`/passkey registration failures (ES-04/ES-05); `otp-input.component.spec.ts` (new) covers digit entry, paste, backspace/arrows, and the new accessibility attributes. This flow had no frontend test coverage before.
+
+### Fixed
+
+- **EUD-103 — `createPasskeyForDevice()` could leave a device with a local passkey but no server-side record**: it called `navigateHome()` and fired `registerPasskey(...)` in parallel, only logging (`console.warn`) if the server call failed — the user would land on the home screen believing the device was fully registered even when it was not. Reordered to register the passkey server-side first and navigate home only on success; on failure, an error is shown with the option to retry (AD-1, ES-05).
+
+## [3.11.0] - 2026-07-10
+
+### Added
+
+- **EUD-138 US-03 — Activity filter control**: Added an `IonSegment`/`IonSegmentButton` control (scrollable) to `ActivityPage` with four options — "Todas" (default), "Recibidas", "Presentadas", "Eliminadas" — backed by the new `ActivityFilter` type and `ACTIVITY_FILTERS` constant in `activity.model.ts` (AC-01).
+- **EUD-138 US-03 — Client-side filtering**: `ActivityPage` migrated to signals (`entries`, `loading`, `activeFilter`) with a `filteredEntries` computed that selects entries by `activeFilter()`, preserving the most-recent-first order returned by `ActivityService.findAll()`. Filtering is purely client-side and read-only: switching filters never calls `ActivityService.findAll()` again nor `clear()`/`confirmClear()`, and never mutates the `entries()` set (AC-02, AC-04).
+- **EUD-138 US-03 — Contextual empty states**: Added a per-filter empty state (`activity.empty-issued` / `-presented` / `-deleted`) shown when the active filter has no matching events, reusing the existing `.state-container` pattern without error styling; the existing generic empty state (`activity.empty`) still shows when the whole history is empty under "Todas". The three render states (loading, generic empty, contextual empty, list) are mutually exclusive (AC-03, EC-01, EC-02).
+- **EUD-138 US-03 — i18n**: Added `activity.filter-all`, `filter-issued`, `filter-presented`, `filter-deleted`, `empty-issued`, `empty-presented`, `empty-deleted` keys to `es.json`, `en.json`, `ca.json`.
+- **EUD-138 US-03 — Tests**: Added component tests covering the filter control render and default ("Todas"), filtering/round-trip preserving order (AC-02, AC-03), read-only guarantees (AC-04), disjoint empty states (EC-01, EC-02), large datasets (200 entries / `MAX_ENTRIES`) and filter re-selection idempotence (EC-03, EC-04), and resilience to an unknown/missing entry `type` and to `findAll()` resolving `[]` (ES-01, ES-02).
+- **EUD-138 US-03 — `ConfirmModalComponent`**: Replaced the native `AlertController` confirmation for "borrar historial" with a reusable custom modal (`src/app/shared/components/confirm-modal/`), parameterized via `@Input() icon`, `titleKey`, `descriptionKey`, `cancelKey`, `actionKey` so other features can present the same confirm/cancel pattern with their own copy — consumers pass those as `componentProps` to `ModalController.create()`, following the existing `TxCodeModalComponent` convention. Presented via `ModalController`, dismissing with role `confirm`/`cancel`; `ActivityPage.confirmClear()` now only calls `clearAll()` when the modal resolves with role `confirm`. Added `activity.clear-title`, `clear-description`, `clear-cancel`, `clear-action` i18n keys to `es.json`, `en.json`, `ca.json`, and matching styles in `theme/customAlert.scss` (`ion-modal.confirm-modal`).
+- **EUD-138 US-03 — Activity list redesign**: `ActivityPage`'s history list migrated from `ion-list`/`ion-item` rows to a card-based layout (`activity-card` / `activity-card-content`), showing a contextual subtitle with the counterparty (`activity.subtitle-issued`, `subtitle-presented`) for received/presented entries. Added matching i18n keys to `es.json`, `en.json`, `ca.json`.
+
+### Fixed
+
+- **EUD-138 US-03 — `ActivityPage.setFilter` type safety**: `setFilter` now accepts `SegmentValue | undefined` (the type emitted by `IonSegment`'s `ionChange`) and only updates `activeFilter` when the value is a known member of `ACTIVITY_FILTERS`, avoiding an unsafe cast from an untyped segment change event.
 
 ## [3.10.2] - 2026-07-06
 
@@ -21,6 +66,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **EUD-143 US-01 — Badge/icon invisible on tenants with a light `--primary-color`**: the "This device" badge and the device icon hardcoded `color: white` against a `background: var(--primary-color)`. `--primary-color` is tenant-themed by `ThemeService`; on tenants whose brand primary is white/near-white (e.g. `cgcom`), this rendered white text/icon on a white background. Found in production after merge (worked on `dome`, broken on `cgcom`). Replaced `white` with `var(--primary-contrast-color)`, the contrast token `ThemeService` already sets as a pair with `--primary-color` for every tenant.
 
 ## [3.10.1] - 2026-07-03
+
+### Added
+- **EUDISTACK-359 US-07:**
+  - Added PRF support detection before starting hybrid onboarding.
+  - Blocked onboarding when the authenticator does not support PRF.
+  - Added onboarding block endpoint integration (`/block`) for unsupported PRF authenticators.
+  - Prevented holder key generation and credential enrollment when PRF support is unavailable.
+  - Added onboarding state handling and unit tests for PRF unsupported and inconclusive scenarios.
+
+### Fixed
+- **EUDISTACK-534 US-02 — hybrid key generation was never wired to the SPI**: `HybridKeyStorageProvider.generateKeyPair()` delegated to `ServerKeyStorageProvider` (the DB-only `/api/v1/keys/generate` endpoint), which always 403s for `key_manager=hybrid` tenants. Now delegates to the new `HybridKeyEnrollmentService`, orchestrating init → single PRF ceremony → key generation → inline OID4VCI proof signing → wrap → commit → zeroize, and returns `prebuiltJwsProof` so the OID4VCI engine never needs `sign()` for issuance.
+- **EUDISTACK-534 US-02 — `holder_key_id` overflow**: `generateKeyPair()` returned the OID4VCI engine's `keyId` (`credentialIssuer:credentialConfigurationId`) as the SPI `keyId`, overflowing `wallet_credential.holder_key_id VARCHAR(36)` (`PostgresqlBadGrammarException` 22001). Now returns `context.credentialId` (still round-trips via `resolveKeyIdByKid`); backend column widened to `VARCHAR(512)` (see companion `eudistack-core-wallet-ebw` migration `V5`).
+- **EUDISTACK-534 US-02 — `OnboardingHybridApi` used the wrong base URL**: read `environment.server_url` directly instead of `UrlResolverService`, producing a relative path missing the `/business-wallet` nginx prefix (404) in real deployments where `server_url` is empty by design. Fixed to match the existing `HybridAuditService` pattern. Same latent bug preventively fixed in `SignApi`.
+- **EUDISTACK-534 US-02 — double PRF/WebAuthn prompt per credential**: `HybridKeyEnrollmentService.enroll()` ran `detectPrfSupport()` (a separate dummy-salt probe) before `evaluateForWrap()` (the real ceremony), forcing two passkey prompts. `evaluateForWrap()`'s own `hybrid.error.prfUnavailable` failure is an equally valid "unsupported" signal that still fires before any key material exists — merged into a single ceremony.
+- **EUDISTACK-536 US-04 — `buildPresentationJws()` was never wired to the SPI**: threw `HybridAdapterError` unconditionally. Now delegates to `SignService.sign()`, driving the prepare/PRF-unwrap/sign/submit handshake for OID4VP presentations.
+- **EUDISTACK-536 US-04 — `prepareSign` contract corrected** (architecture.md §6.2, 2026-07-03): `vp_challenge` → `payload`, the full presentation payload assembled by the OID4VP engine, matching the corrected EBW contract. A KB-JWT built from `{nonce, iat}` alone (the old contract) is invalid per RFC 9901 §4.1.2 (missing `aud`/`sd_hash`).
+- **Security (2026-07-06 audit) — signing oracle**: `SignService.sign()` signed the `signing_input` returned by the EBW without verifying it encoded the `payload` actually submitted; a compromised/malicious EBW could substitute different claims and get a valid holder signature over content it chose. Now verifies header (`alg`/`typ`) and payload (order-independent) match before ever running the PRF ceremony.
+- **Security (2026-07-06 audit) — raw PRF output not zeroized**: `HybridKeyEnrollmentService.enroll()` never zeroed the raw PRF output (IKM) after deriving the wrap key. Now zeroed in `finally`, matching `SignService`.
+- **Security (2026-07-06 audit) — PRF zeroize skipped on error path**: `SignService.sign()`'s cache-miss path only zeroed the raw PRF output on success. Now zeroed in `finally`.
+- **Security (2026-07-06 audit) — AES-GCM `usages` cache-reuse bug**: `WrapService.deriveWrapKey()`/`UnwrapService.deriveUnwrapKey()` derived single-purpose keys (`['wrapKey']`/`['unwrapKey']`), but `MemoryService` caches the same key under `credentialId` across both the enrollment (write) and signing (read) flows — a cache-hit cross-use threw `InvalidAccessError`, mislabeled by `UnwrapService.unwrap()`'s catch-all as `wrap_unavailable_on_this_device` ("wrong device"), sending holders down the wrong recovery path for a WebCrypto API bug, not a passkey mismatch. Fixed: both derive with `['wrapKey', 'unwrapKey']`; `unwrap()`'s catch now only maps a genuine `OperationError` (bad GCM tag) to that error code, anything else to `prepare_sign_failed`.
+
+### [3.8.11] - (2026-06-17)
+
+### Added
+
+- **EUDISTACK-534 US-02 — `hybrid-keymanager` feature module**: new `src/app/features/hybrid-keymanager/` module implementing client-side holder key generation, PRF-based wrap, and hybrid onboarding commit.
+- **EUDISTACK-534 US-02 — `MemoryService`**: in-memory `Map<credentialId, CryptoKey>` cache for AES-256-GCM wrap keys. TTL=5 min via `setTimeout`; `SubtleCrypto.deleteKey` called on eviction and `beforeunload`. No write to `localStorage`/`sessionStorage`/IndexedDB (AC-02, EC-01, EC-02).
+- **EUDISTACK-534 US-02 — `PrfClientService`**: thin wrapper over `PasskeyPrfService.getCredentialId()` that evaluates the WebAuthn PRF extension with a server-supplied salt. Returns raw 32-byte PRF output; throws `AppError` if no passkey is registered, assertion is cancelled, or PRF output is absent (AC-01, ES-04).
+- **EUDISTACK-534 US-02 — `WrapService`**: `generateHolderKeyPair` (ECDSA P-256, extractable private key); `deriveWrapKey` (HKDF-SHA-256, `salt=credentialId`, `info="hybrid-wrap-v1"`, L=256); `wrapPrivateKey` (AES-256-GCM, random 12-byte IV, 16-byte tag split from output); `zeroize` (best-effort `deleteKey`). `cnf.jwk` never contains private parameter `d` (AC-02, AC-03, EC-03, NFR-05).
+- **EUDISTACK-534 US-02 — `OnboardingHybridApi`**: typed HTTP client for `POST /api/v1/keys/hybrid/onboarding/init` and `POST /api/v1/keys/hybrid/onboarding/commit`. DTOs aligned with EBW backend contract (AC-03, AC-04).
+- **EUDISTACK-534 US-02 — `OnboardingHybridComponent`**: orchestrates init → PRF ceremony → key generation → HKDF derivation → AES-GCM wrap → commit → zeroize. `try/finally` guarantees private key is always zeroized; wrap key cached on success, zeroized on error. Aborts before commit if PRF ceremony fails (AC-01, AC-02, AC-08, ES-04, ES-05).
+- **EUDISTACK-534 US-02 — Unit tests**: `memory.service.spec` (TTL eviction, `beforeunload`, no-persistence); `prf-client.service.spec` (salt propagation, AppError paths); `wrap.service.spec` (ECDSA P-256, HKDF, AES-GCM, unique IVs, no `d` in JWK, zeroize); `onboarding-hybrid.component.spec` (full flow, commit body public-only, ES-04 abort, ES-05 zeroize invariants).
 
 ### Added
 

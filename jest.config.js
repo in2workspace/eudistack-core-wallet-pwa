@@ -33,9 +33,12 @@ module.exports = {
     "src/app/features/hybrid-onboarding/hybrid-onboarding.page.ts",
     "src/app/features/signing/sign-prompt.component.ts",
     "src/app/features/hybrid-keymanager/hybrid-kdf.const.ts",
+    "src/app/features/hybrid-keymanager/hybrid-key-enrollment.service.ts",
     "src/app/features/hybrid-keymanager/unwrap.service.ts",
     "src/app/features/hybrid-keymanager/sign.service.ts",
     "src/app/features/hybrid-keymanager/sign.api.ts",
+    "src/app/core/services/activity.service.ts",
+    "src/app/features/activity/activity.page.ts",
   ],
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/', 

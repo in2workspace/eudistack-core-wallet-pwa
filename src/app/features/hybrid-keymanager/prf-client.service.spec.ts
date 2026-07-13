@@ -93,6 +93,71 @@ describe('PrfClientService', () => {
     await expect(service.evaluateForWrap(PRF_SALT)).rejects.toBeInstanceOf(AppError);
   });
 
+  // ------------------------------------------------------------------ US-07: detectedPrf
+  it('returns enabled when PRF output exists', async () => {
+    mockCredentialsGet.mockResolvedValue(buildAssertion(PRF_OUTPUT));
+
+    const result = await service.detectPrfSupport();
+
+    expect(result).toBe('enabled');
+  });
+
+  it('returns disabled when assertion contains no PRF output', async () => {
+    mockCredentialsGet.mockResolvedValue(buildAssertion(null));
+
+    const result = await service.detectPrfSupport();
+
+    expect(result).toBe('disabled');
+  });
+
+  it('returns inconclusive when WebAuthn ceremony throws DOMException', async () => {
+    mockCredentialsGet.mockRejectedValue(
+      new DOMException('cancelled', 'NotAllowedError')
+    );
+
+    const result = await service.detectPrfSupport();
+
+    expect(result).toBe('inconclusive');
+  });
+
+  it('returns inconclusive when WebAuthn ceremony throws DOMException', async () => {
+    mockCredentialsGet.mockRejectedValue(
+      new DOMException('cancelled', 'NotAllowedError')
+    );
+
+    const result = await service.detectPrfSupport();
+
+    expect(result).toBe('inconclusive');
+  });
+
+  it('returns inconclusive when no credential id is registered', async () => {
+    mockGetCredentialId.mockReturnValue(null);
+
+    const result = await service.detectPrfSupport();
+
+    expect(result).toBe('inconclusive');
+
+    expect(mockCredentialsGet).not.toHaveBeenCalled();
+  });
+
+  it('uses the fixed PRF detection probe', async () => {
+    mockCredentialsGet.mockResolvedValue(buildAssertion(PRF_OUTPUT));
+
+    await service.detectPrfSupport();
+
+    const callArgs = mockCredentialsGet.mock.calls[0][0] as CredentialRequestOptions;
+
+    const extensions = callArgs.publicKey!.extensions as {
+      prf?: {
+        eval?: {
+          first?: BufferSource;
+        };
+      };
+    };
+
+    expect(extensions.prf?.eval?.first).toEqual(new Uint8Array(32));
+  });
+
   // ------------------------------------------------------------------ helpers
 
   function buildAssertion(prfOutput: Uint8Array | null): PublicKeyCredential {
