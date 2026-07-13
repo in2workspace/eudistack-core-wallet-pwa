@@ -18,6 +18,9 @@ export const SERVER_PATH = Object.freeze({
   HYBRID_SIGN_PREPARE: `${apiV1HybridPath}/sign/prepare`,
   HYBRID_SIGN_SUBMIT: `${apiV1HybridPath}/sign/submit`,
   HYBRID_CONSTRAINT_ACCEPTED: `${apiV1HybridPath}/constraint-accepted`,
+  HYBRID_ONBOARDING_INIT: `${apiV1HybridPath}/onboarding/init`,
+  HYBRID_ONBOARDING_COMMIT: `${apiV1HybridPath}/onboarding/commit`,
+  HYBRID_ONBOARDING_BLOCK: `${apiV1HybridPath}/onboarding/block`,
 });
 
 export const WALLET_DISCOVERY_PATH = '/business-wallet/.well-known/wallet-config-metadata' as const;

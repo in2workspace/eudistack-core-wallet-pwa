@@ -8,3 +8,7 @@ export interface ActivityEntry {
   timestamp: number;
   details?: string;
 }
+
+export type ActivityFilter = ActivityType | 'all';
+
+export const ACTIVITY_FILTERS: ActivityFilter[] = ['all', 'issued', 'presented', 'deleted'];
