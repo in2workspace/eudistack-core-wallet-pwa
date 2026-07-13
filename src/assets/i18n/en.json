@@ -96,6 +96,8 @@
       "title": "Set up Passkey",
       "description": "Create a passkey to sign in securely without a password. Your device will use biometrics or a PIN to verify your identity.",
       "register-button": "Create Passkey",
+      "device-name-label": "Device name",
+      "device-name-placeholder": "Device name",
       "email-verified": "Email verified",
       "success": "Passkey registered successfully!",
       "status-connecting": "Preparing...",
@@ -108,8 +110,12 @@
     },
     "errors": {
       "too-many-attempts": "Too many attempts. Please try again later.",
-      "too-many-attempts-otp": "Too many incorrect attempts. Please request a new code."
+      "too-many-attempts-otp": "Too many incorrect attempts. Please request a new code.",
+      "passkey-register-failed": "Failed to register this device. Please try again."
     }
+  },
+  "otp-input": {
+    "digit-aria": "Digit {{index}} of {{length}}"
   },
   "login": {
     "title": "Login",

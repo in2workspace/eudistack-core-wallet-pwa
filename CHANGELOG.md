@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.11.1]
+
+### Added
+
+- **EUD-103 — editable device name during server-mode onboarding**: the passkey/device step of `LoginPage` now shows an editable `ion-input` prefilled with the auto-detected device name (e.g. "Windows PC", "iPhone"), with an associated `aria-label` (WCAG 2.1 AA). The value is trimmed, validated non-empty, and sent as `displayName` when the passkey is registered — before this, the name was fixed and never shown to the user (AC-05, EC-04).
+- **EUD-103 — accessibility for `OtpInputComponent`**: added a translated `aria-label` per digit box ("Digit {i} of {n}") and an `aria-live="assertive"` region announcing verification errors (NFR-A-01).
+- **EUD-103 — i18n**: added `auth.passkey.device-name-label`, `auth.passkey.device-name-placeholder` and `auth.errors.passkey-register-failed` to `en.json`, `es.json` and `ca.json`.
+- **EUD-103 — test coverage for the server-mode onboarding flow**: `login.page.spec.ts` (new) covers the edited/default device name (AC-05/EC-04), resuming with a refresh token but no local passkey (EC-05), and recoverable errors on `register`/`verifyEmail`/passkey registration failures (ES-04/ES-05); `otp-input.component.spec.ts` (new) covers digit entry, paste, backspace/arrows, and the new accessibility attributes. This flow had no frontend test coverage before.
+
+### Fixed
+
+- **EUD-103 — `createPasskeyForDevice()` could leave a device with a local passkey but no server-side record**: it called `navigateHome()` and fired `registerPasskey(...)` in parallel, only logging (`console.warn`) if the server call failed — the user would land on the home screen believing the device was fully registered even when it was not. Reordered to register the passkey server-side first and navigate home only on success; on failure, an error is shown with the option to retry (AD-1, ES-05).
+
 ## [3.11.0] - 2026-07-10
 
 ### Added
