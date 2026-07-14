@@ -1,4 +1,5 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule, AlertController } from '@ionic/angular';
@@ -11,225 +12,8 @@ import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.s
 
 @Component({
     selector: 'app-devices',
-    template: `
-    <ion-content [fullscreen]="true" class="devices-page">
-      <div class="devices-container">
-        <p class="devices-subtitle">{{ 'devices.subtitle' | translate }}</p>
-
-        <!-- Loading state -->
-        <div *ngIf="loading()" class="loading-state">
-          <ion-spinner name="crescent"></ion-spinner>
-        </div>
-
-        <!-- Error state -->
-        <div *ngIf="error()" class="error-state">
-          <ion-icon name="alert-circle-outline"></ion-icon>
-          <p>{{ 'devices.load-error' | translate }}</p>
-          <ion-button fill="outline" (click)="loadPasskeys()">
-            {{ 'devices.retry' | translate }}
-          </ion-button>
-        </div>
-
-        <!-- Empty state -->
-        <div *ngIf="!loading() && !error() && passkeys().length === 0" class="empty-state">
-          <ion-icon name="key-outline"></ion-icon>
-          <p>{{ 'devices.no-passkeys' | translate }}</p>
-        </div>
-
-        <!-- Passkey list -->
-        <ion-list *ngIf="!loading() && !error() && passkeys().length > 0" lines="none" class="passkey-list">
-          @for (passkey of passkeys(); track passkey.id) {
-            <div class="passkey-card">
-              <ion-item class="passkey-item" lines="none" [class.current-device]="currentCredentialId && passkey.credentialId === currentCredentialId">
-                <div class="passkey-icon" slot="start">
-                  <ion-icon name="key-outline"></ion-icon>
-                </div>
-                <ion-label>
-                  <!-- T4: «This device» badge — text-only mark (WCAG 2.1 AA, AC-03) -->
-                  <div class="passkey-header">
-                    <h2>{{ passkey.displayName }}</h2>
-                    <span *ngIf="currentCredentialId && passkey.credentialId === currentCredentialId"
-                          class="this-device-badge"
-                          [attr.aria-label]="'devices.this-device' | translate">
-                      {{ 'devices.this-device' | translate }}
-                    </span>
-                  </div>
-                  <p class="passkey-meta">
-                    <span *ngIf="passkey.activeSessions > 0" class="session-badge active">
-                      {{ passkey.activeSessions }} {{ passkey.activeSessions === 1 ? 'session' : 'sessions' }}
-                    </span>
-                    <span *ngIf="passkey.activeSessions === 0" class="session-badge inactive">
-                      No active sessions
-                    </span>
-                  </p>
-                  <p class="passkey-date">
-                    Added {{ passkey.createdAt | date:'mediumDate' }}
-                  </p>
-                  <!-- T3: lastUsedAt render — null case → i18n key devices.last-used-never (AC-02, EC-02) -->
-                  <p class="passkey-last-used">
-                    <ng-container *ngIf="passkey.lastUsedAt; else neverUsed">
-                      {{ 'devices.last-used' | translate: { date: passkey.lastUsedAt | date:'mediumDate' } }}
-                    </ng-container>
-                    <ng-template #neverUsed>
-                      {{ 'devices.last-used-never' | translate }}
-                    </ng-template>
-                  </p>
-                </ion-label>
-                <ion-buttons slot="end">
-                  <ion-button fill="clear" (click)="renamePasskey(passkey)" [attr.aria-label]="'devices.rename-aria' | translate">
-                    <ion-icon slot="icon-only" name="pencil-outline"></ion-icon>
-                  </ion-button>
-                  <ion-button fill="clear" color="danger" (click)="deletePasskey(passkey)" [attr.aria-label]="'devices.delete-aria' | translate">
-                    <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
-                  </ion-button>
-                </ion-buttons>
-              </ion-item>
-
-              <!-- Revoke sessions button (shown if active sessions exist) -->
-              <div *ngIf="passkey.activeSessions > 0 && passkey.credentialId !== currentCredentialId" class="revoke-section">
-                <ion-button fill="clear" size="small" color="warning" (click)="revokeSessions(passkey)">
-                  <ion-icon slot="start" name="log-out-outline"></ion-icon>
-                  Close sessions on this device
-                </ion-button>
-              </div>
-            </div>
-          }
-        </ion-list>
-      </div>
-    </ion-content>
-  `,
-    styles: [`
-    .devices-page {
-      --background: var(--surface-page);
-    }
-
-    .devices-container {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: var(--space-md);
-    }
-
-    .devices-subtitle {
-      color: var(--text-secondary);
-      font-size: 14px;
-      margin-bottom: var(--space-lg);
-      text-align: center;
-    }
-
-    .loading-state,
-    .error-state,
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: var(--space-xl);
-      text-align: center;
-      color: var(--text-secondary);
-
-      ion-icon {
-        font-size: 48px;
-        margin-bottom: var(--space-md);
-        opacity: 0.5;
-      }
-    }
-
-    .passkey-list {
-      background: transparent;
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-md);
-    }
-
-    .passkey-card {
-      background: var(--surface-card);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .passkey-item {
-      --padding-start: 16px;
-      --padding-end: 8px;
-      --min-height: 72px;
-    }
-
-    .passkey-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: var(--primary-color);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-right: 12px;
-
-      ion-icon {
-        color: var(--primary-contrast-color);
-        font-size: 20px;
-      }
-    }
-
-    .passkey-meta {
-      margin-top: 4px;
-    }
-
-    .session-badge {
-      font-size: 12px;
-      padding: 2px 8px;
-      border-radius: 12px;
-
-      &.active {
-        background: var(--status-success);
-        color: white;
-      }
-
-      &.inactive {
-        background: var(--text-disabled);
-        color: white;
-      }
-    }
-
-    .passkey-date {
-      font-size: 12px;
-      color: var(--text-disabled);
-      margin-top: 2px;
-    }
-
-    /* T3 — lastUsedAt render (AC-02, EC-02) */
-    .passkey-last-used {
-      font-size: 12px;
-      color: var(--text-disabled);
-      margin-top: 2px;
-    }
-
-    /* T4 — current device (AC-03): text badge, non-colour-only (WCAG 2.1 AA) */
-    .passkey-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .this-device-badge {
-      font-size: 11px;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 10px;
-      background: var(--primary-color);
-      color: var(--primary-contrast-color);
-      white-space: nowrap;
-    }
-
-    .passkey-item.current-device {
-      --background: color-mix(in srgb, var(--primary-color) 8%, transparent);
-    }
-
-    .revoke-section {
-      padding: 0 16px 12px;
-      margin-top: -8px;
-    }
-  `],
+    templateUrl: './devices.page.html',
+    styleUrls: ['./devices.page.scss'],
     imports: [IonicModule, CommonModule, FormsModule, TranslateModule]
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
@@ -241,6 +25,7 @@ export class DevicesPage implements OnInit {
   private readonly translate = inject(TranslateService);
   private readonly router = inject(Router);
   private readonly discovery = inject(WalletDiscoveryService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly passkeys = signal<PasskeyInfo[]>([]);
   readonly loading = signal(true);
@@ -327,7 +112,9 @@ export class DevicesPage implements OnInit {
           text: this.translate.instant('devices.delete-confirm'),
           role: 'destructive',
           handler: () => {
-            this.passkeyApi.deletePasskey(passkey.id).subscribe({
+            this.passkeyApi.deletePasskey(passkey.id).pipe(
+              takeUntilDestroyed(this.destroyRef)
+            ).subscribe({
               next: async () => {
                 this.passkeys.update(list => list.filter(p => p.id !== passkey.id));
                 // Self-revoke detection lives only here (success), never in `error` (R-3):
