@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.11.3] - 2026-07-14
+
+### Fixed
+
+- **EUDISTACK-645 — holder key shared across credentials of the same type**: `Oid4vciEngineService` derived the holder-key id as `${credentialIssuer}:${credentialConfigurationId}` (per credential *type*), so a holder receiving a second credential of the same type collided on the same key — a hard 409 in hybrid mode, a silent shared-key reuse in DB mode. Both violated ADR-021 (one holder key per credential, never shared). Now a `crypto.randomUUID()` is minted once per `performOid4vciFlow` call and used as the key id, restoring 1:1 `credential`:`holder_key`.
+
 ## [3.11.2] - 2026-07-10
 
 ### Added

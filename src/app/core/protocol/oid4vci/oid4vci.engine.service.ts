@@ -99,12 +99,14 @@ export class Oid4vciEngineService {
       let holderKid: string | undefined;
 
       if (cfg.isCryptographicBindingSupported && credentialIssuerMetadata.credentialIssuer) {
+        const credentialId = crypto.randomUUID();
         const proofContext = await this.issueProofJwt({
           nonce,
           credentialIssuer: credentialIssuerMetadata.credentialIssuer,
           credentialConfigurationId: cfg.credentialConfigurationId,
           format: cfg.format,
           supportedAlgs: cfg.supportedAlgs ?? ['ES256'],
+          credentialId,
         });
         jwtProof = proofContext.jwt;
         proofPublicJwk = proofContext.publicKeyJwk;
@@ -272,8 +274,8 @@ export class Oid4vciEngineService {
     };
   }
 
-  private async issueProofJwt(params: { nonce: string; credentialIssuer: string; credentialConfigurationId: string; format?: string; supportedAlgs?: string[] }): Promise<ProofJwtContext> {
-    const keyId = `${params.credentialIssuer}:${params.credentialConfigurationId}`;
+  private async issueProofJwt(params: { nonce: string; credentialIssuer: string; credentialConfigurationId: string; format?: string; supportedAlgs?: string[]; credentialId: string }): Promise<ProofJwtContext> {
+    const keyId = params.credentialId;
     const context: OID4VCIKeyGenContext | undefined = params.format
       ? {
           credentialId: keyId,
