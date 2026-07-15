@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **CGCOM — VCT rename `doctorid.sd.1` → `urn:es.cgcom:doctorid:1`**: updated `CredentialType`, `CredentialTypeMap`, and `VerifiableCredentialSubjectDataNormalizer` to use the canonical URN-based VCT, aligning the Wallet with the DoctorID issuer configuration and the CGCOM verifier DCQL profiles.
+- **OID4VP — holder key not found after page reload in browser mode**: `Oid4vciEngineService` used `crypto.randomUUID()` as the holder-key ID (introduced in 3.11.3 for EUDISTACK-645). In `PasskeyPrfKeyStorageProvider`, `isEphemeral()` matches any bare UUID and routes to `generateEphemeralKey()`, which stores the key only in an in-memory `Map` — never in IndexedDB. On page reload (or next session), `resolveKeyIdByKid()` queries IndexedDB and returns `null` → OID4VP throws "No local key found for kid=&lt;thumbprint&gt;". Fixed by prefixing the holder-key ID with `holder-` so it does not match `UUID_PATTERN` and `generatePrfDerivedKey()` persists the key record to IndexedDB as intended.
 
 ## [3.11.3] - 2026-07-14
 
