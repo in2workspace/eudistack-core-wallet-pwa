@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.11.4] - 2026-07-15
+
+### Fixed
+
+- **CGCOM — VCT rename `doctorid.sd.1` → `urn:es.cgcom:doctorid:1`**: updated `CredentialType`, `CredentialTypeMap`, and `VerifiableCredentialSubjectDataNormalizer` to use the canonical URN-based VCT, aligning the Wallet with the DoctorID issuer configuration and the CGCOM verifier DCQL profiles.
+
 ## [3.11.3] - 2026-07-14
 
 ### Fixed
