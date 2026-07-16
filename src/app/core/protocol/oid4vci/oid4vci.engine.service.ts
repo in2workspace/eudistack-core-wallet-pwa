@@ -99,7 +99,7 @@ export class Oid4vciEngineService {
       let holderKid: string | undefined;
 
       if (cfg.isCryptographicBindingSupported && credentialIssuerMetadata.credentialIssuer) {
-        const credentialId = crypto.randomUUID();
+        const credentialId = `holder-${crypto.randomUUID()}`;
         const proofContext = await this.issueProofJwt({
           nonce,
           credentialIssuer: credentialIssuerMetadata.credentialIssuer,
