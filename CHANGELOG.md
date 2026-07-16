@@ -7,24 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.11.5] - 2026-07-15
+## [3.11.5] - 2026-07-16
+
+### Added - 2026-07-16
+
+- **EUD-144 US-02 — Self-revoke: reinforced confirmation, forced logout and re-onboarding**: `DevicesPage.deletePasskey()` now detects when the passkey being revoked belongs to the device currently in use (`isSelfRevoke`, matched against `PasskeyStoreService.getCredentialId()`) and shows a reinforced confirmation message (new i18n key `devices.delete-self-message`) instead of the standard one — a single conditional dialog per AD-1, not two separate flows. On a successful self-revoke, `PasskeyStoreService.clearCredentialId()` runs before `AuthService.forceLogout()`, so the forced logout routes the holder to re-onboarding (`/auth/register`) instead of login. Detection lives solely in the success (`next`) handler — a failed or timed-out revocation never forces a logout or clears local state. If the local credential id can't be resolved, the action fails safe to a regular (non-self) revoke.
+- **EUD-144 US-02 — test coverage for device revocation**: `devices.page.spec.ts` extended with 20 new tests covering the full revoke flow — revoking another device (API call, dialog content, list update, session unaffected), self-revoke (reinforced message, `clearCredentialId` → `forceLogout` order, unresolved credential id fails safe), and error/edge cases (409 last-passkey message, cancelling the dialog, 5xx/timeout leaving the list and session untouched).
+
+## [3.11.4] - 2026-07-15
 
 ### Fixed
 
 - **CGCOM — VCT rename `doctorid.sd.1` → `urn:es.cgcom:doctorid:1`**: updated `CredentialType`, `CredentialTypeMap`, and `VerifiableCredentialSubjectDataNormalizer` to use the canonical URN-based VCT, aligning the Wallet with the DoctorID issuer configuration and the CGCOM verifier DCQL profiles.
 
-## [3.11.4] - 2026-07-14
+## [3.11.3] - 2026-07-14
 
 ### Fixed
 
 - **EUDISTACK-645 — holder key shared across credentials of the same type**: `Oid4vciEngineService` derived the holder-key id as `${credentialIssuer}:${credentialConfigurationId}` (per credential *type*), so a holder receiving a second credential of the same type collided on the same key — a hard 409 in hybrid mode, a silent shared-key reuse in DB mode. Both violated ADR-021 (one holder key per credential, never shared). Now a `crypto.randomUUID()` is minted once per `performOid4vciFlow` call and used as the key id, restoring 1:1 `credential`:`holder_key`.
-
-## [3.11.3] - 2026-07-13
-
-### Added - 2026-07-13
-
-- **EUD-144 US-02 — Self-revoke: reinforced confirmation, forced logout and re-onboarding**: `DevicesPage.deletePasskey()` now detects when the passkey being revoked belongs to the device currently in use (`isSelfRevoke`, matched against `PasskeyStoreService.getCredentialId()`) and shows a reinforced confirmation message (new i18n key `devices.delete-self-message`) instead of the standard one — a single conditional dialog per AD-1, not two separate flows. On a successful self-revoke, `PasskeyStoreService.clearCredentialId()` runs before `AuthService.forceLogout()`, so the forced logout routes the holder to re-onboarding (`/auth/register`) instead of login. Detection lives solely in the success (`next`) handler — a failed or timed-out revocation never forces a logout or clears local state. If the local credential id can't be resolved, the action fails safe to a regular (non-self) revoke.
-- **EUD-144 US-02 — test coverage for device revocation**: `devices.page.spec.ts` extended with 20 new tests covering the full revoke flow — revoking another device (API call, dialog content, list update, session unaffected), self-revoke (reinforced message, `clearCredentialId` → `forceLogout` order, unresolved credential id fails safe), and error/edge cases (409 last-passkey message, cancelling the dialog, 5xx/timeout leaving the list and session untouched).
 
 ## [3.11.2] - 2026-07-10
 
