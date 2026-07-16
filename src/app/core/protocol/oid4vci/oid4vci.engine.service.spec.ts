@@ -134,3 +134,117 @@ describe('Oid4vciEngineService — holder key per credential (EUDISTACK-645)', (
     expect(actualKeyId).toBe(credentialId);
   });
 });
+
+// Regression guard: verifies that performOid4vciFlow (the call site) mints a holder-<UUID>
+// credentialId before invoking issueProofJwt. A bare UUID matches UUID_PATTERN in
+// PasskeyPrfKeyStorageProvider.isEphemeral() → in-memory only path → key lost on reload.
+describe('performOid4vciFlow — holder-prefixed credentialId minting (EUDISTACK-645)', () => {
+
+  function setupForFlowTest() {
+    TestBed.configureTestingModule({
+      providers: [
+        Oid4vciEngineService,
+        { provide: KeyStorageProvider, useValue: buildKeyStorageProviderMock() },
+        { provide: ProofBuilderService, useValue: { createHeaderAndPayload: jest.fn() } },
+        { provide: JwtService, useValue: { base64UrlEncode: jest.fn() } },
+        {
+          provide: CredentialOfferService,
+          useValue: {
+            getCredentialOfferFromCredentialOfferUri: jest.fn().mockResolvedValue({
+              credentialConfigurationsIds: ['cfg-test'],
+              grant: { preAuthorizedCodeGrant: { 'pre-authorized_code': 'code-abc' } },
+            }),
+          },
+        },
+        {
+          provide: CredentialIssuerMetadataService,
+          useValue: {
+            getCredentialIssuerMetadataFromCredentialOffer: jest.fn().mockResolvedValue({
+              credentialIssuer: 'https://issuer.example',
+              credentialEndpoint: 'https://issuer.example/credential',
+              credential_configurations_supported: {
+                'cfg-test': {
+                  format: 'vc+sd-jwt',
+                  cryptographic_binding_methods_supported: ['jwk'],
+                },
+              },
+            }),
+          },
+        },
+        {
+          provide: AuthorisationServerMetadataService,
+          useValue: {
+            getAuthorizationServerMetadataFromCredentialIssuerMetadata: jest.fn().mockResolvedValue({
+              tokenEndpoint: 'https://issuer.example/token',
+            }),
+          },
+        },
+        {
+          provide: PreAuthorizedTokenService,
+          useValue: {
+            getPreAuthorizedToken: jest.fn().mockResolvedValue({
+              access_token: 'access-tok',
+              token_type: 'bearer',
+              expires_in: 300,
+            }),
+          },
+        },
+        {
+          provide: LoaderService,
+          useValue: { addLoadingProcess: jest.fn(), removeLoadingProcess: jest.fn() },
+        },
+        {
+          provide: CredentialService,
+          useValue: {
+            getCredential: jest.fn().mockResolvedValue({
+              status: 200,
+              credentialResponse: { credentials: [] },
+            }),
+          },
+        },
+        {
+          provide: LoaderHandledFlowService,
+          useValue: { run: jest.fn().mockImplementation((opts: any) => opts.fn()) },
+        },
+        { provide: AuthorizationCodeTokenService, useValue: {} },
+        { provide: NonceService, useValue: { fetchNonce: jest.fn() } },
+        { provide: DpopService, useValue: { issueProof: jest.fn() } },
+      ],
+    });
+
+    return TestBed.inject(Oid4vciEngineService);
+  }
+
+  it('passes a holder-<UUID> credentialId to issueProofJwt', async () => {
+    const service = setupForFlowTest();
+
+    const issueProofJwtSpy = jest.spyOn(service as any, 'issueProofJwt').mockResolvedValue({
+      jwt: 'mocked.proof.jwt',
+      publicKeyJwk: null,
+      holderKeyId: 'holder-stub',
+      thumbprint: 'thumb-stub',
+    });
+
+    await service.performOid4vciFlow('openid-credential-offer://example');
+
+    expect(issueProofJwtSpy).toHaveBeenCalledTimes(1);
+    const { credentialId } = issueProofJwtSpy.mock.calls[0][0] as any;
+    expect(credentialId).toMatch(/^holder-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+  });
+
+  it('does not pass a bare UUID as credentialId (bare UUID matches isEphemeral and loses the key on reload)', async () => {
+    const service = setupForFlowTest();
+
+    const issueProofJwtSpy = jest.spyOn(service as any, 'issueProofJwt').mockResolvedValue({
+      jwt: 'mocked.proof.jwt',
+      publicKeyJwk: null,
+      holderKeyId: 'holder-stub',
+      thumbprint: 'thumb-stub',
+    });
+
+    await service.performOid4vciFlow('openid-credential-offer://example');
+
+    const { credentialId } = issueProofJwtSpy.mock.calls[0][0] as any;
+    expect(credentialId).not.toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+  });
+});
