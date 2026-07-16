@@ -9,6 +9,7 @@ import { WalletDiscoveryService } from './wallet-discovery.service';
 import { WALLET_DISCOVERY_GATEWAY } from '../gateways/wallet-discovery.gateway';
 import { LocalAuthService } from './local-auth.service';
 import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
+import { TenantService } from './tenant.service';
 import { environment } from 'src/environments/environment';
 
 /**
@@ -19,6 +20,15 @@ import { environment } from 'src/environments/environment';
  */
 function issuerMetadataCacheStub(): Pick<IssuerMetadataCacheService, 'fetchAndCacheIfMissing'> {
   return { fetchAndCacheIfMissing: jest.fn().mockResolvedValue(undefined) };
+}
+
+/**
+ * Stub for TenantService. RemoteAuthService resolves the issuer base URL via
+ * `resolveIssuerBaseUrl()` before preloading metadata; a fixed resolved value
+ * keeps that path from issuing a real HTTP request to custom-domain.json.
+ */
+function tenantServiceStub(): Pick<TenantService, 'resolveIssuerBaseUrl'> {
+  return { resolveIssuerBaseUrl: jest.fn().mockResolvedValue('https://issuer.example/issuer') };
 }
 
 const AUTH_BASE = `${environment.server_url}/api/v1/auth`;
@@ -61,6 +71,7 @@ describe('RemoteAuthService', () => {
         { provide: Router, useValue: routerMock },
         { provide: PasskeyStoreService, useValue: passkeyStoreMock },
         { provide: IssuerMetadataCacheService, useValue: issuerMetadataCacheStub() },
+        { provide: TenantService, useValue: tenantServiceStub() },
       ],
     });
 
@@ -290,6 +301,7 @@ describe('AUTH_SERVICE_PROVIDER', () => {
         { provide: PasskeyStoreService, useValue: { hasPasskey: jest.fn().mockReturnValue(false) } },
         { provide: PasskeyPrfService, useValue: {} },
         { provide: IssuerMetadataCacheService, useValue: issuerMetadataCacheStub() },
+        { provide: TenantService, useValue: tenantServiceStub() },
       ],
     });
   }

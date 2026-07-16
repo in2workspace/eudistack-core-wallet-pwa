@@ -8,6 +8,7 @@ import { PasskeyStoreService } from './passkey-store.service';
 import { WalletDiscoveryService } from './wallet-discovery.service';
 import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
 import { UrlResolverService } from './url-resolver.service';
+import { TenantService } from './tenant.service';
 
 export interface TokenPairResponse {
   accessToken: string;
@@ -73,6 +74,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private readonly passkeyStore = inject(PasskeyStoreService);
   private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
   private readonly urlResolver = inject(UrlResolverService);
+  private readonly tenantService = inject(TenantService);
 
   private get authBase(): string { return `${this.urlResolver.serverUrl()}/api/v1/auth`; }
 
@@ -174,8 +176,20 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     this.authenticated$.next(true);
     this.scheduleTokenRefresh(response.expiresIn);
 
-    const issuerUrl = `${window.location.origin}/issuer`;
-    void this.issuerMetadataCache.fetchAndCacheIfMissing(issuerUrl);
+    void this.preloadIssuerMetadata();
+  }
+
+  /**
+   * Preloads the OID4VCI metadata of the wallet's own issuer. The issuer base
+   * URL is resolved dynamically from the tenant configuration so it is correct
+   * both on canonical (same-origin `/issuer`) and custom domains (issuer host
+   * declared in custom-domain.json). Fire-and-forget: a failure must never
+   * break the login flow.
+   */
+  private async preloadIssuerMetadata(): Promise<void> {
+    if (this.disposed) return;
+    const issuerUrl = await this.tenantService.resolveIssuerBaseUrl();
+    await this.issuerMetadataCache.fetchAndCacheIfMissing(issuerUrl);
   }
 
   private scheduleTokenRefresh(expiresInSeconds: number): void {

@@ -4,8 +4,8 @@ import { firstValueFrom } from 'rxjs';
 import { KNOWN_TENANTS, FALLBACK_TENANT } from '../constants/tenants.constants';
 import { CustomDomainConfig } from '../models/custom-domain.model';
 
-const ENV_SUFFIXES = ['-stg', '-dev', '-pre'] as const;
 const WALLET_HOME_PATH = '/wallet/';
+const ISSUER_PATH = '/issuer';
 const CUSTOM_DOMAIN_CONFIG_URL = '/assets/tenants/custom-domain.json';
 
 @Injectable({ providedIn: 'root' })
@@ -81,20 +81,64 @@ export class TenantService {
     return this.resolveKnownTenantFromHostname(hostname.toLowerCase()) !== null;
   }
 
+  /**
+   * Resolves the OID4VCI issuer base URL for the current host.
+   *
+   * Resolution rules:
+   *  - Canonical known-tenant domains are served same-origin: nginx routes
+   *    `/issuer/*` to the tenant's issuer backend, so the issuer lives at
+   *    `${origin}/issuer`.
+   *  - Custom domains do NOT proxy `/issuer` same-origin — hitting it returns
+   *    the SPA's index.html. Their issuer host is declared in
+   *    custom-domain.json under `tenants[tenantId].env[envId].issuer`.
+   *
+   * Falls back to `${origin}/issuer` when the custom-domain config has no
+   * usable issuer entry (missing file, unknown host, empty value).
+   */
+  async resolveIssuerBaseUrl(location: Location = window.location): Promise<string> {
+    const sameOriginIssuer = `${this.originOf(location)}${ISSUER_PATH}`;
+    const hostname = location.hostname.toLowerCase();
+
+    if (this.isCanonicalDomain(hostname)) {
+      return sameOriginIssuer;
+    }
+
+    const config = await this.loadCustomDomainConfig();
+    const entry = config.domains[hostname];
+    const tenantConfig = entry ? config.tenants[entry.tenantId] : undefined;
+    if (!tenantConfig) return sameOriginIssuer;
+
+    const envId = entry?.envId || tenantConfig.defaultEnv;
+    const issuer =
+      tenantConfig.env?.[envId]?.issuer ??
+      tenantConfig.env?.[tenantConfig.defaultEnv]?.issuer;
+
+    if(issuer?.trim()){
+      return issuer.replace(/\/+$/, '');
+    }
+
+    console.warn("TenantService: No issuer found for tenant", entry.tenantId, "env", envId, "- falling back to same-origin issuer");
+
+    return sameOriginIssuer;
+  }
+
   buildFallbackUrl(location: Location = window.location): string {
     const segments = location.hostname.split('.');
     const hasSubdomain = segments.length > 1;
 
-    let targetHost: string;
-    if (hasSubdomain) {
-      const { suffix } = this.stripEnvSuffix(segments[0].toLowerCase());
-      targetHost = [`${FALLBACK_TENANT}${suffix}`, ...segments.slice(1)].join('.');
-    } else {
-      targetHost = location.hostname;
-    }
+    // The env now lives in the second segment (e.g. sandbox.stg.eudistack.net),
+    // so replacing only the first segment preserves the environment.
+    const targetHost = hasSubdomain
+      ? [FALLBACK_TENANT, ...segments.slice(1)].join('.')
+      : location.hostname;
 
     const port = location.port ? `:${location.port}` : '';
     return `${location.protocol}//${targetHost}${port}${WALLET_HOME_PATH}`;
+  }
+
+  private originOf(location: Location): string {
+    const port = location.port ? `:${location.port}` : '';
+    return `${location.protocol}//${location.hostname}${port}`;
   }
 
   private async _doResolve(): Promise<void> {
@@ -108,8 +152,7 @@ export class TenantService {
   }
 
   private extractBaseTenantFromHostname(hostname: string): string {
-    const first = hostname.split('.')[0].toLowerCase();
-    return this.stripEnvSuffix(first).base;
+    return hostname.split('.')[0].toLowerCase();
   }
 
   private loadCustomDomainConfig(): Promise<CustomDomainConfig> {
@@ -120,12 +163,5 @@ export class TenantService {
     }
 
     return this._customDomainConfigPromise;
-  }
-
-  private stripEnvSuffix(tenant: string): { base: string; suffix: string } {
-    const match = ENV_SUFFIXES.find((s) => tenant.endsWith(s));
-    return match
-      ? { base: tenant.slice(0, -match.length), suffix: match }
-      : { base: tenant, suffix: '' };
   }
 }

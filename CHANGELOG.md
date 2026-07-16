@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.11.6] - 2026-07-16
+
+### Fixed
+
+- **Issuer metadata preload broken on custom domains**: after login, `RemoteAuthService` preloaded the OID4VCI issuer metadata from a hardcoded `${window.location.origin}/issuer`. On custom domains `/issuer` is not proxied same-origin (it returns the SPA's `index.html`), so the cache warm-up silently fetched the wrong resource. The issuer base URL is now resolved through `TenantService.resolveIssuerBaseUrl()`, which returns the same-origin `/issuer` on canonical domains and the issuer host declared in `custom-domain.json` on custom domains. The preload stays fire-and-forget and never breaks the login flow.
+
+### Changed
+
+- **Tenant resolution — environment moved to the second hostname segment**: the infrastructure no longer encodes the environment as a suffix of the first segment (`sandbox-stg.eudistack.net`); it now lives in a dedicated second segment (`sandbox.stg.eudistack.net`). `TenantService` no longer strips env suffixes — removed the `ENV_SUFFIXES` constant and the `stripEnvSuffix()` helper. `extractBaseTenantFromHostname()` now takes the first segment verbatim as the tenant id, and `buildFallbackUrl()` replaces only the first segment with the fallback tenant, preserving the environment segment automatically.
+
 ## [3.11.5] - 2026-07-16
 
 ### Fixed
