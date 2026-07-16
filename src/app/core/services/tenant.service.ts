@@ -113,11 +113,11 @@ export class TenantService {
       tenantConfig.env?.[envId]?.issuer ??
       tenantConfig.env?.[tenantConfig.defaultEnv]?.issuer;
 
-    if(issuer?.trim()){
-      return issuer.replace(/\/+$/, '');
+    const trimmedIssuer = issuer?.trim();
+    if (trimmedIssuer) {
+      return trimmedIssuer.replace(/\/+$/, '');
     }
-
-    console.warn("TenantService: No issuer found for tenant", entry.tenantId, "env", envId, "- falling back to same-origin issuer");
+    console.warn('[TenantService] No issuer found for tenant', entry.tenantId, 'env', envId, '— falling back to same-origin issuer');
 
     return sameOriginIssuer;
   }
