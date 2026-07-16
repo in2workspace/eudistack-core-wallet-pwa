@@ -188,8 +188,15 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
    */
   private async preloadIssuerMetadata(): Promise<void> {
     if (this.disposed) return;
-    const issuerUrl = await this.tenantService.resolveIssuerBaseUrl();
-    await this.issuerMetadataCache.fetchAndCacheIfMissing(issuerUrl);
+
+    try {
+      const issuerUrl = await this.tenantService.resolveIssuerBaseUrl();
+      if (this.disposed) return;
+      await this.issuerMetadataCache.fetchAndCacheIfMissing(issuerUrl);
+    } catch (e) {
+      // Fire-and-forget: never break login flow if preload fails.
+      console.warn('[RemoteAuthService] Failed to resolve issuer URL for metadata preload', e);
+    }
   }
 
   private scheduleTokenRefresh(expiresInSeconds: number): void {
