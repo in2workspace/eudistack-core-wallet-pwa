@@ -39,7 +39,7 @@ export class VerifiableCredentialSubjectDataNormalizer {
     'learcredential.machine.w3c.3': (s: CredentialSubject) => this.normalizeMandateSubject(s, false),
     'learcredential.machine.sd.1': (s: CredentialSubject) => this.normalizeMandateSubject(s, false),
     'gx.labelcredential.w3c.2': (s: CredentialSubject) => s,
-    'doctorid.sd.1': (s: CredentialSubject) => s
+    'urn:es.cgcom:doctorid:1': (s: CredentialSubject) => s
   } as const;
 
   /**
