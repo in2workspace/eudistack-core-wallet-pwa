@@ -48,20 +48,20 @@ describe('TenantService', () => {
       expect(service.tenant()).toBe('dome');
     });
 
-    it('elimina el sufix d\'entorn -stg', async () => {
-      setHostname('sandbox-stg.eudistack.net');
+    it('ignora l\'entorn del segon segment (stg)', async () => {
+      setHostname('sandbox.stg.eudistack.net');
       await service.resolve();
       expect(service.tenant()).toBe('sandbox');
     });
 
-    it('elimina el sufix d\'entorn -dev', async () => {
-      setHostname('kpmg-dev.eudistack.net');
+    it('ignora l\'entorn del segon segment (dev)', async () => {
+      setHostname('kpmg.dev.eudistack.net');
       await service.resolve();
       expect(service.tenant()).toBe('kpmg');
     });
 
-    it('elimina el sufix d\'entorn -pre', async () => {
-      setHostname('dome-pre.eudistack.net');
+    it('ignora l\'entorn del segon segment (pre)', async () => {
+      setHostname('dome.pre.eudistack.net');
       await service.resolve();
       expect(service.tenant()).toBe('dome');
     });
@@ -187,6 +187,101 @@ describe('TenantService', () => {
     });
   });
 
+  // ── resolveIssuerBaseUrl() ────────────────────────────────────────────────
+
+  describe('resolveIssuerBaseUrl()', () => {
+    it('retorna l\'issuer same-origin per a un domini canònic conegut', async () => {
+      setHostname('sandbox.eudistack.net');
+      const issuer = await service.resolveIssuerBaseUrl();
+      expect(issuer).toBe('https://sandbox.eudistack.net/issuer');
+      http.expectNone('/assets/tenants/custom-domain.json');
+    });
+
+    it('manté l\'entorn del segon segment i el port en dominis canònics locals', async () => {
+      setHostname('sandbox.stg.127.0.0.1.nip.io', { port: '4443' });
+      const issuer = await service.resolveIssuerBaseUrl();
+      expect(issuer).toBe('https://sandbox.stg.127.0.0.1.nip.io:4443/issuer');
+      http.expectNone('/assets/tenants/custom-domain.json');
+    });
+
+    it('resol l\'issuer del custom-domain.json per a un domini custom', async () => {
+      setHostname('wallet.dome-marketplace-lcl.org');
+
+      const promise = service.resolveIssuerBaseUrl();
+      http.expectOne('/assets/tenants/custom-domain.json').flush({
+        domains: { 'wallet.dome-marketplace-lcl.org': { tenantId: 'dome', envId: 'lcl' } },
+        tenants: {
+          dome: {
+            defaultEnv: 'lcl',
+            env: { lcl: { issuer: 'https://issuer.dome-marketplace-lcl.org', verifier: '', wallet: '' } },
+          },
+        },
+      });
+
+      expect(await promise).toBe('https://issuer.dome-marketplace-lcl.org');
+    });
+
+    it('elimina la barra final de l\'issuer configurat', async () => {
+      setHostname('wallet.acme.com');
+
+      const promise = service.resolveIssuerBaseUrl();
+      http.expectOne('/assets/tenants/custom-domain.json').flush({
+        domains: { 'wallet.acme.com': { tenantId: 'kpmg', envId: 'pro' } },
+        tenants: {
+          kpmg: { defaultEnv: 'pro', env: { pro: { issuer: 'https://issuer.acme.com/', verifier: '', wallet: '' } } },
+        },
+      });
+
+      expect(await promise).toBe('https://issuer.acme.com');
+    });
+
+    it('recorre a defaultEnv quan l\'envId del domini no existeix', async () => {
+      setHostname('wallet.acme.com');
+
+      const promise = service.resolveIssuerBaseUrl();
+      http.expectOne('/assets/tenants/custom-domain.json').flush({
+        domains: { 'wallet.acme.com': { tenantId: 'kpmg', envId: 'missing' } },
+        tenants: {
+          kpmg: { defaultEnv: 'pro', env: { pro: { issuer: 'https://issuer.acme.com', verifier: '', wallet: '' } } },
+        },
+      });
+
+      expect(await promise).toBe('https://issuer.acme.com');
+    });
+
+    it('cau a same-origin quan el domini custom no és al JSON', async () => {
+      setHostname('wallet.acme.com');
+
+      const promise = service.resolveIssuerBaseUrl();
+      http.expectOne('/assets/tenants/custom-domain.json').flush({ domains: {}, tenants: {} });
+
+      expect(await promise).toBe('https://wallet.acme.com/issuer');
+    });
+
+    it('cau a same-origin quan la petició al JSON falla', async () => {
+      setHostname('wallet.acme.com');
+
+      const promise = service.resolveIssuerBaseUrl();
+      http.expectOne('/assets/tenants/custom-domain.json').flush('Not found', { status: 404, statusText: 'Not Found' });
+
+      expect(await promise).toBe('https://wallet.acme.com/issuer');
+    });
+
+    it('cau a same-origin quan l\'issuer configurat és buit', async () => {
+      setHostname('wallet.acme.com');
+
+      const promise = service.resolveIssuerBaseUrl();
+      http.expectOne('/assets/tenants/custom-domain.json').flush({
+        domains: { 'wallet.acme.com': { tenantId: 'kpmg', envId: 'pro' } },
+        tenants: {
+          kpmg: { defaultEnv: 'pro', env: { pro: { issuer: '   ', verifier: '', wallet: '' } } },
+        },
+      });
+
+      expect(await promise).toBe('https://wallet.acme.com/issuer');
+    });
+  });
+
   // ── buildFallbackUrl() ────────────────────────────────────────────────────
 
   describe('buildFallbackUrl()', () => {
@@ -197,18 +292,18 @@ describe('TenantService', () => {
       expect(url).toBe('https://sandbox.eudistack.net/wallet/');
     });
 
-    it('preserva el sufix -stg per no saltar de STG a PROD', () => {
+    it('preserva l\'entorn del segon segment (stg) per no saltar de STG a PROD', () => {
       const url = service.buildFallbackUrl(
-        fakeLocation({ hostname: 'patata-stg.eudistack.net' }),
+        fakeLocation({ hostname: 'patata.stg.eudistack.net' }),
       );
-      expect(url).toBe('https://sandbox-stg.eudistack.net/wallet/');
+      expect(url).toBe('https://sandbox.stg.eudistack.net/wallet/');
     });
 
-    it('preserva el sufix -dev', () => {
+    it('preserva l\'entorn del segon segment (dev)', () => {
       const url = service.buildFallbackUrl(
-        fakeLocation({ hostname: 'kpmg-dev.eudistack.net' }),
+        fakeLocation({ hostname: 'kpmg.dev.eudistack.net' }),
       );
-      expect(url).toBe('https://sandbox-dev.eudistack.net/wallet/');
+      expect(url).toBe('https://sandbox.dev.eudistack.net/wallet/');
     });
 
     it('manté port i protocol en nip.io local', () => {
