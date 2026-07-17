@@ -7,9 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.11.6] - 2026-07-16
+
+### Added - 2026-07-16
+
+- **EUD-144 US-02 — Self-revoke: reinforced confirmation, forced logout and re-onboarding**: `DevicesPage.deletePasskey()` now detects when the passkey being revoked belongs to the device currently in use (`isSelfRevoke`, matched against `PasskeyStoreService.getCredentialId()`) and shows a reinforced confirmation message (new i18n key `devices.delete-self-message`) instead of the standard one — a single conditional dialog per AD-1, not two separate flows. On a successful self-revoke, `PasskeyStoreService.clearCredentialId()` runs before `AuthService.forceLogout()`, so the forced logout routes the holder to re-onboarding (`/auth/register`) instead of login. Detection lives solely in the success (`next`) handler — a failed or timed-out revocation never forces a logout or clears local state. If the local credential id can't be resolved, the action fails safe to a regular (non-self) revoke.
+- **EUD-144 US-02 — test coverage for device revocation**: `devices.page.spec.ts` extended with 20 new tests covering the full revoke flow — revoking another device (API call, dialog content, list update, session unaffected), self-revoke (reinforced message, `clearCredentialId` → `forceLogout` order, unresolved credential id fails safe), and error/edge cases (409 last-passkey message, cancelling the dialog, 5xx/timeout leaving the list and session untouched).
+
 ## [3.11.5] - 2026-07-16
 
-### Fixed
+### Fixed - 2026-07-16
 
 - **OID4VP — holder key not found after page reload in browser mode**: `Oid4vciEngineService` used `crypto.randomUUID()` as the holder-key ID (introduced in 3.11.3 for EUDISTACK-645). In `PasskeyPrfKeyStorageProvider`, `isEphemeral()` matches any bare UUID and routes to `generateEphemeralKey()`, which stores the key only in an in-memory `Map` — never in IndexedDB. On page reload (or next session), `resolveKeyIdByKid()` queries IndexedDB and returns `null` → OID4VP throws `"No local key found for kid=<thumbprint>"`. Fixed by prefixing the holder-key ID with `holder-` so it does not match `UUID_PATTERN` and `generatePrfDerivedKey()` persists the key record to IndexedDB as intended.
 

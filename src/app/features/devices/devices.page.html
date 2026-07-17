@@ -1,0 +1,85 @@
+<ion-content [fullscreen]="true" class="devices-page">
+  <div class="devices-container">
+    <p class="devices-subtitle">{{ 'devices.subtitle' | translate }}</p>
+
+    <!-- Loading state -->
+    <div *ngIf="loading()" class="loading-state">
+      <ion-spinner name="crescent"></ion-spinner>
+    </div>
+
+    <!-- Error state -->
+    <div *ngIf="error()" class="error-state">
+      <ion-icon name="alert-circle-outline"></ion-icon>
+      <p>{{ 'devices.load-error' | translate }}</p>
+      <ion-button fill="outline" (click)="loadPasskeys()">
+        {{ 'devices.retry' | translate }}
+      </ion-button>
+    </div>
+
+    <!-- Empty state -->
+    <div *ngIf="!loading() && !error() && passkeys().length === 0" class="empty-state">
+      <ion-icon name="key-outline"></ion-icon>
+      <p>{{ 'devices.no-passkeys' | translate }}</p>
+    </div>
+
+    <!-- Passkey list -->
+    <ion-list *ngIf="!loading() && !error() && passkeys().length > 0" lines="none" class="passkey-list">
+      @for (passkey of passkeys(); track passkey.id) {
+        <div class="passkey-card">
+          <ion-item class="passkey-item" lines="none" [class.current-device]="currentCredentialId && passkey.credentialId === currentCredentialId">
+            <div class="passkey-icon" slot="start">
+              <ion-icon name="key-outline"></ion-icon>
+            </div>
+            <ion-label>
+              <!-- T4: «This device» badge — text-only mark (WCAG 2.1 AA, AC-03) -->
+              <div class="passkey-header">
+                <h2>{{ passkey.displayName }}</h2>
+                <span *ngIf="currentCredentialId && passkey.credentialId === currentCredentialId"
+                      class="this-device-badge"
+                      [attr.aria-label]="'devices.this-device' | translate">
+                  {{ 'devices.this-device' | translate }}
+                </span>
+              </div>
+              <p class="passkey-meta">
+                <span *ngIf="passkey.activeSessions > 0" class="session-badge active">
+                  {{ passkey.activeSessions }} {{ passkey.activeSessions === 1 ? 'session' : 'sessions' }}
+                </span>
+                <span *ngIf="passkey.activeSessions === 0" class="session-badge inactive">
+                  No active sessions
+                </span>
+              </p>
+              <p class="passkey-date">
+                Added {{ passkey.createdAt | date:'mediumDate' }}
+              </p>
+              <!-- T3: lastUsedAt render — null case → i18n key devices.last-used-never (AC-02, EC-02) -->
+              <p class="passkey-last-used">
+                <ng-container *ngIf="passkey.lastUsedAt; else neverUsed">
+                  {{ 'devices.last-used' | translate: { date: passkey.lastUsedAt | date:'mediumDate' } }}
+                </ng-container>
+                <ng-template #neverUsed>
+                  {{ 'devices.last-used-never' | translate }}
+                </ng-template>
+              </p>
+            </ion-label>
+            <ion-buttons slot="end">
+              <ion-button fill="clear" (click)="renamePasskey(passkey)" [attr.aria-label]="'devices.rename-aria' | translate">
+                <ion-icon slot="icon-only" name="pencil-outline"></ion-icon>
+              </ion-button>
+              <ion-button fill="clear" color="danger" (click)="deletePasskey(passkey)" [attr.aria-label]="'devices.delete-aria' | translate">
+                <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-item>
+
+          <!-- Revoke sessions button (shown if active sessions exist) -->
+          <div *ngIf="passkey.activeSessions > 0 && passkey.credentialId !== currentCredentialId" class="revoke-section">
+            <ion-button fill="clear" size="small" color="warning" (click)="revokeSessions(passkey)">
+              <ion-icon slot="start" name="log-out-outline"></ion-icon>
+              Close sessions on this device
+            </ion-button>
+          </div>
+        </div>
+      }
+    </ion-list>
+  </div>
+</ion-content>
