@@ -363,7 +363,11 @@ export class VcViewComponent implements OnInit {
 
     const detailSections = await this.displayService.getDetailSections(vc);
 
-    const showEncoded = this.credentialType?.startsWith('learcredential.machine.') || this.credentialType?.startsWith('gx.labelcredential.');
+    const showEncoded = this.credentialType?.startsWith('learcredential.machine.') 
+    || this.credentialType?.startsWith('gx.labelcredential.') 
+    || this.credentialType === "LEARCredentialMachine"
+    || this.credentialType === 'gx:LabelCredential';
+    
     if (showEncoded && vc.credentialEncoded) {
       detailSections.push({
         section: 'vc-fields.credentialEncoded',
