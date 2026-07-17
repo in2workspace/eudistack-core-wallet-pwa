@@ -370,6 +370,7 @@
     "rename-aria": "Rename this passkey",
     "delete-header": "Delete Passkey",
     "delete-message": "Are you sure you want to delete this passkey? If this is the passkey for your current device, you will not be able to sign in from this browser anymore.",
+    "delete-self-message": "This is the passkey for the device you're using right now. Revoking it will sign you out of this session immediately, and you'll need to complete device registration again before you can access your wallet from here.",
     "delete-confirm": "Delete",
     "delete-aria": "Delete this passkey",
     "cancel": "Cancel",
