@@ -3,9 +3,14 @@
     <div class="activity-header">
       <b class="settings-pages-title">{{ "activity.title" | translate }}</b>
       @if (entries().length > 0) {
-        <ion-button fill="clear" color="danger" (click)="confirmClear()" class="clear-btn">
-          {{ "activity.clear" | translate }}
-        </ion-button>
+        <div class="activity-header-actions">
+          <ion-button fill="clear" (click)="exportHistory()" class="export-btn">
+            {{ "activity.export" | translate }}
+          </ion-button>
+          <ion-button fill="clear" color="danger" (click)="confirmClear()" class="clear-btn">
+            {{ "activity.clear" | translate }}
+          </ion-button>
+        </div>
       }
     </div>
 

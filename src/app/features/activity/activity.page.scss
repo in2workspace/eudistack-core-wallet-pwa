@@ -17,6 +17,13 @@
   margin-bottom: 12px;
 }
 
+.activity-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.export-btn,
 .clear-btn {
   font-size: 1rem;
   font-family: 'Blinker', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
