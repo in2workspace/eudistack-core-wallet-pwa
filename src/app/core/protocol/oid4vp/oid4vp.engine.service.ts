@@ -74,7 +74,10 @@ export class Oid4vpEngineService {
         const selectedVc = selectorResponse.selectedVcList[0];
         const credName = selectedVc?.name ?? selectedVc?.type?.[0] ?? 'Unknown';
         const counterparty = selectorResponse.clientId ?? selectorResponse.redirectUri ?? '';
-        this.activityService.log('presented', credName, counterparty);
+        const sharedAttributes = this.sdJwtParser.isSdJwt(selectedVC)
+          ? this.deriveSharedAttributeNames(selectedVC)
+          : undefined;
+        this.activityService.log('presented', credName, counterparty, undefined, sharedAttributes);
 
         console.info('OID4VP flow completed successfully.');
       }});
@@ -204,6 +207,25 @@ export class Oid4vpEngineService {
   }
 
   // ── Shared helpers ─────────────────────────────────────────────────
+
+  /**
+   * Derives the disclosed claim names from a presented SD-JWT credential
+   * (AD-2). Excludes registered JWT/SD-JWT-VC claims that are not
+   * end-user attributes. Non-fatal: parsing failures degrade to EC-01
+   * (no shared attributes recorded) rather than aborting presentation.
+   */
+  private deriveSharedAttributeNames(sdJwtCompact: string): string[] {
+    const REGISTERED_CLAIMS = new Set(['iss', 'iat', 'exp', 'cnf', 'vct']);
+    try {
+      const { payload } = this.sdJwtParser.reconstructClaims(sdJwtCompact);
+      return Object.keys(payload).filter(
+        (name) => !REGISTERED_CLAIMS.has(name) && !name.startsWith('_sd')
+      );
+    } catch (e: unknown) {
+      console.warn('[OID4VP] Could not derive shared attribute names, degrading to EC-01', e);
+      return [];
+    }
+  }
 
   private extractSignedVcJwt(selectorResponse: VCReply): string {
     const selectedVc = selectorResponse.selectedVcList[0];

@@ -15,6 +15,7 @@ export class ActivityService {
     credentialName: string,
     counterparty: string,
     details?: string,
+    sharedAttributes?: string[],
   ): Promise<void> {
     const entries = await this.loadEntries();
     const entry: ActivityEntry = {
@@ -24,6 +25,7 @@ export class ActivityService {
       counterparty,
       timestamp: Date.now(),
       details,
+      sharedAttributes,
     };
     entries.unshift(entry);
     if (entries.length > MAX_ENTRIES) {

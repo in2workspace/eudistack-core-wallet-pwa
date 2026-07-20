@@ -7,6 +7,7 @@ import { LangChangeEvent, TranslateModule, TranslateService } from '@ngx-transla
 import { of } from 'rxjs';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { ActivityEntry, ActivityFilter, ActivityType } from 'src/app/core/models/activity.model';
+import { ActivityDetailComponent } from './activity-detail/activity-detail.component';
 
 // jsdom does not implement scrollTo; ion-segment calls it when its active value changes.
 if (!Element.prototype.scrollTo) {
@@ -91,6 +92,13 @@ function selectFilter(fixture: ComponentFixture<ActivityPage>, value: string): v
 function credentialNames(fixture: ComponentFixture<ActivityPage>): string[] {
   const names: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.activity-credential-name');
   return Array.from(names).map((p) => p.textContent!.trim());
+}
+
+/** Clicks the nth rendered `.activity-card`, as a user opening the detail modal would. */
+function clickCard(fixture: ComponentFixture<ActivityPage>, index = 0): void {
+  const cards: NodeListOf<HTMLElement> = fixture.nativeElement.querySelectorAll('.activity-card');
+  cards[index].dispatchEvent(new MouseEvent('click'));
+  fixture.detectChanges();
 }
 
 describe('ActivityPage > filtro de actividad por tipo (EUD-138)', () => {
@@ -536,5 +544,118 @@ describe('ActivityPage (EUD-137)', () => {
     await fixture.whenStable();
 
     expect(fixture.componentInstance.entries()).toEqual([PRESENTED_ENTRY]);
+  });
+});
+
+describe('ActivityPage — activity detail modal (EUD-139)', () => {
+  const PRESENTED_ENTRY: ActivityEntry = {
+    id: '1',
+    type: 'presented',
+    credentialName: 'Empleado ACME',
+    counterparty: 'https://verifier.portal.example/oid4vp',
+    timestamp: Date.now() - 2 * 86_400_000,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockActivityService.findAll.mockResolvedValue(ENTRIES);
+    mockModalController.create.mockResolvedValue({
+      present: jest.fn().mockResolvedValue(undefined),
+      onWillDismiss: jest.fn().mockResolvedValue({ role: 'close' }),
+    });
+  });
+
+  afterEach(() => {
+    TestBed.resetTestingModule();
+  });
+
+  // --- AC-05 ---------------------------------------------------------------
+
+  it('AC-05: opening and closing the detail modal (via openDetail) preserves the active filter', async () => {
+    const fixture = await createModule();
+
+    selectFilter(fixture, 'issued');
+    expect(fixture.componentInstance.activeFilter()).toBe('issued');
+    const filteredBefore = fixture.componentInstance.filteredEntries();
+
+    const modalInstance = {
+      present: jest.fn().mockResolvedValue(undefined),
+      onWillDismiss: jest.fn().mockResolvedValue({ role: 'close' }),
+    };
+    mockModalController.create.mockResolvedValueOnce(modalInstance);
+
+    await fixture.componentInstance.openDetail(ENTRIES[1]);
+    await modalInstance.onWillDismiss(); // simulate the user dismissing the modal
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.activeFilter()).toBe('issued');
+    expect(fixture.componentInstance.filteredEntries()).toEqual(filteredBefore);
+  });
+
+  it('AC-05: opening the detail modal from a card click preserves the active filter and reuses the entry', async () => {
+    const fixture = await createModule();
+
+    selectFilter(fixture, 'issued');
+    expect(credentialNames(fixture)).toEqual(['Cred C', 'Cred A']);
+
+    clickCard(fixture, 0);
+    await fixture.whenStable();
+
+    expect(mockModalController.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        component: ActivityDetailComponent,
+        componentProps: { entry: ENTRIES[1] }, // 'Cred C', first of the 'issued' filtered list
+      })
+    );
+    expect(fixture.componentInstance.activeFilter()).toBe('issued');
+    expect(credentialNames(fixture)).toEqual(['Cred C', 'Cred A']);
+  });
+
+  it('AC-05: closing the modal does not reload or mutate entries()', async () => {
+    const fixture = await createModule();
+    const entriesBefore = fixture.componentInstance.entries();
+    expect(mockActivityService.findAll).toHaveBeenCalledTimes(1);
+
+    await fixture.componentInstance.openDetail(ENTRIES[0]);
+
+    expect(mockActivityService.findAll).toHaveBeenCalledTimes(1);
+    expect(fixture.componentInstance.entries()).toBe(entriesBefore);
+  });
+
+  // --- ES-02 -----------------------------------------------------------------
+
+  it('ES-02: openDetail(undefined) does not create a modal (guard)', async () => {
+    const fixture = await createModule();
+
+    await fixture.componentInstance.openDetail(undefined);
+
+    expect(mockModalController.create).not.toHaveBeenCalled();
+  });
+
+  it('ES-02: openDetail(null) does not create a modal (guard)', async () => {
+    const fixture = await createModule();
+
+    await fixture.componentInstance.openDetail(null);
+
+    expect(mockModalController.create).not.toHaveBeenCalled();
+  });
+
+  it('ES-02: the guard does not throw and leaves the active filter untouched', async () => {
+    const fixture = await createModule();
+    selectFilter(fixture, 'presented');
+
+    await expect(fixture.componentInstance.openDetail(undefined)).resolves.toBeUndefined();
+
+    expect(fixture.componentInstance.activeFilter()).toBe('presented');
+    expect(mockModalController.create).not.toHaveBeenCalled();
+  });
+
+  it('reference: presenting a valid entry does create the modal (control case for the ES-02 guard)', async () => {
+    mockActivityService.findAll.mockResolvedValue([PRESENTED_ENTRY]);
+    const fixture = await createModule();
+
+    await fixture.componentInstance.openDetail(PRESENTED_ENTRY);
+
+    expect(mockModalController.create).toHaveBeenCalledTimes(1);
   });
 });

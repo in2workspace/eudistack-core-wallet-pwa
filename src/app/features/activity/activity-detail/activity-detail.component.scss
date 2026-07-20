@@ -1,0 +1,71 @@
+:host { display: block; }
+
+.modal-toolbar { --background: var(--surface-card, #FFF); }
+
+.modal-title {
+  font-size: 1rem; font-weight: 700;
+  color: var(--text-primary, #1A1A2E);
+}
+
+.close-icon { font-size: 22px; color: var(--text-secondary, #6B7280); }
+
+.activity-detail-content { --background: var(--surface-card, #FFF); }
+
+.detail-row {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle, #EEF0F4);
+
+  &:first-child { padding-top: 0; }
+}
+
+.detail-label {
+  font-size: 0.75rem; font-weight: 600;
+  color: var(--text-secondary, #6B7280);
+  text-transform: uppercase; letter-spacing: 0.02em;
+}
+
+.detail-value {
+  font-size: 0.95rem;
+  color: var(--text-primary, #1A1A2E);
+  word-break: break-word;
+}
+
+.result-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem; font-weight: 600;
+  background: var(--status-success-bg, #E3F6EA);
+  color: var(--status-success, #1F9254);
+}
+
+.shared-attributes-section { margin-top: 20px; }
+
+.section-title {
+  font-size: 0.85rem; font-weight: 700;
+  color: var(--text-primary, #1A1A2E);
+  margin: 0 0 10px;
+}
+
+// Natural page scroll only — no virtual scroll (YAGNI, EC-03).
+.shared-attributes-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.shared-attribute-item {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--surface-muted, #F3F4F6);
+  color: var(--text-primary, #1A1A2E);
+  font-size: 0.85rem;
+  font-family: var(--font-monospace, monospace);
+}
+
+.shared-attributes-empty {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #6B7280);
+  font-style: italic;
+  margin: 0;
+}

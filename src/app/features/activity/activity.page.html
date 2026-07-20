@@ -41,7 +41,14 @@
     @if (!loading() && filteredEntries().length > 0) {
       <div class="activity-list">
         @for (entry of filteredEntries(); track entry.id) {
-          <div class="activity-card activity-card--{{ entry.type }}">
+          <div
+            class="activity-card activity-card--{{ entry.type }}"
+            role="button"
+            tabindex="0"
+            [attr.aria-label]="('activity.type-' + entry.type | translate) + ' — ' + entry.credentialName"
+            (click)="openDetail(entry)"
+            (keydown)="onEntryKeydown($event, entry)"
+          >
             <div class="activity-card-content">
               <h2>{{ "activity.type-" + entry.type | translate }}</h2>
               @let counterparty = formatCounterparty(entry);
@@ -52,7 +59,7 @@
               }
               <p class="activity-credential-name">{{ entry.credentialName }}</p>
             </div>
-            <span class="activity-time">{{ formatTime(entry.timestamp) }}</span>
+            <span class="activity-time" [title]="formatAbsoluteTime(entry.timestamp)">{{ formatTime(entry.timestamp) }}</span>
           </div>
         }
       </div>
