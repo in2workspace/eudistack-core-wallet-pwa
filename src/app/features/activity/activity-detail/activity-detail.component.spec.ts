@@ -39,7 +39,7 @@ async function createFixture(entry: ActivityEntry): Promise<ComponentFixture<Act
   }).compileComponents();
 
   const fixture = TestBed.createComponent(ActivityDetailComponent);
-  fixture.componentInstance.entry = entry;
+  fixture.componentRef.setInput('entry', entry);
   fixture.detectChanges();
   return fixture;
 }
@@ -101,7 +101,7 @@ describe('ActivityDetailComponent', () => {
     const el: HTMLElement = fixture.nativeElement;
 
     expect(el.textContent).toContain('Certificado antiguo');
-    expect(fixture.componentInstance.showCounterparty).toBe(false);
+    expect(fixture.componentInstance.showCounterparty()).toBe(false);
     expect(el.querySelector('.shared-attributes-section')).toBeFalsy();
   });
 
@@ -162,7 +162,7 @@ describe('ActivityDetailComponent', () => {
     };
     const fixture = await createFixture(entry);
 
-    expect(fixture.componentInstance.showCounterparty).toBe(false);
+    expect(fixture.componentInstance.showCounterparty()).toBe(false);
     expect(fixture.nativeElement.textContent).not.toContain('activity.detail-field-counterparty-presented');
   });
 
@@ -172,7 +172,7 @@ describe('ActivityDetailComponent', () => {
     };
     const fixture = await createFixture(entry);
 
-    expect(fixture.componentInstance.showCounterparty).toBe(true);
+    expect(fixture.componentInstance.showCounterparty()).toBe(true);
     expect(fixture.nativeElement.textContent).toContain('ACME Issuer');
   });
 
@@ -202,7 +202,7 @@ describe('ActivityDetailComponent', () => {
     };
     const fixture = await createFixture(entry);
 
-    expect(fixture.componentInstance.showDetails).toBe(false);
+    expect(fixture.componentInstance.showDetails()).toBe(false);
     expect(fixture.nativeElement.textContent).not.toContain('activity.detail-field-details');
   });
 
@@ -214,7 +214,7 @@ describe('ActivityDetailComponent', () => {
     const fixture = await createFixture(entry);
     const el: HTMLElement = fixture.nativeElement;
 
-    expect(fixture.componentInstance.showDetails).toBe(true);
+    expect(fixture.componentInstance.showDetails()).toBe(true);
     expect(el.textContent).toContain('activity.detail-field-details');
     expect(el.textContent).toContain('Nota adicional');
   });
@@ -226,7 +226,7 @@ describe('ActivityDetailComponent', () => {
     };
     const fixture = await createFixture(entry);
 
-    expect(fixture.componentInstance.showSharedAttributes).toBe(false);
+    expect(fixture.componentInstance.showSharedAttributes()).toBe(false);
     expect(fixture.nativeElement.querySelector('.shared-attributes-section')).toBeFalsy();
   });
 
@@ -240,10 +240,10 @@ describe('ActivityDetailComponent', () => {
     const fixture = await createFixture(entry);
     const el: HTMLElement = fixture.nativeElement;
 
-    expect(fixture.componentInstance.typeLabelKey).toBe('activity.type-unknown');
+    expect(fixture.componentInstance.typeLabelKey()).toBe('activity.type-unknown');
     expect(el.textContent).toContain('activity.type-unknown');
-    expect(fixture.componentInstance.showCounterparty).toBe(false);
-    expect(fixture.componentInstance.showSharedAttributes).toBe(false);
+    expect(fixture.componentInstance.showCounterparty()).toBe(false);
+    expect(fixture.componentInstance.showSharedAttributes()).toBe(false);
   });
 
   it('does not throw when type is undefined', async () => {

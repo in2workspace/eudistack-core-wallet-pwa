@@ -71,14 +71,6 @@ export class Oid4vpEngineService {
           await this.presentJwtVc(selectedVC, credentialSubjectId, holderJwk, selectorResponse);
         }
 
-        const selectedVc = selectorResponse.selectedVcList[0];
-        const credName = selectedVc?.name ?? selectedVc?.type?.[0] ?? 'Unknown';
-        const counterparty = selectorResponse.clientId ?? selectorResponse.redirectUri ?? '';
-        const sharedAttributes = this.sdJwtParser.isSdJwt(selectedVC)
-          ? this.deriveSharedAttributeNames(selectedVC)
-          : undefined;
-        this.activityService.log('presented', credName, counterparty, undefined, sharedAttributes);
-
         console.info('OID4VP flow completed successfully.');
       }});
     }
