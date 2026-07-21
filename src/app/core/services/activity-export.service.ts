@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { ActivityEntry, ActivityType } from '../models/activity.model';
 
-const CSV_BOM = '﻿';
+const CSV_BOM = '\uFEFF';
 const CSV_LINE_BREAK = '\r\n';
 
 export interface ActivityExportHeaders {
