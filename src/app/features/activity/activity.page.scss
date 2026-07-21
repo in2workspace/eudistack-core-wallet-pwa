@@ -63,6 +63,7 @@
   box-shadow: var(--shadow-sm);
   padding: 14px 16px;
   border-left: 4px solid transparent;
+  cursor: pointer;
 
   &--issued {
     border-left-color: var(--status-success);
