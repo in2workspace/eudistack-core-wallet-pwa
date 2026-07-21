@@ -1,32 +1,41 @@
 :host { display: block; }
 
-.modal-toolbar { --background: var(--surface-card, #FFF); }
+.modal-toolbar {
+  --background: var(--surface-card, #FFF);
+  border-bottom: 1px solid var(--border-default);
+}
 
 .modal-title {
-  font-size: 1rem; font-weight: 700;
+  font-size: 18px; font-weight: 600;
   color: var(--text-primary, #1A1A2E);
 }
 
-.close-icon { font-size: 22px; color: var(--text-secondary, #6B7280); }
+.close-icon { font-size: 20px; color: var(--text-primary, #1A1A2E); }
 
-.activity-detail-content { --background: var(--surface-card, #FFF); }
+.activity-detail-content {
+  --background: var(--surface-card, #FFF);
+  --padding-bottom: 16px;
+}
 
 .detail-row {
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border-subtle, #EEF0F4);
+  display: flex; flex-direction: column;
+  padding: 8px 12px;
+  margin-bottom: 2px;
 
-  &:first-child { padding-top: 0; }
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--surface-muted, #EEF0F4);
+  }
 }
 
 .detail-label {
-  font-size: 0.75rem; font-weight: 600;
+  font-size: 12px; font-weight: 500;
   color: var(--text-secondary, #6B7280);
-  text-transform: uppercase; letter-spacing: 0.02em;
+  margin-bottom: 2px;
+  text-transform: capitalize;
 }
 
 .detail-value {
-  font-size: 0.95rem;
+  font-size: 14px; font-weight: 500;
   color: var(--text-primary, #1A1A2E);
   word-break: break-word;
 }
@@ -43,9 +52,11 @@
 .shared-attributes-section { margin-top: 20px; }
 
 .section-title {
-  font-size: 0.85rem; font-weight: 700;
+  font-size: 14px; font-weight: 600;
   color: var(--text-primary, #1A1A2E);
-  margin: 0 0 10px;
+  padding: 8px 12px;
+  margin: 0 0 12px;
+  border-bottom: 2px solid var(--border-strong);
 }
 
 // Natural page scroll only — no virtual scroll (YAGNI, EC-03).

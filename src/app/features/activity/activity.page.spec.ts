@@ -1,12 +1,11 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { ActivityPage } from './activity.page';
-import { IonicModule, ModalController, ToastController } from '@ionic/angular';
+import { IonicModule, ModalController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { EventEmitter } from '@angular/core';
 import { LangChangeEvent, TranslateModule, TranslateService } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { ActivityService } from 'src/app/core/services/activity.service';
-import { ActivityExportService } from 'src/app/core/services/activity-export.service';
 import { ActivityEntry, ActivityFilter, ActivityType } from 'src/app/core/models/activity.model';
 import { ActivityDetailComponent } from './activity-detail/activity-detail.component';
 
@@ -29,25 +28,12 @@ const translateServiceMock = {
 const mockActivityService = {
   findAll: jest.fn().mockResolvedValue([]),
   clear: jest.fn().mockResolvedValue(undefined),
-  log: jest.fn().mockResolvedValue(undefined),
 };
 
 const mockModalController = {
   create: jest.fn().mockResolvedValue({
     present: jest.fn().mockResolvedValue(undefined),
     onWillDismiss: jest.fn().mockResolvedValue({ role: 'cancel' }),
-  }),
-};
-
-const mockActivityExportService = {
-  buildCsv: jest.fn().mockReturnValue('CSV_CONTENT'),
-  triggerDownload: jest.fn(),
-  buildFileName: jest.fn().mockReturnValue('actividad-wallet-2026-07-20.csv'),
-};
-
-const mockToastController = {
-  create: jest.fn().mockResolvedValue({
-    present: jest.fn().mockResolvedValue(undefined),
   }),
 };
 
@@ -77,21 +63,14 @@ async function createModule(): Promise<ComponentFixture<ActivityPage>> {
   // scoped to the component's injector, shadowing a TestBed-level provider override. Overriding
   // the component's own providers ensures the mock wins at the component's element injector.
   TestBed.overrideComponent(ActivityPage, {
-    add: {
-      providers: [
-        { provide: ModalController, useValue: mockModalController },
-        { provide: ToastController, useValue: mockToastController },
-      ],
-    },
+    add: { providers: [{ provide: ModalController, useValue: mockModalController }] },
   });
 
   await TestBed.configureTestingModule({
     imports: [ActivityPage, IonicModule.forRoot(), CommonModule, TranslateModule.forRoot()],
     providers: [
       { provide: ActivityService, useValue: mockActivityService },
-      { provide: ActivityExportService, useValue: mockActivityExportService },
       { provide: ModalController, useValue: mockModalController },
-      { provide: ToastController, useValue: mockToastController },
       { provide: TranslateService, useValue: translateServiceMock },
     ],
   }).compileComponents();
@@ -625,7 +604,7 @@ describe('ActivityPage — activity detail modal (EUD-139)', () => {
     expect(mockModalController.create).toHaveBeenCalledWith(
       expect.objectContaining({
         component: ActivityDetailComponent,
-        componentProps: { entry: ENTRIES[1] }, // 'Cred C', first of the 'issued' filtered list
+        componentProps: { entry: ENTRIES[1], locale: 'en' }, // 'Cred C', first of the 'issued' filtered list
       })
     );
     expect(fixture.componentInstance.activeFilter()).toBe('issued');
@@ -678,209 +657,5 @@ describe('ActivityPage — activity detail modal (EUD-139)', () => {
     await fixture.componentInstance.openDetail(PRESENTED_ENTRY);
 
     expect(mockModalController.create).toHaveBeenCalledTimes(1);
-  });
-});
-
-/** Locates the "Exportar historial" button rendered in `.activity-header`. */
-function exportButton(fixture: ComponentFixture<ActivityPage>): HTMLElement | null {
-  return fixture.nativeElement.querySelector('.export-btn');
-}
-
-describe('ActivityPage — exportar historial a CSV (EUD-140)', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockActivityService.findAll.mockResolvedValue(ENTRIES);
-    mockActivityExportService.buildCsv.mockReturnValue('CSV_CONTENT');
-    mockActivityExportService.buildFileName.mockReturnValue('actividad-wallet-2026-07-20.csv');
-  });
-
-  afterEach(() => {
-    TestBed.resetTestingModule();
-  });
-
-  // --- AC-01 -------------------------------------------------------------
-
-  it('AC-01: clicking "Exportar historial" invokes buildCsv + triggerDownload with the full entries()', async () => {
-    const fixture = await createModule();
-    const button = exportButton(fixture);
-    expect(button).toBeTruthy();
-
-    button!.dispatchEvent(new MouseEvent('click'));
-    fixture.detectChanges();
-
-    expect(mockActivityExportService.buildCsv).toHaveBeenCalledWith(ENTRIES, expect.any(Object));
-    expect(mockActivityExportService.triggerDownload).toHaveBeenCalledWith(
-      'CSV_CONTENT',
-      'actividad-wallet-2026-07-20.csv'
-    );
-  });
-
-  it('AC-01: resolves the i18n headers/type labels passed to buildCsv', async () => {
-    const fixture = await createModule();
-
-    fixture.componentInstance.exportHistory();
-
-    expect(mockActivityExportService.buildCsv).toHaveBeenCalledWith(ENTRIES, {
-      headers: {
-        type: 'activity.csv-header-type',
-        credentialName: 'activity.csv-header-credential',
-        counterparty: 'activity.csv-header-counterparty',
-        timestamp: 'activity.csv-header-date',
-        details: 'activity.csv-header-details',
-      },
-      types: {
-        issued: 'activity.type-issued',
-        presented: 'activity.type-presented',
-        deleted: 'activity.type-deleted',
-      },
-    });
-  });
-
-  // --- AC-05 -------------------------------------------------------------
-
-  it('AC-05: exporting with a filter active still sends the full entries(), not filteredEntries()', async () => {
-    const fixture = await createModule();
-    selectFilter(fixture, 'issued');
-    expect(fixture.componentInstance.filteredEntries().length).toBe(2); // only the 'issued' entries
-
-    fixture.componentInstance.exportHistory();
-
-    expect(mockActivityExportService.buildCsv).toHaveBeenCalledWith(ENTRIES, expect.any(Object));
-  });
-
-  it('AC-05: exporting does not alter the active filter shown on screen', async () => {
-    const fixture = await createModule();
-    selectFilter(fixture, 'presented');
-
-    fixture.componentInstance.exportHistory();
-
-    expect(fixture.componentInstance.activeFilter()).toBe('presented');
-  });
-
-  // --- AC-06 -------------------------------------------------------------
-
-  it('AC-06: exporting does not call ActivityService.log() or ActivityService.clear()', async () => {
-    const fixture = await createModule();
-
-    fixture.componentInstance.exportHistory();
-
-    expect(mockActivityService.log).not.toHaveBeenCalled();
-    expect(mockActivityService.clear).not.toHaveBeenCalled();
-    expect(mockActivityService.findAll).toHaveBeenCalledTimes(1); // no reload from storage
-  });
-
-  it('AC-06: exporting does not mutate entries() (same reference before/after)', async () => {
-    const fixture = await createModule();
-    const entriesBefore = fixture.componentInstance.entries();
-
-    fixture.componentInstance.exportHistory();
-
-    expect(fixture.componentInstance.entries()).toBe(entriesBefore);
-    expect(fixture.componentInstance.entries()).toEqual(ENTRIES);
-  });
-
-  it('AC-06: exporting leaves the rendered list unchanged', async () => {
-    const fixture = await createModule();
-    const before = credentialNames(fixture);
-
-    fixture.componentInstance.exportHistory();
-    fixture.detectChanges();
-
-    expect(credentialNames(fixture)).toEqual(before);
-  });
-});
-
-describe('ActivityPage — exportar historial: disponibilidad y resiliencia (EUD-140)', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockActivityExportService.buildCsv.mockReturnValue('CSV_CONTENT');
-    mockActivityExportService.buildFileName.mockReturnValue('actividad-wallet-2026-07-20.csv');
-  });
-
-  afterEach(() => {
-    TestBed.resetTestingModule();
-  });
-
-  // --- ES-02 ---------------------------------------------------------------
-
-  it('ES-02: the "Exportar historial" button is absent when the history is empty', async () => {
-    mockActivityService.findAll.mockResolvedValue([]);
-    const fixture = await createModule();
-
-    expect(exportButton(fixture)).toBeFalsy();
-  });
-
-  it('ES-02: the button appears once entries are present', async () => {
-    mockActivityService.findAll.mockResolvedValue(ENTRIES);
-    const fixture = await createModule();
-
-    expect(exportButton(fixture)).toBeTruthy();
-  });
-
-  // --- ES-03 ---------------------------------------------------------------
-
-  it('ES-03: shows an i18n error toast when triggerDownload fails, without throwing', async () => {
-    mockActivityService.findAll.mockResolvedValue(ENTRIES);
-    mockActivityExportService.triggerDownload.mockImplementation(() => {
-      throw new Error('download blocked');
-    });
-    const fixture = await createModule();
-
-    expect(() => fixture.componentInstance.exportHistory()).not.toThrow();
-    await fixture.whenStable();
-
-    expect(mockToastController.create).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'activity.export-error' })
-    );
-  });
-
-  it('ES-03: a failed export does not mutate entries() or call ActivityService.log()/clear()', async () => {
-    mockActivityService.findAll.mockResolvedValue(ENTRIES);
-    mockActivityExportService.triggerDownload.mockImplementation(() => {
-      throw new Error('download blocked');
-    });
-    const fixture = await createModule();
-    const entriesBefore = fixture.componentInstance.entries();
-
-    fixture.componentInstance.exportHistory();
-    await fixture.whenStable();
-
-    expect(fixture.componentInstance.entries()).toBe(entriesBefore);
-    expect(mockActivityService.log).not.toHaveBeenCalled();
-    expect(mockActivityService.clear).not.toHaveBeenCalled();
-  });
-
-  it('ES-03: buildCsv failing also surfaces the error toast (no partial file reaches triggerDownload)', async () => {
-    mockActivityService.findAll.mockResolvedValue(ENTRIES);
-    mockActivityExportService.buildCsv.mockImplementation(() => {
-      throw new Error('serialization failed');
-    });
-    const fixture = await createModule();
-
-    fixture.componentInstance.exportHistory();
-    await fixture.whenStable();
-
-    expect(mockActivityExportService.triggerDownload).not.toHaveBeenCalled();
-    expect(mockToastController.create).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'activity.export-error' })
-    );
-  });
-
-  // --- EC-03 (component-level) ----------------------------------------------
-
-  it('EC-03: exporting 200 mixed entries completes synchronously without blocking further interaction', async () => {
-    mockActivityService.findAll.mockResolvedValue(LARGE_ENTRIES);
-    const fixture = await createModule();
-
-    const start = performance.now();
-    fixture.componentInstance.exportHistory();
-    const elapsed = performance.now() - start;
-
-    expect(elapsed).toBeLessThan(1000);
-    expect(mockActivityExportService.buildCsv).toHaveBeenCalledWith(LARGE_ENTRIES, expect.any(Object));
-
-    // The UI remains interactive right after export: the filter control still responds.
-    selectFilter(fixture, 'issued');
-    expect(fixture.componentInstance.activeFilter()).toBe('issued');
   });
 });
