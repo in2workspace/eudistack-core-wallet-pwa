@@ -26,6 +26,7 @@ const COUNTERPARTY_LABEL_KEYS: Partial<Record<ActivityType, string>> = {
 })
 export class ActivityDetailComponent {
   readonly entry = input.required<ActivityEntry>();
+  readonly locale = input<string>('en');
 
   private readonly modalCtrl = inject(ModalController);
 
@@ -41,8 +42,7 @@ export class ActivityDetailComponent {
 
   readonly showDetails = computed(() => !!this.entry().details?.trim());
 
-  readonly absoluteDate = computed(() => formatAbsoluteTime(this.entry().timestamp));
-
+  readonly absoluteDate = computed(() => formatAbsoluteTime(this.entry().timestamp, this.locale()));
   readonly showSharedAttributes = computed(() => this.entry().type === 'presented');
 
   readonly sharedAttributes = computed(() => this.entry().sharedAttributes ?? []);
