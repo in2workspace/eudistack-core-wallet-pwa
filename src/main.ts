@@ -50,7 +50,7 @@ bootstrapApplication(AppComponent, {
   providers: [
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     importProvidersFrom(
-      IonicModule.forRoot({ innerHTMLTemplatesEnabled: true })
+      IonicModule.forRoot({ innerHTMLTemplatesEnabled: true, useSetInputAPI: true })
     ),
     provideHttpClient(withInterceptorsFromDi(), withInterceptors([authInterceptor])),
     { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true },

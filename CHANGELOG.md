@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.12.0] - 2026-07-21
+
 ### Added
 
 - **EUD-140 US-05 — Exportar el historial de actividad a CSV**: nuevo `ActivityExportService` (`providedIn: 'root'`) con un serializador CSV puro y sin dependencias — `buildCsv(entries, labels)` mapea un allow-list explícito de 5 columnas (`type` localizado, `credencial`, `contraparte`, `timestamp` en ISO 8601, `detalle`), excluyendo el `id` interno y cualquier otro campo del modelo (minimización, AC-04), sin reordenar columnas ni filas (AD-2/AD-4). Incluye escapado RFC 4180 (comillas dobladas para `,`/`"`/`\r`/`\n`) + BOM UTF-8 + separador `\r\n` (EC-01), neutralización de inyección de fórmulas anteponiendo `'` a valores de `credentialName`/`counterparty`/`details` que empiecen por `=`, `+`, `-`, `@`, TAB o CR (EC-02), y serialización defensiva ante campos vacíos/`type` desconocido o entradas malformadas, sin lanzar excepción ni abortar el resto de filas (EC-04, ES-01). `triggerDownload()` (`Blob` + `URL.createObjectURL` + ancla `download`, con `revokeObjectURL` en `finally`) y `buildFileName()` completan la descarga. `ActivityPage.exportHistory()` consume `entries()` (historial completo, no `filteredEntries()` — AD-1) sin mutar ninguna señal ni el filtro activo (AC-05, AC-06), y ante un fallo de descarga muestra un aviso i18n (`activity.export-error`) sin dejar archivo parcial (ES-03). Nuevo botón "Exportar historial" junto a "Borrar" en `.activity-header`, visible solo con eventos (`entries().length > 0`, ES-02). Nuevas claves i18n (`activity.export`, `activity.csv-header-*`, `activity.export-error`) en `es`/`en`/`ca`.

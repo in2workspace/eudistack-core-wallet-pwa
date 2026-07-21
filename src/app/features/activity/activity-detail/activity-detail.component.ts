@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule, ModalController } from '@ionic/angular';
 import { TranslateModule } from '@ngx-translate/core';
@@ -25,41 +25,27 @@ const COUNTERPARTY_LABEL_KEYS: Partial<Record<ActivityType, string>> = {
   styleUrls: ['./activity-detail.component.scss'],
 })
 export class ActivityDetailComponent {
-  @Input() entry!: ActivityEntry;
+  readonly entry = input.required<ActivityEntry>();
 
   private readonly modalCtrl = inject(ModalController);
 
-  get typeLabelKey(): string {
-    return KNOWN_TYPES.includes(this.entry.type) ? `activity.type-${this.entry.type}` : 'activity.type-unknown';
-  }
+  readonly typeLabelKey = computed(() =>
+    KNOWN_TYPES.includes(this.entry().type) ? `activity.type-${this.entry().type}` : 'activity.type-unknown'
+  );
 
-  get counterpartyLabelKey(): string | null {
-    return COUNTERPARTY_LABEL_KEYS[this.entry.type] ?? null;
-  }
+  readonly counterpartyLabelKey = computed(() => COUNTERPARTY_LABEL_KEYS[this.entry().type] ?? null);
 
-  get counterpartyValue(): string {
-    return formatCounterparty(this.entry);
-  }
+  readonly counterpartyValue = computed(() => formatCounterparty(this.entry()));
 
-  get showCounterparty(): boolean {
-    return this.counterpartyLabelKey !== null && this.counterpartyValue !== '';
-  }
+  readonly showCounterparty = computed(() => this.counterpartyLabelKey() !== null && this.counterpartyValue() !== '');
 
-  get showDetails(): boolean {
-    return !!this.entry.details?.trim();
-  }
+  readonly showDetails = computed(() => !!this.entry().details?.trim());
 
-  get absoluteDate(): string {
-    return formatAbsoluteTime(this.entry.timestamp);
-  }
+  readonly absoluteDate = computed(() => formatAbsoluteTime(this.entry().timestamp));
 
-  get showSharedAttributes(): boolean {
-    return this.entry.type === 'presented';
-  }
+  readonly showSharedAttributes = computed(() => this.entry().type === 'presented');
 
-  get sharedAttributes(): string[] {
-    return this.entry.sharedAttributes ?? [];
-  }
+  readonly sharedAttributes = computed(() => this.entry().sharedAttributes ?? []);
 
   close(): void {
     this.modalCtrl.dismiss(null, 'close');
