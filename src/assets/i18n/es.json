@@ -369,16 +369,7 @@
     "detail-result-completed": "Completada",
     "detail-field-details": "Detalles",
     "detail-shared-attributes-title": "Atributos compartidos",
-    "detail-shared-attributes-empty": "No se registraron atributos compartidos para esta presentación.",
-    "detail-title": "Detalle de actividad",
-    "detail-credential": "Credencial",
-    "detail-counterparty-issuer": "Emisor",
-    "detail-counterparty-verifier": "Verificador",
-    "detail-date": "Fecha",
-    "detail-result": "Resultado",
-    "detail-result-success": "Completada",
-    "detail-attributes": "Atributos compartidos",
-    "detail-no-attributes": "No se registraron atributos compartidos para esta presentación."
+    "detail-shared-attributes-empty": "No se registraron atributos compartidos para esta presentación."
   },
   "devices": {
     "settings-link": "Mis Dispositivos",
