@@ -56,6 +56,7 @@ export class Oid4vpEngineService {
         if (this.sdJwtParser.isSdJwt(selectedVC)) {
           console.debug('[OID4VP] Detected SD-JWT credential, using KB-JWT presentation.');
           await this.presentSdJwt(selectedVC, holderJwk, selectorResponse);
+          await this.logPresentedActivity(selectorResponse, this.deriveSharedAttributeNames(selectedVC));
         } else {
           console.debug('[OID4VP] Step 4: Checking credentialSubject.id...');
           const credentialSubjectId = credentialPayload?.vc?.credentialSubject?.id   // VCDM 1.1 (vc wrapper)
@@ -69,6 +70,7 @@ export class Oid4vpEngineService {
           }
           console.debug('[OID4VP] Step 4 OK: credentialSubject.id=', credentialSubjectId);
           await this.presentJwtVc(selectedVC, credentialSubjectId, holderJwk, selectorResponse);
+          await this.logPresentedActivity(selectorResponse);
         }
 
         console.info('OID4VP flow completed successfully.');
@@ -199,6 +201,13 @@ export class Oid4vpEngineService {
   }
 
   // ── Shared helpers ─────────────────────────────────────────────────
+
+  /** Records a 'presented' activity entry once the presentation has been posted successfully (AD-2, NFR-P-02). */
+  private async logPresentedActivity(selectorResponse: VCReply, sharedAttributes?: string[]): Promise<void> {
+    const selectedVc = selectorResponse.selectedVcList[0];
+    const counterparty = selectorResponse.clientId ?? selectorResponse.redirectUri;
+    await this.activityService.log('presented', selectedVc.name, counterparty, undefined, sharedAttributes);
+  }
 
   /**
    * Derives the disclosed claim names from a presented SD-JWT credential
