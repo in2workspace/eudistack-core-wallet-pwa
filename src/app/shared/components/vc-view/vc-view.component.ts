@@ -5,7 +5,6 @@ import {
   computed,
   EventEmitter,
   HostListener,
-  OnInit,
   Output,
   effect,
   inject,
@@ -38,7 +37,7 @@ const EXPIRY_WARNING_DAYS = 30;
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [IonicModule, QRCodeComponent, TranslateModule, CommonModule]
 })
-export class VcViewComponent implements OnInit {
+export class VcViewComponent {
   private readonly translate = inject(TranslateService);
   private readonly walletService = inject(WalletService);
   private readonly toastService = inject(ToastServiceHandler);
@@ -99,7 +98,9 @@ export class VcViewComponent implements OnInit {
     new EventEmitter();
   @Output() public statusChanged = new EventEmitter<{ id: string; status: LifeCycleStatus }>();
 
-  credentialType!: ExtendedCredentialType;
+  public readonly credentialType = computed<ExtendedCredentialType>(
+    () => getExtendedCredentialType(this.credentialInput$())
+  );
 
   public cred_cbor = '';
   public isAlertOpenNotFound = false;
@@ -254,10 +255,6 @@ export class VcViewComponent implements OnInit {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  public ngOnInit(): void {
-    this.credentialType = getExtendedCredentialType(this.credentialInput$());
-  }
-
   public async copyToClipboard(text: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(text);
@@ -339,8 +336,9 @@ export class VcViewComponent implements OnInit {
   }
 
   get iconUrl(): string | undefined {
-    return isValidCredentialType(this.credentialType)
-      ? CredentialTypeMap[this.credentialType]?.icon
+    const type = this.credentialType();
+    return isValidCredentialType(type)
+      ? CredentialTypeMap[type]?.icon
       : undefined;
   }
 
@@ -363,7 +361,12 @@ export class VcViewComponent implements OnInit {
 
     const detailSections = await this.displayService.getDetailSections(vc);
 
-    const showEncoded = this.credentialType?.startsWith('learcredential.machine.') || this.credentialType?.startsWith('gx.labelcredential.');
+    const credentialType = getExtendedCredentialType(vc);
+    const showEncoded = credentialType?.startsWith('learcredential.machine.')
+    || credentialType?.startsWith('gx.labelcredential.')
+    || credentialType === "LEARCredentialMachine"
+    || credentialType === 'gx:LabelCredential';
+    
     if (showEncoded && vc.credentialEncoded) {
       detailSections.push({
         section: 'vc-fields.credentialEncoded',

@@ -20,6 +20,7 @@ export interface VerifiableCredential {
 export const CREDENTIAL_TYPES_ARRAY = [
   'LEARCredentialEmployee',
   'LEARCredentialMachine',
+  'gx:LabelCredential',
   'learcredential.employee.w3c.4',
   'learcredential.employee.sd.1',
   'learcredential.machine.w3c.3',

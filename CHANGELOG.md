@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.11.8] - 2026-07-17
+### Added
+- Accept legacy type "gx:LabelCredential" (added to the credential type list and its icon mapping) to allow displaying this type of credential.
+- Show JWT and "copy" button for legacy "LEARCredentialMachine" and "gx:LabelCredential" credentials.
+
 ## [3.11.7] - 2026-07-16
 ### Fixed
 
