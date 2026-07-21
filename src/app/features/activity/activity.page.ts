@@ -121,7 +121,7 @@ export class ActivityPage implements OnInit, ViewWillEnter {
       const filename = this.activityExportService.buildFileName(new Date());
       this.activityExportService.triggerDownload(csv, filename);
     } catch {
-      this.showExportError();
+      void this.showExportError();
     }
   }
 
