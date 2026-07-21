@@ -604,7 +604,7 @@ describe('ActivityPage — activity detail modal (EUD-139)', () => {
     expect(mockModalController.create).toHaveBeenCalledWith(
       expect.objectContaining({
         component: ActivityDetailComponent,
-        componentProps: { entry: ENTRIES[1] }, // 'Cred C', first of the 'issued' filtered list
+        componentProps: { entry: ENTRIES[1], locale: 'en' }, // 'Cred C', first of the 'issued' filtered list
       })
     );
     expect(fixture.componentInstance.activeFilter()).toBe('issued');
