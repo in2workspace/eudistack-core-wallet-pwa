@@ -1,9 +1,10 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IonicModule, ModalController, ViewWillEnter } from '@ionic/angular';
+import { IonicModule, ModalController, ToastController, ViewWillEnter } from '@ionic/angular';
 import { SegmentValue } from '@ionic/core';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ACTIVITY_FILTERS, ActivityEntry, ActivityFilter } from 'src/app/core/models/activity.model';
+import { ActivityExportLabels, ActivityExportService } from 'src/app/core/services/activity-export.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { ConfirmModalComponent } from 'src/app/shared/components/confirm-modal/confirm-modal.component';
 import { formatAbsoluteTime, formatCounterparty } from 'src/app/shared/utils/activity-format.util';
@@ -32,7 +33,9 @@ export class ActivityPage implements OnInit, ViewWillEnter {
   );
 
   private readonly activityService = inject(ActivityService);
+  private readonly activityExportService = inject(ActivityExportService);
   private readonly modalController = inject(ModalController);
+  private readonly toastController = inject(ToastController);
   private readonly translate = inject(TranslateService);
 
   ngOnInit(): void {
@@ -110,6 +113,43 @@ export class ActivityPage implements OnInit, ViewWillEnter {
     if (hours < 24) return this.translate.instant('activity.time-hours', { count: hours });
     if (days < 7) return this.translate.instant('activity.time-days', { count: days });
     return new Date(timestamp).toLocaleDateString();
+  }
+
+  exportHistory(): void {
+    try {
+      const csv = this.activityExportService.buildCsv(this.entries(), this.buildExportLabels());
+      const filename = this.activityExportService.buildFileName(new Date());
+      this.activityExportService.triggerDownload(csv, filename);
+    } catch {
+      this.showExportError();
+    }
+  }
+
+  private buildExportLabels(): ActivityExportLabels {
+    return {
+      headers: {
+        type: this.translate.instant('activity.csv-header-type'),
+        credentialName: this.translate.instant('activity.csv-header-credential'),
+        counterparty: this.translate.instant('activity.csv-header-counterparty'),
+        timestamp: this.translate.instant('activity.csv-header-date'),
+        details: this.translate.instant('activity.csv-header-details'),
+      },
+      types: {
+        issued: this.translate.instant('activity.type-issued'),
+        presented: this.translate.instant('activity.type-presented'),
+        deleted: this.translate.instant('activity.type-deleted'),
+      },
+    };
+  }
+
+  private async showExportError(): Promise<void> {
+    const toast = await this.toastController.create({
+      message: this.translate.instant('activity.export-error'),
+      duration: 3000,
+      color: 'danger',
+      position: 'bottom',
+    });
+    await toast.present();
   }
 
   private async clearAll(): Promise<void> {
