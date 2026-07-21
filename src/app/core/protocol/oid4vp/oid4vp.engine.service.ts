@@ -112,6 +112,8 @@ export class Oid4vpEngineService {
 
     console.debug('[OID4VP] Step 7: Posting auth response to', selectorResponse.redirectUri);
     await this.postAuthorizationResponse(selectorResponse.redirectUri, selectorResponse.state, vpToken);
+
+    await this.logPresented(selectorResponse, aud);
   }
 
   // ── SD-JWT presentation with KB-JWT ────────────────────────────────
@@ -144,6 +146,13 @@ export class Oid4vpEngineService {
 
     console.debug('[OID4VP-SDJWT] Posting auth response to', selectorResponse.redirectUri);
     await this.postAuthorizationResponse(selectorResponse.redirectUri, selectorResponse.state, vpToken);
+
+    await this.logPresented(selectorResponse, aud, this.deriveSharedAttributeNames(sdJwtCompact));
+  }
+
+  private async logPresented(selectorResponse: VCReply, counterparty: string, sharedAttributes?: string[]): Promise<void> {
+    const credentialName = selectorResponse.selectedVcList[0]?.name;
+    await this.activityService.log('presented', credentialName, counterparty, undefined, sharedAttributes);
   }
 
   private async computeSdHash(sdJwtCompact: string): Promise<string> {
