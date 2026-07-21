@@ -349,7 +349,6 @@ describe('VcViewComponent', () => {
 
   it('should add credentialEncoded section for machine credential type when building detail sections', async () => {
     const current = component.credentialInput$();
-    component.credentialType = 'learcredential.machine.w3c.3' as any;
     const machineVc = {
       ...current,
       type: ['learcredential.machine.w3c.3'],
@@ -357,6 +356,7 @@ describe('VcViewComponent', () => {
     } as any;
     componentRef.setInput('credentialInput$', machineVc);
     fixture.detectChanges();
+    expect(component.credentialType()).toBe('learcredential.machine.w3c.3');
     await (component as any).updateDetailSections(machineVc);
 
     const encodedSection = component.detailViewSections$().find(
@@ -377,8 +377,7 @@ describe('VcViewComponent', () => {
     } as any;
     componentRef.setInput('credentialInput$', machineVc);
     fixture.detectChanges();
-    component.ngOnInit();
-    expect(component.credentialType).toBe('LEARCredentialMachine');
+    expect(component.credentialType()).toBe('LEARCredentialMachine');
 
     await (component as any).updateDetailSections(machineVc);
 
@@ -399,8 +398,7 @@ describe('VcViewComponent', () => {
     } as any;
     componentRef.setInput('credentialInput$', labelVc);
     fixture.detectChanges();
-    component.ngOnInit();
-    expect(component.credentialType).toBe('gx:LabelCredential');
+    expect(component.credentialType()).toBe('gx:LabelCredential');
 
     await (component as any).updateDetailSections(labelVc);
 
@@ -421,7 +419,6 @@ describe('VcViewComponent', () => {
     delete labelVcWithoutEncoded.credentialEncoded;
     componentRef.setInput('credentialInput$', labelVcWithoutEncoded);
     fixture.detectChanges();
-    component.ngOnInit();
 
     await (component as any).updateDetailSections(labelVcWithoutEncoded);
 
@@ -440,7 +437,6 @@ describe('VcViewComponent', () => {
     } as any;
     componentRef.setInput('credentialInput$', employeeVc);
     fixture.detectChanges();
-    component.ngOnInit();
 
     await (component as any).updateDetailSections(employeeVc);
 
