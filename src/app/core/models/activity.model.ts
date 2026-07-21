@@ -7,6 +7,7 @@ export interface ActivityEntry {
   counterparty: string;
   timestamp: number;
   details?: string;
+  sharedAttributes?: string[];
 }
 
 export type ActivityFilter = ActivityType | 'all';

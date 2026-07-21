@@ -6,6 +6,8 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ACTIVITY_FILTERS, ActivityEntry, ActivityFilter } from 'src/app/core/models/activity.model';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { ConfirmModalComponent } from 'src/app/shared/components/confirm-modal/confirm-modal.component';
+import { formatAbsoluteTime, formatCounterparty } from 'src/app/shared/utils/activity-format.util';
+import { ActivityDetailComponent } from './activity-detail/activity-detail.component';
 
 @Component({
     selector: 'app-activity',
@@ -20,6 +22,8 @@ export class ActivityPage implements OnInit, ViewWillEnter {
   activeFilter = signal<ActivityFilter>('all');
 
   readonly filters = ACTIVITY_FILTERS;
+  readonly formatCounterparty = formatCounterparty;
+  readonly formatAbsoluteTime = (timestamp: number) => formatAbsoluteTime(timestamp, this.translate.currentLang ?? 'en');
 
   filteredEntries = computed(() =>
     this.activeFilter() === 'all'
@@ -75,22 +79,22 @@ export class ActivityPage implements OnInit, ViewWillEnter {
     }
   }
 
-  formatCounterparty(entry: ActivityEntry): string {
-    const raw = entry.counterparty?.trim() ?? '';
-    if (!raw) {
-      return '';
-    }
-    try {
-      const url = new URL(raw);
-      if (url.hostname) {
-        return url.hostname;
-      }
-      if (url.protocol === 'did:') {
-        return this.truncateDid(raw);
-      }
-      return raw;
-    } catch {
-      return raw;
+  async openDetail(entry: ActivityEntry | null | undefined): Promise<void> {
+    if (!entry) return;
+
+    const modal = await this.modalController.create({
+      component: ActivityDetailComponent,
+      componentProps: { entry, locale: this.translate.currentLang ?? 'en' },
+      cssClass: 'activity-detail-modal',
+    });
+
+    await modal.present();
+  }
+
+  onEntryKeydown(event: KeyboardEvent, entry: ActivityEntry): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.openDetail(entry);
     }
   }
 
@@ -106,18 +110,6 @@ export class ActivityPage implements OnInit, ViewWillEnter {
     if (hours < 24) return this.translate.instant('activity.time-hours', { count: hours });
     if (days < 7) return this.translate.instant('activity.time-days', { count: days });
     return new Date(timestamp).toLocaleDateString();
-  }
-
-  private truncateDid(did: string): string {
-    const match = did.match(/^(did:[a-z0-9]+:)(.+)$/i);
-    if (!match) {
-      return did;
-    }
-    const [, prefix, identifier] = match;
-    if (identifier.length <= 14) {
-      return did;
-    }
-    return `${prefix}${identifier.slice(0, 4)}…${identifier.slice(-6)}`;
   }
 
   private async clearAll(): Promise<void> {
