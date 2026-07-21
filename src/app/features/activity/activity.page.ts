@@ -84,7 +84,7 @@ export class ActivityPage implements OnInit, ViewWillEnter {
 
     const modal = await this.modalController.create({
       component: ActivityDetailComponent,
-      componentProps: { entry },
+      componentProps: { entry, locale: this.translate.currentLang ?? 'en' },
       cssClass: 'activity-detail-modal',
     });
 
