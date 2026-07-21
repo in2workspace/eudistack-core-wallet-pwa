@@ -23,7 +23,7 @@ export class ActivityPage implements OnInit, ViewWillEnter {
 
   readonly filters = ACTIVITY_FILTERS;
   readonly formatCounterparty = formatCounterparty;
-  readonly formatAbsoluteTime = formatAbsoluteTime;
+  readonly formatAbsoluteTime = (timestamp: number) => formatAbsoluteTime(timestamp, this.translate.currentLang ?? 'en');
 
   filteredEntries = computed(() =>
     this.activeFilter() === 'all'
