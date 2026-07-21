@@ -34,6 +34,7 @@ export class VerifiableCredentialSubjectDataNormalizer {
   private normalizerMapByCredentialType: Record<CredentialType, (s: CredentialSubject) => CredentialSubject> = {
     'LEARCredentialEmployee': (s: CredentialSubject) => this.normalizeMandateSubject(s, true),
     'LEARCredentialMachine': (s: CredentialSubject) => this.normalizeMandateSubject(s, false),
+    'gx:LabelCredential': (s: CredentialSubject) => s,
     'learcredential.employee.w3c.4': (s: CredentialSubject) => this.normalizeMandateSubject(s, true),
     'learcredential.employee.sd.1': (s: CredentialSubject) => this.normalizeMandateSubject(s, true),
     'learcredential.machine.w3c.3': (s: CredentialSubject) => this.normalizeMandateSubject(s, false),
