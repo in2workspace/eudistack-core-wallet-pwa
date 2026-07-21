@@ -369,16 +369,7 @@
     "detail-result-completed": "Completed",
     "detail-field-details": "Details",
     "detail-shared-attributes-title": "Shared attributes",
-    "detail-shared-attributes-empty": "No shared attributes were recorded for this presentation.",
-    "detail-title": "Activity detail",
-    "detail-credential": "Credential",
-    "detail-counterparty-issuer": "Issuer",
-    "detail-counterparty-verifier": "Verifier",
-    "detail-date": "Date",
-    "detail-result": "Result",
-    "detail-result-success": "Completed",
-    "detail-attributes": "Shared attributes",
-    "detail-no-attributes": "No shared attributes were recorded for this presentation."
+    "detail-shared-attributes-empty": "No shared attributes were recorded for this presentation."
   },
   "devices": {
     "settings-link": "My Devices",
