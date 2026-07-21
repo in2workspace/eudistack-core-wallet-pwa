@@ -349,7 +349,6 @@ describe('VcViewComponent', () => {
 
   it('should add credentialEncoded section for machine credential type when building detail sections', async () => {
     const current = component.credentialInput$();
-    component.credentialType = 'learcredential.machine.w3c.3' as any;
     const machineVc = {
       ...current,
       type: ['learcredential.machine.w3c.3'],
@@ -357,6 +356,7 @@ describe('VcViewComponent', () => {
     } as any;
     componentRef.setInput('credentialInput$', machineVc);
     fixture.detectChanges();
+    expect(component.credentialType()).toBe('learcredential.machine.w3c.3');
     await (component as any).updateDetailSections(machineVc);
 
     const encodedSection = component.detailViewSections$().find(
@@ -366,6 +366,84 @@ describe('VcViewComponent', () => {
     expect(encodedSection?.fields.length).toBe(1);
     expect(encodedSection?.fields[0].label).toBe('vc-fields.credentialEncoded');
     expect(encodedSection?.fields[0].value).toBe('encoded_value');
+  });
+
+  it('should add credentialEncoded section for LEARCredentialMachine type array', async () => {
+    const current = component.credentialInput$();
+    const machineVc = {
+      ...current,
+      type: ['VerifiableCredential', 'LEARCredentialMachine'],
+      credentialEncoded: 'encoded_machine_value' as any,
+    } as any;
+    componentRef.setInput('credentialInput$', machineVc);
+    fixture.detectChanges();
+    expect(component.credentialType()).toBe('LEARCredentialMachine');
+
+    await (component as any).updateDetailSections(machineVc);
+
+    const encodedSection = component.detailViewSections$().find(
+      s => s.section === 'vc-fields.credentialEncoded'
+    );
+    expect(encodedSection).toBeTruthy();
+    expect(encodedSection?.fields[0].label).toBe('vc-fields.credentialEncoded');
+    expect(encodedSection?.fields[0].value).toBe('encoded_machine_value');
+  });
+
+  it('should add credentialEncoded section for gx:LabelCredential type array', async () => {
+    const current = component.credentialInput$();
+    const labelVc = {
+      ...current,
+      type: ['VerifiableCredential', 'gx:LabelCredential'],
+      credentialEncoded: 'encoded_label_value' as any,
+    } as any;
+    componentRef.setInput('credentialInput$', labelVc);
+    fixture.detectChanges();
+    expect(component.credentialType()).toBe('gx:LabelCredential');
+
+    await (component as any).updateDetailSections(labelVc);
+
+    const encodedSection = component.detailViewSections$().find(
+      s => s.section === 'vc-fields.credentialEncoded'
+    );
+    expect(encodedSection).toBeTruthy();
+    expect(encodedSection?.fields[0].label).toBe('vc-fields.credentialEncoded');
+    expect(encodedSection?.fields[0].value).toBe('encoded_label_value');
+  });
+
+  it('should NOT add credentialEncoded section for machine/label type when credentialEncoded is missing', async () => {
+    const current = component.credentialInput$();
+    const labelVcWithoutEncoded = {
+      ...current,
+      type: ['VerifiableCredential', 'gx:LabelCredential'],
+    } as any;
+    delete labelVcWithoutEncoded.credentialEncoded;
+    componentRef.setInput('credentialInput$', labelVcWithoutEncoded);
+    fixture.detectChanges();
+
+    await (component as any).updateDetailSections(labelVcWithoutEncoded);
+
+    const encodedSection = component.detailViewSections$().find(
+      s => s.section === 'vc-fields.credentialEncoded'
+    );
+    expect(encodedSection).toBeUndefined();
+  });
+
+  it('should NOT add credentialEncoded section for non-machine/label type even with credentialEncoded', async () => {
+    const current = component.credentialInput$();
+    const employeeVc = {
+      ...current,
+      type: ['VerifiableCredential', 'LEARCredentialEmployee'],
+      credentialEncoded: 'encoded_value' as any,
+    } as any;
+    componentRef.setInput('credentialInput$', employeeVc);
+    fixture.detectChanges();
+
+    await (component as any).updateDetailSections(employeeVc);
+
+    const encodedSection = component.detailViewSections$().find(
+      s => s.section === 'vc-fields.credentialEncoded'
+    );
+    expect(encodedSection).toBeUndefined();
   });
 
   it('should use issuer string when issuer is a plain string when building detail sections', async () => {

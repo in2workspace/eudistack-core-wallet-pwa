@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **EUD-139 US-04 — Ver el detalle de un evento de actividad**: `ActivityDetailComponent`, un modal Ionic read-only abierto desde `ActivityPage.openDetail(entry)` al pulsar (click o teclado, con `role="button"`/`aria-label`) cualquier `.activity-card`. Muestra credencial, contraparte (etiqueta según `issued`/`presented`, omitida si está ausente o el tipo no aplica), fecha absoluta y un resultado fijo "Completada". Para eventos `presented` añade una sección de atributos compartidos, con aviso explícito cuando no hay ninguno registrado. Sin controles de escritura — solo cerrar. Tipos de actividad desconocidos degradan a una etiqueta genérica en vez de lanzar excepción. Abrir y cerrar el modal no recarga ni muta `entries()` ni el filtro activo de la lista.
 - **EUD-139 — captura de atributos compartidos en la presentación OID4VP**: `Oid4vpEngineService` deriva los nombres de los claims divulgados de una presentación SD-JWT (`deriveSharedAttributeNames`, vía `SdJwtParserService.reconstructClaims()`), excluyendo los claims registrados (`iss`, `iat`, `exp`, `cnf`, `vct`, `_sd*`), y los adjunta al registro de actividad `'presented'` (`ActivityEntry.sharedAttributes?: string[]`, nuevo parámetro opcional en `ActivityService.log()`). Cambio aditivo y no bloqueante: un fallo de parseo o una credencial no-SD-JWT degradan a "sin atributos" en vez de interrumpir la presentación.
 - Extraídos `formatCounterparty`/`formatAbsoluteTime` de `ActivityPage` a `shared/utils/activity-format.util.ts`, reutilizados tanto por `ActivityPage` como por `ActivityDetailComponent`.
+## [3.11.8] - 2026-07-17
+### Added
+- Accept legacy type "gx:LabelCredential" (added to the credential type list and its icon mapping) to allow displaying this type of credential.
+- Show JWT and "copy" button for legacy "LEARCredentialMachine" and "gx:LabelCredential" credentials.
 
 ## [3.11.7] - 2026-07-16
 ### Fixed

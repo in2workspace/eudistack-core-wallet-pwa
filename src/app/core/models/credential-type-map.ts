@@ -7,6 +7,7 @@ export interface CredentialMapConfig {
 export const CredentialTypeMap: Record<CredentialType, CredentialMapConfig> = {
   'LEARCredentialEmployee':        { icon: 'assets/icons/LearCredentialEmployee.png' },
   'LEARCredentialMachine':         { icon: 'assets/icons/LearCredentialMachine.png' },
+  'gx:LabelCredential':            { icon: 'assets/icons/LabelCredential.png' },
   'learcredential.employee.w3c.4': { icon: 'assets/icons/LearCredentialEmployee.png' },
   'learcredential.employee.sd.1':  { icon: 'assets/icons/LearCredentialEmployee.png' },
   'learcredential.machine.w3c.3':  { icon: 'assets/icons/LearCredentialMachine.png' },
