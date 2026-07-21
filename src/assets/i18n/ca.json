@@ -365,16 +365,7 @@
     "detail-result-completed": "Completada",
     "detail-field-details": "Detalls",
     "detail-shared-attributes-title": "Atributs compartits",
-    "detail-shared-attributes-empty": "No s'han registrat atributs compartits per a aquesta presentació.",
-    "detail-title": "Detall de l'activitat",
-    "detail-credential": "Credencial",
-    "detail-counterparty-issuer": "Emissor",
-    "detail-counterparty-verifier": "Verificador",
-    "detail-date": "Data",
-    "detail-result": "Resultat",
-    "detail-result-success": "Completada",
-    "detail-attributes": "Atributs compartits",
-    "detail-no-attributes": "No es van registrar atributs compartits per a aquesta presentació."
+    "detail-shared-attributes-empty": "No s'han registrat atributs compartits per a aquesta presentació."
   },
   "devices": {
     "settings-link": "Els Meus Dispositius",
