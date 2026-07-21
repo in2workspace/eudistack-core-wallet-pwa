@@ -205,8 +205,9 @@ export class Oid4vpEngineService {
   /** Records a 'presented' activity entry once the presentation has been posted successfully (AD-2, NFR-P-02). */
   private async logPresentedActivity(selectorResponse: VCReply, sharedAttributes?: string[]): Promise<void> {
     const selectedVc = selectorResponse.selectedVcList[0];
-    const counterparty = selectorResponse.clientId ?? selectorResponse.redirectUri;
-    await this.activityService.log('presented', selectedVc.name, counterparty, undefined, sharedAttributes);
+    const credName = selectedVc?.name ?? selectedVc?.type?.[0] ?? 'Unknown';
+    const counterparty = selectorResponse.clientId ?? selectorResponse.redirectUri ?? '';
+    await this.activityService.log('presented', credName, counterparty, undefined, sharedAttributes);
   }
 
   /**
