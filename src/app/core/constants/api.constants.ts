@@ -5,6 +5,7 @@ const apiV1HybridPath = `${apiV1KeysPath}/hybrid`;
 const OPENID_OFFER = `${apiV1Path}/openid-credential-offer` as const;
 
 export const SERVER_PATH = Object.freeze({
+  ACTIVITY: `${apiV1Path}/activity`,
   CBOR : `${apiV1Path}/vp/cbor`,
   CREDENTIALS: `${apiV1Path}/credentials`,
   CREDENTIALS_SIGNED_BY_ID: `${apiV1Path}/request-signed-credential`,

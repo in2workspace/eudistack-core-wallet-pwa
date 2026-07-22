@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.14.0] - 2026-07-22
+
+### Added
+
+- **EUD-141 US-06 — Recuperar y sincronizar el historial de actividad en modo server**: `ActivityService` pasa a ser mode-aware (patrón `WalletService.isBrowserMode()`), consumiendo el nuevo backend EBW (`GET`/`POST /api/v1/activity`) en modo server y manteniendo IndexedDB como caché — no como fuente. `findAll()` en modo server hace `GET`, sobreescribe la caché local con la respuesta (servidor = fuente de verdad, AC-03) y la devuelve; ante fallo de red cae a la caché existente sin lanzar ni borrarla (AD-4, ES-04). Nuevo `syncFromServer()` (no-op en modo browser, ES-05) disparado tras login en `login.page.ts`, en el mismo punto donde ya se sincronizan credenciales (`WalletService.syncCredentialsOnLogin()`) — recupera el historial tras borrado local o en un dispositivo nuevo (AC-01/AC-02). `log()` sigue escribiendo siempre en la caché local y, en modo server, hace además un `append()` best-effort al servidor (silencioso ante fallo — un evento no sincronizado se recupera en el siguiente `syncFromServer()`/`findAll()`, AD-1). Nuevo gateway `ServerActivityGateway` (`list()`/`append()` vía `HttpClient` + `UrlResolverService.serverUrl() + SERVER_PATH.ACTIVITY`) con mapper explícito bidireccional entre el modelo del cliente (`'issued' | 'presented' | 'deleted'`) y el contrato del backend EBW (`ActivityType {ISSUED, PRESENTED, DELETED}`, JSON snake_case `credential_name`/`shared_attributes`/`created_at` — sin timestamp suministrado por el cliente, el servidor asigna `created_at` siempre). Sin cambios de comportamiento en modo browser (US-01..US-05 intactas, ES-05).
+- **EUD-141 — test coverage**: `server-activity.gateway.spec.ts` (nuevo — contrato HTTP `GET`/`POST` + mapeo de tipos/campos, historial vacío, idempotencia). `activity.service.spec.ts` extendido con branching por modo: recuperación/sync sobrescribiendo la caché, fallback offline sin mutar la caché ante error (ES-04), `log()` no bloqueante ante fallo de `append()` (AD-1), y guardas de modo browser (sin llamadas al gateway, ES-05). `activity.page.spec.ts` extendido — vista read-only sin ningún control de sincronización manual expuesto (AC-07) y estado vacío correcto cuando el historial recuperado del servidor está vacío (EC-04). `login.page.spec.ts` actualizado con el mock de `ActivityService`.
+
 ## [3.13.0] - 2026-07-21
 
 ### Added

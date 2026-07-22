@@ -10,6 +10,7 @@ import { PasskeyApiService } from 'src/app/core/services/passkey-api.service';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { WalletService } from 'src/app/core/services/wallet.service';
+import { ActivityService } from 'src/app/core/services/activity.service';
 
 describe('LoginPage (server mode)', () => {
   let component: LoginPage;
@@ -29,6 +30,7 @@ describe('LoginPage (server mode)', () => {
   let mockPasskeyApi: { registerPasskey: jest.Mock };
   let mockRouter: { navigateByUrl: jest.Mock };
   let mockWalletService: { syncCredentialsOnLogin: jest.Mock };
+  let mockActivityService: { syncFromServer: jest.Mock };
 
   beforeEach(async () => {
     localStorage.clear();
@@ -62,6 +64,7 @@ describe('LoginPage (server mode)', () => {
     };
     mockRouter = { navigateByUrl: jest.fn() };
     mockWalletService = { syncCredentialsOnLogin: jest.fn().mockReturnValue(of(undefined)) };
+    mockActivityService = { syncFromServer: jest.fn().mockResolvedValue(undefined) };
 
     await TestBed.configureTestingModule({
       imports: [LoginPage, TranslateModule.forRoot()],
@@ -77,6 +80,7 @@ describe('LoginPage (server mode)', () => {
           useValue: { installDecision$: of(false), isStandalone: false, promptInstall: jest.fn() }
         },
         { provide: WalletService, useValue: mockWalletService },
+        { provide: ActivityService, useValue: mockActivityService },
       ]
     }).compileComponents();
 

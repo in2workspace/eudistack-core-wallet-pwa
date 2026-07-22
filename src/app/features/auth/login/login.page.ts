@@ -17,6 +17,7 @@ import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { LocalAuthService } from 'src/app/core/services/local-auth.service';
 import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input.component';
 import { WalletService } from 'src/app/core/services/wallet.service';
+import { ActivityService } from 'src/app/core/services/activity.service';
 
 @Component({
     selector: 'app-login',
@@ -246,6 +247,7 @@ export class LoginPage {
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
   private readonly walletService = inject(WalletService);
+  private readonly activityService = inject(ActivityService);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
   readonly hasExistingPasskey = this.prfService.hasPasskey();
@@ -476,5 +478,6 @@ export class LoginPage {
       next: () => console.log('Credentials synced'),
       error: err => console.error('Sync failed', err)
     });
+    this.activityService.syncFromServer();
   }
 }
