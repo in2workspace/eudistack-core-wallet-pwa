@@ -48,7 +48,7 @@ export class Oid4vpEngineService {
         if (!holderJwk) {
           console.error('[OID4VP] FAIL: Cannot resolve holder JWK. cnf=', credentialPayload?.cnf, 'Full payload=', credentialPayload);
           throw new Oid4vpError('Missing holder key in selected credential (no cnf.jwk, cnf.kid, or mandate.mandatee.id)', {
-              translationKey: 'errors.credential-validation-failed',
+            translationKey: 'errors.credential-validation-failed',
           });
         }
         console.debug('[OID4VP] Step 3 OK: holder JWK resolved');
@@ -65,7 +65,7 @@ export class Oid4vpEngineService {
           if (!credentialSubjectId) {
             console.error('[OID4VP] FAIL: Missing holder id. vc=', credentialPayload?.vc, 'credentialSubject=', credentialPayload?.credentialSubject);
             throw new Oid4vpError('Missing holder id in selected credential', {
-                translationKey: 'errors.credential-validation-failed',
+              translationKey: 'errors.credential-validation-failed',
             });
           }
           console.debug('[OID4VP] Step 4 OK: credentialSubject.id=', credentialSubjectId);
@@ -75,7 +75,7 @@ export class Oid4vpEngineService {
 
         console.info('OID4VP flow completed successfully.');
       }});
-    }
+  }
 
   // ── JWT-VC presentation (existing flow) ────────────────────────────
 
@@ -234,14 +234,14 @@ export class Oid4vpEngineService {
 
     if (!selectedVc) {
       throw new Oid4vpError('No VC available for presentation', {
-          translationKey: 'errors.no-credentials-available',
+        translationKey: 'errors.no-credentials-available',
       });
     }
 
     const signedJwt = this.credentialCacheService.extractSignedJwt(selectedVc);
     if (!signedJwt) {
       throw new Oid4vpError('Selected credential does not have a signed JWT (credentialEncoded)', {
-          translationKey: 'errors.credential-validation-failed',
+        translationKey: 'errors.credential-validation-failed',
       });
     }
     return signedJwt;
@@ -274,9 +274,9 @@ export class Oid4vpEngineService {
     const signature = await this.keyStorageProvider.sign(keyId, signingBytes);
 
     if (signature.length !== 64) {
-        throw new Oid4vpError(`Unexpected signature length: ${signature.length}`, {
-            translationKey: 'errors.browser-storage-operation-failed',
-        });
+      throw new Oid4vpError(`Unexpected signature length: ${signature.length}`, {
+        translationKey: 'errors.browser-storage-operation-failed',
+      });
     }
 
     const encodedSignature = this.jwtService.base64UrlEncode(signature);
@@ -285,11 +285,11 @@ export class Oid4vpEngineService {
 
   private errorToTranslationKey(e: unknown): string | null {
     if (e instanceof AppError) {
-        if (e.code === 'user_cancelled') return null;
-        return e.translationKey ?? 'errors.default';
+      if (e.code === 'user_cancelled') return null;
+      return e.translationKey ?? 'errors.default';
     }
     return 'errors.default';
-    }
+  }
 
   private async postAuthorizationResponse(
     redirectUri: string,
@@ -297,7 +297,7 @@ export class Oid4vpEngineService {
     vpToken: string
   ): Promise<string> {
     try {
-       return await firstValueFrom(
+      return await firstValueFrom(
         this.walletService.postOid4vpAuthorizationResponse(
           redirectUri,
           state,
