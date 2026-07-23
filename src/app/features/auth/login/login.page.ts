@@ -514,7 +514,6 @@ export class LoginPage {
 
   private syncCredentialCache(): void {
     this.walletService.syncCredentialsOnLogin().subscribe({
-      next: () => console.log('Credentials synced'),
       error: err => {
         // Same reasoning as syncCredentialsThenNavigate: force a terminal state
         // so the store never gets stuck in 'loading' on a failed server fetch.
