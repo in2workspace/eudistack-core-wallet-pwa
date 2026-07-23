@@ -485,9 +485,9 @@ export class LoginPage {
 
     if (this.isProtocolDeepLink(pending)) {
       try {
-        await firstValueFrom(this.walletService.syncCredentialsOnLogin());
+        await firstValueFrom(this.walletService.syncCredentials());
       } catch (err) {
-        // If the server fetch fails, syncCredentialsOnLogin errors before
+        // If the server fetch fails, syncCredentials errors before
         // refreshCredentials() runs, so the store would stay 'loading' (stuck
         // skeleton). Force a terminal 'error' state so the credentials page /
         // VP flow can surface it instead of spinning forever.
@@ -513,7 +513,7 @@ export class LoginPage {
   }
 
   private syncCredentialCache(): void {
-    this.walletService.syncCredentialsOnLogin().subscribe({
+    this.walletService.syncCredentials().subscribe({
       error: err => {
         // Same reasoning as syncCredentialsThenNavigate: force a terminal state
         // so the store never gets stuck in 'loading' on a failed server fetch.

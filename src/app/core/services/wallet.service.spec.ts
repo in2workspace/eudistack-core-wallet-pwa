@@ -190,7 +190,7 @@ describe('WalletService', () => {
     it('should sync credentials from server to IndexedDB on login (atomic replace)', async () => {
       createModule('server');
 
-      service.syncCredentialsOnLogin().subscribe();
+      service.syncCredentials().subscribe();
 
       await Promise.resolve();
 

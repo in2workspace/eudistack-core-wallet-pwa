@@ -30,7 +30,7 @@ describe('LoginPage (server mode)', () => {
   let mockPasskeyStore: { getCredentialId: jest.Mock; hasPasskey: jest.Mock };
   let mockPasskeyApi: { registerPasskey: jest.Mock };
   let mockRouter: { navigateByUrl: jest.Mock };
-  let mockWalletService: { syncCredentialsOnLogin: jest.Mock };
+  let mockWalletService: { syncCredentials: jest.Mock };
   let mockCredentialCache: { setLoading: jest.Mock; setError: jest.Mock };
 
   beforeEach(async () => {
@@ -64,7 +64,7 @@ describe('LoginPage (server mode)', () => {
       registerPasskey: jest.fn().mockReturnValue(of({ id: 'p1', credentialId: 'cred-local-1', displayName: 'device' })),
     };
     mockRouter = { navigateByUrl: jest.fn() };
-    mockWalletService = { syncCredentialsOnLogin: jest.fn().mockReturnValue(of(undefined)) };
+    mockWalletService = { syncCredentials: jest.fn().mockReturnValue(of(undefined)) };
     mockCredentialCache = { setLoading: jest.fn(), setError: jest.fn() };
 
     await TestBed.configureTestingModule({
@@ -269,7 +269,7 @@ describe('LoginPage (server mode)', () => {
       await component.verifyPasskey();
 
       // Fire-and-forget sync path; navigation happens regardless.
-      expect(mockWalletService.syncCredentialsOnLogin).toHaveBeenCalled();
+      expect(mockWalletService.syncCredentials).toHaveBeenCalled();
       expect(mockRouter.navigateByUrl).toHaveBeenCalled();
     });
 
@@ -277,7 +277,7 @@ describe('LoginPage (server mode)', () => {
       sessionStorage.setItem(PENDING_DEEP_LINK_KEY, '/tabs/credentials?authorizationRequest=xyz');
 
       let resolveSync!: () => void;
-      mockWalletService.syncCredentialsOnLogin.mockReturnValue(
+      mockWalletService.syncCredentials.mockReturnValue(
         new Observable<void>(sub => { resolveSync = () => { sub.next(); sub.complete(); }; })
       );
 
@@ -296,7 +296,7 @@ describe('LoginPage (server mode)', () => {
 
     it('sets the store to error (not stuck loading) and still navigates when the awaited sync fails', async () => {
       sessionStorage.setItem(PENDING_DEEP_LINK_KEY, '/tabs/credentials?authorizationRequest=xyz');
-      mockWalletService.syncCredentialsOnLogin.mockReturnValue(throwError(() => new Error('server down')));
+      mockWalletService.syncCredentials.mockReturnValue(throwError(() => new Error('server down')));
 
       await component.verifyPasskey();
 

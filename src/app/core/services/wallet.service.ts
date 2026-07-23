@@ -106,7 +106,7 @@ export class WalletService {
     );
   }
 
-  public syncCredentialsOnLogin(): Observable<void> {
+  public syncCredentials(): Observable<void> {
     // Fetch from the server FIRST, then swap the local store atomically. We never
     // clear IndexedDB before we hold the new data, so a reader can't observe an
     // empty store mid-sync.
@@ -177,7 +177,7 @@ export class WalletService {
               { ...credResponse },
               options
     ).pipe(
-      switchMap(() => this.syncCredentialsOnLogin())
+      switchMap(() => this.syncCredentials())
     );
   }
 
