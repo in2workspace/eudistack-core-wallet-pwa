@@ -10,6 +10,8 @@ import { PasskeyApiService } from 'src/app/core/services/passkey-api.service';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { WalletService } from 'src/app/core/services/wallet.service';
+import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
+import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 
 describe('LoginPage (server mode)', () => {
   let component: LoginPage;
@@ -29,6 +31,7 @@ describe('LoginPage (server mode)', () => {
   let mockPasskeyApi: { registerPasskey: jest.Mock };
   let mockRouter: { navigateByUrl: jest.Mock };
   let mockWalletService: { syncCredentialsOnLogin: jest.Mock };
+  let mockCredentialCache: { setLoading: jest.Mock; setError: jest.Mock };
 
   beforeEach(async () => {
     localStorage.clear();
@@ -62,6 +65,7 @@ describe('LoginPage (server mode)', () => {
     };
     mockRouter = { navigateByUrl: jest.fn() };
     mockWalletService = { syncCredentialsOnLogin: jest.fn().mockReturnValue(of(undefined)) };
+    mockCredentialCache = { setLoading: jest.fn(), setError: jest.fn() };
 
     await TestBed.configureTestingModule({
       imports: [LoginPage, TranslateModule.forRoot()],
@@ -77,6 +81,7 @@ describe('LoginPage (server mode)', () => {
           useValue: { installDecision$: of(false), isStandalone: false, promptInstall: jest.fn() }
         },
         { provide: WalletService, useValue: mockWalletService },
+        { provide: CredentialCacheService, useValue: mockCredentialCache },
       ]
     }).compileComponents();
 
@@ -238,6 +243,65 @@ describe('LoginPage (server mode)', () => {
       await component.verifyPasskey();
 
       expect(mockCredentialsGet).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+  });
+
+  describe('credential sync coordination on login', () => {
+    beforeEach(() => {
+      const mockCredentialsGet = jest.fn().mockResolvedValue({});
+      Object.defineProperty(globalThis.navigator, 'credentials', {
+        value: { get: mockCredentialsGet },
+        configurable: true,
+        writable: true,
+      });
+      component.needsPasskeySetup = false;
+    });
+
+    it('marks the store as loading before navigating', async () => {
+      await component.verifyPasskey();
+
+      expect(mockCredentialCache.setLoading).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('does NOT block navigation on the sync for a normal login (no deep link)', async () => {
+      await component.verifyPasskey();
+
+      // Fire-and-forget sync path; navigation happens regardless.
+      expect(mockWalletService.syncCredentialsOnLogin).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('AWAITS the sync before navigating when a protocol deep link is pending', async () => {
+      sessionStorage.setItem(PENDING_DEEP_LINK_KEY, '/tabs/credentials?authorizationRequest=xyz');
+
+      let resolveSync!: () => void;
+      mockWalletService.syncCredentialsOnLogin.mockReturnValue(
+        new Observable<void>(sub => { resolveSync = () => { sub.next(); sub.complete(); }; })
+      );
+
+      const pending = component.verifyPasskey();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Navigation is held until the credential sync completes.
+      expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+
+      resolveSync();
+      await pending;
+
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('sets the store to error (not stuck loading) and still navigates when the awaited sync fails', async () => {
+      sessionStorage.setItem(PENDING_DEEP_LINK_KEY, '/tabs/credentials?authorizationRequest=xyz');
+      mockWalletService.syncCredentialsOnLogin.mockReturnValue(throwError(() => new Error('server down')));
+
+      await component.verifyPasskey();
+
+      expect(mockCredentialCache.setError).toHaveBeenCalled();
+      // navigation is not blocked by the failure — the page then surfaces the error state
       expect(mockRouter.navigateByUrl).toHaveBeenCalled();
     });
   });

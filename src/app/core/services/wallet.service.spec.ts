@@ -16,6 +16,7 @@ import { WalletDiscoveryService } from './wallet-discovery.service';
 import { WALLET_DISCOVERY_GATEWAY } from '../gateways/wallet-discovery.gateway';
 import { of } from 'rxjs';
 import {FinalizeIssuancePayload} from "../models/FinalizeIssuancePayload";
+import { CredentialCacheService } from '../../shared/services/credential-cache.service';
 
 const mockCredential: VerifiableCredential = {
   '@context': ['https://www.w3.org/ns/credentials/v1'],
@@ -77,7 +78,9 @@ describe('WalletService', () => {
     updateCredentialStatus: jest.Mock;
     saveCredential: jest.Mock;
     clearAllCredentials: jest.Mock;
+    replaceAllCredentials: jest.Mock;
   };
+  let credentialCache: CredentialCacheService;
 
   function createModule(walletMode: 'browser' | 'server' = 'browser'): void {
     mockCredentialStorage = {
@@ -86,6 +89,7 @@ describe('WalletService', () => {
       updateCredentialStatus: jest.fn().mockResolvedValue(undefined),
       saveCredential: jest.fn().mockResolvedValue(undefined),
       clearAllCredentials: jest.fn().mockResolvedValue(undefined),
+      replaceAllCredentials: jest.fn().mockResolvedValue(undefined),
     };
 
     TestBed.configureTestingModule({
@@ -100,6 +104,8 @@ describe('WalletService', () => {
     });
     service = TestBed.inject(WalletService);
     httpTestingController = TestBed.inject(HttpTestingController);
+    credentialCache = TestBed.inject(CredentialCacheService);
+    credentialCache.setLoaded([]); // reset reactive state between tests
   }
 
   afterEach(() => {
@@ -181,13 +187,14 @@ describe('WalletService', () => {
       });
     });
 
-    it('should sync credentials from server to IndexedDB on login', async () => {
+    it('should sync credentials from server to IndexedDB on login (atomic replace)', async () => {
       createModule('server');
 
       service.syncCredentialsOnLogin().subscribe();
 
       await Promise.resolve();
 
+      // Server is fetched FIRST, before touching local storage.
       const req = httpTestingController.expectOne(
         environment.server_url + SERVER_PATH.CREDENTIALS
       );
@@ -196,8 +203,12 @@ describe('WalletService', () => {
 
       req.flush([mockCredential]);
 
-      expect(mockCredentialStorage.clearAllCredentials)
-        .toHaveBeenCalled();
+      await Promise.resolve();
+
+      // Atomic swap: single replaceAllCredentials call, no clear+save-per-item.
+      expect(mockCredentialStorage.replaceAllCredentials)
+        .toHaveBeenCalledWith([mockCredential]);
+      expect(mockCredentialStorage.clearAllCredentials).not.toHaveBeenCalled();
     });
 
     it('should return credentialEncoded from local in browser mode (via discovery)', (done) => {
@@ -318,11 +329,51 @@ describe('WalletService', () => {
 
       getReq.flush([mockCredential]);
 
-      expect(mockCredentialStorage.clearAllCredentials)
-        .toHaveBeenCalled();
+      await Promise.resolve();
 
-      expect(mockCredentialStorage.saveCredential)
-        .toHaveBeenCalledWith(mockCredential);
+      expect(mockCredentialStorage.replaceAllCredentials)
+        .toHaveBeenCalledWith([mockCredential]);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // refreshCredentials: reactive store transitions
+  // ---------------------------------------------------------------------------
+
+  describe('refreshCredentials', () => {
+    it('should load from local storage and set the store to loaded', (done) => {
+      createModule('browser');
+
+      service.refreshCredentials().subscribe(() => {
+        expect(mockCredentialStorage.getAllCredentials).toHaveBeenCalled();
+        expect(credentialCache.status()).toBe('loaded');
+        expect(credentialCache.snapshot().credentials.length).toBe(1);
+        done();
+      });
+    });
+
+    it('should set error status WITHOUT clearing the existing list on failure', (done) => {
+      createModule('browser');
+      credentialCache.setLoaded([mockCredential]); // pre-existing list
+      mockCredentialStorage.getAllCredentials.mockRejectedValueOnce(new Error('IndexedDB down'));
+
+      service.refreshCredentials().subscribe(() => {
+        expect(credentialCache.status()).toBe('error');
+        // list preserved — a transient failure must not blank the wallet
+        expect(credentialCache.snapshot().credentials.length).toBe(1);
+        done();
+      });
+    });
+
+    it('should treat an empty result as a loaded-empty wallet (not an error)', (done) => {
+      createModule('browser');
+      mockCredentialStorage.getAllCredentials.mockResolvedValueOnce([]);
+
+      service.refreshCredentials().subscribe(() => {
+        expect(credentialCache.status()).toBe('loaded');
+        expect(credentialCache.snapshot().credentials.length).toBe(0);
+        done();
+      });
     });
   });
 });
