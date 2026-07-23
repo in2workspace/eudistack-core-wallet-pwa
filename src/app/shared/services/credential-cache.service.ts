@@ -30,7 +30,7 @@ export class CredentialCacheService {
 
   private readonly _state = signal<CredentialState>({ status: 'idle', credentials: [] });
 
-  readonly credentials: Signal<VerifiableCredential[]> = computed(() => this._state().credentials);
+  readonly credentials: Signal<VerifiableCredential[]> = computed(() => [...this._state().credentials]);
   readonly status: Signal<CredentialLoadStatus> = computed(() => this._state().status);
 
   /** Synchronous snapshot of the current state (for imperative reads, e.g. VP filtering). */
