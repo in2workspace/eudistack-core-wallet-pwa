@@ -1,6 +1,6 @@
 import { CONTENT_TYPE } from './../constants/content-type.constants';
 
-import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams, HttpResponse} from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams, HttpResponse} from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import {catchError, from, map, Observable, of, switchMap, tap} from 'rxjs';
 import { LifeCycleStatus, VerifiableCredential } from '../models/verifiable-credential';
@@ -94,11 +94,8 @@ export class WalletService {
       ),
       tap((credentials) => this.credentialCache.setLoaded(credentials)),
       catchError((error: unknown) => {
-        if ((error as HttpErrorResponse)?.status === 404) {
-          // Genuine empty wallet (legacy HTTP semantics), not a failure
-          this.credentialCache.setLoaded([]);
-          return of<VerifiableCredential[]>([]);
-        }
+        // getAllVCs() reads IndexedDB: an empty store is handled by the success
+        // path above (setLoaded([])). Reaching here means a real storage failure.
         console.error('Error refreshing credentials:', error);
         this.credentialCache.setError();
         return of(this.credentialCache.getAll());
