@@ -11,6 +11,8 @@ import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
+import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
+import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 
 describe('LoginPage (server mode)', () => {
   let component: LoginPage;
@@ -29,8 +31,9 @@ describe('LoginPage (server mode)', () => {
   let mockPasskeyStore: { getCredentialId: jest.Mock; hasPasskey: jest.Mock };
   let mockPasskeyApi: { registerPasskey: jest.Mock };
   let mockRouter: { navigateByUrl: jest.Mock };
-  let mockWalletService: { syncCredentialsOnLogin: jest.Mock };
+  let mockWalletService: { syncCredentials: jest.Mock };
   let mockActivityService: { syncFromServer: jest.Mock };
+  let mockCredentialCache: { setLoading: jest.Mock; setError: jest.Mock };
 
   beforeEach(async () => {
     localStorage.clear();
@@ -63,8 +66,9 @@ describe('LoginPage (server mode)', () => {
       registerPasskey: jest.fn().mockReturnValue(of({ id: 'p1', credentialId: 'cred-local-1', displayName: 'device' })),
     };
     mockRouter = { navigateByUrl: jest.fn() };
-    mockWalletService = { syncCredentialsOnLogin: jest.fn().mockReturnValue(of(undefined)) };
+    mockWalletService = { syncCredentials: jest.fn().mockReturnValue(of(undefined)) };
     mockActivityService = { syncFromServer: jest.fn().mockResolvedValue(undefined) };
+    mockCredentialCache = { setLoading: jest.fn(), setError: jest.fn() };
 
     await TestBed.configureTestingModule({
       imports: [LoginPage, TranslateModule.forRoot()],
@@ -81,6 +85,7 @@ describe('LoginPage (server mode)', () => {
         },
         { provide: WalletService, useValue: mockWalletService },
         { provide: ActivityService, useValue: mockActivityService },
+        { provide: CredentialCacheService, useValue: mockCredentialCache },
       ]
     }).compileComponents();
 
@@ -229,6 +234,25 @@ describe('LoginPage (server mode)', () => {
     });
   });
 
+  // EUD-104 traceability note: AC-03 (editable device name) and EC-02 (default name) are
+  // already exercised above by 'AC-05: edited device name...' and 'EC-04: device name
+  // defaults...' respectively — those EUD-103 test names predate this Story, but the
+  // assertions are the same ones EUD-104 needs (the frontend can't distinguish a first vs.
+  // second device; needsPasskeySetup is purely local state). Same for ES-02, fully covered
+  // by 'ES-05 / AD-1: passkey server-side registration failure' below.
+  describe('EUD-104 EC-01: no navigation before a passkey is actually registered', () => {
+    it('stays on the passkey-setup screen and does not navigate home right after verify', () => {
+      component.email = 'user@example.com';
+      component.otpValue = '123456';
+
+      component.verifyCode();
+
+      expect(component.needsPasskeySetup).toBe(true);
+      expect(component.step).toBe('passkey');
+      expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+    });
+  });
+
   describe('R-1: existing-passkey verification path (needsPasskeySetup = false) is unaffected', () => {
     it('authenticates locally and navigates home on success', async () => {
       const mockCredentialsGet = jest.fn().mockResolvedValue({});
@@ -242,6 +266,65 @@ describe('LoginPage (server mode)', () => {
       await component.verifyPasskey();
 
       expect(mockCredentialsGet).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+  });
+
+  describe('credential sync coordination on login', () => {
+    beforeEach(() => {
+      const mockCredentialsGet = jest.fn().mockResolvedValue({});
+      Object.defineProperty(globalThis.navigator, 'credentials', {
+        value: { get: mockCredentialsGet },
+        configurable: true,
+        writable: true,
+      });
+      component.needsPasskeySetup = false;
+    });
+
+    it('marks the store as loading before navigating', async () => {
+      await component.verifyPasskey();
+
+      expect(mockCredentialCache.setLoading).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('does NOT block navigation on the sync for a normal login (no deep link)', async () => {
+      await component.verifyPasskey();
+
+      // Fire-and-forget sync path; navigation happens regardless.
+      expect(mockWalletService.syncCredentials).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('AWAITS the sync before navigating when a protocol deep link is pending', async () => {
+      sessionStorage.setItem(PENDING_DEEP_LINK_KEY, '/tabs/credentials?authorizationRequest=xyz');
+
+      let resolveSync!: () => void;
+      mockWalletService.syncCredentials.mockReturnValue(
+        new Observable<void>(sub => { resolveSync = () => { sub.next(); sub.complete(); }; })
+      );
+
+      const pending = component.verifyPasskey();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Navigation is held until the credential sync completes.
+      expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+
+      resolveSync();
+      await pending;
+
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('sets the store to error (not stuck loading) and still navigates when the awaited sync fails', async () => {
+      sessionStorage.setItem(PENDING_DEEP_LINK_KEY, '/tabs/credentials?authorizationRequest=xyz');
+      mockWalletService.syncCredentials.mockReturnValue(throwError(() => new Error('server down')));
+
+      await component.verifyPasskey();
+
+      expect(mockCredentialCache.setError).toHaveBeenCalled();
+      // navigation is not blocked by the failure — the page then surfaces the error state
       expect(mockRouter.navigateByUrl).toHaveBeenCalled();
     });
   });

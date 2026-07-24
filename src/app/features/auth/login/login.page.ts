@@ -18,6 +18,7 @@ import { LocalAuthService } from 'src/app/core/services/local-auth.service';
 import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input.component';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
+import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 
 @Component({
     selector: 'app-login',
@@ -248,6 +249,7 @@ export class LoginPage {
   private readonly translate = inject(TranslateService);
   private readonly walletService = inject(WalletService);
   private readonly activityService = inject(ActivityService);
+  private readonly credentialCache = inject(CredentialCacheService);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
   readonly hasExistingPasskey = this.prfService.hasPasskey();
@@ -379,8 +381,7 @@ export class LoginPage {
         await firstValueFrom((this.authService as RemoteAuthService).refreshAccessToken());
       }
 
-      this.syncCredentialCache();
-      this.navigateHome();
+      await this.syncCredentialsThenNavigate();
     } catch (err: any) {
       if (this.passkeyFromRefreshToken) {
         localStorage.removeItem('wallet_refresh_token');
@@ -401,7 +402,6 @@ export class LoginPage {
     let credentialId: string | null;
     try {
       await this.prfService.createPasskey(this.email || 'Wallet User');
-      this.syncCredentialCache();
       credentialId = this.passkeyStore.getCredentialId();
     } catch (err: any) {
       this.errorMessage = err?.message || 'Failed to create passkey';
@@ -421,7 +421,7 @@ export class LoginPage {
         displayName: this.deviceName.trim() || this.getDeviceName(),
         userAgent: navigator.userAgent
       }));
-      this.navigateHome();
+      await this.syncCredentialsThenNavigate();
     } catch {
       this.errorMessage = this.translate.instant('auth.errors.passkey-register-failed');
     } finally {
@@ -473,11 +473,57 @@ export class LoginPage {
     return 'Unknown Device';
   }
 
-  private syncCredentialCache(): void {
-    this.walletService.syncCredentialsOnLogin().subscribe({
-      next: () => console.log('Credentials synced'),
-      error: err => console.error('Sync failed', err)
-    });
+  /**
+   * Syncs credentials from the backend and then navigates. When the pending deep link
+   * is a protocol link (VP / credential offer), we AWAIT the sync so IndexedDB holds the
+   * server data before the credentials page runs the VP flow — this prevents a false
+   * "no credentials available to login". For a normal login we don't block: the reactive
+   * store updates on its own and the credentials tab reflects it as soon as it settles.
+   */
+  private async syncCredentialsThenNavigate(): Promise<void> {
+    const pending = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
+    // Show the skeleton immediately while the sync runs.
+    this.credentialCache.setLoading();
+
+    if (this.isProtocolDeepLink(pending)) {
+      try {
+        await firstValueFrom(this.walletService.syncCredentials());
+      } catch (err) {
+        // If the server fetch fails, syncCredentials errors before
+        // refreshCredentials() runs, so the store would stay 'loading' (stuck
+        // skeleton). Force a terminal 'error' state so the credentials page /
+        // VP flow can surface it instead of spinning forever.
+        console.error('Credential sync failed', err);
+        this.credentialCache.setError();
+      }
+    } else {
+      this.syncCredentialCache();
+    }
+
+    // Fire regardless of which credential-sync path ran above (EUD-141 AC-01/AC-02).
     this.activityService.syncFromServer();
+    this.navigateHome();
+  }
+
+  private isProtocolDeepLink(url: string | null): boolean {
+    if (!url) return false;
+    return url.startsWith('/protocol/')
+      || url.startsWith('/wallet/protocol/')
+      || url.startsWith('/tabs/vc-selector')
+      || url.startsWith('/wallet/tabs/vc-selector')
+      || url.includes('authorizationRequest')
+      || url.includes('credentialOfferUri')
+      || url.includes('credential_offer_uri');
+  }
+
+  private syncCredentialCache(): void {
+    this.walletService.syncCredentials().subscribe({
+      error: err => {
+        // Same reasoning as syncCredentialsThenNavigate: force a terminal state
+        // so the store never gets stuck in 'loading' on a failed server fetch.
+        console.error('Sync failed', err);
+        this.credentialCache.setError();
+      }
+    });
   }
 }

@@ -2,7 +2,7 @@ import { CONTENT_TYPE } from './../constants/content-type.constants';
 
 import { HttpClient, HttpHeaders, HttpParams, HttpResponse} from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import {from, map, Observable, of, switchMap} from 'rxjs';
+import {catchError, from, map, Observable, of, switchMap, tap} from 'rxjs';
 import { LifeCycleStatus, VerifiableCredential } from '../models/verifiable-credential';
 import { UrlResolverService } from './url-resolver.service';
 import { SERVER_PATH } from '../constants/api.constants';
@@ -12,6 +12,9 @@ import { CONTENT_TYPE_APPLICATION_JSON, CONTENT_TYPE_URL_ENCODED_FORM, RESPONSE_
 import { LocalCredentialStorageService } from './local-credential-storage.service';
 import { CredentialParserService } from '../utils/credential-parser.util';
 import { WalletDiscoveryService } from './wallet-discovery.service';
+import { CredentialCacheService } from '../../shared/services/credential-cache.service';
+import { VerifiableCredentialSubjectDataNormalizer } from '../models/verifiable-credential-subject-data-normalizer';
+import { getExtendedCredentialType, isValidCredentialType } from '../../shared/helpers/get-credential-type.helpers';
 
 const contentTypeApplicationJsonHeader = new HttpHeaders({
   [CONTENT_TYPE]: CONTENT_TYPE_APPLICATION_JSON,
@@ -31,6 +34,7 @@ export class WalletService {
   private credentialParser = inject(CredentialParserService);
   private discovery = inject(WalletDiscoveryService);
   private urlResolver = inject(UrlResolverService);
+  private credentialCache = inject(CredentialCacheService);
 
   /** Returns true when the wallet operates in browser (EUDIW) mode (AC-009.2c, AC-009.3c). */
   private isBrowserMode(): boolean {
@@ -64,18 +68,50 @@ export class WalletService {
     return from(this.credentialStorage.getAllCredentials());
   }
 
-  public syncCredentialsOnLogin(): Observable<void> {
-    return from(this.credentialStorage.clearAllCredentials()).pipe(
-      switchMap(() => this.getAllVCsFromServer()),
-      switchMap(credentials =>
-        from(
-          Promise.all(
-            credentials.map(vc =>
-              this.credentialStorage.saveCredential(vc)
-            )
-          )
-        )
+  /**
+   * Reads the local credential store (IndexedDB), normalizes it, and pushes the
+   * result into the reactive CredentialCacheService. This is the single load path
+   * feeding both the credentials page and the OID4VP flow. The stream always
+   * COMPLETES (even on error, via catchError) so callers can gate on it and then
+   * inspect `credentialCache.status()` to tell a load error apart from an empty wallet.
+   */
+  public refreshCredentials(): Observable<VerifiableCredential[]> {
+    this.credentialCache.setLoading();
+    const normalizer = new VerifiableCredentialSubjectDataNormalizer();
+
+    return this.getAllVCs().pipe(
+      map((credentials) =>
+        // newest-first, and normalize each known credentialSubject in place
+        credentials.slice().reverse().map((cred) => {
+          if (cred.credentialSubject && cred.type) {
+            const credType = getExtendedCredentialType(cred);
+            if (isValidCredentialType(credType)) {
+              cred.credentialSubject = normalizer.normalizeLearCredentialSubject(cred.credentialSubject, credType);
+            }
+          }
+          return cred;
+        })
       ),
+      tap((credentials) => this.credentialCache.setLoaded(credentials)),
+      catchError((error: unknown) => {
+        // getAllVCs() reads IndexedDB: an empty store is handled by the success
+        // path above (setLoaded([])). Reaching here means a real storage failure.
+        console.error('Error refreshing credentials:', error);
+        this.credentialCache.setError();
+        return of(this.credentialCache.getAll());
+      })
+    );
+  }
+
+  public syncCredentials(): Observable<void> {
+    // Fetch from the server FIRST, then swap the local store atomically. We never
+    // clear IndexedDB before we hold the new data, so a reader can't observe an
+    // empty store mid-sync.
+    return this.getAllVCsFromServer().pipe(
+      switchMap((credentials) =>
+        from(this.credentialStorage.replaceAllCredentials(credentials))
+      ),
+      switchMap(() => this.refreshCredentials()),
       map(() => void 0)
     );
   }
@@ -128,14 +164,17 @@ export class WalletService {
 
   public finalizeCredentialIssuance(credResponse: FinalizeIssuancePayload): Observable<void>{
     if (this.isBrowserMode()) {
-      return from(this.finalizeLocally(credResponse));
+      return from(this.finalizeLocally(credResponse)).pipe(
+        switchMap(() => this.refreshCredentials()),
+        map(() => void 0)
+      );
     }
     return this.http.post<void>(
               this.urlResolver.serverUrl() + SERVER_PATH.CREDENTIAL_RESPONSE,
               { ...credResponse },
               options
     ).pipe(
-      switchMap(() => this.syncCredentialsOnLogin())
+      switchMap(() => this.syncCredentials())
     );
   }
 
