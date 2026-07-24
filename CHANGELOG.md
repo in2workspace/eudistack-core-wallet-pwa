@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.14.0] - 2026-07-22
+## [3.14.0] - 2026-07-24
 
 ### Added
 
@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Credentials tab empty after login + false "no credentials available to login" on VP**: two symptoms with one root cause — the credential list was never reactive and the login-time sync was a non-atomic, fire-and-forget clear-then-refill. `WalletService.syncCredentialsOnLogin()` did `clearAllCredentials()` → fetch → `saveCredential()` per item, so a read landing between the clear and the re-fill saw an empty/partial store; the credentials tab took a one-time IndexedDB snapshot on a lifecycle hook and never self-corrected (had to switch tabs and return), and the OID4VP flow read a `CredentialCacheService` that was only populated on the success path of the old `loadCredentials()`, so a transient load error or an in-flight sync surfaced `errors.no-credentials-available` even when the holder had credentials.
   - `CredentialCacheService` is now the single **reactive source of truth** built on a `signal<{ status, credentials }>` (`idle`/`loading`/`loaded`/`error`), with `credentials`/`status` derived signals, a synchronous `snapshot()`, and mutators `setLoading`/`setLoaded`/`setError`/`patchStatus`/`remove`. `setError()` deliberately keeps the current list so a transient network failure never blanks the wallet. Matchers and `extractSignedJwt` are unchanged; dead `findCredentialsByType`/`syncFromBackend` removed.
   - `LocalCredentialStorageService.replaceAllCredentials()` writes clear + all puts in a **single IndexedDB transaction** (atomic swap). `WalletService.syncCredentialsOnLogin()` now fetches from the server **before** touching local storage, then swaps atomically, so IndexedDB is never observed empty mid-sync. New `WalletService.refreshCredentials()` reads the local store, normalizes it, and pushes state to the cache; it always completes (even on error) so callers can gate on it.
-  - `CredentialsPage` renders from the reactive signals (skeleton/empty/list driven by `status`), and `verifiablePresentationFlow` **gates on `refreshCredentials()`**: a load *error* shows `errors.loading-VCs` while a genuinely empty result shows `errors.no-credentials-available`. The racy constructor trigger was removed; status changes flow through `cache.patchStatus()`.
+  - `CredentialsPage` renders from the reactive signals (skeleton/empty/list driven by `status`), and `verifiablePresentationFlow` **gates on `refreshCredentials()`**: a load _error_ shows `errors.loading-VCs` while a genuinely empty result shows `errors.no-credentials-available`. The racy constructor trigger was removed; status changes flow through `cache.patchStatus()`.
   - `LoginPage` marks the store `loading` before navigating and **awaits the sync only when a protocol deep link is pending** (VP / credential offer), so IndexedDB holds the server data before the VP flow runs; a normal login stays non-blocking and the tab fills in reactively.
 - **Test coverage**: new `credential-cache.service.spec.ts` (reactive state + matchers); `wallet.service.spec.ts` updated for the atomic sync and `refreshCredentials` transitions; `credentials.page.spec.ts` covers the VP gate distinguishing load-error from empty; `login.page.spec.ts` covers the deep-link await vs. non-blocking sync.
 
@@ -38,12 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **EUD-139 US-04 — Ver el detalle de un evento de actividad**: `ActivityDetailComponent`, un modal Ionic read-only abierto desde `ActivityPage.openDetail(entry)` al pulsar (click o teclado, con `role="button"`/`aria-label`) cualquier `.activity-card`. Muestra credencial, contraparte (etiqueta según `issued`/`presented`, omitida si está ausente o el tipo no aplica), fecha absoluta y un resultado fijo "Completada". Para eventos `presented` añade una sección de atributos compartidos, con aviso explícito cuando no hay ninguno registrado. Sin controles de escritura — solo cerrar. Tipos de actividad desconocidos degradan a una etiqueta genérica en vez de lanzar excepción. Abrir y cerrar el modal no recarga ni muta `entries()` ni el filtro activo de la lista.
 - **EUD-139 — captura de atributos compartidos en la presentación OID4VP**: `Oid4vpEngineService` deriva los nombres de los claims divulgados de una presentación SD-JWT (`deriveSharedAttributeNames`, vía `SdJwtParserService.reconstructClaims()`), excluyendo los claims registrados (`iss`, `iat`, `exp`, `cnf`, `vct`, `_sd*`), y los adjunta al registro de actividad `'presented'` (`ActivityEntry.sharedAttributes?: string[]`, nuevo parámetro opcional en `ActivityService.log()`). Cambio aditivo y no bloqueante: un fallo de parseo o una credencial no-SD-JWT degradan a "sin atributos" en vez de interrumpir la presentación.
 - Extraídos `formatCounterparty`/`formatAbsoluteTime` de `ActivityPage` a `shared/utils/activity-format.util.ts`, reutilizados tanto por `ActivityPage` como por `ActivityDetailComponent`.
+
 ## [3.11.8] - 2026-07-17
+
 ### Added
+
 - Accept legacy type "gx:LabelCredential" (added to the credential type list and its icon mapping) to allow displaying this type of credential.
 - Show JWT and "copy" button for legacy "LEARCredentialMachine" and "gx:LabelCredential" credentials.
 
 ## [3.11.7] - 2026-07-16
+
 ### Fixed
 
 - **Issuer metadata preload broken on custom domains**: after login, `RemoteAuthService` preloaded the OID4VCI issuer metadata from a hardcoded `${window.location.origin}/issuer`. On custom domains `/issuer` is not proxied same-origin (it returns the SPA's `index.html`), so the cache warm-up silently fetched the wrong resource. The issuer base URL is now resolved through `TenantService.resolveIssuerBaseUrl()`, which returns the same-origin `/issuer` on canonical domains and the issuer host declared in `custom-domain.json` on custom domains. The preload stays fire-and-forget and never breaks the login flow.
@@ -51,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Tenant resolution — environment moved to the second hostname segment**: the infrastructure no longer encodes the environment as a suffix of the first segment (`sandbox-stg.eudistack.net`); it now lives in a dedicated second segment (`sandbox.stg.eudistack.net`). `TenantService` no longer strips env suffixes — removed the `ENV_SUFFIXES` constant and the `stripEnvSuffix()` helper. `extractBaseTenantFromHostname()` now takes the first segment verbatim as the tenant id, and `buildFallbackUrl()` replaces only the first segment with the fallback tenant, preserving the environment segment automatically.
+
 ### Added - 2026-07-16
 
 ## [3.11.6] - 2026-07-16
@@ -74,7 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **EUDISTACK-645 — holder key shared across credentials of the same type**: `Oid4vciEngineService` derived the holder-key id as `${credentialIssuer}:${credentialConfigurationId}` (per credential *type*), so a holder receiving a second credential of the same type collided on the same key — a hard 409 in hybrid mode, a silent shared-key reuse in DB mode. Both violated ADR-021 (one holder key per credential, never shared). Now a `crypto.randomUUID()` is minted once per `performOid4vciFlow` call and used as the key id, restoring 1:1 `credential`:`holder_key`.
+- **EUDISTACK-645 — holder key shared across credentials of the same type**: `Oid4vciEngineService` derived the holder-key id as `${credentialIssuer}:${credentialConfigurationId}` (per credential _type_), so a holder receiving a second credential of the same type collided on the same key — a hard 409 in hybrid mode, a silent shared-key reuse in DB mode. Both violated ADR-021 (one holder key per credential, never shared). Now a `crypto.randomUUID()` is minted once per `performOid4vciFlow` call and used as the key id, restoring 1:1 `credential`:`holder_key`.
 
 ## [3.11.2] - 2026-07-10
 
@@ -130,6 +135,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.10.1] - 2026-07-03
 
 ### Added
+
 - **EUDISTACK-359 US-07:**
   - Added PRF support detection before starting hybrid onboarding.
   - Blocked onboarding when the authenticator does not support PRF.
@@ -138,6 +144,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added onboarding state handling and unit tests for PRF unsupported and inconclusive scenarios.
 
 ### Fixed
+
 - **EUDISTACK-534 US-02 — hybrid key generation was never wired to the SPI**: `HybridKeyStorageProvider.generateKeyPair()` delegated to `ServerKeyStorageProvider` (the DB-only `/api/v1/keys/generate` endpoint), which always 403s for `key_manager=hybrid` tenants. Now delegates to the new `HybridKeyEnrollmentService`, orchestrating init → single PRF ceremony → key generation → inline OID4VCI proof signing → wrap → commit → zeroize, and returns `prebuiltJwsProof` so the OID4VCI engine never needs `sign()` for issuance.
 - **EUDISTACK-534 US-02 — `holder_key_id` overflow**: `generateKeyPair()` returned the OID4VCI engine's `keyId` (`credentialIssuer:credentialConfigurationId`) as the SPI `keyId`, overflowing `wallet_credential.holder_key_id VARCHAR(36)` (`PostgresqlBadGrammarException` 22001). Now returns `context.credentialId` (still round-trips via `resolveKeyIdByKid`); backend column widened to `VARCHAR(512)` (see companion `eudistack-core-wallet-ebw` migration `V5`).
 - **EUDISTACK-534 US-02 — `OnboardingHybridApi` used the wrong base URL**: read `environment.server_url` directly instead of `UrlResolverService`, producing a relative path missing the `/business-wallet` nginx prefix (404) in real deployments where `server_url` is empty by design. Fixed to match the existing `HybridAuditService` pattern. Same latent bug preventively fixed in `SignApi`.
