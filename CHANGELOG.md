@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.13.1] - 2026-07-23
+
+### Fixed
+
+- **Credentials tab empty after login + false "no credentials available to login" on VP**: two symptoms with one root cause — the credential list was never reactive and the login-time sync was a non-atomic, fire-and-forget clear-then-refill. `WalletService.syncCredentialsOnLogin()` did `clearAllCredentials()` → fetch → `saveCredential()` per item, so a read landing between the clear and the re-fill saw an empty/partial store; the credentials tab took a one-time IndexedDB snapshot on a lifecycle hook and never self-corrected (had to switch tabs and return), and the OID4VP flow read a `CredentialCacheService` that was only populated on the success path of the old `loadCredentials()`, so a transient load error or an in-flight sync surfaced `errors.no-credentials-available` even when the holder had credentials.
+  - `CredentialCacheService` is now the single **reactive source of truth** built on a `signal<{ status, credentials }>` (`idle`/`loading`/`loaded`/`error`), with `credentials`/`status` derived signals, a synchronous `snapshot()`, and mutators `setLoading`/`setLoaded`/`setError`/`patchStatus`/`remove`. `setError()` deliberately keeps the current list so a transient network failure never blanks the wallet. Matchers and `extractSignedJwt` are unchanged; dead `findCredentialsByType`/`syncFromBackend` removed.
+  - `LocalCredentialStorageService.replaceAllCredentials()` writes clear + all puts in a **single IndexedDB transaction** (atomic swap). `WalletService.syncCredentialsOnLogin()` now fetches from the server **before** touching local storage, then swaps atomically, so IndexedDB is never observed empty mid-sync. New `WalletService.refreshCredentials()` reads the local store, normalizes it, and pushes state to the cache; it always completes (even on error) so callers can gate on it.
+  - `CredentialsPage` renders from the reactive signals (skeleton/empty/list driven by `status`), and `verifiablePresentationFlow` **gates on `refreshCredentials()`**: a load *error* shows `errors.loading-VCs` while a genuinely empty result shows `errors.no-credentials-available`. The racy constructor trigger was removed; status changes flow through `cache.patchStatus()`.
+  - `LoginPage` marks the store `loading` before navigating and **awaits the sync only when a protocol deep link is pending** (VP / credential offer), so IndexedDB holds the server data before the VP flow runs; a normal login stays non-blocking and the tab fills in reactively.
+- **Test coverage**: new `credential-cache.service.spec.ts` (reactive state + matchers); `wallet.service.spec.ts` updated for the atomic sync and `refreshCredentials` transitions; `credentials.page.spec.ts` covers the VP gate distinguishing load-error from empty; `login.page.spec.ts` covers the deep-link await vs. non-blocking sync.
+
 ## [3.13.0] - 2026-07-21
 
 ### Added

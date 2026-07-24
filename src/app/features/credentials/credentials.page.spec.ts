@@ -25,7 +25,17 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
   let fixture: ComponentFixture<CredentialsPage>;
   let mockRouter: { navigate: jest.Mock };
   let mockAuthorizationRequestService: { parseAuthorizationRequestFromQr: jest.Mock };
-  let mockCredentialCacheService: { getAll: jest.Mock; findCredentialsByDcqlQuery: jest.Mock; findCredentialsByScope: jest.Mock; syncFromBackend: jest.Mock };
+  let mockCredentialCacheService: {
+    getAll: jest.Mock;
+    findCredentialsByDcqlQuery: jest.Mock;
+    findCredentialsByScope: jest.Mock;
+    status: jest.Mock;
+    credentials: jest.Mock;
+    snapshot: jest.Mock;
+    patchStatus: jest.Mock;
+    remove: jest.Mock;
+  };
+  let mockWalletService: { refreshCredentials: jest.Mock; getAllVCs: jest.Mock; updateCredentialStatus: jest.Mock };
   let mockToastServiceHandler: { showErrorAlertByTranslateLabel: jest.Mock; showToast: jest.Mock; showErrorAlert: jest.Mock };
   let mockHaptic: any;
 
@@ -57,7 +67,17 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       getAll: jest.fn().mockReturnValue([]),
       findCredentialsByDcqlQuery: jest.fn().mockReturnValue([]),
       findCredentialsByScope: jest.fn().mockReturnValue([]),
-      syncFromBackend: jest.fn(),
+      status: jest.fn().mockReturnValue('loaded'),
+      credentials: jest.fn().mockReturnValue([]),
+      snapshot: jest.fn().mockReturnValue({ status: 'loaded', credentials: [] }),
+      patchStatus: jest.fn(),
+      remove: jest.fn(),
+    };
+
+    mockWalletService = {
+      refreshCredentials: jest.fn().mockReturnValue(of([])),
+      getAllVCs: jest.fn().mockReturnValue(of([])),
+      updateCredentialStatus: jest.fn().mockReturnValue(of(null)),
     };
 
     mockToastServiceHandler = {
@@ -77,7 +97,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
         { provide: CredentialCacheService, useValue: mockCredentialCacheService },
         { provide: ToastServiceHandler, useValue: mockToastServiceHandler },
         { provide: LoaderService, useValue: { addLoadingProcess: jest.fn(), removeLoadingProcess: jest.fn() } },
-        { provide: WalletService, useValue: { getAllVCs: jest.fn().mockReturnValue(of([])), updateCredentialStatus: jest.fn().mockReturnValue(of(null)) } },
+        { provide: WalletService, useValue: mockWalletService },
         { provide: StorageService, useValue: {} },
         { provide: CameraLogsService, useValue: { addCameraLog: jest.fn() } },
         { provide: CredentialPreviewBuilderService, useValue: { buildPreview: jest.fn() } },
@@ -190,5 +210,74 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
         expect.objectContaining({ queryParams: expect.any(Object) })
       );
     }));
+  });
+
+  describe('when the credential load fails (status === error)', () => {
+    beforeEach(() => {
+      // refreshCredentials completes but the store ends in 'error'
+      mockCredentialCacheService.status.mockReturnValue('error');
+      mockCredentialCacheService.getAll.mockReturnValue([mockValidVc]);
+    });
+
+    it('should show a load error, NOT "no credentials available"', fakeAsync(() => {
+      component.qrCodeEmit(vpQrCode);
+      tick();
+
+      expect(mockToastServiceHandler.showErrorAlertByTranslateLabel)
+        .toHaveBeenCalledWith('errors.loading-VCs');
+      expect(mockToastServiceHandler.showErrorAlertByTranslateLabel)
+        .not.toHaveBeenCalledWith('errors.no-credentials-available');
+    }));
+
+    it('should not attempt to filter credentials or navigate to vc-selector', fakeAsync(() => {
+      component.qrCodeEmit(vpQrCode);
+      tick();
+
+      expect(mockAuthorizationRequestService.parseAuthorizationRequestFromQr).not.toHaveBeenCalled();
+      expect(mockRouter.navigate).not.toHaveBeenCalledWith(
+        ['/tabs/vc-selector/'],
+        expect.any(Object)
+      );
+    }));
+  });
+
+  describe('ionViewWillEnter — display refresh guard (avoids overlap with protocol flows)', () => {
+    function stubCdrAndSpyRefresh(): jest.SpyInstance {
+      jest.spyOn(
+        (component as unknown as { cdr: { detectChanges: () => void } }).cdr,
+        'detectChanges'
+      ).mockImplementation();
+      return jest.spyOn(
+        component as unknown as { refreshForDisplay: () => void },
+        'refreshForDisplay'
+      ).mockImplementation();
+    }
+
+    it('refreshes for display when no protocol flow is pending', () => {
+      const refreshSpy = stubCdrAndSpyRefresh();
+
+      component.ionViewWillEnter();
+
+      expect(refreshSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT refresh for display when a VP authorization request is pending', () => {
+      const refreshSpy = stubCdrAndSpyRefresh();
+      (component as unknown as { authorizationRequest: string }).authorizationRequest =
+        'openid4vp://authorize?request_uri=x';
+
+      component.ionViewWillEnter();
+
+      expect(refreshSpy).not.toHaveBeenCalled();
+    });
+
+    it('does NOT refresh for display when a credential offer is pending', () => {
+      const refreshSpy = stubCdrAndSpyRefresh();
+      component.credentialOfferUri = 'openid-credential-offer://x';
+
+      component.ionViewWillEnter();
+
+      expect(refreshSpy).not.toHaveBeenCalled();
+    });
   });
 });
