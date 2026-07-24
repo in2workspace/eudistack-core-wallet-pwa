@@ -230,6 +230,25 @@ describe('LoginPage (server mode)', () => {
     });
   });
 
+  // EUD-104 traceability note: AC-03 (editable device name) and EC-02 (default name) are
+  // already exercised above by 'AC-05: edited device name...' and 'EC-04: device name
+  // defaults...' respectively — those EUD-103 test names predate this Story, but the
+  // assertions are the same ones EUD-104 needs (the frontend can't distinguish a first vs.
+  // second device; needsPasskeySetup is purely local state). Same for ES-02, fully covered
+  // by 'ES-05 / AD-1: passkey server-side registration failure' below.
+  describe('EUD-104 EC-01: no navigation before a passkey is actually registered', () => {
+    it('stays on the passkey-setup screen and does not navigate home right after verify', () => {
+      component.email = 'user@example.com';
+      component.otpValue = '123456';
+
+      component.verifyCode();
+
+      expect(component.needsPasskeySetup).toBe(true);
+      expect(component.step).toBe('passkey');
+      expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+    });
+  });
+
   describe('R-1: existing-passkey verification path (needsPasskeySetup = false) is unaffected', () => {
     it('authenticates locally and navigates home on success', async () => {
       const mockCredentialsGet = jest.fn().mockResolvedValue({});

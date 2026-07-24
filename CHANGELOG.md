@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.13.1] - 2026-07-23
 
+### Added
+
+- **EUD-104 — frontend test coverage for associating a second device**: the passkey-setup step (`needsPasskeySetup`, driven purely by local `hasPasskey()` state) already handled the second-device case as part of EUD-103's onboarding flow — the frontend has no way to distinguish a first vs. a second device, since that distinction is entirely server-side (find-or-create). `login.page.spec.ts` extended with an explicit assertion that no navigation happens right after `verifyCode()` detects the absence of a local passkey (EC-01); the editable/default device name (AC-03/EC-02) and the `registerPasskey()` failure path (ES-02) were already covered by EUD-103's own test suite and needed no changes.
+
 ### Fixed
 
 - **Credentials tab empty after login + false "no credentials available to login" on VP**: two symptoms with one root cause — the credential list was never reactive and the login-time sync was a non-atomic, fire-and-forget clear-then-refill. `WalletService.syncCredentialsOnLogin()` did `clearAllCredentials()` → fetch → `saveCredential()` per item, so a read landing between the clear and the re-fill saw an empty/partial store; the credentials tab took a one-time IndexedDB snapshot on a lifecycle hook and never self-corrected (had to switch tabs and return), and the OID4VP flow read a `CredentialCacheService` that was only populated on the success path of the old `loadCredentials()`, so a transient load error or an in-flight sync surfaced `errors.no-credentials-available` even when the holder had credentials.
