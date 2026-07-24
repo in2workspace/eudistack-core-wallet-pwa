@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.13.1] - 2026-07-23
+
+### Added
+
+- **EUD-104 — frontend test coverage for associating a second device**: the passkey-setup step (`needsPasskeySetup`, driven purely by local `hasPasskey()` state) already handled the second-device case as part of EUD-103's onboarding flow — the frontend has no way to distinguish a first vs. a second device, since that distinction is entirely server-side (find-or-create). `login.page.spec.ts` extended with an explicit assertion that no navigation happens right after `verifyCode()` detects the absence of a local passkey (EC-01); the editable/default device name (AC-03/EC-02) and the `registerPasskey()` failure path (ES-02) were already covered by EUD-103's own test suite and needed no changes.
+
 ## [3.13.0] - 2026-07-21
 
 ### Added
