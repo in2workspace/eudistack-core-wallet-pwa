@@ -91,6 +91,27 @@ export class LocalCredentialStorageService {
     }
   }
 
+  /**
+   * Atomically replaces the entire credential store: clears it and writes the
+   * given credentials within a SINGLE readwrite transaction. Either every write
+   * commits or none does, so a reader never observes a cleared-but-not-refilled
+   * store (avoids the race where the credentials list appears empty mid-sync).
+   */
+  async replaceAllCredentials(vcs: VerifiableCredential[]): Promise<void> {
+    const db = await this.openDatabase();
+    try {
+      const tx = db.transaction(this.STORE_NAME, 'readwrite');
+      const store = tx.objectStore(this.STORE_NAME);
+      store.clear();
+      for (const vc of vcs) {
+        store.put(vc);
+      }
+      await this.awaitTx(tx);
+    } finally {
+      db.close();
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // IndexedDB helpers
   // ---------------------------------------------------------------------------
