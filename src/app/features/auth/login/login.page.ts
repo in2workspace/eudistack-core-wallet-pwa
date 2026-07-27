@@ -17,6 +17,7 @@ import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { LocalAuthService } from 'src/app/core/services/local-auth.service';
 import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input.component';
 import { WalletService } from 'src/app/core/services/wallet.service';
+import { ActivityService } from 'src/app/core/services/activity.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 
 @Component({
@@ -247,6 +248,7 @@ export class LoginPage {
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
   private readonly walletService = inject(WalletService);
+  private readonly activityService = inject(ActivityService);
   private readonly credentialCache = inject(CredentialCacheService);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
@@ -498,6 +500,8 @@ export class LoginPage {
       this.syncCredentialCache();
     }
 
+    // Fire regardless of which credential-sync path ran above (EUD-141 AC-01/AC-02).
+    this.activityService.syncFromServer();
     this.navigateHome();
   }
 

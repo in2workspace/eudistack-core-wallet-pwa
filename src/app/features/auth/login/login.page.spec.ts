@@ -10,6 +10,7 @@ import { PasskeyApiService } from 'src/app/core/services/passkey-api.service';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { WalletService } from 'src/app/core/services/wallet.service';
+import { ActivityService } from 'src/app/core/services/activity.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 
@@ -31,6 +32,7 @@ describe('LoginPage (server mode)', () => {
   let mockPasskeyApi: { registerPasskey: jest.Mock };
   let mockRouter: { navigateByUrl: jest.Mock };
   let mockWalletService: { syncCredentials: jest.Mock };
+  let mockActivityService: { syncFromServer: jest.Mock };
   let mockCredentialCache: { setLoading: jest.Mock; setError: jest.Mock };
 
   beforeEach(async () => {
@@ -65,6 +67,7 @@ describe('LoginPage (server mode)', () => {
     };
     mockRouter = { navigateByUrl: jest.fn() };
     mockWalletService = { syncCredentials: jest.fn().mockReturnValue(of(undefined)) };
+    mockActivityService = { syncFromServer: jest.fn().mockResolvedValue(undefined) };
     mockCredentialCache = { setLoading: jest.fn(), setError: jest.fn() };
 
     await TestBed.configureTestingModule({
@@ -81,6 +84,7 @@ describe('LoginPage (server mode)', () => {
           useValue: { installDecision$: of(false), isStandalone: false, promptInstall: jest.fn() }
         },
         { provide: WalletService, useValue: mockWalletService },
+        { provide: ActivityService, useValue: mockActivityService },
         { provide: CredentialCacheService, useValue: mockCredentialCache },
       ]
     }).compileComponents();

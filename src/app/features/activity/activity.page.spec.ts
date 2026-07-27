@@ -884,3 +884,51 @@ describe('ActivityPage — exportar historial: disponibilidad y resiliencia (EUD
     expect(fixture.componentInstance.activeFilter()).toBe('issued');
   });
 });
+
+describe('ActivityPage — historial recuperado del servidor (EUD-141)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    TestBed.resetTestingModule();
+  });
+
+  // --- AC-07 -----------------------------------------------------------
+
+  it('AC-07: rendering entries recovered from the server exposes no manual sync/write action', async () => {
+    mockActivityService.findAll.mockResolvedValue(ENTRIES);
+    const fixture = await createModule();
+    const el: HTMLElement = fixture.nativeElement;
+
+    // No control to trigger a manual server sync exists in the template — recovery/sync
+    // happens transparently inside ActivityService.findAll()/syncFromServer().
+    expect(el.querySelector('[data-action="sync"]')).toBeFalsy();
+    expect(el.querySelector('.sync-btn')).toBeFalsy();
+    expect(mockActivityService.log).not.toHaveBeenCalled();
+  });
+
+  it('AC-07: reloading the view (ionViewWillEnter) only re-reads the history, it never writes', async () => {
+    mockActivityService.findAll.mockResolvedValue(ENTRIES);
+    const fixture = await createModule();
+
+    fixture.componentInstance.ionViewWillEnter();
+    await fixture.whenStable();
+
+    expect(mockActivityService.findAll).toHaveBeenCalledTimes(2);
+    expect(mockActivityService.log).not.toHaveBeenCalled();
+    expect(mockActivityService.clear).not.toHaveBeenCalled();
+  });
+
+  // --- EC-04 -------------------------------------------------------------
+
+  it('EC-04: an empty history recovered from the server renders the empty state, not an error', async () => {
+    mockActivityService.findAll.mockResolvedValue([]); // e.g. GET /api/v1/activity -> []
+    const fixture = await createModule();
+    const el: HTMLElement = fixture.nativeElement;
+
+    expect(el.textContent).toContain('activity.empty');
+    expect(el.querySelector('.activity-list')).toBeFalsy();
+    expect(fixture.componentInstance.loading()).toBe(false);
+  });
+});
