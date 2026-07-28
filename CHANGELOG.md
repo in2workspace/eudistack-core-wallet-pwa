@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.14.1] - 2026-07-28
+
+### Changed
+
+- **Camera permission denied is no longer shown as a red error modal**: `CameraService.alertCameraErrorsByErrorName()` routed every camera failure — including a routine, user-recoverable permission denial — through `AlertController` (`custom-alert-error`), a centered red modal that read as "something crashed" when the user just needed to grant a permission and retry. The `NotAllowedError` branch now shows a dismissible, top-anchored notice instead, reusing the existing `.credential-toast` plain-div pattern (`ToastServiceHandler.showInfoToastByTranslateLabel()`) with a new `info` (blue) variant — every other camera error (not-readable, not-found, overconstrained, etc.) keeps the blocking alert, since those still need the user's full attention. Copy is unchanged (`errors.camera.not-allowed`), only the presentation.
+
 ## [3.14.0] - 2026-07-24
 
 ### Added
