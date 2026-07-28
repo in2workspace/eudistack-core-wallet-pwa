@@ -204,7 +204,7 @@ public async getCameraFromAvailables(): Promise<MediaDeviceInfo|'NO_CAMERA_AVAIL
     // red error modal reads as "something broke". A dismissible top toast is
     // enough here; every other camera failure keeps the blocking alert.
     if (errMsg.startsWith('NotAllowedError')) {
-      this.toastService.showWarningToastByTranslateLabel('errors.camera.not-allowed');
+      this.toastService.showInfoToastByTranslateLabel('errors.camera.not-allowed');
       return;
     }
 

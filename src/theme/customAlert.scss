@@ -187,8 +187,8 @@ ion-modal.confirm-modal {
     color: var(--primary-contrast-color, #fff);
   }
 
-  &[data-variant="warning"] {
-    background: var(--status-warning, #D97706);
+  &[data-variant="info"] {
+    background: var(--status-info, #2563EB);
     color: var(--primary-contrast-color, #fff);
   }
 

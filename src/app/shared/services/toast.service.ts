@@ -75,13 +75,13 @@ export class ToastServiceHandler {
    * background). The plain div sidesteps that entirely and is already
    * compact/centered by design — no full-width banner.
    */
-  public showWarningToastByTranslateLabel(message: string, durationMs: number = 5000): void {
+  public showInfoToastByTranslateLabel(message: string, durationMs: number = 5000): void {
     this.translate.get(message).pipe(take(1)).subscribe((translatedMessage) => {
       const el = document.createElement('div');
       el.className = 'credential-toast';
-      el.setAttribute('data-variant', 'warning');
+      el.setAttribute('data-variant', 'info');
       el.innerHTML = `
-        <ion-icon name="alert-circle"></ion-icon>
+        <ion-icon name="information-circle"></ion-icon>
         <span>${this.escapeHtml(translatedMessage)}</span>
       `;
 
