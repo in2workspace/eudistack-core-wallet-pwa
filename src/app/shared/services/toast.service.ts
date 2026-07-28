@@ -62,6 +62,50 @@ export class ToastServiceHandler {
     );
   }
 
+  /**
+   * Non-blocking, non-alarming notice for user-recoverable situations (e.g.
+   * camera permission denied) — a centered red modal alert makes it look
+   * like something crashed, when the user just needs to grant a permission
+   * and retry.
+   *
+   * Reuses the .credential-toast pattern (a plain div, not an ion-toast):
+   * ion-toast::part(container) is force-styled app-wide (customAlert.scss),
+   * which fought any color/background passed through Ionic's ToastController
+   * and rendered the message invisible (white text on the forced white card
+   * background). The plain div sidesteps that entirely and is already
+   * compact/centered by design — no full-width banner.
+   */
+  public showInfoToastByTranslateLabel(message: string, durationMs: number = 5000): void {
+    this.translate.get(message).pipe(take(1)).subscribe((translatedMessage) => {
+      const el = document.createElement('div');
+      el.className = 'credential-toast';
+      el.setAttribute('data-variant', 'info');
+      el.innerHTML = `
+        <ion-icon name="information-circle"></ion-icon>
+        <span>${this.escapeHtml(translatedMessage)}</span>
+      `;
+
+      document.body.appendChild(el);
+
+      requestAnimationFrame(() => el.classList.add('visible'));
+
+      setTimeout(() => {
+        el.classList.remove('visible');
+        el.classList.add('exiting');
+        el.addEventListener('animationend', () => el.remove(), { once: true });
+        setTimeout(() => el.remove(), 500);
+      }, durationMs);
+    });
+  }
+
+  private escapeHtml(value: string): string {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   public showToast(messageKey: string, duration: number = 2000): void {
     this.alertController.create({
       message: `
