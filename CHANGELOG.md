@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.14.2] - 2026-08-06
+
+### Added
+
+- **Wallet login redesign (DOME mocks)**: the access, email, verify-email and passkey screens move from a centered card on a gradient to a full-page layout with a decorative watermark per screen, applied as a CSS mask so its colour follows the theme (pale blue in light mode, `--surface-muted` in dark). New i18n keys in `en`/`es`/`ca`, with the product name interpolated from the tenant `branding.name` instead of hardcoded.
+- **Verification code resend**: the OTP screen starts a 3-minute cooldown when a code is sent, showing `mm:ss` and then a "Resend it" action. The interval is cleared when the step is left, the code is verified or the view is destroyed.
+- **"Need help?" modal on the access screen**: three FAQs about recovering an existing wallet, using a new device and continuing without installing. Below 768px it presents as a bottom sheet without the intro line or the bottom Close button, matching the phone mocks.
+
+### Changed
+
+- **`LoginPage` — single source of truth for the current screen**: screen selection was duplicated across five template conditions plus a sixth, divergent copy in the `watermark` getter, which checked `showInstallScreen` alone — always `true` in a non-standalone browser — so every step rendered the access artwork once the installability probe answered "not installable". All six collapse into one `screen` computed, and the template branches on a single `@switch`, making the states mutually exclusive by construction.
+- **`LoginPage` — getters migrated to signals**: `screen`, `watermark`, `canGoBack`, `brandName` and `resendCountdown` become `computed()`, with `showInstallScreen`, `step` and `resendSecondsLeft` as writable signals. `brandName` now derives from `toSignal(getTheme())` instead of the non-reactive `ThemeService.snapshot`, so it updates if the theme settles after the first render.
+- **`LoginPage` — template extracted to `login.page.html`**: aligns the page with the repo convention (15 of 17 `*.page.ts` already use `templateUrl`) and drops `login.page.ts` from 688 to 473 lines. The watermark's artwork mapping and mask geometry move from the stylesheet into `watermarkStyle()`, next to the decision that drives them.
+- **Blinker now applies inside Ionic components**: `ion-content` declares `font-family: var(--ion-font-family, inherit)` on its own host, and an element's own declaration beats an inherited value — so everything rendered inside an `ion-content` fell back to Ionic's default. `ion-content` added to the `global.scss` selector.
+
 ## [3.14.1] - 2026-07-28
 
 ### Changed
