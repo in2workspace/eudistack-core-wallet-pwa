@@ -1,7 +1,7 @@
-import { Component, inject, ViewChild } from '@angular/core';
+import { Component, OnDestroy, inject, ViewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AsyncPipe } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -20,194 +20,177 @@ import { WalletService } from 'src/app/core/services/wallet.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 
+const RESEND_COOLDOWN_SECONDS = 180;
+
 @Component({
     selector: 'app-login',
     template: `
     <ion-content [fullscreen]="true" class="auth-bg">
-      <div class="auth-wrapper">
-        <div class="auth-card" [class.card-enter]="true">
-          <div class="auth-logo">
-            <img [src]="logoSrc" alt="Logo" class="logo-img" />
-          </div>
-
-          <!-- Pending install decision -->
-          @if ((pwaInstall.installDecision$ | async) === null) {
-            <div class="auth-checking">
-              <ion-spinner name="crescent"></ion-spinner>
-            </div>
+      <div class="auth-page">
+        <div class="auth-wrapper">
+          @if (canGoBack) {
+            <button type="button" class="auth-back" (click)="goBackToEmail()">
+              <ion-icon name="chevron-back-outline"></ion-icon>
+              {{ 'auth.register.back' | translate }}
+            </button>
           }
 
-          <!-- Install screen -->
-          @if ((pwaInstall.installDecision$ | async) === true && showInstallScreen) {
-            <div class="fingerprint-hero">
-              <div class="fp-circle install-circle">
-                <ion-icon name="download-outline"></ion-icon>
-              </div>
-            </div>
+          <!-- Shape comes from /assets/svg via CSS mask -->
+          <div class="auth-watermark" [attr.data-shape]="watermark" aria-hidden="true"></div>
 
-            <h2 class="auth-title">{{ 'auth.register.install-title' | translate }}</h2>
-            <p class="auth-subtitle">{{ 'auth.register.install-subtitle' | translate }}</p>
+          <div class="auth-content">
+            @switch (screen) {
 
-            <ion-button
-              expand="block"
-              (click)="installApp()"
-              class="auth-button"
-            >
-              <ion-icon name="download-outline" slot="start"></ion-icon>
-              {{ 'auth.register.install-button' | translate }}
-            </ion-button>
+              <!-- Installability probe still running -->
+              @case ('checking') {
+                <div class="auth-checking">
+                  <ion-spinner name="crescent"></ion-spinner>
+                </div>
+              }
 
-            <ion-button
-              expand="block"
-              fill="clear"
-              (click)="skipInstall()"
-              class="secondary-button"
-            >
-              {{ 'auth.register.continue-browser' | translate }}
-            </ion-button>
-          }
+              <!-- Step 1: Access -->
+              @case ('access') {
+                <h1 class="auth-title">{{ 'auth.access.title' | translate: { brand: brandName } }}</h1>
 
-          <!-- Login form -->
-          @if (isBrowserMode && ((pwaInstall.installDecision$ | async) === false || !showInstallScreen)) {
-            <div class="fingerprint-hero">
-              <div class="fp-circle" [class.fp-authenticating]="loading">
-                <ion-icon name="finger-print-outline"></ion-icon>
-              </div>
-            </div>
+                <p class="auth-subtitle">{{ 'auth.access.install-hint' | translate }}</p>
+                <p class="auth-subtitle">{{ 'auth.access.open-hint' | translate: { brand: brandName } }}</p>
 
-            <h2 class="auth-title">{{ (hasExistingPasskey ? 'auth.login.title-welcome' : 'auth.login.title') | translate }}</h2>
-            <p class="auth-subtitle">{{ (hasExistingPasskey ? 'auth.login.subtitle' : 'auth.login.create-passkey-subtitle') | translate }}</p>
+                <button type="button" class="auth-link-button" (click)="skipInstall()">
+                  {{ 'auth.register.continue-browser' | translate }}
+                </button>
 
-            @if (hasExistingPasskey) {
-              <ion-button
-                expand="block"
-                (click)="loginBrowserMode()"
-                [disabled]="loading"
-                class="auth-button"
-              >
-                <ion-icon name="finger-print-outline" slot="start"></ion-icon>
-                {{ 'auth.login.passkey-button' | translate }}
-              </ion-button>
-            } @else {
-              <ion-button
-                expand="block"
-                (click)="createWalletBrowserMode()"
-                [disabled]="loading"
-                class="auth-button"
-              >
-                <ion-icon name="key-outline" slot="start"></ion-icon>
-                {{ 'auth.passkey.register-button' | translate }}
-              </ion-button>
-            }
+                <button type="button" class="auth-button" (click)="installApp()">
+                  {{ 'auth.access.continue-wallet' | translate: { brand: brandName } }}
+                </button>
 
-            @if (loading) {
-              <div class="auth-status">
-                <span class="status-dot"></span>
-                <span class="status-dot"></span>
-                <span class="status-dot"></span>
-              </div>
-            }
-            }
+                <aside class="auth-notice">
+                  <p class="auth-notice__title">{{ 'auth.access.already-title' | translate: { brand: brandName } }}</p>
+                  <p class="auth-notice__text">{{ 'auth.access.already-text' | translate }}</p>
+                  <button type="button" class="auth-notice__link" (click)="openHelp()">
+                    {{ 'auth.access.help-link' | translate }}
+                  </button>
+                </aside>
+              }
 
-            <!-- Server mode: email + OTP + passkey flow -->
-            <ng-container *ngIf="!isBrowserMode && ((pwaInstall.installDecision$ | async) === false || !showInstallScreen)">
-              <h2 class="auth-title">{{ (step === 'passkey' && !needsPasskeySetup ? 'auth.login.title-welcome' : 'auth.login.title') | translate }}</h2>
-              <p class="auth-subtitle">
-                <span *ngIf="step === 'email'">{{ 'auth.login.enter-email' | translate }}</span>
-                <span *ngIf="step === 'code'">{{ 'auth.register.code-sent' | translate }}</span>
-                <span *ngIf="step === 'passkey' && !needsPasskeySetup">{{ 'auth.login.verify-passkey' | translate }}</span>
-                <span *ngIf="step === 'passkey' && needsPasskeySetup">{{ 'auth.passkey.description' | translate }}</span>
-              </p>
+              <!-- Browser mode: single-step passkey -->
+              @case ('browser') {
+                <h1 class="auth-title">
+                  {{ (hasExistingPasskey ? 'auth.login.title-welcome' : 'auth.login.title') | translate }}
+                </h1>
+                <p class="auth-subtitle">
+                  {{ (hasExistingPasskey ? 'auth.login.subtitle' : 'auth.login.create-passkey-subtitle') | translate }}
+                </p>
 
-              <!-- Step 1: Email -->
-              <div *ngIf="step === 'email'" class="auth-form">
-                <div class="input-group">
-                  <ion-icon name="mail-outline" class="input-icon"></ion-icon>
+                @if (hasExistingPasskey) {
+                  <button type="button" class="auth-button" (click)="loginBrowserMode()" [disabled]="loading">
+                    {{ 'auth.login.passkey-button' | translate }}
+                  </button>
+                } @else {
+                  <button type="button" class="auth-button" (click)="createWalletBrowserMode()" [disabled]="loading">
+                    {{ 'auth.passkey.register-button' | translate }}
+                  </button>
+                }
+              }
+
+              <!-- Step 2: Email -->
+              @case ('email') {
+                <h1 class="auth-title">{{ 'auth.login.email-title' | translate }}</h1>
+                <p class="auth-subtitle">{{ 'auth.login.email-subtitle' | translate: { brand: brandName } }}</p>
+
+                <div class="auth-field">
+                  <label class="auth-field__label" for="login-email">
+                    {{ 'auth.register.email-label' | translate }}
+                  </label>
                   <ion-input
+                    id="login-email"
                     [(ngModel)]="email"
                     type="email"
+                    inputmode="email"
+                    autocomplete="email"
                     [placeholder]="'auth.register.email-placeholder' | translate"
-                    class="modern-input"
+                    class="auth-input"
                     (keyup.enter)="email && !loading && sendCode()"
                   ></ion-input>
                 </div>
 
-                <ion-button expand="block" (click)="email && !loading && sendCode()" [disabled]="loading" [class.inactive-email]="!email && !loading" class="auth-button">
+                <button
+                  type="button"
+                  class="auth-button"
+                  [disabled]="!email || loading"
+                  (click)="sendCode()"
+                >
                   <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
-                  <ion-icon *ngIf="!loading" name="paper-plane-outline" slot="start"></ion-icon>
                   <span *ngIf="!loading">{{ 'auth.register.send-code' | translate }}</span>
-                </ion-button>
-              </div>
+                </button>
+              }
 
-              <!-- Step 2: OTP code -->
-              <div *ngIf="step === 'code'" class="auth-form">
-                <div class="email-badge">
-                  <span>{{ email }}</span>
+              <!-- Step 3: Verify email -->
+              @case ('code') {
+                <h1 class="auth-title">{{ 'auth.register.verify-title' | translate }}</h1>
+                <p class="auth-subtitle">
+                  {{ 'auth.register.code-sent-prefix' | translate }} <strong>{{ email }}</strong>.<br />
+                  {{ 'auth.register.code-validity' | translate }}
+                </p>
+
+                <div class="auth-field auth-field--otp">
+                  <span class="auth-field__label">{{ 'auth.register.code-label' | translate }}</span>
+                  <app-otp-input
+                    #otpRef
+                    [length]="6"
+                    [autofocus]="true"
+                    [error]="!!errorMessage"
+                    [errorMessage]="errorMessage"
+                    (changed)="otpValue = $event; errorMessage = ''"
+                  ></app-otp-input>
                 </div>
 
-                <app-otp-input
-                  #otpRef
-                  [length]="6"
-                  [autofocus]="true"
-                  [error]="!!errorMessage"
-                  [errorMessage]="errorMessage"
-                  (changed)="otpValue = $event; errorMessage = ''"
-                ></app-otp-input>
+                <p class="auth-resend">
+                  @if (resendSecondsLeft > 0) {
+                    {{ 'auth.register.resend-in' | translate: { time: resendCountdown } }}
+                  } @else {
+                    {{ 'auth.register.resend-prompt' | translate }}
+                    <button type="button" class="auth-inline-link" [disabled]="loading" (click)="resendCode()">
+                      {{ 'auth.register.resend-action' | translate }}
+                    </button>
+                  }
+                </p>
 
-                <ion-button expand="block" (click)="otpValue.length >= 6 && !loading && verifyCode()" [disabled]="loading" [class.inactive-email]="otpValue.length < 6 && !loading" class="auth-button">
+                <button
+                  type="button"
+                  class="auth-button"
+                  [disabled]="otpValue.length < 6 || loading"
+                  (click)="verifyCode()"
+                >
                   <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
-                  <ion-icon *ngIf="!loading" name="shield-checkmark-outline" slot="start"></ion-icon>
-                  <span *ngIf="!loading">{{ 'auth.register.verify' | translate }}</span>
-                </ion-button>
+                  <span *ngIf="!loading">{{ 'auth.register.continue' | translate }}</span>
+                </button>
+              }
 
-                <ion-button expand="block" fill="clear" (click)="goBackToEmail()" class="secondary-button">
-                  {{ 'auth.register.change-email' | translate }}
-                </ion-button>
-              </div>
+              <!-- Step 4: Passkey -->
+              @case ('passkey') {
+                @if (needsPasskeySetup) {
+                  <h1 class="auth-title">
+                    {{ 'auth.passkey.verified-title' | translate }}<br />
+                    {{ 'auth.passkey.setup-title' | translate }}
+                  </h1>
+                  <p class="auth-subtitle">
+                    {{ 'auth.passkey.verified-subtitle' | translate }}<br />
+                    {{ 'auth.passkey.setup-subtitle' | translate }}
+                  </p>
 
-              <!-- Step 3a: Verify existing passkey -->
-              <div *ngIf="step === 'passkey' && !needsPasskeySetup" class="auth-form">
-                <div class="fingerprint-hero">
-                  <div class="fp-circle" [class.fp-authenticating]="loading">
-                    <ion-icon name="finger-print-outline"></ion-icon>
-                  </div>
-                </div>
+                  <button type="button" class="auth-button" [disabled]="loading" (click)="createPasskeyForDevice()">
+                    {{ 'auth.passkey.register-button' | translate }}
+                  </button>
+                } @else {
+                  <h1 class="auth-title">{{ 'auth.login.title-welcome' | translate }}</h1>
+                  <p class="auth-subtitle">{{ 'auth.login.verify-passkey' | translate }}</p>
 
-                <ion-button expand="block" (click)="verifyPasskey()" [disabled]="loading" class="auth-button">
-                  <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
-                  <ion-icon *ngIf="!loading" name="finger-print-outline" slot="start"></ion-icon>
-                  <span *ngIf="!loading">{{ 'auth.login.passkey-button' | translate }}</span>
-                </ion-button>
-              </div>
-
-              <!-- Step 3b: Create passkey on this new device -->
-              <div *ngIf="step === 'passkey' && needsPasskeySetup" class="auth-form">
-                <div class="fingerprint-hero">
-                  <div class="fp-circle" [class.fp-authenticating]="loading">
-                    <ion-icon name="finger-print-outline"></ion-icon>
-                  </div>
-                </div>
-
-                <div class="input-group">
-                  <ion-icon name="phone-portrait-outline" class="input-icon"></ion-icon>
-                  <ion-input
-                    [(ngModel)]="deviceName"
-                    type="text"
-                    maxlength="100"
-                    [attr.aria-label]="'auth.passkey.device-name-label' | translate"
-                    [placeholder]="'auth.passkey.device-name-placeholder' | translate"
-                    class="modern-input"
-                    (keyup.enter)="deviceName.trim() && !loading && createPasskeyForDevice()"
-                  ></ion-input>
-                </div>
-
-                <ion-button expand="block" (click)="createPasskeyForDevice()" [disabled]="loading || !deviceName.trim()" class="auth-button">
-                  <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
-                  <ion-icon *ngIf="!loading" name="finger-print-outline" slot="start"></ion-icon>
-                  <span *ngIf="!loading">{{ 'auth.passkey.register-button' | translate }}</span>
-                </ion-button>
-              </div>
-            </ng-container>
+                  <button type="button" class="auth-button" [disabled]="loading" (click)="verifyPasskey()">
+                    {{ 'auth.login.passkey-button' | translate }}
+                  </button>
+                }
+              }
+            }
 
             @if (errorMessage) {
               <div class="error-box">
@@ -215,23 +198,63 @@ import { CredentialCacheService } from 'src/app/shared/services/credential-cache
                 <span>{{ errorMessage }}</span>
               </div>
             }
+          </div>
         </div>
       </div>
+
+      <!-- Blocking overlay while the passkey runs -->
+      @if (loading && step === 'passkey') {
+        <div class="auth-overlay">
+          <ion-spinner name="crescent"></ion-spinner>
+        </div>
+      }
+
+      <!-- "Need help?" modal-->
+      <ion-modal class="auth-help-modal" [isOpen]="showHelpModal" (didDismiss)="closeHelp()">
+        <ng-template>
+          <div class="help-modal">
+            <button type="button" class="help-modal__close" (click)="closeHelp()" [attr.aria-label]="'auth.access.help.close' | translate">
+              <ion-icon name="close-outline"></ion-icon>
+            </button>
+
+            <h2 class="help-modal__title">{{ 'auth.access.help.title' | translate }}</h2>
+            <p class="help-modal__intro">{{ 'auth.access.help.intro' | translate }}</p>
+
+            @for (faq of helpFaqs; track faq.question) {
+              <div class="help-modal__item">
+                <p class="help-modal__question">{{ faq.question | translate: { brand: brandName } }}</p>
+                <p class="help-modal__answer">{{ faq.answer | translate: { brand: brandName } }}</p>
+              </div>
+            }
+
+            <button type="button" class="auth-button" (click)="closeHelp()">
+              {{ 'auth.access.help.close' | translate }}
+            </button>
+          </div>
+        </ng-template>
+      </ion-modal>
     </ion-content>
   `,
     styleUrl: './login.page.scss',
-  imports: [AsyncPipe, CommonModule, FormsModule, IonicModule, OtpInputComponent, TranslateModule]
+  imports: [CommonModule, FormsModule, IonicModule, OtpInputComponent, TranslateModule]
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
-export class LoginPage {
+export class LoginPage implements OnDestroy {
   @ViewChild('otpRef') otpInput!: OtpInputComponent;
 
   private readonly themeService = inject(ThemeService);
-  readonly pwaInstall = inject(PwaInstallService);
-  readonly logoSrc = this.themeService.getLogoUrl('dark');
+  private readonly pwaInstall = inject(PwaInstallService);
+  private readonly installDecision = toSignal(this.pwaInstall.installDecision$);
   loading = false;
   errorMessage = '';
   showInstallScreen = !this.pwaInstall.isStandalone;
+  showHelpModal = false;
+
+  readonly helpFaqs = [
+    { question: 'auth.access.help.q1', answer: 'auth.access.help.a1' },
+    { question: 'auth.access.help.q2', answer: 'auth.access.help.a2' },
+    { question: 'auth.access.help.q3', answer: 'auth.access.help.a3' },
+  ];
 
   // Server mode: multi-step flow
   email = '';
@@ -239,6 +262,8 @@ export class LoginPage {
   step: 'email' | 'code' | 'passkey' = 'email';
   needsPasskeySetup = false;
   deviceName = '';
+  resendSecondsLeft = 0;
+  private resendTimer: ReturnType<typeof setInterval> | null = null;
   private passkeyFromRefreshToken = false;
 
   private readonly authService = inject(AuthService);
@@ -253,6 +278,41 @@ export class LoginPage {
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
   readonly hasExistingPasskey = this.prfService.hasPasskey();
+
+  get brandName(): string {
+    const name = this.themeService.snapshot?.branding?.name?.trim();
+    return name ? name.split(' ')[0] : 'Wallet';
+  }
+
+  get screen(): 'checking' | 'access' | 'browser' | 'email' | 'code' | 'passkey' {
+    const decision = this.installDecision();
+    if (decision === undefined) return 'checking';
+    if (decision && this.showInstallScreen) return 'access';
+    if (this.isBrowserMode) return 'browser';
+    return this.step;
+  }
+
+  get canGoBack(): boolean {
+    const screen = this.screen;
+    return screen === 'code' || screen === 'passkey';
+  }
+
+  get watermark(): 'access' | 'email' | 'verify' | 'passkey' | null {
+    switch (this.screen) {
+      case 'checking': return null;
+      case 'access': return 'access';
+      case 'code': return 'verify';
+      case 'browser':
+      case 'passkey': return 'passkey';
+      default: return 'email';
+    }
+  }
+
+  get resendCountdown(): string {
+    const minutes = Math.floor(this.resendSecondsLeft / 60);
+    const seconds = this.resendSecondsLeft % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
 
   ionViewWillEnter(): void {
     this.loading = false;
@@ -272,6 +332,14 @@ export class LoginPage {
     }
   }
 
+  ionViewWillLeave(): void {
+    this.stopResendCountdown();
+  }
+
+  ngOnDestroy(): void {
+    this.stopResendCountdown();
+  }
+
   async installApp(): Promise<void> {
     await this.pwaInstall.promptInstall();
     this.showInstallScreen = false;
@@ -279,6 +347,14 @@ export class LoginPage {
 
   skipInstall(): void {
     this.showInstallScreen = false;
+  }
+
+  openHelp(): void {
+    this.showHelpModal = true;
+  }
+
+  closeHelp(): void {
+    this.showHelpModal = false;
   }
 
   // --- Browser mode: single-step passkey login ---
@@ -326,9 +402,12 @@ export class LoginPage {
     this.step = 'email';
     this.errorMessage = '';
     this.otpValue = '';
+    this.stopResendCountdown();
   }
 
   sendCode(): void {
+    if (!this.email || this.loading) return;
+
     this.loading = true;
     this.errorMessage = '';
 
@@ -337,6 +416,28 @@ export class LoginPage {
         this.step = 'code';
         this.otpValue = '';
         this.loading = false;
+        this.startResendCountdown();
+      },
+      error: (err) => {
+        this.errorMessage = err?.status === 429
+          ? this.translate.instant('auth.errors.too-many-attempts')
+          : (err?.error?.message || err?.error?.detail || 'Failed to send verification code');
+        this.loading = false;
+      }
+    });
+  }
+
+  resendCode(): void {
+    if (this.loading || this.resendSecondsLeft > 0) return;
+
+    this.loading = true;
+    this.errorMessage = '';
+
+    (this.authService as RemoteAuthService).register(this.email, 'login').subscribe({
+      next: () => {
+        this.otpValue = '';
+        this.loading = false;
+        this.startResendCountdown();
       },
       error: (err) => {
         this.errorMessage = err?.status === 429
@@ -348,12 +449,15 @@ export class LoginPage {
   }
 
   verifyCode(): void {
+    if (this.otpValue.length < 6 || this.loading) return;
+
     this.loading = true;
     this.errorMessage = '';
 
     (this.authService as RemoteAuthService).verifyEmail(this.email, this.otpValue).subscribe({
       next: () => {
         this.loading = false;
+        this.stopResendCountdown();
         this.passkeyFromRefreshToken = false;
         this.needsPasskeySetup = !this.prfService.hasPasskey();
         if (this.needsPasskeySetup) {
@@ -430,6 +534,25 @@ export class LoginPage {
   }
 
   // --- Private helpers ---
+
+  private startResendCountdown(): void {
+    this.stopResendCountdown();
+    this.resendSecondsLeft = RESEND_COOLDOWN_SECONDS;
+    this.resendTimer = setInterval(() => {
+      this.resendSecondsLeft -= 1;
+      if (this.resendSecondsLeft <= 0) {
+        this.stopResendCountdown();
+      }
+    }, 1000);
+  }
+
+  private stopResendCountdown(): void {
+    if (this.resendTimer !== null) {
+      clearInterval(this.resendTimer);
+      this.resendTimer = null;
+    }
+    this.resendSecondsLeft = 0;
+  }
 
   private async authenticateLocally(): Promise<void> {
     const credentialId = this.prfService.getCredentialId();
