@@ -72,6 +72,26 @@
   },
   "mailto_permission_alert": "Please make sure you have the necessary permissions to send emails with your default email application. If the email service doesn't open, it is likely due to permission restrictions.",
   "auth": {
+    "access": {
+      "title": "Access {{brand}} securely",
+      "install-hint": "For the best experience and offline access, install the wallet app on your device.",
+      "open-hint": "If you already have the {{brand}} Wallet, open it to continue. If not, install it to get started.",
+      "continue-wallet": "Continue with {{brand}} Wallet",
+      "already-title": "Already have a {{brand}} Wallet?",
+      "already-text": "If your wallet is already configured in other device, your existing credentials will be recovered.",
+      "help-link": "Need help? Learn more",
+      "help": {
+        "title": "Need help?",
+        "intro": "If you're unable to scan the QR code, enter the activation code provided to you.",
+        "q1": "I already have a {{brand}} Wallet. Do I need to create a new account?",
+        "a1": "No. During setup, your existing credentials will be recovered.",
+        "q2": "What if I'm using a new device?",
+        "a2": "You'll be guided through the steps required to securely access your existing {{brand}} account.",
+        "q3": "Can I continue without installing the Wallet?",
+        "a3": "Yes. You can continue in your browser, although some features may be limited.",
+        "close": "Close"
+      }
+    },
     "login": {
       "title": "Register your device",
       "title-welcome": "Welcome back",
@@ -79,7 +99,9 @@
       "create-passkey-subtitle": "Your passkey keeps your wallet secure. You'll use it to sign in.",
       "passkey-button": "Sign in with Passkey",
       "enter-email": "Enter your email to get started",
-      "verify-passkey": "Verify your identity with your passkey"
+      "verify-passkey": "Use your passkey to access your account securely.",
+      "email-title": "Continue with your email",
+      "email-subtitle": "Enter the email address associated with your {{brand}} account."
     },
     "register": {
       "email-placeholder": "Enter your email",
@@ -90,7 +112,17 @@
       "install-title": "Install the App",
       "install-subtitle": "For the best experience and offline access, install the wallet app on your device.",
       "install-button": "Install App",
-      "continue-browser": "Continue in browser"
+      "continue-browser": "Continue in browser",
+      "email-label": "Email",
+      "verify-title": "Verify your email address",
+      "code-sent-prefix": "Enter the verification code sent to your email address",
+      "code-validity": "The code is valid for a limited time.",
+      "code-label": "Code",
+      "resend-in": "Didn't receive the code? Resend available in {{time}}",
+      "resend-prompt": "Didn't receive the code?",
+      "resend-action": "Resend it",
+      "continue": "Continue",
+      "back": "Back"
     },
     "passkey": {
       "title": "Set up Passkey",
@@ -102,7 +134,11 @@
       "success": "Passkey registered successfully!",
       "status-connecting": "Preparing...",
       "status-verifying": "Waiting for your device...",
-      "retry": "Try again"
+      "retry": "Try again",
+      "verified-title": "Email verified!",
+      "setup-title": "Set up a passkey",
+      "verified-subtitle": "Your email has been successfully verified.",
+      "setup-subtitle": "Set up a passkey to complete access on this device."
     },
     "reauth": {
       "subtitle": "Verify your email to restore your session",

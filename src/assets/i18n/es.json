@@ -66,6 +66,26 @@
   },
   "mailto_permission_alert": "Por favor, asegúrate de que tienes los permisos necesarios para enviar correos electrónicos con tu aplicación de correo predeterminada. Si el servicio de correo no se abre, es probable que se deba a restricciones de permisos.",
   "auth": {
+    "access": {
+      "title": "Accede a {{brand}} de forma segura",
+      "install-hint": "Para la mejor experiencia y acceso offline, instala la app del wallet en tu dispositivo.",
+      "open-hint": "Si ya tienes el Wallet de {{brand}}, ábrelo para continuar. Si no, instálalo para empezar.",
+      "continue-wallet": "Continuar con el Wallet de {{brand}}",
+      "already-title": "¿Ya tienes un Wallet de {{brand}}?",
+      "already-text": "Si tu wallet ya está configurado en otro dispositivo, tus credenciales existentes se recuperarán.",
+      "help-link": "¿Necesitas ayuda? Más información",
+      "help": {
+        "title": "¿Necesitas ayuda?",
+        "intro": "Si no puedes escanear el código QR, introduce el código de activación que te han proporcionado.",
+        "q1": "Ya tengo un Wallet de {{brand}}. ¿Necesito crear una cuenta nueva?",
+        "a1": "No. Durante la configuración se recuperarán tus credenciales existentes.",
+        "q2": "¿Y si estoy usando un dispositivo nuevo?",
+        "a2": "Te guiaremos por los pasos necesarios para acceder de forma segura a tu cuenta de {{brand}}.",
+        "q3": "¿Puedo continuar sin instalar el Wallet?",
+        "a3": "Sí. Puedes continuar en el navegador, aunque algunas funcionalidades pueden estar limitadas.",
+        "close": "Cerrar"
+      }
+    },
     "login": {
       "title": "Registra tu dispositivo",
       "title-welcome": "Bienvenido",
@@ -73,7 +93,9 @@
       "create-passkey-subtitle": "Tu passkey mantiene tu wallet segura. La usarás para iniciar sesión.",
       "passkey-button": "Iniciar sesión con Passkey",
       "enter-email": "Introduce tu email para empezar",
-      "verify-passkey": "Verifica tu identidad con tu passkey"
+      "verify-passkey": "Verifica tu identidad con tu passkey",
+      "email-title": "Continúa con tu email",
+      "email-subtitle": "Introduce la dirección de email asociada a tu cuenta de {{brand}}."
     },
     "register": {
       "email-placeholder": "Introduce tu email",
@@ -84,7 +106,17 @@
       "install-title": "Instalar la App",
       "install-subtitle": "Para la mejor experiencia y acceso offline, instala la app del wallet en tu dispositivo.",
       "install-button": "Instalar App",
-      "continue-browser": "Continuar en el navegador"
+      "continue-browser": "Continuar en el navegador",
+      "email-label": "Email",
+      "verify-title": "Verifica tu dirección de email",
+      "code-sent-prefix": "Introduce el código de verificación enviado a tu dirección de email",
+      "code-validity": "El código es válido durante un tiempo limitado.",
+      "code-label": "Código",
+      "resend-in": "¿No has recibido el código? Reenvío disponible en {{time}}",
+      "resend-prompt": "¿No has recibido el código?",
+      "resend-action": "Reenviar",
+      "continue": "Continuar",
+      "back": "Atrás"
     },
     "passkey": {
       "title": "Configurar Passkey",
@@ -96,7 +128,11 @@
       "success": "¡Passkey registrada correctamente!",
       "status-connecting": "Preparando...",
       "status-verifying": "Esperando tu dispositivo...",
-      "retry": "Reintentar"
+      "retry": "Reintentar",
+      "verified-title": "¡Email verificado!",
+      "setup-title": "Configura una passkey",
+      "verified-subtitle": "Tu email se ha verificado correctamente.",
+      "setup-subtitle": "Configura una passkey para completar el acceso en este dispositivo."
     },
     "reauth": {
       "subtitle": "Verifica tu email para restaurar tu sesión",
