@@ -51,7 +51,6 @@
 
 .auth-watermark {
   --wm-width: clamp(280px, 45%, 620px);
-  --wm-crop-top: 200;
   position: absolute;
   top: 0;
   left: 0;
@@ -60,32 +59,6 @@
   pointer-events: none;
   user-select: none;
   background-color: var(--auth-tint);
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  -webkit-mask-position: left calc(var(--wm-width) * var(--wm-crop-top) / -672);
-  mask-position: left calc(var(--wm-width) * var(--wm-crop-top) / -672);
-
-  &[data-shape='access'] {
-    -webkit-mask-image: url('../../../../assets/svg/download-solid.svg');
-    mask-image: url('../../../../assets/svg/download-solid.svg');
-  }
-
-  &[data-shape='email'] {
-    -webkit-mask-image: url('../../../../assets/svg/user-solid.svg');
-    mask-image: url('../../../../assets/svg/user-solid.svg');
-  }
-
-  &[data-shape='verify'] {
-    -webkit-mask-image: url('../../../../assets/svg/envelope-circle-check-solid.svg');
-    mask-image: url('../../../../assets/svg/envelope-circle-check-solid.svg');
-  }
-
-  &[data-shape='passkey'] {
-    -webkit-mask-image: url('../../../../assets/svg/door-open-solid.svg');
-    mask-image: url('../../../../assets/svg/door-open-solid.svg');
-  }
 }
 
 .auth-content {

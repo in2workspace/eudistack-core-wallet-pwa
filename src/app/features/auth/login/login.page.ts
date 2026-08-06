@@ -22,6 +22,19 @@ import { CredentialCacheService } from 'src/app/shared/services/credential-cache
 
 const RESEND_COOLDOWN_SECONDS = 180;
 
+type WatermarkShape = 'access' | 'email' | 'verify' | 'passkey';
+
+const WATERMARK_ASSETS: Record<WatermarkShape, string> = {
+  access: 'assets/svg/download-solid.svg',
+  email: 'assets/svg/user-solid.svg',
+  verify: 'assets/svg/envelope-circle-check-solid.svg',
+  passkey: 'assets/svg/door-open-solid.svg',
+};
+
+const WATERMARK_VIEWBOX_WIDTH = 672;
+
+const WATERMARK_CROP_TOP = 200;
+
 @Component({
     selector: 'app-login',
     template: `
@@ -36,7 +49,12 @@ const RESEND_COOLDOWN_SECONDS = 180;
           }
 
           <!-- Shape comes from /assets/svg via CSS mask -->
-          <div class="auth-watermark" [attr.data-shape]="watermark()" aria-hidden="true"></div>
+          <div
+            class="auth-watermark"
+            [attr.data-shape]="watermark()"
+            [style]="watermarkStyle()"
+            aria-hidden="true"
+          ></div>
 
           <div class="auth-content">
             @switch (screen()) {
@@ -298,7 +316,7 @@ export class LoginPage implements OnDestroy {
     return screen === 'code' || screen === 'passkey';
   });
 
-  readonly watermark = computed<'access' | 'email' | 'verify' | 'passkey' | null>(() => {
+  readonly watermark = computed<WatermarkShape | null>(() => {
     switch (this.screen()) {
       case 'checking': return null;
       case 'access': return 'access';
@@ -307,6 +325,22 @@ export class LoginPage implements OnDestroy {
       case 'passkey': return 'passkey';
       default: return 'email';
     }
+  });
+
+
+  readonly watermarkStyle = computed((): Record<string, string> => {
+    const shape = this.watermark();
+    if (!shape) return { display: 'none' };
+
+    const image = `url('${new URL(WATERMARK_ASSETS[shape], document.baseURI).href}')`;
+    const position = `left calc(var(--wm-width) * ${WATERMARK_CROP_TOP} / -${WATERMARK_VIEWBOX_WIDTH})`;
+
+    return {
+      'mask-image': image,
+      'mask-repeat': 'no-repeat',
+      'mask-size': 'contain',
+      'mask-position': position,
+    };
   });
 
   readonly resendCountdown = computed(() => {

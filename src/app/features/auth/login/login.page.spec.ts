@@ -466,11 +466,32 @@ describe('LoginPage (server mode)', () => {
             }
           : provider),
       }).compileComponents();
-      component = TestBed.createComponent(LoginPage).componentInstance;
+      fixture = TestBed.createComponent(LoginPage);
+      component = fixture.componentInstance;
 
       expect(component.screen()).toBe('checking');
       expect(component.watermark()).toBeNull();
       expect(component.canGoBack()).toBe(false);
+
+      // Without a mask the element would paint its background-color in full.
+      fixture.detectChanges();
+      const watermark = fixture.nativeElement.querySelector('.auth-watermark') as HTMLElement;
+      expect(watermark.style.display).toBe('none');
+    });
+
+    it('masks the watermark with the artwork of the current screen', () => {
+      fixture.detectChanges();
+      const watermark = fixture.nativeElement.querySelector('.auth-watermark') as HTMLElement;
+
+      expect(watermark.getAttribute('data-shape')).toBe('email');
+      expect(watermark.style.getPropertyValue('mask-image')).toContain('user-solid.svg');
+      expect(watermark.style.getPropertyValue('mask-size')).toBe('contain');
+
+      component.step.set('code');
+      fixture.detectChanges();
+
+      expect(watermark.style.getPropertyValue('mask-image')).toContain('envelope-circle-check-solid.svg');
+      expect(watermark.style.display).toBe('');
     });
 
     it('falls back to a generic brand name when the tenant theme is unavailable', () => {
