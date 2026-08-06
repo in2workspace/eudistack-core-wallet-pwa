@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject, ViewChild } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal, ViewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -28,7 +28,7 @@ const RESEND_COOLDOWN_SECONDS = 180;
     <ion-content [fullscreen]="true" class="auth-bg">
       <div class="auth-page">
         <div class="auth-wrapper">
-          @if (canGoBack) {
+          @if (canGoBack()) {
             <button type="button" class="auth-back" (click)="goBackToEmail()">
               <ion-icon name="chevron-back-outline"></ion-icon>
               {{ 'auth.register.back' | translate }}
@@ -36,10 +36,10 @@ const RESEND_COOLDOWN_SECONDS = 180;
           }
 
           <!-- Shape comes from /assets/svg via CSS mask -->
-          <div class="auth-watermark" [attr.data-shape]="watermark" aria-hidden="true"></div>
+          <div class="auth-watermark" [attr.data-shape]="watermark()" aria-hidden="true"></div>
 
           <div class="auth-content">
-            @switch (screen) {
+            @switch (screen()) {
 
               <!-- Installability probe still running -->
               @case ('checking') {
@@ -50,21 +50,21 @@ const RESEND_COOLDOWN_SECONDS = 180;
 
               <!-- Step 1: Access -->
               @case ('access') {
-                <h1 class="auth-title">{{ 'auth.access.title' | translate: { brand: brandName } }}</h1>
+                <h1 class="auth-title">{{ 'auth.access.title' | translate: { brand: brandName() } }}</h1>
 
                 <p class="auth-subtitle">{{ 'auth.access.install-hint' | translate }}</p>
-                <p class="auth-subtitle">{{ 'auth.access.open-hint' | translate: { brand: brandName } }}</p>
+                <p class="auth-subtitle">{{ 'auth.access.open-hint' | translate: { brand: brandName() } }}</p>
 
                 <button type="button" class="auth-link-button" (click)="skipInstall()">
                   {{ 'auth.register.continue-browser' | translate }}
                 </button>
 
                 <button type="button" class="auth-button" (click)="installApp()">
-                  {{ 'auth.access.continue-wallet' | translate: { brand: brandName } }}
+                  {{ 'auth.access.continue-wallet' | translate: { brand: brandName() } }}
                 </button>
 
                 <aside class="auth-notice">
-                  <p class="auth-notice__title">{{ 'auth.access.already-title' | translate: { brand: brandName } }}</p>
+                  <p class="auth-notice__title">{{ 'auth.access.already-title' | translate: { brand: brandName() } }}</p>
                   <p class="auth-notice__text">{{ 'auth.access.already-text' | translate }}</p>
                   <button type="button" class="auth-notice__link" (click)="openHelp()">
                     {{ 'auth.access.help-link' | translate }}
@@ -95,7 +95,7 @@ const RESEND_COOLDOWN_SECONDS = 180;
               <!-- Step 2: Email -->
               @case ('email') {
                 <h1 class="auth-title">{{ 'auth.login.email-title' | translate }}</h1>
-                <p class="auth-subtitle">{{ 'auth.login.email-subtitle' | translate: { brand: brandName } }}</p>
+                <p class="auth-subtitle">{{ 'auth.login.email-subtitle' | translate: { brand: brandName() } }}</p>
 
                 <div class="auth-field">
                   <label class="auth-field__label" for="login-email">
@@ -145,8 +145,8 @@ const RESEND_COOLDOWN_SECONDS = 180;
                 </div>
 
                 <p class="auth-resend">
-                  @if (resendSecondsLeft > 0) {
-                    {{ 'auth.register.resend-in' | translate: { time: resendCountdown } }}
+                  @if (resendSecondsLeft() > 0) {
+                    {{ 'auth.register.resend-in' | translate: { time: resendCountdown() } }}
                   } @else {
                     {{ 'auth.register.resend-prompt' | translate }}
                     <button type="button" class="auth-inline-link" [disabled]="loading" (click)="resendCode()">
@@ -203,7 +203,7 @@ const RESEND_COOLDOWN_SECONDS = 180;
       </div>
 
       <!-- Blocking overlay while the passkey runs -->
-      @if (loading && step === 'passkey') {
+      @if (loading && step() === 'passkey') {
         <div class="auth-overlay">
           <ion-spinner name="crescent"></ion-spinner>
         </div>
@@ -222,8 +222,8 @@ const RESEND_COOLDOWN_SECONDS = 180;
 
             @for (faq of helpFaqs; track faq.question) {
               <div class="help-modal__item">
-                <p class="help-modal__question">{{ faq.question | translate: { brand: brandName } }}</p>
-                <p class="help-modal__answer">{{ faq.answer | translate: { brand: brandName } }}</p>
+                <p class="help-modal__question">{{ faq.question | translate: { brand: brandName() } }}</p>
+                <p class="help-modal__answer">{{ faq.answer | translate: { brand: brandName() } }}</p>
               </div>
             }
 
@@ -245,9 +245,10 @@ export class LoginPage implements OnDestroy {
   private readonly themeService = inject(ThemeService);
   private readonly pwaInstall = inject(PwaInstallService);
   private readonly installDecision = toSignal(this.pwaInstall.installDecision$);
+  private readonly theme = toSignal(this.themeService.getTheme());
   loading = false;
   errorMessage = '';
-  showInstallScreen = !this.pwaInstall.isStandalone;
+  readonly showInstallScreen = signal(!this.pwaInstall.isStandalone);
   showHelpModal = false;
 
   readonly helpFaqs = [
@@ -259,10 +260,10 @@ export class LoginPage implements OnDestroy {
   // Server mode: multi-step flow
   email = '';
   otpValue = '';
-  step: 'email' | 'code' | 'passkey' = 'email';
+  readonly step = signal<'email' | 'code' | 'passkey'>('email');
   needsPasskeySetup = false;
   deviceName = '';
-  resendSecondsLeft = 0;
+  readonly resendSecondsLeft = signal(0);
   private resendTimer: ReturnType<typeof setInterval> | null = null;
   private passkeyFromRefreshToken = false;
 
@@ -279,26 +280,26 @@ export class LoginPage implements OnDestroy {
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
   readonly hasExistingPasskey = this.prfService.hasPasskey();
 
-  get brandName(): string {
-    const name = this.themeService.snapshot?.branding?.name?.trim();
+  readonly brandName = computed(() => {
+    const name = this.theme()?.branding?.name?.trim();
     return name ? name.split(' ')[0] : 'Wallet';
-  }
+  });
 
-  get screen(): 'checking' | 'access' | 'browser' | 'email' | 'code' | 'passkey' {
+  readonly screen = computed<'checking' | 'access' | 'browser' | 'email' | 'code' | 'passkey'>(() => {
     const decision = this.installDecision();
     if (decision === undefined) return 'checking';
-    if (decision && this.showInstallScreen) return 'access';
+    if (decision && this.showInstallScreen()) return 'access';
     if (this.isBrowserMode) return 'browser';
-    return this.step;
-  }
+    return this.step();
+  });
 
-  get canGoBack(): boolean {
-    const screen = this.screen;
+  readonly canGoBack = computed(() => {
+    const screen = this.screen();
     return screen === 'code' || screen === 'passkey';
-  }
+  });
 
-  get watermark(): 'access' | 'email' | 'verify' | 'passkey' | null {
-    switch (this.screen) {
+  readonly watermark = computed<'access' | 'email' | 'verify' | 'passkey' | null>(() => {
+    switch (this.screen()) {
       case 'checking': return null;
       case 'access': return 'access';
       case 'code': return 'verify';
@@ -306,27 +307,28 @@ export class LoginPage implements OnDestroy {
       case 'passkey': return 'passkey';
       default: return 'email';
     }
-  }
+  });
 
-  get resendCountdown(): string {
-    const minutes = Math.floor(this.resendSecondsLeft / 60);
-    const seconds = this.resendSecondsLeft % 60;
+  readonly resendCountdown = computed(() => {
+    const total = this.resendSecondsLeft();
+    const minutes = Math.floor(total / 60);
+    const seconds = total % 60;
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  }
+  });
 
   ionViewWillEnter(): void {
     this.loading = false;
     this.errorMessage = '';
 
     if (!this.isBrowserMode && localStorage.getItem('wallet_refresh_token')) {
-      this.step = 'passkey';
+      this.step.set('passkey');
       this.passkeyFromRefreshToken = true;
       this.needsPasskeySetup = !this.prfService.hasPasskey();
       if (this.needsPasskeySetup) {
         this.deviceName = this.getDeviceName();
       }
     } else {
-      this.step = 'email';
+      this.step.set('email');
       this.passkeyFromRefreshToken = false;
       this.needsPasskeySetup = false;
     }
@@ -342,11 +344,11 @@ export class LoginPage implements OnDestroy {
 
   async installApp(): Promise<void> {
     await this.pwaInstall.promptInstall();
-    this.showInstallScreen = false;
+    this.showInstallScreen.set(false);
   }
 
   skipInstall(): void {
-    this.showInstallScreen = false;
+    this.showInstallScreen.set(false);
   }
 
   openHelp(): void {
@@ -399,7 +401,7 @@ export class LoginPage implements OnDestroy {
   }
 
   goBackToEmail(): void {
-    this.step = 'email';
+    this.step.set('email');
     this.errorMessage = '';
     this.otpValue = '';
     this.stopResendCountdown();
@@ -413,7 +415,7 @@ export class LoginPage implements OnDestroy {
 
     (this.authService as RemoteAuthService).register(this.email, 'login').subscribe({
       next: () => {
-        this.step = 'code';
+        this.step.set('code');
         this.otpValue = '';
         this.loading = false;
         this.startResendCountdown();
@@ -428,7 +430,7 @@ export class LoginPage implements OnDestroy {
   }
 
   resendCode(): void {
-    if (this.loading || this.resendSecondsLeft > 0) return;
+    if (this.loading || this.resendSecondsLeft() > 0) return;
 
     this.loading = true;
     this.errorMessage = '';
@@ -463,7 +465,7 @@ export class LoginPage implements OnDestroy {
         if (this.needsPasskeySetup) {
           this.deviceName = this.getDeviceName();
         }
-        this.step = 'passkey';
+        this.step.set('passkey');
       },
       error: (err) => {
         this.errorMessage = err?.status === 429
@@ -490,7 +492,7 @@ export class LoginPage implements OnDestroy {
       if (this.passkeyFromRefreshToken) {
         localStorage.removeItem('wallet_refresh_token');
         this.passkeyFromRefreshToken = false;
-        this.step = 'email';
+        this.step.set('email');
         this.errorMessage = 'Your session has expired. Please sign in again.';
       } else {
         this.errorMessage = err?.message || 'Passkey verification failed';
@@ -537,10 +539,10 @@ export class LoginPage implements OnDestroy {
 
   private startResendCountdown(): void {
     this.stopResendCountdown();
-    this.resendSecondsLeft = RESEND_COOLDOWN_SECONDS;
+    this.resendSecondsLeft.set(RESEND_COOLDOWN_SECONDS);
     this.resendTimer = setInterval(() => {
-      this.resendSecondsLeft -= 1;
-      if (this.resendSecondsLeft <= 0) {
+      this.resendSecondsLeft.update(seconds => seconds - 1);
+      if (this.resendSecondsLeft() <= 0) {
         this.stopResendCountdown();
       }
     }, 1000);
@@ -551,7 +553,7 @@ export class LoginPage implements OnDestroy {
       clearInterval(this.resendTimer);
       this.resendTimer = null;
     }
-    this.resendSecondsLeft = 0;
+    this.resendSecondsLeft.set(0);
   }
 
   private async authenticateLocally(): Promise<void> {
