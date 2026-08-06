@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
-import { Observable, of, throwError } from 'rxjs';
+import { NEVER, Observable, of, throwError } from 'rxjs';
 import { LoginPage } from './login.page';
 import { AuthService } from 'src/app/core/services/auth.service';
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
@@ -34,6 +34,7 @@ describe('LoginPage (server mode)', () => {
   let mockWalletService: { syncCredentials: jest.Mock };
   let mockActivityService: { syncFromServer: jest.Mock };
   let mockCredentialCache: { setLoading: jest.Mock; setError: jest.Mock };
+  let baseProviders: { provide: unknown; useValue: unknown }[];
 
   beforeEach(async () => {
     localStorage.clear();
@@ -70,28 +71,53 @@ describe('LoginPage (server mode)', () => {
     mockActivityService = { syncFromServer: jest.fn().mockResolvedValue(undefined) };
     mockCredentialCache = { setLoading: jest.fn(), setError: jest.fn() };
 
+    baseProviders = [
+      { provide: AuthService, useValue: mockAuthService },
+      { provide: PasskeyPrfService, useValue: mockPrfService },
+      { provide: PasskeyStoreService, useValue: mockPasskeyStore },
+      { provide: PasskeyApiService, useValue: mockPasskeyApi },
+      { provide: Router, useValue: mockRouter },
+      {
+        provide: ThemeService,
+        useValue: {
+          getLogoUrl: jest.fn().mockReturnValue('logo.png'),
+          // brandName() now derives from this stream instead of reading `snapshot`.
+          getTheme: jest.fn().mockReturnValue(of(null)),
+        },
+      },
+      {
+        provide: PwaInstallService,
+        useValue: { installDecision$: of(false), isStandalone: false, promptInstall: jest.fn() }
+      },
+      { provide: WalletService, useValue: mockWalletService },
+      { provide: ActivityService, useValue: mockActivityService },
+      { provide: CredentialCacheService, useValue: mockCredentialCache },
+    ];
+
     await TestBed.configureTestingModule({
       imports: [LoginPage, TranslateModule.forRoot()],
-      providers: [
-        { provide: AuthService, useValue: mockAuthService },
-        { provide: PasskeyPrfService, useValue: mockPrfService },
-        { provide: PasskeyStoreService, useValue: mockPasskeyStore },
-        { provide: PasskeyApiService, useValue: mockPasskeyApi },
-        { provide: Router, useValue: mockRouter },
-        { provide: ThemeService, useValue: { getLogoUrl: jest.fn().mockReturnValue('logo.png') } },
-        {
-          provide: PwaInstallService,
-          useValue: { installDecision$: of(false), isStandalone: false, promptInstall: jest.fn() }
-        },
-        { provide: WalletService, useValue: mockWalletService },
-        { provide: ActivityService, useValue: mockActivityService },
-        { provide: CredentialCacheService, useValue: mockCredentialCache },
-      ]
+      providers: baseProviders,
     }).compileComponents();
 
     fixture = TestBed.createComponent(LoginPage);
     component = fixture.componentInstance;
   });
+
+  async function rebuildWithInstallDecision(decision: boolean, isStandalone = false): Promise<void> {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [LoginPage, TranslateModule.forRoot()],
+      providers: baseProviders.map(provider => provider.provide === PwaInstallService
+        ? {
+            provide: PwaInstallService,
+            useValue: { installDecision$: of(decision), isStandalone, promptInstall: jest.fn() },
+          }
+        : provider),
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(LoginPage);
+    component = fixture.componentInstance;
+  }
 
   it('should create in server mode', () => {
     expect(component.isBrowserMode).toBe(false);
@@ -99,7 +125,7 @@ describe('LoginPage (server mode)', () => {
 
   describe('AC-05: edited device name is sent to registerPasskey', () => {
     it('sends the edited displayName when confirming passkey registration', async () => {
-      component.step = 'passkey';
+      component.step.set('passkey');
       component.needsPasskeySetup = true;
       component.deviceName = 'My Custom Laptop';
 
@@ -118,7 +144,7 @@ describe('LoginPage (server mode)', () => {
 
       component.verifyCode();
 
-      expect(component.step).toBe('passkey');
+      expect(component.step()).toBe('passkey');
       expect(component.needsPasskeySetup).toBe(true);
       expect(component.deviceName).toBeTruthy();
 
@@ -138,7 +164,7 @@ describe('LoginPage (server mode)', () => {
 
       component.ionViewWillEnter();
 
-      expect(component.step).toBe('passkey');
+      expect(component.step()).toBe('passkey');
       expect(component.needsPasskeySetup).toBe(true);
       expect(component.deviceName).toBeTruthy();
       expect(mockAuthService.register).not.toHaveBeenCalled();
@@ -148,7 +174,7 @@ describe('LoginPage (server mode)', () => {
     it('goes to the email step when there is no refresh token', () => {
       component.ionViewWillEnter();
 
-      expect(component.step).toBe('email');
+      expect(component.step()).toBe('email');
       expect(component.needsPasskeySetup).toBe(false);
     });
   });
@@ -160,7 +186,7 @@ describe('LoginPage (server mode)', () => {
 
       component.sendCode();
 
-      expect(component.step).toBe('email');
+      expect(component.step()).toBe('email');
       expect(component.errorMessage).toBeTruthy();
       expect(component.loading).toBe(false);
     });
@@ -177,13 +203,13 @@ describe('LoginPage (server mode)', () => {
 
     it('shows an error and stays on the code step when verifyEmail() fails', () => {
       mockAuthService.verifyEmail.mockReturnValue(throwError(() => ({ status: 401, error: { message: 'invalid_code' } })));
-      component.step = 'code';
+      component.step.set('code');
       component.email = 'user@example.com';
       component.otpValue = '000000';
 
       component.verifyCode();
 
-      expect(component.step).toBe('code');
+      expect(component.step()).toBe('code');
       expect(component.errorMessage).toBeTruthy();
       expect(component.loading).toBe(false);
     });
@@ -248,7 +274,7 @@ describe('LoginPage (server mode)', () => {
       component.verifyCode();
 
       expect(component.needsPasskeySetup).toBe(true);
-      expect(component.step).toBe('passkey');
+      expect(component.step()).toBe('passkey');
       expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
     });
   });
@@ -326,6 +352,140 @@ describe('LoginPage (server mode)', () => {
       expect(mockCredentialCache.setError).toHaveBeenCalled();
       // navigation is not blocked by the failure — the page then surfaces the error state
       expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+  });
+
+  describe('verification-code resend cooldown', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      component.email = 'user@example.com';
+    });
+
+    afterEach(() => {
+      component.ngOnDestroy();
+      jest.useRealTimers();
+    });
+
+    it('starts a 3-minute cooldown once the code has been sent', () => {
+      component.sendCode();
+
+      expect(component.step()).toBe('code');
+      expect(component.resendSecondsLeft()).toBe(180);
+      expect(component.resendCountdown()).toBe('03:00');
+    });
+
+    it('counts down and formats the remaining time as mm:ss', () => {
+      component.sendCode();
+
+      jest.advanceTimersByTime(61_000);
+
+      expect(component.resendSecondsLeft()).toBe(119);
+      expect(component.resendCountdown()).toBe('01:59');
+    });
+
+    it('ignores a resend request while the cooldown is still running', () => {
+      component.sendCode();
+      expect(mockAuthService.register).toHaveBeenCalledTimes(1);
+
+      component.resendCode();
+
+      expect(mockAuthService.register).toHaveBeenCalledTimes(1);
+    });
+
+    it('requests a new code and restarts the cooldown once it has elapsed', () => {
+      component.sendCode();
+      jest.advanceTimersByTime(180_000);
+      expect(component.resendSecondsLeft()).toBe(0);
+
+      component.otpValue = '123456';
+      component.resendCode();
+
+      expect(mockAuthService.register).toHaveBeenCalledTimes(2);
+      expect(component.resendSecondsLeft()).toBe(180);
+      // the stale code the user may have typed is cleared
+      expect(component.otpValue).toBe('');
+    });
+
+    it('does not leave the cooldown running after leaving the code step', () => {
+      component.sendCode();
+
+      component.goBackToEmail();
+
+      expect(component.resendSecondsLeft()).toBe(0);
+      jest.advanceTimersByTime(5_000);
+      expect(component.resendSecondsLeft()).toBe(0);
+    });
+
+    it('stops the cooldown once the code has been verified', () => {
+      component.sendCode();
+      component.otpValue = '123456';
+
+      component.verifyCode();
+
+      expect(component.step()).toBe('passkey');
+      expect(component.resendSecondsLeft()).toBe(0);
+    });
+  });
+
+  describe('screen-driven presentation state', () => {
+    it('picks the watermark that matches the current step', () => {
+      component.step.set('email');
+      expect(component.watermark()).toBe('email');
+
+      component.step.set('code');
+      expect(component.watermark()).toBe('verify');
+
+      component.step.set('passkey');
+      expect(component.watermark()).toBe('passkey');
+    });
+
+    it('shows the access screen and its watermark when the app is installable', async () => {
+      await rebuildWithInstallDecision(true);
+
+      expect(component.showInstallScreen()).toBe(true);
+      expect(component.screen()).toBe('access');
+      expect(component.watermark()).toBe('access');
+    });
+
+    it('does not fall back to the access watermark when the app is not installable', () => {
+      expect(component.showInstallScreen()).toBe(true);
+
+      expect(component.screen()).toBe('email');
+      expect(component.watermark()).toBe('email');
+    });
+
+    it('renders nothing decorative until the installability probe settles', async () => {
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [LoginPage, TranslateModule.forRoot()],
+        providers: baseProviders.map(provider => provider.provide === PwaInstallService
+          ? {
+              provide: PwaInstallService,
+              // never emits — mirrors the probe still running
+              useValue: { installDecision$: NEVER, isStandalone: false, promptInstall: jest.fn() },
+            }
+          : provider),
+      }).compileComponents();
+      component = TestBed.createComponent(LoginPage).componentInstance;
+
+      expect(component.screen()).toBe('checking');
+      expect(component.watermark()).toBeNull();
+      expect(component.canGoBack()).toBe(false);
+    });
+
+    it('falls back to a generic brand name when the tenant theme is unavailable', () => {
+      expect(component.brandName()).toBe('Wallet');
+    });
+
+    it('offers a back affordance only on the OTP and passkey steps', () => {
+      component.step.set('email');
+      expect(component.canGoBack()).toBe(false);
+
+      component.step.set('code');
+      expect(component.canGoBack()).toBe(true);
+
+      component.step.set('passkey');
+      expect(component.canGoBack()).toBe(true);
     });
   });
 });
