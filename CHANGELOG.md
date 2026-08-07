@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.15.0] - 2026-08-07
+
 ### Added
 
 - **EUD-135 US-06 — Sección "Acerca de" y vías de soporte** (FR-19, FR-20, FR-21, FR-23, NFR-T-01): nueva sección `/tabs/about`, idéntica en modo navegador (EUDIW) y modo servidor (EBW) — ninguna capacidad se oculta por modo (AC-10). Tres bloques:
