@@ -37,7 +37,7 @@
               {{ 'auth.register.continue-browser' | translate }}
             </button>
 
-            <button type="button" class="auth-button" (click)="installApp()">
+            <button type="button" class="auth-button auth-button--access" (click)="installApp()">
               {{ 'auth.access.continue-wallet' | translate: { brand: brandName() } }}
             </button>
 
@@ -75,7 +75,7 @@
             <h1 class="auth-title">{{ 'auth.login.email-title' | translate }}</h1>
             <p class="auth-subtitle">{{ 'auth.login.email-subtitle' | translate: { brand: brandName() } }}</p>
 
-            <div class="auth-field">
+            <div class="auth-field auth-field--email">
               <label class="auth-field__label" for="login-email">
                 {{ 'auth.register.email-label' | translate }}
               </label>
@@ -93,7 +93,7 @@
 
             <button
               type="button"
-              class="auth-button"
+              class="auth-button auth-button--email"
               [disabled]="!email || loading"
               (click)="sendCode()"
             >
@@ -135,7 +135,7 @@
 
             <button
               type="button"
-              class="auth-button"
+              class="auth-button auth-button--code"
               [disabled]="otpValue.length < 6 || loading"
               (click)="verifyCode()"
             >
@@ -156,7 +156,27 @@
                 {{ 'auth.passkey.setup-subtitle' | translate }}
               </p>
 
-              <button type="button" class="auth-button" [disabled]="loading" (click)="createPasskeyForDevice()">
+              <div class="auth-field auth-field--device">
+                <label class="auth-field__label" for="passkey-device-name">
+                  {{ 'auth.passkey.device-name-label' | translate }}
+                </label>
+                <ion-input
+                  id="passkey-device-name"
+                  [(ngModel)]="deviceName"
+                  type="text"
+                  maxlength="100"
+                  [placeholder]="'auth.passkey.device-name-placeholder' | translate"
+                  class="auth-input"
+                  (keyup.enter)="deviceName.trim() && !loading && createPasskeyForDevice()"
+                ></ion-input>
+              </div>
+
+              <button
+                type="button"
+                class="auth-button"
+                [disabled]="loading || !deviceName.trim()"
+                (click)="createPasskeyForDevice()"
+              >
                 {{ 'auth.passkey.register-button' | translate }}
               </button>
             } @else {
