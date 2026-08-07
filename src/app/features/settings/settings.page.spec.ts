@@ -1,6 +1,7 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { SettingsPage } from './settings.page';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink, RouterModule } from '@angular/router';
 import { LangChangeEvent, TranslateModule, TranslateService } from '@ngx-translate/core';
 import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
 import { Observable, of } from 'rxjs';
@@ -157,17 +158,35 @@ describe('SettingsPage', () => {
 
       expect(serverComponent.isServerMode).toBe(true);
     });
+  });
 
-    it('should return wallet-mode-eudiw key when in browser mode', () => {
-      expect(component.walletModeKey).toBe('settings.wallet-mode-eudiw');
+  // ---------------------------------------------------------------------------
+  // EUD-135: "About" entry point — visible in both wallet modes. Version/build
+  // and wallet-type display moved to AboutPage (about.page.spec.ts).
+  // ---------------------------------------------------------------------------
+
+  describe('EUD-135: "Acerca de" item (AC-01, AC-10)', () => {
+    // NOTE: this spec's ActivatedRoute provider is a minimal fake (`{ snapshot: { data: {...} } }`),
+    // which breaks RouterLink's internal urlTree computation (unlike about.page.spec.ts, where the
+    // real ActivatedRoute is used). `ng-reflect-router-link` reflects the raw bound Input value
+    // regardless of that downstream computation, so it stays reliable here.
+    it('renders an item routing to /tabs/about in browser mode', () => {
+      const aboutItem = fixture.debugElement
+        .queryAll(By.directive(RouterLink))
+        .find((de) => de.attributes['ng-reflect-router-link'] === '/tabs/about');
+
+      expect(aboutItem).toBeTruthy();
     });
 
-    it('should return wallet-mode-business key when in server mode', async () => {
+    it('renders the same item in server (EBW) mode — never gated by isServerMode', async () => {
       TestBed.resetTestingModule();
       const serverFixture = await createModule('server');
-      const serverComponent = serverFixture.componentInstance;
 
-      expect(serverComponent.walletModeKey).toBe('settings.wallet-mode-business');
+      const aboutItem = serverFixture.debugElement
+        .queryAll(By.directive(RouterLink))
+        .find((de) => de.attributes['ng-reflect-router-link'] === '/tabs/about');
+
+      expect(aboutItem).toBeTruthy();
     });
   });
 });

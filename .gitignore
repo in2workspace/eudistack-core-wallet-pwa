@@ -73,5 +73,9 @@ android/
 
 # Schemas copied from platform-dev at build time
 src/assets/schemas/*.json
+
+# Generated at build time (EUD-135) — see scripts/generate-build-info.js and scripts/generate-oss-licenses.js
+/src/app/core/constants/build-info.constants.ts
+/src/assets/legal/oss-licenses.json
 /.claude/
 /docs/

@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **EUD-135 US-06 — Sección "Acerca de" y vías de soporte** (FR-19, FR-20, FR-21, FR-23, NFR-T-01): nueva sección `/tabs/about`, idéntica en modo navegador (EUDIW) y modo servidor (EBW) — ninguna capacidad se oculta por modo (AC-10). Tres bloques:
+  - **Versión y build**: `BUILD_INFO` (`src/app/core/constants/build-info.constants.ts`, generado por `scripts/generate-build-info.js` a partir de `package.json` + `git rev-parse --short HEAD`, fallback `'local'` si no hay `.git`) sustituye a `environment.appVersion`, que estaba desincronizado (`3.7.0` hardcodeado vs `3.14.1` real). Junto al tipo de wallet (badge, movido aquí desde Configuración), texto seleccionable/copiable.
+  - **Legal**: términos de servicio, política de privacidad, aviso legal y licencias de código abierto. Los tres primeros se sirven como fragmentos HTML estáticos por idioma vía `LegalContentService` (`GET assets/legal/<lang>/<docId>.html`, con fallback a `es` si el idioma activo no tiene traducción, timeout de 5s y cancelación por cambio de idioma), renderizados con `[innerHTML]` y el sanitizer de Angular activo (sin `bypassSecurityTrustHtml`). El catálogo de ids es cerrado (`LEGAL_DOCUMENT_IDS`) y se valida en `legalDocumentGuard` antes de instanciar la página — recorrido de directorios imposible por construcción.
+    - **⚠️ Pendiente de Legal/DPO — rutas donde deben colocarse los 9 documentos** (la Story deja el contenedor listo; en cuanto lleguen los ficheros no hace falta tocar código, solo añadirlos):
+      ```
+      src/assets/legal/es/terms-of-service.html
+      src/assets/legal/es/privacy-policy.html
+      src/assets/legal/es/legal-notice.html
+      src/assets/legal/en/terms-of-service.html
+      src/assets/legal/en/privacy-policy.html
+      src/assets/legal/en/legal-notice.html
+      src/assets/legal/ca/terms-of-service.html
+      src/assets/legal/ca/privacy-policy.html
+      src/assets/legal/ca/legal-notice.html
+      ```
+      Fragmento HTML (sin `<html>`/`<head>`/`<body>`), sin `<script>`, `<iframe>`, `<object>`, `<embed>`, atributos `on*` ni `style` en línea — el sanitizer los neutralizaría igualmente, pero su presencia se rechaza en code-review por indicar contenido no revisado. Hasta que lleguen, esos documentos muestran el estado de error con reintento (no rompen la sección).
+  - **Licencias OSS**: `scripts/generate-oss-licenses.js` (vía `license-checker-rseidelsohn`, nueva devDependency) genera `src/assets/legal/oss-licenses.json` en cada build a partir de las dependencias de producción reales — sin lista mantenida a mano. Tolerante a fallos (licencia no parseable → `'UNKNOWN'`, nunca rompe el build); si el artefacto falta, la página degrada a un estado vacío con vía de contacto.
+  - **Soporte**: `SupportChannelService` resuelve email/help-center/issue-tracker con precedencia tenant (`theme.json`) → constante por defecto, validando esquema (`https:`/email) antes de confiar en el valor del tenant. Email vía `mailto:` prellenado solo con versión/build (sin PII) + dirección visible y copiable (no depende de detectar el fallo del `mailto:`). Reportar incidencia abre un aviso bloqueante ("el repositorio es público, no incluyas datos personales") antes de redirigir al issue tracker; cancelar no abre nada ni hace ninguna petición.
+  - Ambos generadores (`gen:build-info`, `gen:oss-licenses`) encadenados en `prebuild`/`prestart`/`pretest`/`pretest:ci`.
+- **Configuración**: nuevo item "Acerca de" (visible en ambos modos, nunca condicionado a `isServerMode`). El panel de tipo de wallet + versión se retira de esta pantalla (trasladado a "Acerca de").
+
+### Changed
+
+- **Licencias de software (visual)**: listado dentro de una card con separadores y más aire por fila (antes apretado/cuadriculado), licencia como badge y contador de dependencias en cabecera.
+
 ## [3.14.1] - 2026-07-28
 
 ### Changed
