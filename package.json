@@ -12,7 +12,7 @@
     "prebuild": "npm run sync-schemas && npm run gen:build-info && npm run gen:oss-licenses",
     "pretest": "npm run gen:build-info && npm run gen:oss-licenses",
     "pretest:ci": "npm run gen:build-info && npm run gen:oss-licenses",
-    "start": "ng serve",
+    "prelint": "npm run gen:build-info",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "jest",
