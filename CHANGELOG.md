@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.14.2] - 2026-08-07
+
+### Fixed
+
+- **EUDISTACK-548 — SSO session cookie never reached the browser on `POST /oid4vp/auth-response`**: the Verifier's `SsoSessionAuthenticationSuccessHandler` sets the SSO session cookie as a `Set-Cookie` header on this response, but the call is cross-origin (`wallet.<tenant>.*` → `verifier.<tenant>.*`). A browser only stores a cross-origin `Set-Cookie` when both sides opt into credentials — `WalletService.postOid4vpAuthorizationResponse()` now sends `withCredentials: true` (paired with the matching `Access-Control-Allow-Credentials: true` fix in `eudistack-core-verifier`). Without it, every SSO establishment silently discarded the cookie, so every later `prompt=none` silent-reuse attempt saw zero cookies regardless of the server-side CORS config.
+
 ## [3.14.1] - 2026-07-28
 
 ### Changed
