@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.14.2] - 2026-08-06
+## [3.14.3] - 2026-08-06
 
 ### Added
 
@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`LoginPage` — getters migrated to signals**: `screen`, `watermark`, `canGoBack`, `brandName` and `resendCountdown` become `computed()`, with `showInstallScreen`, `step` and `resendSecondsLeft` as writable signals. `brandName` now derives from `toSignal(getTheme())` instead of the non-reactive `ThemeService.snapshot`, so it updates if the theme settles after the first render.
 - **`LoginPage` — template extracted to `login.page.html`**: aligns the page with the repo convention (15 of 17 `*.page.ts` already use `templateUrl`) and drops `login.page.ts` from 688 to 473 lines. The watermark's artwork mapping and mask geometry move from the stylesheet into `watermarkStyle()`, next to the decision that drives them.
 - **Blinker now applies inside Ionic components**: `ion-content` declares `font-family: var(--ion-font-family, inherit)` on its own host, and an element's own declaration beats an inherited value — so everything rendered inside an `ion-content` fell back to Ionic's default. `ion-content` added to the `global.scss` selector.
+
+## [3.14.2] - 2026-08-07
+
+### Fixed
+
+- **EUDISTACK-548 — SSO session cookie never reached the browser on `POST /oid4vp/auth-response`**: the Verifier's `SsoSessionAuthenticationSuccessHandler` sets the SSO session cookie as a `Set-Cookie` header on this response, but the call is cross-origin (`wallet.<tenant>.*` → `verifier.<tenant>.*`). A browser only stores a cross-origin `Set-Cookie` when both sides opt into credentials — `WalletService.postOid4vpAuthorizationResponse()` now sends `withCredentials: true` (paired with the matching `Access-Control-Allow-Credentials: true` fix in `eudistack-core-verifier`). Without it, every SSO establishment silently discarded the cookie, so every later `prompt=none` silent-reuse attempt saw zero cookies regardless of the server-side CORS config.
 
 ## [3.14.1] - 2026-07-28
 
