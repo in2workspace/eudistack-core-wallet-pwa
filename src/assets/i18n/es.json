@@ -173,8 +173,14 @@
   },
   "scanner": {
     "initializing": "Inicializando escáner...",
-    "manualInput": "O pega el contenido del QR manualmente:",
-    "manualInputPlaceholder": "Pega aquí el contenido del código QR...",
+    "title": "Escanea tu código QR",
+    "subtitle": "Usa la cámara de tu dispositivo para escanear el código QR",
+    "facing-rear": "Trasera",
+    "facing-front": "Frontal",
+    "manual-prompt": "¿No puedes escanear tu código QR?",
+    "manual-link": "Introduce el código manualmente",
+    "manualInput": "O pega el contenido del QR manualmente",
+    "manualInputPlaceholder": "Pega aquí el contenido del QR",
     "send": "Enviar"
   },
   "vc-fields": {
@@ -434,7 +440,13 @@
     "powers": "Poderes: ",
     "expiration": "Fecha de caducidad: ",
     "unknown": "Desconocido",
-    "time-remaining": "Tiempo restante"
+    "time-remaining": "Tiempo restante",
+    "panel-title": "Verifica los datos de tu nueva credencial",
+    "review-within": "Revisa y confirma en",
+    "format": "Formato",
+    "decline": "Rechazar",
+    "accept-credential": "Aceptar credencial",
+    "close": "Cerrar"
   },
   "single-instance": {
     "type-window": "ventana",

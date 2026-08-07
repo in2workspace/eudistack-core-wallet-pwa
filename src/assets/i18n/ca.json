@@ -237,8 +237,14 @@
   },
   "scanner": {
     "initializing": "Inicialitzant escàner...",
-    "manualInput": "O enganxa el contingut del QR manualment:",
-    "manualInputPlaceholder": "Enganxa aquí el contingut del codi QR...",
+    "title": "Escaneja el teu codi QR",
+    "subtitle": "Fes servir la càmera del dispositiu per escanejar el codi QR",
+    "facing-rear": "Posterior",
+    "facing-front": "Frontal",
+    "manual-prompt": "No pots escanejar el teu codi QR?",
+    "manual-link": "Introdueix el codi manualment",
+    "manualInput": "O enganxa el contingut del QR manualment",
+    "manualInputPlaceholder": "Enganxa aquí el contingut del QR",
     "send": "Enviar"
   },
   "vc-fields": {
@@ -430,7 +436,13 @@
     "powers": "Poders: ",
     "expiration": "Data de caducitat: ",
     "unknown": "Desconegut",
-    "time-remaining": "Temps restant"
+    "time-remaining": "Temps restant",
+    "panel-title": "Verifica les dades de la teva nova credencial",
+    "review-within": "Revisa i confirma en",
+    "format": "Format",
+    "decline": "Rebutja",
+    "accept-credential": "Accepta la credencial",
+    "close": "Tanca"
   },
   "single-instance": {
     "type-window": "finestra",

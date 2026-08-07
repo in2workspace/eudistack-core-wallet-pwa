@@ -8,6 +8,8 @@
 export interface DisplayFieldItem {
   label: string;
   value: string;
+  /** Multi-valued form of `value` (e.g. the actions of a power), when it has one. */
+  values?: string[];
 }
 
 export interface DisplayField {

@@ -18,6 +18,18 @@ export class CameraService {
   public computedSelectedCameraLabel$ = computed(() => this.selectedCamera$()?.label);
   public availableDevices$ = signal<MediaDeviceInfo[]>([]);
   public isCameraError$ = signal<boolean|undefined>(undefined);
+
+  // Rear / front resolution, used by the scanner facing switch
+  public rearCamera$ = computed(() => this.findCameraByOrientation(CameraOrientation.back));
+  public frontCamera$ = computed(() => this.findCameraByOrientation(CameraOrientation.front));
+  public selectedCameraOrientation$ = computed<CameraOrientation|undefined>(() => {
+    const selectedId = this.selectedCamera$()?.deviceId;
+    if (!selectedId) return undefined;
+    if (this.rearCamera$()?.deviceId === selectedId) return CameraOrientation.back;
+    if (this.frontCamera$()?.deviceId === selectedId) return CameraOrientation.front;
+    return undefined;
+  });
+
   public activatingScannersListSubj = new BehaviorSubject<string[]>([]);
   public activatingScannersList$ = this.activatingScannersListSubj.asObservable();
 
@@ -42,6 +54,13 @@ export class CameraService {
       kind: camera.kind,
     };
     this.storageService.set('camera', storedCamera);
+  }
+
+  public findCameraByOrientation(orientation: CameraOrientation): MediaDeviceInfo|undefined {
+    const pattern = orientation === CameraOrientation.back
+      ? new RegExp(`back|rear|${CameraOrientation.back}`, 'i')
+      : new RegExp(`front|face|${CameraOrientation.front}`, 'i');
+    return this.availableDevices$().find(device => pattern.test(device.label));
   }
 
   public getAvailableCameraById(id: string){

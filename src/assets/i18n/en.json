@@ -14,8 +14,14 @@
   },
   "scanner": {
     "initializing": "Initializing scanner... Please wait.",
-    "manualInput": "Or paste QR content manually:",
-    "manualInputPlaceholder": "Paste QR code content here...",
+    "title": "Scan your QR code",
+    "subtitle": "Use your device camera to scan the QR code",
+    "facing-rear": "Rear",
+    "facing-front": "Front",
+    "manual-prompt": "Can't scan your QR code?",
+    "manual-link": "Enter code manually",
+    "manualInput": "Or paste QR content manually",
+    "manualInputPlaceholder": "Paste QR content here",
     "send": "Send"
   },
   "camera-selector": {
@@ -434,7 +440,13 @@
     "powers": "Powers: ",
     "expiration": "Expiration date: ",
     "unknown": "Unknown",
-    "time-remaining": "Time remaining"
+    "time-remaining": "Time remaining",
+    "panel-title": "Verify the details of your new credential",
+    "review-within": "Review and confirm within",
+    "format": "Format",
+    "decline": "Decline",
+    "accept-credential": "Accept credential",
+    "close": "Close"
   },
   "single-instance": {
     "type-window": "window",

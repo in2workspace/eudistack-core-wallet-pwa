@@ -221,10 +221,11 @@ function formatObjectItem(obj: Record<string, unknown>): DisplayFieldItem {
   if ('function' in obj && 'domain' in obj) {
     const fn = String(obj['function'] ?? '');
     const domain = String(obj['domain'] ?? '');
-    const action = Array.isArray(obj['action'])
-      ? obj['action'].join(', ')
-      : String(obj['action'] ?? '');
-    return { label: `${fn} (${domain})`, value: action };
+    const raw = obj['action'];
+    const actions = (Array.isArray(raw) ? raw.map(a => stringifyValue(a)) : String(raw ?? '').split(','))
+      .map(a => a.trim())
+      .filter(a => a !== '');
+    return { label: `${fn} (${domain})`, value: actions.join(', '), values: actions };
   }
 
   const entries = Object.entries(obj)

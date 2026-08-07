@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule, ViewWillEnter, ViewWillLeave } from '@ionic/angular';
@@ -11,6 +11,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { VerifiableCredentialSubjectDataNormalizer } from 'src/app/core/models/verifiable-credential-subject-data-normalizer';
 import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
+import { CameraService } from 'src/app/shared/services/camera.service';
+import { CameraOrientation } from 'src/app/core/models/camera';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
@@ -63,8 +65,16 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
   readonly prefs = inject(UserPreferencesService);
   public selectedCredentialId: string | null = null;
 
+  // Scanner view layout: the manual-input block is overlaid on the viewport on wide
+  // screens, while narrow screens overlay the rear/front switch and hide the manual
+  // input behind a link.
+  public readonly cameraOrientation = CameraOrientation;
+  public readonly isWideLayout = signal(false);
+  public showManualInput = false;
+
   private readonly authorizationRequestService = inject(AuthorizationRequestService);
   private readonly cameraLogsService = inject(CameraLogsService);
+  private readonly cameraService = inject(CameraService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly credentialCacheService = inject(CredentialCacheService);
   private readonly credentialDecisionService = inject(CredentialDecisionService);
@@ -82,10 +92,17 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
   private readonly hapticService = inject(HapticService);
   private readonly verificationService = inject(CredentialVerificationService);
 
+  public readonly selectedCameraOrientation = this.cameraService.selectedCameraOrientation$;
+  public readonly canSwitchCameraFacing = computed(
+    () => !!this.cameraService.rearCamera$() && !!this.cameraService.frontCamera$()
+  );
+
   private authorizationRequest = '';
   private revokedCredentialIds = new Set<string>();
 
   public constructor(){
+    this.trackWideLayout();
+
     //todo move to ngOnInit to avoid using credentialOfferUri
     this.route.queryParams
       .pipe(takeUntilDestroyed())
@@ -212,6 +229,19 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
     if (value) {
       this.manualQrValue = '';
       this.qrCodeEmit(value);
+    }
+  }
+
+  public toggleManualInput(): void {
+    this.showManualInput = !this.showManualInput;
+  }
+
+  public onCameraFacingChange(orientation: string | number | undefined): void {
+    const camera = orientation === CameraOrientation.back
+      ? this.cameraService.rearCamera$()
+      : this.cameraService.frontCamera$();
+    if (camera && camera.deviceId !== this.cameraService.selectedCamera$()?.deviceId) {
+      this.cameraService.setCamera(camera);
     }
   }
 
@@ -616,6 +646,17 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
 
   private isScannerOpen(): boolean{
     return this.showScanner === true && this.showScannerView === true;
+  }
+
+  // `lg` breakpoint from theme/_responsive.scss — keep both in sync
+  private trackWideLayout(): void {
+    const query = window.matchMedia?.('(min-width: 768px)');
+    if (!query) return;
+
+    this.isWideLayout.set(query.matches);
+    const onChange = (event: MediaQueryListEvent): void => this.isWideLayout.set(event.matches);
+    query.addEventListener('change', onChange);
+    this.destroyRef.onDestroy(() => query.removeEventListener('change', onChange));
   }
 
 }
