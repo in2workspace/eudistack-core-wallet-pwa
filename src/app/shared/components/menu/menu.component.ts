@@ -1,4 +1,5 @@
 import { Component, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from 'src/app/core/services/auth.service';
 import { IonicModule, PopoverController } from '@ionic/angular';
@@ -17,6 +18,8 @@ export class MenuComponent {
   private readonly popOverController = inject(PopoverController);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+
+  readonly userName = toSignal(this.authService.getName$(), { initialValue: '' });
 
   public logoutOnKeydown(event: KeyboardEvent): void {
     if (event.key === 'Enter' || event.key === ' ') {

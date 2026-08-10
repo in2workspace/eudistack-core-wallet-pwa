@@ -1,3 +1,10 @@
+@if (userName()) {
+<div class="menu-account">
+  <p class="menu-account__label">{{ 'menu.signed-in-as' | translate }}</p>
+  <p class="menu-account__email" [title]="userName()">{{ userName() }}</p>
+</div>
+}
+
 <ion-list class="menu-list" lines="none">
   <ion-item button [routerLink]="['/tabs/activity']" detail="false">
     <ion-icon name="repeat-outline" slot="start"></ion-icon>
