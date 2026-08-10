@@ -39,6 +39,8 @@ module.exports = {
     "src/app/features/hybrid-keymanager/sign.api.ts",
     "src/app/core/services/activity.service.ts",
     "src/app/features/activity/activity.page.ts",
+    "src/app/features/about/**/*.ts",
+    "src/app/core/constants/support.constants.ts",
   ],
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/', 

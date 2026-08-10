@@ -153,9 +153,6 @@
     "register": "¿No estás registrado? Regístrate",
     "error": "Nombre de usuario o contraseña incorrectos"
   },
-  "privacy-policy": {
-    "title": "Política de Privacidad"
-  },
   "settings": {
     "title": "Configuración",
     "privacy-blur": "Desenfoque de privacidad",
@@ -169,8 +166,47 @@
     "wallet-mode-eudiw": "EUDIW",
     "wallet-mode-business": "Business Wallet"
   },
-  "terms-of-use": {
-    "title": "Términos de Uso"
+  "about": {
+    "section-info": "Información de la aplicación",
+    "section-legal": "Legal",
+    "section-support": "Soporte",
+    "build": "Build",
+    "opens-new-window": "(se abre en una ventana nueva)",
+    "legal": {
+      "terms-of-service": "Términos de servicio",
+      "privacy-policy": "Política de privacidad",
+      "legal-notice": "Aviso legal",
+      "licenses": "Licencias de software de código abierto"
+    },
+    "support": {
+      "help-center": "Centro de ayuda",
+      "email": "Contactar por email",
+      "email-copy": "Copiar dirección",
+      "email-copied": "Dirección copiada",
+      "report-issue": "Reportar incidencia",
+      "offline": "Sin conexión — esta acción requiere red"
+    },
+    "pii-warning": {
+      "title": "El repositorio de incidencias es público",
+      "description": "No incluyas datos personales ni capturas con información identificable. Al continuar se abrirá el repositorio público en una pestaña nueva.",
+      "cancel": "Cancelar",
+      "confirm": "Continuar"
+    },
+    "legal-document": {
+      "back": "Volver",
+      "loading": "Cargando documento...",
+      "error-title": "No se ha podido cargar el documento",
+      "error-description": "Comprueba tu conexión e inténtalo de nuevo.",
+      "retry": "Reintentar",
+      "fallback-language-notice": "Este documento se muestra en su idioma original (español) porque todavía no está traducido a tu idioma."
+    },
+    "oss-licenses": {
+      "title": "Licencias de software de código abierto",
+      "count-suffix": "dependencias",
+      "empty-title": "Listado no disponible",
+      "empty-description": "No hemos podido cargar el listado de licencias en este momento.",
+      "contact-support": "Contacta con soporte"
+    }
   },
   "vc-selector": {
     "select-cred": "Selecciona una Credencial",

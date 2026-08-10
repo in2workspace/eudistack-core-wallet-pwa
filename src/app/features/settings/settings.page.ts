@@ -29,15 +29,9 @@ export class SettingsPage {
 
   public userName = '';
   public featureLogsEnabled = environment.logs_enabled;
-  public readonly appVersion = environment.appVersion;
   /** True when the wallet operates in server (EBW) mode (AC-009.2c, AC-009.3c). */
   public get isServerMode(): boolean {
     return this.discovery.mode() === 'server';
-  }
-  public get walletModeKey(): string {
-    return this.isServerMode
-      ? 'settings.wallet-mode-business'
-      : 'settings.wallet-mode-eudiw';
   }
   private readonly pwaInstallService = inject(PwaInstallService);
   private readonly themeService = inject(ThemeService);

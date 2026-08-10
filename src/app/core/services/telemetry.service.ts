@@ -7,7 +7,9 @@ export type TelemetryEvent =
   | 'wallet_discovery_resolved'
   | 'wallet_discovery_fallback'
   | 'hybrid_onboarding_shown'
-  | 'hybrid_onboarding_accepted';
+  | 'hybrid_onboarding_accepted'
+  | 'about_legal_document_load_failed'
+  | 'about_oss_licenses_unavailable';
 
 /**
  * Anonymous telemetry for platform-level events (AC-008.10).
