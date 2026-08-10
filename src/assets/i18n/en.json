@@ -123,9 +123,6 @@
     "register": "Not registered? Sign up",
     "error": "Username or password incorrect"
   },
-  "privacy-policy": {
-    "title": "Privacy Policy"
-  },
   "settings": {
     "title": "Settings",
     "privacy-blur": "Privacy blur",
@@ -139,8 +136,47 @@
     "wallet-mode-eudiw": "EUDIW",
     "wallet-mode-business": "Business Wallet"
   },
-  "terms-of-use": {
-    "title": "Terms Of Use"
+  "about": {
+    "section-info": "Application information",
+    "section-legal": "Legal",
+    "section-support": "Support",
+    "build": "Build",
+    "opens-new-window": "(opens in a new window)",
+    "legal": {
+      "terms-of-service": "Terms of service",
+      "privacy-policy": "Privacy policy",
+      "legal-notice": "Legal notice",
+      "licenses": "Open-source software licenses"
+    },
+    "support": {
+      "help-center": "Help center",
+      "email": "Contact by email",
+      "email-copy": "Copy address",
+      "email-copied": "Address copied",
+      "report-issue": "Report an issue",
+      "offline": "No connection — this action requires network access"
+    },
+    "pii-warning": {
+      "title": "The issue tracker is public",
+      "description": "Do not include personal data or screenshots with identifiable information. Continuing will open the public repository in a new tab.",
+      "cancel": "Cancel",
+      "confirm": "Continue"
+    },
+    "legal-document": {
+      "back": "Back",
+      "loading": "Loading document...",
+      "error-title": "The document could not be loaded",
+      "error-description": "Check your connection and try again.",
+      "retry": "Retry",
+      "fallback-language-notice": "This document is shown in its original language (Spanish) because it has not been translated into your language yet."
+    },
+    "oss-licenses": {
+      "title": "Open-source software licenses",
+      "count-suffix": "dependencies",
+      "empty-title": "List not available",
+      "empty-description": "We could not load the licenses list right now.",
+      "contact-support": "Contact support"
+    }
   },
   "vc-selector": {
     "select-cred": "Select a Credential",
