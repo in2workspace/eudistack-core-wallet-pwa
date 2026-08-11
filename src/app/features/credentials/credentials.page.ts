@@ -165,6 +165,23 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
     this.cdr.detectChanges();
   }
 
+  // Opens the scanner view with the camera already running.
+  public async startScan(): Promise<void> {
+    this.hapticService.impact();
+    try {
+      await this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: {
+          showScannerView: true,
+          showScanner: true
+        },
+        queryParamsHandling: 'merge'
+      });
+    } catch {
+      this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.navigation').subscribe();
+    }
+  }
+
   public openScannerViewWithoutScanner(): void {
     this.router.navigate([], {
       relativeTo: this.route,

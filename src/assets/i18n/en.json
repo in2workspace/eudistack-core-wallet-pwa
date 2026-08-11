@@ -40,7 +40,14 @@
     "add": "Add",
     "nocred": "You have no saved credentials.\nAdd one to start using the Wallet.",
     "nocred-title": "No credentials yet",
-    "nocred-subtitle": "Scan a QR code or accept a credential offer to get started.",
+    "nocred-subtitle": "Your verified credentials will appear here once they are added to your wallet.",
+    "nocred-scan": "Scan QR code",
+    "how-it-works": {
+      "title": "How does it work?",
+      "step-scan": "Scan a QR code",
+      "step-add": "Add new credential",
+      "step-manage": "Manage it here"
+    },
     "expiration": "Expired",
     "expiring-soon": "Expiring soon",
     "expiredCredential": "Credential expired",

@@ -30,7 +30,14 @@
     "add": "Añade",
     "nocred": "No tienes ninguna credencial cargada",
     "nocred-title": "Sin credenciales",
-    "nocred-subtitle": "Escanea un código QR o acepta una oferta de credencial para empezar.",
+    "nocred-subtitle": "Tus credenciales verificadas aparecerán aquí en cuanto se añadan a tu cartera.",
+    "nocred-scan": "Escanear código QR",
+    "how-it-works": {
+      "title": "¿Cómo funciona?",
+      "step-scan": "Escanea un código QR",
+      "step-add": "Añade la credencial",
+      "step-manage": "Gestiónala aquí"
+    },
     "expiration": "Caducado",
     "expiring-soon": "Caduca pronto",
     "expiredCredential": "Credencial caducada",

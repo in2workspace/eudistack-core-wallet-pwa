@@ -30,7 +30,14 @@
     "add": "Afegeix",
     "nocred": "No tens cap credencial carregada",
     "nocred-title": "Sense credencials",
-    "nocred-subtitle": "Escaneja un codi QR o accepta una oferta de credencial per començar.",
+    "nocred-subtitle": "Les teves credencials verificades apareixeran aquí quan s'afegeixin a la teva cartera.",
+    "nocred-scan": "Escaneja el codi QR",
+    "how-it-works": {
+      "title": "Com funciona?",
+      "step-scan": "Escaneja un codi QR",
+      "step-add": "Afegeix la credencial",
+      "step-manage": "Gestiona-la aquí"
+    },
     "expiration": "Caducat",
     "expiring-soon": "Caduca aviat",
     "expiredCredential": "Credencial caducada",
