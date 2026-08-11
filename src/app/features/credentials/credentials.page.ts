@@ -182,6 +182,13 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
     }
   }
 
+  public onPrivacyModeChange(event: CustomEvent<{ value?: string | number }>): void {
+    const shouldBlur = event.detail.value === 'hide';
+    if (this.prefs.privacyBlur() !== shouldBlur) {
+      this.prefs.togglePrivacyBlur();
+    }
+  }
+
   public openScannerViewWithoutScanner(): void {
     this.router.navigate([], {
       relativeTo: this.route,

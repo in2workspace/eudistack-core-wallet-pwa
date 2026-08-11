@@ -32,6 +32,8 @@
     "nocred-title": "Sense credencials",
     "nocred-subtitle": "Les teves credencials verificades apareixeran aquí quan s'afegeixin a la teva cartera.",
     "nocred-scan": "Escaneja el codi QR",
+    "show-data": "Mostrar dades",
+    "hide-data": "Ocultar dades",
     "how-it-works": {
       "title": "Com funciona?",
       "step-scan": "Escaneja un codi QR",

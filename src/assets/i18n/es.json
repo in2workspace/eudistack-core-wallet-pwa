@@ -32,6 +32,8 @@
     "nocred-title": "Sin credenciales",
     "nocred-subtitle": "Tus credenciales verificadas aparecerán aquí en cuanto se añadan a tu cartera.",
     "nocred-scan": "Escanear código QR",
+    "show-data": "Mostrar datos",
+    "hide-data": "Ocultar datos",
     "how-it-works": {
       "title": "¿Cómo funciona?",
       "step-scan": "Escanea un código QR",

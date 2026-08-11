@@ -42,6 +42,8 @@
     "nocred-title": "No credentials yet",
     "nocred-subtitle": "Your verified credentials will appear here once they are added to your wallet.",
     "nocred-scan": "Scan QR code",
+    "show-data": "Show data",
+    "hide-data": "Hide data",
     "how-it-works": {
       "title": "How does it work?",
       "step-scan": "Scan a QR code",
