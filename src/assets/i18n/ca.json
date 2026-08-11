@@ -76,6 +76,26 @@
   },
   "mailto_permission_alert": "Assegureu-vos que teniu els permisos necessaris per enviar correus electrònics amb la vostra aplicació de correu predeterminada. Si el servei de correu no s'obre, probablement és a causa de restriccions de permisos.",
   "auth": {
+    "access": {
+      "title": "Accedeix a {{brand}} de forma segura",
+      "install-hint": "Per a la millor experiència i accés offline, instal·la l'app del wallet al teu dispositiu.",
+      "open-hint": "Si ja tens el Wallet de {{brand}}, obre'l per continuar. Si no, instal·la'l per començar.",
+      "continue-wallet": "Continuar amb el Wallet de {{brand}}",
+      "already-title": "Ja tens un Wallet de {{brand}}?",
+      "already-text": "Si el teu wallet ja està configurat en un altre dispositiu, les teves credencials existents es recuperaran.",
+      "help-link": "Necessites ajuda? Més informació",
+      "help": {
+        "title": "Necessites ajuda?",
+        "intro": "Si no pots escanejar el codi QR, introdueix el codi d'activació que t'han proporcionat.",
+        "q1": "Ja tinc un Wallet de {{brand}}. Necessito crear un compte nou?",
+        "a1": "No. Durant la configuració es recuperaran les teves credencials existents.",
+        "q2": "I si faig servir un dispositiu nou?",
+        "a2": "Et guiarem pels passos necessaris per accedir de forma segura al teu compte de {{brand}}.",
+        "q3": "Puc continuar sense instal·lar el Wallet?",
+        "a3": "Sí. Pots continuar al navegador, tot i que algunes funcionalitats poden estar limitades.",
+        "close": "Tancar"
+      }
+    },
     "login": {
       "title": "Registra el teu dispositiu",
       "title-welcome": "Benvingut",
@@ -83,7 +103,9 @@
       "create-passkey-subtitle": "La teva passkey manté el teu wallet segur. La faràs servir per iniciar sessió.",
       "passkey-button": "Iniciar sessió amb Passkey",
       "enter-email": "Introdueix el teu email per començar",
-      "verify-passkey": "Verifica la teva identitat amb la teva passkey"
+      "verify-passkey": "Verifica la teva identitat amb la teva passkey",
+      "email-title": "Continua amb el teu email",
+      "email-subtitle": "Introdueix l'adreça de correu associada al teu compte de {{brand}}."
     },
     "register": {
       "email-placeholder": "Introdueix el teu email",
@@ -94,7 +116,17 @@
       "install-title": "Instal·lar l'App",
       "install-subtitle": "Per a la millor experiència i accés offline, instal·la l'app del wallet al teu dispositiu.",
       "install-button": "Instal·lar App",
-      "continue-browser": "Continuar al navegador"
+      "continue-browser": "Continuar al navegador",
+      "email-label": "Email",
+      "verify-title": "Verifica la teva adreça de correu",
+      "code-sent-prefix": "Introdueix el codi de verificació enviat a la teva adreça de correu",
+      "code-validity": "El codi és vàlid durant un temps limitat.",
+      "code-label": "Codi",
+      "resend-in": "No has rebut el codi? Reenviament disponible en {{time}}",
+      "resend-prompt": "No has rebut el codi?",
+      "resend-action": "Reenviar",
+      "continue": "Continuar",
+      "back": "Enrere"
     },
     "passkey": {
       "title": "Configurar Passkey",
@@ -106,7 +138,11 @@
       "success": "Passkey registrada correctament!",
       "status-connecting": "Preparant...",
       "status-verifying": "Esperant el teu dispositiu...",
-      "retry": "Tornar-ho a provar"
+      "retry": "Tornar-ho a provar",
+      "verified-title": "Email verificat!",
+      "setup-title": "Configura una passkey",
+      "verified-subtitle": "El teu email s'ha verificat correctament.",
+      "setup-subtitle": "Configura una passkey per completar l'accés en aquest dispositiu."
     },
     "errors": {
       "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",
@@ -191,9 +227,6 @@
     "prf-unsupported": "El teu autenticador no és compatible amb PRF. Aquest tenant requereix una passkey compatible amb PRF per completar el procés d'activació. Utilitza un altre dispositiu o contacta amb l'administrador.",
     "prf-inconclusive": "No s'ha pogut verificar si el teu autenticador és compatible amb PRF. Torna-ho a intentar o utilitza un altre dispositiu."
   },
-  "privacy-policy": {
-    "title": "Política de Privacitat"
-  },
   "settings": {
     "title": "Configuració",
     "privacy-blur": "Desenfocament de privacitat",
@@ -207,8 +240,47 @@
     "wallet-mode-eudiw": "EUDIW",
     "wallet-mode-business": "Business Wallet"
   },
-  "terms-of-use": {
-    "title": "Termes d'Ús"
+  "about": {
+    "section-info": "Informació de l'aplicació",
+    "section-legal": "Legal",
+    "section-support": "Suport",
+    "build": "Build",
+    "opens-new-window": "(s'obre en una finestra nova)",
+    "legal": {
+      "terms-of-service": "Termes de servei",
+      "privacy-policy": "Política de privacitat",
+      "legal-notice": "Avís legal",
+      "licenses": "Llicències de programari de codi obert"
+    },
+    "support": {
+      "help-center": "Centre d'ajuda",
+      "email": "Contactar per email",
+      "email-copy": "Copiar adreça",
+      "email-copied": "Adreça copiada",
+      "report-issue": "Reportar una incidència",
+      "offline": "Sense connexió — aquesta acció requereix xarxa"
+    },
+    "pii-warning": {
+      "title": "El repositori d'incidències és públic",
+      "description": "No incloguis dades personals ni captures amb informació identificable. En continuar s'obrirà el repositori públic en una pestanya nova.",
+      "cancel": "Cancel·lar",
+      "confirm": "Continuar"
+    },
+    "legal-document": {
+      "back": "Tornar",
+      "loading": "Carregant document...",
+      "error-title": "No s'ha pogut carregar el document",
+      "error-description": "Comprova la teva connexió i torna-ho a provar.",
+      "retry": "Reintentar",
+      "fallback-language-notice": "Aquest document es mostra en el seu idioma original (espanyol) perquè encara no està traduït al teu idioma."
+    },
+    "oss-licenses": {
+      "title": "Llicències de programari de codi obert",
+      "count-suffix": "dependències",
+      "empty-title": "Llistat no disponible",
+      "empty-description": "No hem pogut carregar el llistat de llicències en aquest moment.",
+      "contact-support": "Contacta amb suport"
+    }
   },
   "vc-selector": {
     "select-cred": "Selecciona una Credencial",

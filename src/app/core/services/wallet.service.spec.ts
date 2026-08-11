@@ -376,4 +376,23 @@ describe('WalletService', () => {
       });
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // postOid4vpAuthorizationResponse — must send withCredentials, since this call
+  // is cross-origin (wallet.<tenant>.* -> verifier.<tenant>.*) and the Verifier's
+  // SSO session cookie only reaches the browser if the request opts into
+  // credentials (see EUDISTACK-548 investigation).
+  // ---------------------------------------------------------------------------
+  describe('postOid4vpAuthorizationResponse', () => {
+    beforeEach(() => createModule('browser'));
+
+    it('sends the request with withCredentials so the SSO session cookie can be stored', (done) => {
+      service.postOid4vpAuthorizationResponse('https://verifier.dome.example/oid4vp/auth-response', 'state-1', 'vp-token-1')
+        .subscribe(() => done());
+
+      const req = httpTestingController.expectOne('https://verifier.dome.example/oid4vp/auth-response');
+      expect(req.request.withCredentials).toBe(true);
+      req.flush('ok');
+    });
+  });
 });

@@ -213,9 +213,17 @@ export class WalletService {
       [CONTENT_TYPE]: CONTENT_TYPE_URL_ENCODED_FORM,
     });
 
+    // withCredentials: this call is cross-origin (wallet.<tenant>.* -> verifier.<tenant>.*),
+    // and the Verifier sets the SSO session cookie as a Set-Cookie on this response
+    // (SsoSessionAuthenticationSuccessHandler). A browser only stores Set-Cookie from a
+    // cross-origin XHR/fetch response when the request itself opts into credentials — without
+    // this, the cookie was silently discarded and every later SSO reuse attempt saw no session
+    // at all, regardless of any other fix (EUDISTACK-548 investigation). The Verifier's CORS
+    // config for this endpoint already answers with Access-Control-Allow-Credentials: true.
     return this.http.post(redirectUri, body.toString(), {
       headers,
       responseType: TEXT as 'text',
+      withCredentials: true,
     });
   }
 
