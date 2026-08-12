@@ -315,7 +315,18 @@
     "unsigned-header": "Credencial sense signar",
     "unsigned-message": "La seva credencial encara no ha estat signada i no pot ser utilitzada. Esperi que l'emissor completi el procés de signatura.",
     "revoked": "Revocat",
-    "delete-success": "Credencial eliminada correctament"
+    "delete-success": "Credencial eliminada correctament",
+    "badge-verified": "Credencial verificada",
+    "badge-expired": "Credencial caducada",
+    "badge-revoked": "Credencial revocada",
+    "preview-name": "Nom",
+    "preview-issuer": "ID de l'emissor",
+    "preview-status": "Estat",
+    "preview-expiry": "Caducitat",
+    "lifecycle-valid": "Vàlida",
+    "lifecycle-issued": "Sense signar",
+    "lifecycle-revoked": "Revocada",
+    "lifecycle-expired": "Caducada"
   },
   "scanner": {
     "initializing": "Inicialitzant escàner...",
@@ -518,13 +529,13 @@
     "type-window": "finestra",
     "type-tab": "pestanya",
     "title-deep-link": "Credencial enviada a EUDI Wallet",
-    "title-already-open": "EUDI Wallet ja est\u00e0 obert",
+    "title-already-open": "EUDI Wallet ja està obert",
     "subtitle-deep-link": "La credencial s'ha enviat a la {{type}} activa de EUDI Wallet. Pots tancar aquesta {{type}}.",
     "subtitle-already-open": "Ja tens EUDI Wallet obert en una altra {{type}}. Pots tancar aquesta.",
     "hint-standalone": "Torna a l'altra finestra de EUDI Wallet.",
     "hint-tab": "Usa Ctrl+Tab per tornar a la pestanya activa.",
     "close-fallback-standalone": "Tanca aquesta finestra manualment",
-    "close-fallback-tab": "Tanca aquesta pestanya amb Ctrl+W (\u2318+W a Mac)",
+    "close-fallback-tab": "Tanca aquesta pestanya amb Ctrl+W (⌘+W a Mac)",
     "close-button": "Tanca aquesta {{type}}"
   },
   "tenantNotFound": {

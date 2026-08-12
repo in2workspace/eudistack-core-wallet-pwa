@@ -12,174 +12,157 @@ ion-modal.stack-modal {
 
 .credential-card {
   position: relative;
-  background: linear-gradient(135deg, var(--card-background, var(--primary-color, var(--ion-color-primary))) 0%, var(--card-gradient-end, var(--secondary-color, var(--ion-color-primary-shade))) 100%);
-  width: 100%;
-  max-width: 400px;
-  min-width: 240px;
-  min-height: clamp(150px, 40vw, 180px);
-  border-radius: clamp(14px, 4vw, 20px);
-  border: 1px solid var(--border-default, #D1D5DB);
-  padding: clamp(14px, 4vw, 20px);
-  margin-right: 0;
-  margin-left: 0;
-  cursor: pointer;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.12);
-  transition: box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-              transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-
-  &:hover {
-    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
-    transform: translateY(-3px);
-  }
-
-  &--revoked,
-  &--expired {
-    filter: grayscale(0.85);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-
-    .card-title,
-    .card-field,
-    .card-shield-icon {
-      opacity: 0.6;
-    }
-
-    &:hover {
-      filter: grayscale(0.7);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-    }
-  }
-}
-
-// ── Decorative circles ───────────────────────────────
-
-.card-deco-circle {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  pointer-events: none;
-}
-
-.card-deco-1 {
-  width: clamp(140px, 45vw, 200px);
-  height: clamp(140px, 45vw, 200px);
-  top: -60px;
-  right: -40px;
-}
-
-.card-deco-2 {
-  width: clamp(80px, 28vw, 120px);
-  height: clamp(80px, 28vw, 120px);
-  bottom: -30px;
-  left: -20px;
-}
-
-// ── Top row (badge + status) ─────────────────────────
-
-.card-top-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  position: relative;
-  z-index: 2;
-}
-
-.status-pill {
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: var(--card-text, var(--primary-contrast-color, #fff));
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 12px;
-  border-radius: 20px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-}
-
-.status-expired {
-  background: rgba(239, 68, 68, 0.7);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.status-expiring-soon {
-  background: rgba(245, 158, 11, 0.7);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.status-unsigned {
-  border: none;
-  cursor: pointer;
-  padding: 4px 10px;
-
-  ion-icon {
-    font-size: 18px;
-    color: rgba(255, 255, 255, 0.8);
-  }
-}
-
-// ── Card body ────────────────────────────────────────
-
-.card-body {
-  position: relative;
-  z-index: 2;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 20px 24px;
+  border: 1px solid var(--border-default, #D1D5DB);
+  border-radius: 12px;
+  background: var(--surface-card, #fff);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 10px rgb(0 0 0 / 0.10);
+  }
 }
 
-.card-title-row {
+// ── Header (title + status badge) ────────────────────
+
+.card-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.card-shield-icon {
-  font-size: 20px;
-  color: color-mix(in srgb, var(--primary-contrast-color, #fff) 80%, transparent);  
-  flex-shrink: 0;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: 20px;
 }
 
 .card-title {
-  color: var(--card-text, var(--primary-contrast-color, #fff));
-  @include fluid-type(0.8125rem, 0.9375rem);
+  margin: 0;
+  font-size: 18px;
   font-weight: 700;
+  color: var(--secondary-color);
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.card-fields {
+.card-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  ion-icon {
+    font-size: 14px;
+  }
+
+  &--verified {
+    background: #DCFCE7;
+    color: #15803D;
+  }
+
+  &--expired {
+    background: #FEF3C7;
+    color: #B45309;
+  }
+
+  &--revoked {
+    background: #FEE2E2;
+    color: #B91C1C;
+  }
+}
+
+// ── Preview row ──────────────────────────────────────
+
+.card-preview {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-left: 28px;
+  margin: 0;
+  padding: 0;
 }
 
-.card-field {
-  color: color-mix(in srgb, var(--primary-contrast-color, #fff) 80%, transparent);  
-  @include fluid-type(0.75rem, 0.8125rem);
-  font-weight: 500;
+.card-preview__cell {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 16px;
+  border-left: 1px solid var(--border-default, #D1D5DB);
+
+  &:first-child {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+.card-preview__label {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--secondary-color);
+}
+
+.card-preview__value {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-// ── Privacy blur ─────────────────────────────────────
-
-.card-body {
-  transition: filter 0.3s ease;
+.card-unsigned {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--status-warning, #B45309);
 }
 
-.card-blurred {
-  filter: blur(6px);
-  user-select: none;
+// Stacks on mobile: badge under the title, columns become rows.
+@include respond-below(lg) {
+  .credential-card {
+    padding: 16px;
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    margin-bottom: 16px;
+  }
+
+  .card-preview {
+    flex-direction: column;
+  }
+
+  .card-preview__cell {
+    padding: 12px 0;
+    border-left: 0;
+    border-top: 1px solid var(--border-default, #D1D5DB);
+
+    &:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+  }
 }
+
 
 // ── Detail Modal ──────────────────────────────────────
 

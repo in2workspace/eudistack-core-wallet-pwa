@@ -251,7 +251,18 @@
     "unsigned-header": "Credencial sin firmar",
     "unsigned-message": "Su credencial aún no ha sido firmada y no puede ser utilizada. Espere a que el emisor complete el proceso de firma.",
     "revoked": "Revocado",
-    "delete-success": "Credencial eliminada correctamente"
+    "delete-success": "Credencial eliminada correctamente",
+    "badge-verified": "Credencial verificada",
+    "badge-expired": "Credencial caducada",
+    "badge-revoked": "Credencial revocada",
+    "preview-name": "Nombre",
+    "preview-issuer": "ID del emisor",
+    "preview-status": "Estado",
+    "preview-expiry": "Caducidad",
+    "lifecycle-valid": "Válida",
+    "lifecycle-issued": "Sin firmar",
+    "lifecycle-revoked": "Revocada",
+    "lifecycle-expired": "Caducada"
   },
   "scanner": {
     "initializing": "Inicializando escáner...",

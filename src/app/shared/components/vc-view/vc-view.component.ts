@@ -15,7 +15,7 @@ import { QRCodeComponent } from 'angularx-qrcode';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { ExtendedCredentialType, LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
+import { EmployeeCredentialSubject, ExtendedCredentialType, LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { IonicModule } from '@ionic/angular';
 import { DisplayField, DisplaySection } from 'src/app/core/models/display-field.model';
 import dayjs from 'dayjs';
@@ -27,8 +27,23 @@ import { CredentialVerificationService, VerificationCheck } from 'src/app/core/s
 import { Router } from '@angular/router';
 
 export type ExpiryStatus = 'valid' | 'expiring-soon' | 'expired';
+export type CardStatusTone = 'verified' | 'expired' | 'revoked';
+
+export interface PreviewField {
+  label: string;
+  value: string;
+}
 
 const EXPIRY_WARNING_DAYS = 30;
+
+const HIDDEN_VALUE = '*'.repeat(15);
+
+const LIFECYCLE_LABELS: Record<LifeCycleStatus, string> = {
+  VALID: 'vc-view.lifecycle-valid',
+  ISSUED: 'vc-view.lifecycle-issued',
+  REVOKED: 'vc-view.lifecycle-revoked',
+  EXPIRED: 'vc-view.lifecycle-expired',
+};
 
 @Component({
     selector: 'app-vc-view',
@@ -79,6 +94,41 @@ export class VcViewComponent {
     const days = expiry.diff(dayjs(), 'day');
     return days >= 0 ? days : null;
   });
+
+  public readonly statusBadge = computed<{ label: string; tone: CardStatusTone }>(() => {
+    const cred = this.credentialInput$();
+    if (cred.lifeCycleStatus === 'REVOKED') {
+      return { label: 'vc-view.badge-revoked', tone: 'revoked' };
+    }
+    if (cred.lifeCycleStatus === 'EXPIRED' || this.expiryStatus() === 'expired') {
+      return { label: 'vc-view.badge-expired', tone: 'expired' };
+    }
+    return { label: 'vc-view.badge-verified', tone: 'verified' };
+  });
+
+  public readonly previewFields = computed<PreviewField[]>(() => {
+    const cred = this.credentialInput$();
+    const hidden = this.blurred();
+    const issuerId = cred.issuer?.organizationIdentifier || cred.issuer?.id || '';
+    const expiry = cred.validUntil && dayjs(cred.validUntil).isValid()
+      ? dayjs(cred.validUntil).format('DD/MM/YYYY')
+      : '';
+
+    return [
+      { label: 'vc-view.preview-name', value: hidden ? HIDDEN_VALUE : this.subjectName(cred) },
+      { label: 'vc-view.preview-issuer', value: hidden ? HIDDEN_VALUE : issuerId },
+      { label: 'vc-view.preview-status', value: this.translate.instant(LIFECYCLE_LABELS[cred.lifeCycleStatus]) },
+      { label: 'vc-view.preview-expiry', value: hidden ? HIDDEN_VALUE : expiry },
+    ];
+  });
+
+  private subjectName(cred: VerifiableCredential): string {
+    const mandatee = (cred.credentialSubject as Partial<EmployeeCredentialSubject>)?.mandate?.mandatee;
+    const fullName = [mandatee?.firstName, mandatee?.lastName].filter(Boolean).join(' ');
+    if (fullName) return fullName;
+
+    return this.cardFields().slice(0, 2).map(f => f.value).filter(Boolean).join(' ');
+  }
 
   private readonly loadCardDataEffect = effect(async () => {
     const cred = this.credentialInput$();

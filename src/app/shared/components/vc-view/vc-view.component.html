@@ -2,42 +2,30 @@
 
 <!-- VC CARD VIEW -->
 <ion-card (click)="openDetailModal()" tabindex="0" (keydown)="handleButtonKeydown($event, 'detail')" class="credential-card" [class.credential-card--revoked]="credentialInput.lifeCycleStatus === 'REVOKED'" [class.credential-card--expired]="credentialInput.lifeCycleStatus === 'EXPIRED' || expiryStatus() === 'expired'">
-  <!-- Decorative circles for visual depth -->
-  <div class="card-deco-circle card-deco-1"></div>
-  <div class="card-deco-circle card-deco-2"></div>
+  <div class="card-header">
+    <h2 class="card-title">{{ displayName() || credentialType }}</h2>
 
-  <div class="card-top-row">
-    @if(credentialInput.lifeCycleStatus == "EXPIRED" || expiryStatus() === 'expired') {
-      <span class="status-pill status-expired">{{ "credentials.expiration" | translate }}</span>
-    } @else if(expiryStatus() === 'expiring-soon') {
-      <span class="status-pill status-expiring-soon">
-        <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
-        @if(daysUntilExpiry() !== null && daysUntilExpiry()! > 0) {
-          {{ daysUntilExpiry() }}d
-        } @else {
-          {{ "credentials.expiring-soon" | translate }}
-        }
-      </span>
-    } @else if(credentialInput.lifeCycleStatus == "REVOKED") {
-      <span class="status-pill status-expired">{{ "vc-view.revoked" | translate }}</span>
-    } @else if(credentialInput.lifeCycleStatus == "ISSUED") {
-      <button (click)="unsignedInfo($event)" (keydown)="handleButtonKeydown($event, 'info')" class="status-pill status-unsigned" aria-label="información credencial no firmada">
-        <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
-      </button>
+    <span class="card-badge" [class]="'card-badge--' + statusBadge().tone">
+      <ion-icon [name]="statusBadge().tone === 'verified' ? 'checkmark-circle' : 'alert-circle'" aria-hidden="true"></ion-icon>
+      {{ statusBadge().label | translate }}
+    </span>
+  </div>
+
+  <dl class="card-preview">
+    @for(field of previewFields(); track field.label) {
+      <div class="card-preview__cell">
+        <dt class="card-preview__label">{{ field.label | translate }}</dt>
+        <dd class="card-preview__value">{{ field.value }}</dd>
+      </div>
     }
-  </div>
+  </dl>
 
-  <div class="card-body">
-    <div class="card-title-row">
-      <ion-icon name="shield-checkmark-outline" class="card-shield-icon" aria-hidden="true"></ion-icon>
-      <span class="card-title">{{ displayName() || credentialType }}</span>
-    </div>
-    <div class="card-fields" [class.card-blurred]="blurred()">
-      @for(field of cardFields(); track field) {
-        <span class="card-field">{{ field.value }}</span>
-      }
-    </div>
-  </div>
+  @if(credentialInput.lifeCycleStatus === "ISSUED") {
+    <button (click)="unsignedInfo($event)" (keydown)="handleButtonKeydown($event, 'info')" class="card-unsigned" [attr.aria-label]="'vc-view.unsigned-header' | translate">
+      <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+      {{ "vc-view.unsigned" | translate }}
+    </button>
+  }
 
   <ion-alert
     [isOpen]="isAlertOpenNotFound"

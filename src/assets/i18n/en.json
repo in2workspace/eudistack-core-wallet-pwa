@@ -261,7 +261,18 @@
     "unsigned-header": "Unsigned Credential",
     "unsigned-message": "Your credential has not yet been signed and cannot be used. Wait for the issuer to complete the signing process.",
     "revoked": "Revoked",
-    "delete-success": "Credential deleted successfully"
+    "delete-success": "Credential deleted successfully",
+    "badge-verified": "Credential verified",
+    "badge-expired": "Credential expired",
+    "badge-revoked": "Credential revoked",
+    "preview-name": "Name",
+    "preview-issuer": "Issuer ID",
+    "preview-status": "Status",
+    "preview-expiry": "Expiry",
+    "lifecycle-valid": "Valid",
+    "lifecycle-issued": "Unsigned",
+    "lifecycle-revoked": "Revoked",
+    "lifecycle-expired": "Expired"
   },
   "vc-fields": {
     "delete": "Delete",
@@ -532,7 +543,7 @@
     "hint-standalone": "Return to the other EUDI Wallet window.",
     "hint-tab": "Use Ctrl+Tab to return to the active tab.",
     "close-fallback-standalone": "Close this window manually",
-    "close-fallback-tab": "Close this tab with Ctrl+W (\u2318+W on Mac)",
+    "close-fallback-tab": "Close this tab with Ctrl+W (⌘+W on Mac)",
     "close-button": "Close this {{type}}"
   },
   "tenantNotFound": {
