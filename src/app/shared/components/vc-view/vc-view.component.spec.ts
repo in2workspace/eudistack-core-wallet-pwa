@@ -515,4 +515,43 @@ describe('VcViewComponent', () => {
     });
   });
 
+  // AC-10 / NFR-S-142-08: credential content must never be handed to a page
+  // translation engine, regardless of whether the EUD-142 runtime translation
+  // feature is enabled or even available on the device (AD-4). Double marking
+  // (container + value element) because ion-modal reparents its content into
+  // the ion-app tree, where inheritance from the original host is not reliable.
+  describe('translate="no" shielding (AC-10, NFR-S-142-08)', () => {
+    it('marks the credential card container as non-translatable', () => {
+      const card = fixture.nativeElement.querySelector('ion-card.credential-card');
+      expect(card.getAttribute('translate')).toBe('no');
+    });
+
+    it('marks the card title as non-translatable', () => {
+      const title = fixture.nativeElement.querySelector('.card-title');
+      expect(title.getAttribute('translate')).toBe('no');
+    });
+
+    it('marks each card field value as non-translatable', async () => {
+      const displayService = TestBed.inject(CredentialDisplayService);
+      jest.spyOn(displayService, 'getCardFields').mockResolvedValue([{ label: 'field.label', value: 'Jane Doe' }]);
+      componentRef.setInput('credentialInput$', { ...component.credentialInput$() });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const field = fixture.nativeElement.querySelector('.card-field');
+      expect(field.getAttribute('translate')).toBe('no');
+    });
+
+    // The detail modal's markup (.modal-content, .field-value, .structured-value/-label,
+    // .copy-row__text) lives inside <ion-modal><ng-template>. @ionic/angular's IonModal
+    // wrapper only materializes that ng-template into the DOM (via NgTemplateOutlet) once
+    // `isCmpOpen` flips true, which happens on real Ionic overlay lifecycle events dispatched
+    // by the @ionic/core Stencil custom element — not registered in this repo's Jest/jsdom
+    // setup (no other spec in the repo renders ion-modal content either). Their translate="no"
+    // markings (verified present in vc-view.component.html) are therefore checked manually per
+    // the AC-10/NFR-S-142-08 checklist in quality-report.md, consistent with the test matrix's
+    // own "Manual" row in technical-design.md §2.3.
+  });
+
 });

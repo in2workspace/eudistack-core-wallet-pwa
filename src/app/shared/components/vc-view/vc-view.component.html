@@ -1,7 +1,14 @@
 @let credentialInput = credentialInput$();
 
 <!-- VC CARD VIEW -->
-<ion-card (click)="openDetailModal()" tabindex="0" (keydown)="handleButtonKeydown($event, 'detail')" class="credential-card" [class.credential-card--revoked]="credentialInput.lifeCycleStatus === 'REVOKED'" [class.credential-card--expired]="credentialInput.lifeCycleStatus === 'EXPIRED' || expiryStatus() === 'expired'">
+<!--
+  EUD-142 (AD-4): credential-content shielding against the browser's page translation.
+  Uses [attr.translate]="'no'" rather than the plain `translate="no"` HTML attribute:
+  @ngx-translate's TranslateDirective selector is `[translate]` and would otherwise hijack
+  this attribute, treating "no" as an i18n key instead of the platform's translate mode.
+  See Tech Debt ticket referenced in technical-design.md §3.2 gap note.
+-->
+<ion-card (click)="openDetailModal()" tabindex="0" (keydown)="handleButtonKeydown($event, 'detail')" class="credential-card" [attr.translate]="'no'" [class.credential-card--revoked]="credentialInput.lifeCycleStatus === 'REVOKED'" [class.credential-card--expired]="credentialInput.lifeCycleStatus === 'EXPIRED' || expiryStatus() === 'expired'">
   <!-- Decorative circles for visual depth -->
   <div class="card-deco-circle card-deco-1"></div>
   <div class="card-deco-circle card-deco-2"></div>
@@ -30,11 +37,11 @@
   <div class="card-body">
     <div class="card-title-row">
       <ion-icon name="shield-checkmark-outline" class="card-shield-icon" aria-hidden="true"></ion-icon>
-      <span class="card-title">{{ displayName() || credentialType }}</span>
+      <span class="card-title" [attr.translate]="'no'">{{ displayName() || credentialType }}</span>
     </div>
     <div class="card-fields" [class.card-blurred]="blurred()">
       @for(field of cardFields(); track field) {
-        <span class="card-field">{{ field.value }}</span>
+        <span class="card-field" [attr.translate]="'no'">{{ field.value }}</span>
       }
     </div>
   </div>
@@ -123,7 +130,7 @@
       </ion-toolbar>
     </ion-header>
 
-    <ion-content class="ion-padding modal-content">
+    <ion-content class="ion-padding modal-content" [attr.translate]="'no'">
       <ion-list>
         @for(section of detailViewSections$(); track section.section){
           <div class="section">
@@ -132,7 +139,7 @@
               @if(field.label === 'vc-fields.credentialEncoded'){
                 <ion-item lines="none" class="field-item compact-item">
                   <div class="copy-row">
-                    <div class="copy-row__text ellipsis-text" [title]="field.value">
+                    <div class="copy-row__text ellipsis-text" [attr.translate]="'no'" [title]="field.value">
                       {{ field.value }}
                     </div>
                     <div class="copy-row__actions">
@@ -146,15 +153,15 @@
                 <div class="structured-field">
                   @for(item of field.structured; track item.label){
                     <div class="structured-item">
-                      <span class="structured-label">{{ item.label }}</span>
-                      <span class="structured-value">{{ item.value }}</span>
+                      <span class="structured-label" [attr.translate]="'no'">{{ item.label }}</span>
+                      <span class="structured-value" [attr.translate]="'no'">{{ item.value }}</span>
                     </div>
                   }
                 </div>
               } @else {
                 <div class="field-item">
                   <div class="field-label">{{ field.label | translate }}</div>
-                  <div class="field-value">{{ field.value }}</div>
+                  <div class="field-value" [attr.translate]="'no'">{{ field.value }}</div>
                 </div>
               }
           }
