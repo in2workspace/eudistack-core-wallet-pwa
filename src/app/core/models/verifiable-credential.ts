@@ -27,6 +27,7 @@ export const CREDENTIAL_TYPES_ARRAY = [
   'learcredential.machine.sd.1',
   'gx.labelcredential.w3c.2',
   'urn:es.cgcom:doctorid:1',
+  'eu.europa.ec.eudi.pid.1',
 ] as const;
 export type CredentialType = typeof CREDENTIAL_TYPES_ARRAY[number];
 export type ExtendedCredentialType =  'VerifiableCredential' | CredentialType;

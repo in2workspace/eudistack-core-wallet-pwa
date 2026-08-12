@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **EUD-215 — recognize `eu.europa.ec.eudi.pid.1` as a supported credential type**: the PID schema/profile files were already bundled under `assets/schemas/` but never activated — `CredentialSchemaRegistryService.SUPPORTED_SCHEMAS` excluded the id (so the wallet never loaded its display metadata) and `CREDENTIAL_TYPES_ARRAY` didn't include it either (so it wasn't a valid `CredentialType` at the type-system level). Both fixed, plus the matching `CredentialTypeMap` icon entry and `VerifiableCredentialSubjectDataNormalizer` case (identity normalizer — the PID has flat claims, no `mandate` structure).
+
+### Fixed
+
+- **EUD-215 — issuer well-known metadata URL now follows OID4VCI 1.0 §12.2.2**: `CredentialIssuerMetadataService` was appending `.well-known/openid-credential-issuer` after the full `credential_issuer` identifier (including its path), which happens to match what the current CloudFront/ALB routing accepts but is not what the spec requires — a compliant client must insert the well-known path between the origin and the issuer's own path instead (e.g. `https://host/tenant` → `https://host/.well-known/openid-credential-issuer/tenant`). Confirmed against the real OIDF conformance suite run: it requests metadata this way and gets a 403 today, since `sandbox`/`dome-marketplace-lcl.org`/`dome-marketplace-sbx.org` routing only forwards paths starting with `/issuer/*`. **Must ship together with the matching CloudFront/ALB routing change in `eudistack-platform-iac`** (adds `/.well-known/openid-credential-issuer/issuer*` and `/.well-known/oauth-authorization-server/issuer*` to all three distributions) — deploying this alone breaks metadata discovery for every real wallet until that routing fix lands too.
+
 ## [3.15.0] - 2026-08-07
 
 ### Added
