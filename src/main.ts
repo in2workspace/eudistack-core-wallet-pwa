@@ -31,6 +31,7 @@ import { TenantService } from './app/core/services/tenant.service';
 import { tenantInitializer } from './app/core/initializers/tenant.initializer';
 import { TRANSLATION_ENGINE } from './app/core/ports/translation-engine.port';
 import { BrowserTranslatorEngineAdapter } from './app/core/adapters/browser-translator-engine.adapter';
+import { UiTextTranslationService } from './app/core/services/ui-text-translation.service';
 
 function initializeTheme(themeService: ThemeService): () => Promise<void> {
   return () => themeService.load();
@@ -38,6 +39,27 @@ function initializeTheme(themeService: ThemeService): () => Promise<void> {
 
 function initializePasskeyStore(store: PasskeyStoreService): () => Promise<void> {
   return () => store.init();
+}
+
+/**
+ * Restores the persisted runtime-translation preference on every app start
+ * (AC-06: "cierra la aplicación y la vuelve a abrir... sin volver a pedir la
+ * activación") — not just when the Holder happens to revisit the language
+ * selector page.
+ *
+ * Deliberately fire-and-forget: bootstrap must not block on this (up to
+ * TRANSLATION_BUDGET_MS = 20s on a cache miss) — AC-11 requires the app stay
+ * usable during preparation. The UI swaps to the target language reactively
+ * once ready, via @ngx-translate's existing onTranslationChange subscription
+ * — regardless of which page is on screen when it resolves. Must run after
+ * initializeTheme so the native language is already active when
+ * restoreFromPreference()'s internal activate() call reads it.
+ */
+function restoreUiTranslation(service: UiTextTranslationService): () => Promise<void> {
+  return () => {
+    void service.restoreFromPreference();
+    return Promise.resolve();
+  };
 }
 
 disableTouchScrollOnPaths(
@@ -85,6 +107,13 @@ bootstrapApplication(AppComponent, {
       provide: APP_INITIALIZER,
       useFactory: initializePasskeyStore,
       deps: [PasskeyStoreService],
+      multi: true
+    },
+    // Must run after initializeTheme (native language already active).
+    {
+      provide: APP_INITIALIZER,
+      useFactory: restoreUiTranslation,
+      deps: [UiTextTranslationService],
       multi: true
     },
     importProvidersFrom(
