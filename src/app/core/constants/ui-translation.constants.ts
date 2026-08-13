@@ -28,11 +28,23 @@ export const RTL_LANGUAGE_TAGS: readonly LanguageTag[] = ['ar', 'he', 'fa', 'ur'
 
 /**
  * Deny-list of i18n key prefixes never eligible for runtime translation
- * (AD-3, frontier by data provenance). Anything under these prefixes is
- * credential/verification-request content and always renders in its native
- * language, regardless of translation state.
+ * (AD-3, frontier by data provenance). Scoped to the specific sub-namespaces
+ * that are genuinely credential-claim vocabulary — not the whole `vc-fields.`
+ * or `verification.` namespace, which also hosts pure app chrome (the detail
+ * modal title, the delete/verify buttons, result banners, check labels) that
+ * AD-3 itself says must translate. A blanket prefix on either namespace was
+ * over-broad: field LABELS and claim-derived vocabulary stay native (risk of
+ * misrepresenting what the credential asserts, per AD-3's own rationale);
+ * everything else in those namespaces is ordinary UI text.
  */
-export const RUNTIME_TRANSLATION_EXCLUDED_KEY_PREFIXES: readonly string[] = ['vc-fields.', 'verification.'];
+export const RUNTIME_TRANSLATION_EXCLUDED_KEY_PREFIXES: readonly string[] = [
+  'vc-fields.credentialInfo.',
+  'vc-fields.credentialEncoded',
+  'vc-fields.learCredentialEmployee.',
+  'vc-fields.lear-credential-machine.',
+  'vc-fields.gaia-x-label-credential.',
+  'vc-fields.power.',
+];
 
 /** `StorageService` key prefix for cached translations (`UiTranslationCacheService`). */
 export const UI_TRANSLATION_CACHE_KEY_PREFIX = 'ui-translation-cache:';

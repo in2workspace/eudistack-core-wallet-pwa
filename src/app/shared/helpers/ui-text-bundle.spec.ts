@@ -103,10 +103,25 @@ describe('mergeUiBundles', () => {
 
 describe('isExcludedKey', () => {
   it.each([
-    ['vc-fields.title', true],
+    // Credential-claim vocabulary — excluded (AD-3): field labels and
+    // claim-derived text carry translation-correctness risk.
     ['vc-fields.credentialInfo.issuerId', true],
-    ['verification.button', true],
-    ['verification.result-valid', true],
+    ['vc-fields.credentialInfo.type', true],
+    ['vc-fields.credentialEncoded', true],
+    ['vc-fields.learCredentialEmployee.mandatee.firstName', true],
+    ['vc-fields.lear-credential-machine.mandatee.domain', true],
+    ['vc-fields.gaia-x-label-credential.label-info.title', true],
+    ['vc-fields.power.execute', true],
+    // Pure app chrome sharing the same i18n namespace — NOT excluded: it
+    // carries no credential-claim semantics and must translate (AD-3).
+    ['vc-fields.title', false],
+    ['vc-fields.modal-title', false],
+    ['vc-fields.delete', false],
+    ['vc-fields.copy-success', false],
+    ['verification.button', false],
+    ['verification.result-valid', false],
+    ['verification.check-issuer', false],
+    // Unrelated app chrome.
     ['menu.scan', false],
     ['credentials.title', false],
     ['', false],

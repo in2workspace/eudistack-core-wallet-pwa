@@ -140,10 +140,10 @@ describe('BrowserTranslatorEngineAdapter', () => {
     it('rejects the whole batch when one entry key falls under an excluded prefix', async () => {
       const { createFn } = installFakeTranslator();
       const trackSpy = jest.spyOn(telemetry, 'track');
-      const entries = [entry('menu.scan', 'Scan'), entry('vc-fields.title', 'Should never reach the engine')];
+      const entries = [entry('menu.scan', 'Scan'), entry('vc-fields.credentialInfo.type', 'Should never reach the engine')];
       // Even if a future caller forgets to filter the deny-list out of
       // allowedKeys, the adapter's own isExcludedKey() check still catches it.
-      const allowedKeys = allow('menu.scan', 'vc-fields.title');
+      const allowedKeys = allow('menu.scan', 'vc-fields.credentialInfo.type');
 
       await expect(adapter.translateEntries(entries, pair, allowedKeys, undefined)).rejects.toThrow();
 
@@ -154,7 +154,7 @@ describe('BrowserTranslatorEngineAdapter', () => {
       }));
       // The rejected text/key is never part of the telemetry payload.
       const payload = trackSpy.mock.calls[0][1];
-      expect(JSON.stringify(payload)).not.toContain('vc-fields.title');
+      expect(JSON.stringify(payload)).not.toContain('vc-fields.credentialInfo.type');
       expect(JSON.stringify(payload)).not.toContain('Should never reach the engine');
     });
 
