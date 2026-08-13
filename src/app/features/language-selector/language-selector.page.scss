@@ -35,3 +35,46 @@
     font-weight: 500;
   }
 }
+
+// --- EUD-142: runtime UI translation section ------------------------------
+
+.translation-box {
+  margin-top: 16px;
+}
+
+.translation-description {
+  padding: 0 16px 12px;
+  font-size: 0.8rem !important;
+  line-height: 1.4;
+}
+
+.settings-toggle {
+  --track-background: var(--border-default);
+  --track-background-checked: var(--border-default);
+  --handle-background-checked: var(--status-neutral);
+  padding-inline-end: 16px;
+}
+
+.translation-state {
+  padding: 4px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+
+  p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+}
+
+.translation-state--progress {
+  ion-progress-bar {
+    width: 100%;
+  }
+}
+
+.translation-state--error p {
+  color: var(--status-danger, #c0392b);
+}

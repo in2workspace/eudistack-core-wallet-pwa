@@ -13,5 +13,67 @@
         </ion-radio-group>
       </ion-list>
     </div>
+
+    <!-- EUD-142: runtime UI translation (additive layer over the native language above; AC-07). -->
+    <div class="settings-box translation-box">
+      <div class="settings-pages-title">{{ "ui-translation.title" | translate }}</div>
+      <p class="settings-desc translation-description">{{ "ui-translation.description" | translate }}</p>
+
+      @if (translationStatus() === 'unavailable') {
+        <div class="translation-state translation-state--unavailable" role="status">
+          <p>{{ "ui-translation.state-unavailable" | translate }}</p>
+          <p class="settings-desc">{{ "ui-translation.state-unavailable-hint" | translate }}</p>
+        </div>
+      } @else {
+        <ion-item class="item translation-toggle-item" lines="none">
+          <ion-label>{{ "ui-translation.toggle-label" | translate }}</ion-label>
+          <ion-toggle
+            slot="end"
+            class="settings-toggle"
+            [checked]="translationEnabled()"
+            [disabled]="translationControlDisabled()"
+            [attr.aria-label]="'ui-translation.toggle-label' | translate"
+            (ionChange)="onTranslationToggle($event.detail.checked)"
+          ></ion-toggle>
+        </ion-item>
+
+        @if (availableTargets().length > 0) {
+          <ion-item class="item translation-target-item" lines="none">
+            <ion-label>{{ "ui-translation.target-language-label" | translate }}</ion-label>
+            <ion-select
+              slot="end"
+              interface="popover"
+              [disabled]="translationControlDisabled()"
+              [value]="selectedTargetLanguage"
+              [attr.aria-label]="'ui-translation.target-language-label' | translate"
+              (ionChange)="onTargetLanguageChange($event.detail.value)"
+            >
+              @for (code of availableTargets(); track code) {
+                <ion-select-option [value]="code">{{ targetLanguageName(code) }}</ion-select-option>
+              }
+            </ion-select>
+          </ion-item>
+        }
+
+        @if (translationStatus() === 'preparing') {
+          <div class="translation-state translation-state--progress" role="status">
+            <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+            <p>{{ "ui-translation.state-preparing" | translate }}</p>
+            @if (translationProgress(); as progress) {
+              <ion-progress-bar [value]="progress.total > 0 ? progress.done / progress.total : 0"></ion-progress-bar>
+            }
+          </div>
+        }
+
+        @if (translationStatus() === 'error') {
+          <div class="translation-state translation-state--error" role="alert">
+            <p>{{ "ui-translation.state-error" | translate }}</p>
+            <ion-button fill="outline" size="small" (click)="retryTranslation()">
+              {{ "ui-translation.retry" | translate }}
+            </ion-button>
+          </div>
+        }
+      }
+    </div>
   </div>
 </ion-content>
