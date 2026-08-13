@@ -109,3 +109,57 @@ export function hashUiBundle(json: string): string {
   }
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
+
+/** Matches `@ngx-translate/core` interpolation params, e.g. `{{ name }}`. */
+const PLACEHOLDER_RE = /\{\{\s*([\w.]+)\s*\}\}/g;
+
+/**
+ * Rare, paired Unicode brackets (U+2983/U+2984 — mathematical white curly
+ * bracket) wrapping the bare param name. Chosen because they are visually
+ * and structurally distinct from `{{ }}` — an MT engine has no interpolation
+ * syntax to "recognise and mistranslate" — while still round-tripping intact
+ * as ordinary characters if the engine passes unrecognised text through
+ * unchanged (ES-06).
+ */
+const SENTINEL_OPEN = '⦃';
+const SENTINEL_CLOSE = '⦄';
+const SENTINEL_RE = new RegExp(`${SENTINEL_OPEN}([\\w.]+)${SENTINEL_CLOSE}`, 'g');
+
+/**
+ * Replaces every `{{ param }}` interpolation marker in `text` with a sentinel
+ * that encodes the bare param name. The translation engine only ever
+ * receives the sentinel form — the interpolation *value* is substituted by
+ * `@ngx-translate/core` in the app, in local, never by the engine (AC-14).
+ */
+export function maskPlaceholders(text: string): string {
+  return text.replace(PLACEHOLDER_RE, (_match, param: string) => `${SENTINEL_OPEN}${param}${SENTINEL_CLOSE}`);
+}
+
+/** Restores `{{ param }}` interpolation markers from their sentinel form — the inverse of `maskPlaceholders`. */
+export function unmaskPlaceholders(text: string): string {
+  return text.replace(SENTINEL_RE, (_match, param: string) => `{{${param}}}`);
+}
+
+/**
+ * `true` when `translated` (already unmasked) contains exactly the same
+ * multiset of interpolation params as `source` (the pristine text) — same
+ * params, same count each, order-independent (translation may reorder
+ * words). A mismatch means the engine altered or dropped a marker; the
+ * caller falls back to the native text for that key (ES-06, NFR-S-142-06).
+ */
+export function hasIntactPlaceholders(source: string, translated: string): boolean {
+  const extractParams = (text: string): string[] => {
+    const params: string[] = [];
+    for (const match of text.matchAll(PLACEHOLDER_RE)) {
+      params.push(match[1]);
+    }
+    return params.sort();
+  };
+
+  const sourceParams = extractParams(source);
+  const translatedParams = extractParams(translated);
+  return (
+    sourceParams.length === translatedParams.length &&
+    sourceParams.every((param, i) => param === translatedParams[i])
+  );
+}

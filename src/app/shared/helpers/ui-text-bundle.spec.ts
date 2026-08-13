@@ -1,5 +1,6 @@
 import {
-  flattenUiBundle, inflateUiBundle, mergeUiBundles, isExcludedKey, hashUiBundle, UiTextBundle,
+  flattenUiBundle, inflateUiBundle, mergeUiBundles, isExcludedKey, hashUiBundle,
+  maskPlaceholders, unmaskPlaceholders, hasIntactPlaceholders, UiTextBundle,
 } from './ui-text-bundle';
 import { UiTextKey } from 'src/app/core/models/ui-text-translation.model';
 
@@ -134,5 +135,61 @@ describe('hashUiBundle', () => {
 
   it('handles the empty string', () => {
     expect(hashUiBundle('')).toMatch(/^[0-9a-f]{8}$/);
+  });
+});
+
+describe('maskPlaceholders / unmaskPlaceholders (AC-14, ES-06)', () => {
+  it('masks a single interpolation marker', () => {
+    expect(maskPlaceholders('Hello {{name}}')).toBe('Hello ⦃name⦄');
+  });
+
+  it('masks markers with surrounding whitespace', () => {
+    expect(maskPlaceholders('Hello {{ name }}')).toBe('Hello ⦃name⦄');
+  });
+
+  it('masks multiple distinct markers in the same text', () => {
+    expect(maskPlaceholders('{{greeting}}, {{name}}!')).toBe('⦃greeting⦄, ⦃name⦄!');
+  });
+
+  it('leaves text without markers unchanged', () => {
+    expect(maskPlaceholders('No markers here')).toBe('No markers here');
+  });
+
+  it('unmasks back to the exact original interpolation syntax', () => {
+    const original = 'Hello {{name}}, you have {{count}} credentials';
+
+    expect(unmaskPlaceholders(maskPlaceholders(original))).toBe(original);
+  });
+
+  it('round-trips text with no markers', () => {
+    expect(unmaskPlaceholders(maskPlaceholders('plain text'))).toBe('plain text');
+  });
+});
+
+describe('hasIntactPlaceholders (NFR-S-142-06)', () => {
+  it('is true when translated text preserves the same single marker', () => {
+    expect(hasIntactPlaceholders('Hello {{name}}', 'Hola {{name}}')).toBe(true);
+  });
+
+  it('is true when translation reorders markers (order-independent)', () => {
+    expect(
+      hasIntactPlaceholders('{{greeting}}, {{name}}!', '{{name}}, ¡{{greeting}}!'),
+    ).toBe(true);
+  });
+
+  it('is true when there are no markers on either side', () => {
+    expect(hasIntactPlaceholders('plain text', 'texto plano')).toBe(true);
+  });
+
+  it('is false when the translated text drops a marker', () => {
+    expect(hasIntactPlaceholders('Hello {{name}}, {{count}} left', 'Hola {{name}}')).toBe(false);
+  });
+
+  it('is false when the translated text alters a marker name', () => {
+    expect(hasIntactPlaceholders('Hello {{name}}', 'Hola {{nombre}}')).toBe(false);
+  });
+
+  it('is false when the translated text duplicates a marker', () => {
+    expect(hasIntactPlaceholders('Hello {{name}}', 'Hola {{name}} {{name}}')).toBe(false);
   });
 });
