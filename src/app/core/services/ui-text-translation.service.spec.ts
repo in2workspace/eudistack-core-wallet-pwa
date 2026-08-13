@@ -180,7 +180,7 @@ describe('UiTextTranslationService', () => {
 
     it('reports progress during the batch loop and clears it once active (AC-11)', async () => {
       let capturedDuringActivation: unknown;
-      engine.translateEntries.mockImplementation(async (entries, _pair, onProgress) => {
+      engine.translateEntries.mockImplementation(async (entries, _pair, _allowedKeys, onProgress) => {
         onProgress?.(1, entries.length);
         capturedDuringActivation = service.progress();
         return entries.map((e: { key: UiTextKey; text: string }) => ({ key: e.key, text: `[${e.text}]` }));

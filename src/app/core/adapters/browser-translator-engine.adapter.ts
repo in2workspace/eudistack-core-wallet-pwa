@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { TRANSLATION_CHUNK_SIZE } from '../constants/ui-translation.constants';
-import { TranslationAvailability, UiTextEntry } from '../models/ui-text-translation.model';
+import { TranslationAvailability, UiTextEntry, UiTextKey } from '../models/ui-text-translation.model';
 import { LanguagePair, TranslationEnginePort } from '../ports/translation-engine.port';
 import { isExcludedKey } from '../../shared/helpers/ui-text-bundle';
 import { TelemetryService } from '../services/telemetry.service';
@@ -44,17 +44,24 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
   async translateEntries(
     entries: ReadonlyArray<UiTextEntry>,
     pair: LanguagePair,
+    allowedKeys: ReadonlySet<UiTextKey>,
     onProgress?: (done: number, total: number) => void,
   ): Promise<ReadonlyArray<UiTextEntry>> {
     // ES-01 — fail-closed guard (control 3/4 of the FR-25/NFR-Pr-03 privacy
-    // boundary). `entries` can only ever contain real UiTextEntry values —
-    // the nominal-branded UiTextKey is producible only by flattenUiBundle()
-    // (control 1/4) and this signature only accepts UiTextEntry (control
-    // 2/4) — but a single excluded-prefix key slipping through (e.g. a
-    // future caller forgetting to filter) still aborts the WHOLE batch
-    // rather than translating everything except that one entry: the rejected
-    // text itself is never logged, only the fact that a rejection happened.
-    const rejected = entries.find(entry => isExcludedKey(entry.key));
+    // boundary), checked against BOTH halves of the contract: (1) the key
+    // must belong to `allowedKeys` — the set the caller derived from the
+    // *current* pristine bundle — and (2) it must not fall under an excluded
+    // prefix (redundant with (1) in practice, since the caller already
+    // excludes those, but kept as a self-contained check that doesn't rely
+    // on the caller having filtered correctly). `entries` can only ever
+    // contain real UiTextEntry values — the nominal-branded UiTextKey is
+    // producible only by flattenUiBundle() (control 1/4) and this signature
+    // only accepts UiTextEntry (control 2/4) — but a single key slipping
+    // through (e.g. a future caller forgetting to filter, or a tampered
+    // allowedKeys/entries pair) still aborts the WHOLE batch rather than
+    // translating everything except that one entry: the rejected text
+    // itself is never logged, only the fact that a rejection happened.
+    const rejected = entries.find(entry => !allowedKeys.has(entry.key) || isExcludedKey(entry.key));
     if (rejected) {
       this.telemetry.track('ui_translation_rejected_entry', {
         sourceLanguage: pair.sourceLanguage,
@@ -94,8 +101,11 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
 
   private translatorFor(pair: LanguagePair): Promise<TranslatorInstance> {
     const cacheKey = `${pair.sourceLanguage}:${pair.targetLanguage}`;
-    const memoized = this._translatorFor.get(cacheKey) ?? this.createTranslator(pair);
-    this._translatorFor.set(cacheKey, memoized);
+    let memoized = this._translatorFor.get(cacheKey);
+    if (!memoized) {
+      memoized = this.createTranslator(pair);
+      this._translatorFor.set(cacheKey, memoized);
+    }
     return memoized;
   }
 

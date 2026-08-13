@@ -7,7 +7,7 @@ import { EMPTY, firstValueFrom, from, switchMap, timeout } from 'rxjs';
 import {
   BUNDLE_FETCH_TIMEOUT_MS, RTL_LANGUAGE_TAGS, RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES, TRANSLATION_BUDGET_MS,
 } from '../constants/ui-translation.constants';
-import { LanguageTag, SCHEMA_VERSION, UiTextEntry, UiTranslationStatus } from '../models/ui-text-translation.model';
+import { LanguageTag, SCHEMA_VERSION, UiTextEntry, UiTextKey, UiTranslationStatus } from '../models/ui-text-translation.model';
 import { TRANSLATION_ENGINE } from '../ports/translation-engine.port';
 import {
   UiTextBundle, flattenUiBundle, hasIntactPlaceholders, hashUiBundle, inflateUiBundle,
@@ -208,11 +208,22 @@ export class UiTextTranslationService {
     const translatableEntries = flattenUiBundle(pristineBundle).filter(e => !isExcludedKey(e.key));
 
     // 3. Cache lookup (EC-04: a hit means the engine is never invoked).
+    const allowedKeys = new Set(translatableEntries.map(e => e.key));
     let translatedEntries = await this.cache.read(nativeLang, target, bundleHash);
     if (!this.isCurrentGeneration(generation)) return;
 
-    if (!translatedEntries) {
-      translatedEntries = await this.translateViaEngine(translatableEntries, nativeLang, target, generation);
+    if (translatedEntries) {
+      // Defense-in-depth (security screen, /verify EUD-142 finding F2):
+      // isCachedUiTranslation() only validates shape, not that a key belongs
+      // to the current pristine bundle. A record that reached storage
+      // through anything other than this service's own write() — e.g.
+      // direct IndexedDB tampering on a compromised/shared device — could
+      // otherwise inject a foreign key into the merged bundle via
+      // mergeUiBundles(). Re-derive trust from the pristine bundle on every
+      // read, regardless of provenance.
+      translatedEntries = translatedEntries.filter(e => allowedKeys.has(e.key));
+    } else {
+      translatedEntries = await this.translateViaEngine(translatableEntries, nativeLang, target, generation, allowedKeys);
       if (!this.isCurrentGeneration(generation)) return;
 
       await this.cache.write({
@@ -248,12 +259,14 @@ export class UiTextTranslationService {
     sourceLanguage: LanguageTag,
     targetLanguage: LanguageTag,
     generation: number,
+    allowedKeys: ReadonlySet<UiTextKey>,
   ): Promise<ReadonlyArray<UiTextEntry>> {
     const maskedEntries = entries.map(e => ({ key: e.key, text: maskPlaceholders(e.text) }));
 
     const rawTranslated = await this.engine.translateEntries(
       maskedEntries,
       { sourceLanguage, targetLanguage },
+      allowedKeys,
       (done, total) => {
         if (this.isCurrentGeneration(generation)) {
           this._progress.set({ done, total });

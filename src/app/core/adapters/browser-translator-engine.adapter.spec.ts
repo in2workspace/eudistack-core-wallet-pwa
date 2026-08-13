@@ -7,6 +7,11 @@ function entry(key: string, text: string): UiTextEntry {
   return { key: key as UiTextKey, text };
 }
 
+/** Convenience for building the `allowedKeys` set the port now requires. */
+function allow(...keys: string[]): ReadonlySet<UiTextKey> {
+  return new Set(keys as UiTextKey[]);
+}
+
 describe('BrowserTranslatorEngineAdapter', () => {
   let adapter: BrowserTranslatorEngineAdapter;
   let telemetry: TelemetryService;
@@ -91,9 +96,10 @@ describe('BrowserTranslatorEngineAdapter', () => {
     it('translates every entry and reports progress per chunk', async () => {
       installFakeTranslator();
       const entries = Array.from({ length: 30 }, (_, i) => entry(`menu.item-${i}`, `text-${i}`));
+      const allowedKeys = allow(...entries.map(e => e.key as string));
       const onProgress = jest.fn();
 
-      const result = await adapter.translateEntries(entries, pair, onProgress);
+      const result = await adapter.translateEntries(entries, pair, allowedKeys, onProgress);
 
       expect(result).toHaveLength(30);
       expect(result[0]).toEqual({ key: 'menu.item-0', text: '[text-0]' });
@@ -105,8 +111,8 @@ describe('BrowserTranslatorEngineAdapter', () => {
     it('memoizes the Translator instance across calls for the same pair', async () => {
       const { createFn } = installFakeTranslator();
 
-      await adapter.translateEntries([entry('a', 'A')], pair, undefined);
-      await adapter.translateEntries([entry('b', 'B')], pair, undefined);
+      await adapter.translateEntries([entry('a', 'A')], pair, allow('a'), undefined);
+      await adapter.translateEntries([entry('b', 'B')], pair, allow('b'), undefined);
 
       expect(createFn).toHaveBeenCalledTimes(1);
     });
@@ -114,8 +120,8 @@ describe('BrowserTranslatorEngineAdapter', () => {
     it('creates a distinct Translator per language pair', async () => {
       const { createFn } = installFakeTranslator();
 
-      await adapter.translateEntries([entry('a', 'A')], { sourceLanguage: 'es', targetLanguage: 'el' }, undefined);
-      await adapter.translateEntries([entry('a', 'A')], { sourceLanguage: 'es', targetLanguage: 'ar' }, undefined);
+      await adapter.translateEntries([entry('a', 'A')], { sourceLanguage: 'es', targetLanguage: 'el' }, allow('a'), undefined);
+      await adapter.translateEntries([entry('a', 'A')], { sourceLanguage: 'es', targetLanguage: 'ar' }, allow('a'), undefined);
 
       expect(createFn).toHaveBeenCalledTimes(2);
     });
@@ -123,7 +129,7 @@ describe('BrowserTranslatorEngineAdapter', () => {
     it('returns an empty array without creating a Translator when entries is empty', async () => {
       const { createFn } = installFakeTranslator();
 
-      const result = await adapter.translateEntries([], pair, undefined);
+      const result = await adapter.translateEntries([], pair, allow(), undefined);
 
       expect(result).toEqual([]);
       expect(createFn).not.toHaveBeenCalled();
@@ -135,8 +141,11 @@ describe('BrowserTranslatorEngineAdapter', () => {
       const { createFn } = installFakeTranslator();
       const trackSpy = jest.spyOn(telemetry, 'track');
       const entries = [entry('menu.scan', 'Scan'), entry('vc-fields.title', 'Should never reach the engine')];
+      // Even if a future caller forgets to filter the deny-list out of
+      // allowedKeys, the adapter's own isExcludedKey() check still catches it.
+      const allowedKeys = allow('menu.scan', 'vc-fields.title');
 
-      await expect(adapter.translateEntries(entries, pair, undefined)).rejects.toThrow();
+      await expect(adapter.translateEntries(entries, pair, allowedKeys, undefined)).rejects.toThrow();
 
       expect(createFn).not.toHaveBeenCalled();
       expect(trackSpy).toHaveBeenCalledWith('ui_translation_rejected_entry', expect.objectContaining({
@@ -148,12 +157,24 @@ describe('BrowserTranslatorEngineAdapter', () => {
       expect(JSON.stringify(payload)).not.toContain('vc-fields.title');
       expect(JSON.stringify(payload)).not.toContain('Should never reach the engine');
     });
+
+    it('rejects the whole batch when a key is absent from allowedKeys, even if not under an excluded prefix (F3)', async () => {
+      const { createFn } = installFakeTranslator();
+      const entries = [entry('menu.scan', 'Scan'), entry('menu.wallet', 'Wallet')];
+      // Simulates a stale/tampered allowedKeys — e.g. derived from a bundle
+      // that no longer matches the entries passed in.
+      const allowedKeys = allow('menu.scan');
+
+      await expect(adapter.translateEntries(entries, pair, allowedKeys, undefined)).rejects.toThrow();
+
+      expect(createFn).not.toHaveBeenCalled();
+    });
   });
 
   describe('destroy', () => {
     it('destroys every memoized Translator and clears the memoization', async () => {
       const { destroyFn, createFn } = installFakeTranslator();
-      await adapter.translateEntries([entry('a', 'A')], { sourceLanguage: 'es', targetLanguage: 'el' }, undefined);
+      await adapter.translateEntries([entry('a', 'A')], { sourceLanguage: 'es', targetLanguage: 'el' }, allow('a'), undefined);
 
       adapter.destroy();
       await Promise.resolve(); // let the fire-and-forget .then() run
@@ -161,7 +182,7 @@ describe('BrowserTranslatorEngineAdapter', () => {
       expect(destroyFn).toHaveBeenCalledTimes(1);
 
       // A subsequent call for the same pair creates a fresh Translator.
-      await adapter.translateEntries([entry('a', 'A')], { sourceLanguage: 'es', targetLanguage: 'el' }, undefined);
+      await adapter.translateEntries([entry('a', 'A')], { sourceLanguage: 'es', targetLanguage: 'el' }, allow('a'), undefined);
       expect(createFn).toHaveBeenCalledTimes(2);
     });
 

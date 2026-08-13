@@ -1,6 +1,6 @@
 import { InjectionToken } from '@angular/core';
 
-import { LanguageTag, TranslationAvailability, UiTextEntry } from '../models/ui-text-translation.model';
+import { LanguageTag, TranslationAvailability, UiTextEntry, UiTextKey } from '../models/ui-text-translation.model';
 
 /** Source/target language pair, mirroring the Translator API's own shape. */
 export interface LanguagePair {
@@ -18,8 +18,11 @@ export interface LanguagePair {
  * (task 8). A caller cannot pass arbitrary text — e.g. credential content —
  * to `translateEntries()` without defeating that type explicitly. This is
  * control 2/4 of the FR-25/NFR-Pr-03 privacy boundary (see
- * `technical-design.md` §3.4.1); control 3/4 (the runtime fail-closed guard,
- * ES-01) lives in the implementation, not in this interface.
+ * `technical-design.md` §3.4.1). Control 3/4 (the runtime fail-closed guard,
+ * ES-01) lives in the implementation, but the interface itself carries the
+ * `allowedKeys` parameter the guard checks against — the caller (which holds
+ * the current pristine bundle) is the only party that can state which keys
+ * are legitimate; the port cannot infer that on its own.
  *
  * Implementations:
  *  - Production: `BrowserTranslatorEngineAdapter` (task 11)
@@ -42,13 +45,17 @@ export interface TranslationEnginePort {
 
   /**
    * Translates `entries` for `pair`, invoking `onProgress` as batches
-   * complete (AC-11). Rejects (and translates nothing) if any entry's key
-   * does not belong to the release i18n bundle or falls under
-   * `RUNTIME_TRANSLATION_EXCLUDED_KEY_PREFIXES` — fail-closed, ES-01.
+   * complete (AC-11). `allowedKeys` is the exact set of keys the caller
+   * derived from the current pristine bundle (already excludes
+   * `RUNTIME_TRANSLATION_EXCLUDED_KEY_PREFIXES`) — the fail-closed guard
+   * (ES-01) rejects the whole batch, without creating an engine instance, if
+   * any entry's key is not a member. Whole-batch abort, never a partial
+   * translation of the "safe" subset.
    */
   translateEntries(
     entries: ReadonlyArray<UiTextEntry>,
     pair: LanguagePair,
+    allowedKeys: ReadonlySet<UiTextKey>,
     onProgress?: (done: number, total: number) => void,
   ): Promise<ReadonlyArray<UiTextEntry>>;
 
