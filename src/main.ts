@@ -29,6 +29,8 @@ import { walletDiscoveryInitializer } from './app/core/initializers/wallet-disco
 import { WalletDiscoveryService } from './app/core/services/wallet-discovery.service';
 import { TenantService } from './app/core/services/tenant.service';
 import { tenantInitializer } from './app/core/initializers/tenant.initializer';
+import { TRANSLATION_ENGINE } from './app/core/ports/translation-engine.port';
+import { BrowserTranslatorEngineAdapter } from './app/core/adapters/browser-translator-engine.adapter';
 
 function initializeTheme(themeService: ThemeService): () => Promise<void> {
   return () => themeService.load();
@@ -56,6 +58,8 @@ bootstrapApplication(AppComponent, {
     { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true },
     // Wallet discovery gateway (infrastructure adapter for Task 5).
     { provide: WALLET_DISCOVERY_GATEWAY, useClass: HttpWalletDiscoveryGateway },
+    // On-device translation engine port (EUD-142, AD-1: on-device strict).
+    { provide: TRANSLATION_ENGINE, useClass: BrowserTranslatorEngineAdapter },
     // IMPORTANT — ordering: walletDiscoveryInitializer MUST be first so that
     // WalletDiscoveryService.mode() is resolved before initializeTheme and
     // initializePasskeyStore run (AD-1, AC-009.1a).
