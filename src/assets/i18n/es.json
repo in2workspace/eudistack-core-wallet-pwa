@@ -53,7 +53,7 @@
     "title": "Selector de idioma"
   },
   "ui-translation": {
-    "title": "Traducción automática",
+    "title": "¿No encuentras tu idioma?",
     "description": "Traduce los textos de la interfaz a tu idioma con el traductor de tu propio navegador, sin conexión a internet. Es una ayuda automática, no una traducción profesional: tus credenciales nunca se traducen ni se envían a ningún servicio de traducción.",
     "toggle-label": "Activar traducción automática",
     "target-language-label": "Traducir a",
