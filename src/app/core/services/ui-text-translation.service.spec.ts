@@ -373,6 +373,60 @@ describe('UiTextTranslationService', () => {
 
       expect(engine.translateEntries).not.toHaveBeenCalled();
     });
+
+    describe('user-activation gate (Translator.create() needs a real gesture on a cold load)', () => {
+      let originalUserActivation: PropertyDescriptor | undefined;
+
+      beforeEach(() => {
+        originalUserActivation = Object.getOwnPropertyDescriptor(navigator, 'userActivation');
+      });
+
+      afterEach(() => {
+        if (originalUserActivation) {
+          Object.defineProperty(navigator, 'userActivation', originalUserActivation);
+        } else {
+          delete (navigator as { userActivation?: unknown }).userActivation;
+        }
+      });
+
+      it('activates immediately when the page already has user activation', async () => {
+        Object.defineProperty(navigator, 'userActivation', {
+          configurable: true,
+          value: { hasBeenActive: true, isActive: true },
+        });
+        prefsStore = { enabled: true, targetLanguage: 'el' };
+
+        await service.restoreFromPreference();
+
+        expect(service.status()).toBe('active');
+      });
+
+      it('waits for the first pointerdown before activating when there has been no interaction yet', async () => {
+        Object.defineProperty(navigator, 'userActivation', {
+          configurable: true,
+          value: { hasBeenActive: false, isActive: false },
+        });
+        prefsStore = { enabled: true, targetLanguage: 'el' };
+
+        const restored = service.restoreFromPreference();
+        await Promise.resolve(); await Promise.resolve();
+        expect(service.status()).toBe('idle'); // still waiting — no interaction yet
+
+        document.dispatchEvent(new Event('pointerdown'));
+        await restored;
+
+        expect(service.status()).toBe('active');
+      });
+
+      it('falls through immediately when the User-Activation API is not available at all', async () => {
+        delete (navigator as { userActivation?: unknown }).userActivation;
+        prefsStore = { enabled: true, targetLanguage: 'el' };
+
+        await service.restoreFromPreference();
+
+        expect(service.status()).toBe('active');
+      });
+    });
   });
 
   describe('native-language change while engaged (ES-03, AD-6)', () => {

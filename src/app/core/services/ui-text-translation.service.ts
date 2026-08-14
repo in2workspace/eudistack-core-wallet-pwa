@@ -146,17 +146,48 @@ export class UiTextTranslationService {
     this.telemetry.track('ui_translation_disabled', {});
   }
 
-  /** Re-activates the persisted preference, if any — call once at startup (AC-06). */
+  /**
+   * Re-activates the persisted preference, if any — call once at startup
+   * (AC-06). Waits for the page's first genuine user interaction before
+   * calling `activate()` if it hasn't happened yet: `Translator.create()`
+   * requires user activation for the initial (uncached) engine/model setup,
+   * which an APP_INITIALIZER firing on a cold, untouched load never has.
+   * Observed live: calling this unconditionally at boot left the login
+   * screen stuck on the native language until the Holder actually
+   * interacted with the page (e.g. by logging in) — this gate makes that
+   * deterministic instead of accidental.
+   */
   async restoreFromPreference(): Promise<void> {
     const pref = this.prefs.uiTranslation();
-    if (pref.enabled && pref.targetLanguage) {
-      await this.activate(pref.targetLanguage);
+    if (!pref.enabled || !pref.targetLanguage) {
+      return;
     }
+    await this.waitForUserActivation();
+    await this.activate(pref.targetLanguage);
   }
 
   // ---------------------------------------------------------------------------
   // Internal helpers
   // ---------------------------------------------------------------------------
+
+  /** Resolves immediately if the page already has user activation; otherwise waits for the first pointerdown/keydown. */
+  private waitForUserActivation(): Promise<void> {
+    if (typeof navigator === 'undefined' || !('userActivation' in navigator)) {
+      return Promise.resolve(); // API not supported here — nothing to gate on.
+    }
+    if (navigator.userActivation.hasBeenActive) {
+      return Promise.resolve();
+    }
+    return new Promise<void>(resolve => {
+      const onInteract = (): void => {
+        this.document.removeEventListener('pointerdown', onInteract, true);
+        this.document.removeEventListener('keydown', onInteract, true);
+        resolve();
+      };
+      this.document.addEventListener('pointerdown', onInteract, { capture: true, once: true });
+      this.document.addEventListener('keydown', onInteract, { capture: true, once: true });
+    });
+  }
 
   private async runProbe(): Promise<ReadonlyArray<LanguageTag>> {
     if (!this.engine.isSupported()) {
