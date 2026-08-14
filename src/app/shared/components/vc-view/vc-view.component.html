@@ -200,6 +200,8 @@
             <ion-icon name="shield-outline" class="shield-icon shield-icon--pending" aria-hidden="true"></ion-icon>
           } @else if(verifyOverall === 'valid') {
             <ion-icon name="shield-checkmark" class="shield-icon shield-icon--valid" aria-hidden="true"></ion-icon>
+          } @else if(verifyOverall === 'unknown') {
+            <ion-icon name="help-circle" class="shield-icon shield-icon--unknown" aria-hidden="true"></ion-icon>
           } @else {
             <ion-icon name="shield" class="shield-icon shield-icon--invalid" aria-hidden="true"></ion-icon>
           }
@@ -216,6 +218,8 @@
                   <ion-spinner name="crescent" class="check-spinner"></ion-spinner>
                 } @else if(check.status === 'passed') {
                   <ion-icon name="checkmark-circle" class="check-icon check-icon--pass" aria-hidden="true"></ion-icon>
+                } @else if(check.status === 'error') {
+                  <ion-icon name="help-circle" class="check-icon check-icon--error" aria-hidden="true"></ion-icon>
                 } @else {
                   <ion-icon name="close-circle" class="check-icon check-icon--fail" aria-hidden="true"></ion-icon>
                 }
@@ -232,8 +236,11 @@
 
         <!-- Overall result banner -->
         @if(verifyOverall !== 'pending') {
-          <div class="verify-result" [class.verify-result--valid]="verifyOverall === 'valid'" [class.verify-result--invalid]="verifyOverall === 'invalid'">
-            <ion-icon [name]="verifyOverall === 'valid' ? 'checkmark-circle' : 'alert-circle'" aria-hidden="true"></ion-icon>
+          <div class="verify-result"
+               [class.verify-result--valid]="verifyOverall === 'valid'"
+               [class.verify-result--invalid]="verifyOverall === 'invalid'"
+               [class.verify-result--unknown]="verifyOverall === 'unknown'">
+            <ion-icon [name]="verifyOverall === 'valid' ? 'checkmark-circle' : verifyOverall === 'unknown' ? 'help-circle' : 'alert-circle'" aria-hidden="true"></ion-icon>
             <span>{{ (verifyOverall === 'valid' ? "verification.result-valid" : verifyResultKey) | translate }}</span>
           </div>
         }

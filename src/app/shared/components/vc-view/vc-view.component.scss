@@ -408,6 +408,7 @@ ion-modal.verification-modal {
   &--pending { color: var(--text-disabled); }
   &--valid   { color: #22C55E; animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
   &--invalid { color: #EF4444; animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+  &--unknown { color: #F59E0B; animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 }
 
 .verify-title {
@@ -468,6 +469,7 @@ ion-modal.verification-modal {
 
   &--pass { color: #22C55E; }
   &--fail { color: #EF4444; }
+  &--error { color: #F59E0B; }
 }
 
 .verify-row-info {
@@ -514,5 +516,11 @@ ion-modal.verification-modal {
     background: rgba(239, 68, 68, 0.1);
     color: #EF4444;
     border: 1px solid rgba(239, 68, 68, 0.25);
+  }
+
+  &--unknown {
+    background: rgba(245, 158, 11, 0.1);
+    color: #F59E0B;
+    border: 1px solid rgba(245, 158, 11, 0.25);
   }
 }

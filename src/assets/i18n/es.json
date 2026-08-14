@@ -446,13 +446,15 @@
     "result-invalid": "La credencial tiene problemas",
     "result-revoked": "Credencial revocada",
     "result-expired": "Credencial caducada",
+    "result-unknown": "No se ha podido comprobar el estado de revocación",
     "check-issuer": "Emisor",
     "check-issuance": "Fecha de emisión",
     "check-expiration": "Fecha de expiración",
     "check-status": "Estado de revocación",
     "detail-revoked": "Revocada",
     "detail-no-status-list": "Sin lista de estado",
-    "detail-no-expiry": "Sin fecha de caducidad"
+    "detail-no-expiry": "Sin fecha de caducidad",
+    "detail-check-error": "No se ha podido verificar"
   },
   "confirmation": {
     "header": "¿Enviar Credencial?",
