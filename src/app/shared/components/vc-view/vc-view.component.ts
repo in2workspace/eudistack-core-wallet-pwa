@@ -148,7 +148,7 @@ export class VcViewComponent {
 
   public isVerifyModalOpen = false;
   public verificationChecks: VerificationCheck[] = [];
-  public verifyOverall: 'pending' | 'valid' | 'invalid' = 'pending';
+  public verifyOverall: 'pending' | 'valid' | 'invalid' | 'unknown' = 'pending';
   public verifyResultKey: string = 'verification.result-invalid';
 
   public async openDetailModal(): Promise<void> {
@@ -208,14 +208,15 @@ export class VcViewComponent {
       }
       
       await this.delay(400);
-      const allPassed = this.verificationChecks.every(c => c.status === 'passed');
-      this.verifyOverall = allPassed ? 'valid' : 'invalid';
-  
-      if (!allPassed) {
+      const hasFailed = this.verificationChecks.some(c => c.status === 'failed');
+      const hasError = this.verificationChecks.some(c => c.status === 'error');
+      this.verifyOverall = hasFailed ? 'invalid' : hasError ? 'unknown' : 'valid';
+
+      if (hasFailed) {
         const statusCheck = this.verificationChecks.find(c => c.key === 'status');
         const expirationCheck = this.verificationChecks.find(c => c.key === 'expiration');
-  
-        if (statusCheck?.status === 'failed' && statusCheck?.detail === 'revoked') {
+
+        if (statusCheck?.status === 'failed' && statusCheck?.detail === 'verification.detail-revoked') {
           this.verifyResultKey = 'verification.result-revoked';
           this.updateLifeCycleStatus('REVOKED');
         } else if (expirationCheck?.status === 'failed') {
@@ -224,6 +225,10 @@ export class VcViewComponent {
         } else {
           this.verifyResultKey = 'verification.result-invalid';
         }
+      } else if (hasError) {
+        // A check could not be completed (e.g. status list unreachable) — never
+        // reported as valid nor as a confirmed failure (fail-closed on uncertainty).
+        this.verifyResultKey = 'verification.result-unknown';
       }
     } catch {
       // TODO: Review behavior in case of error

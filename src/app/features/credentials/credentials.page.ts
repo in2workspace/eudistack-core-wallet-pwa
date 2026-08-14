@@ -501,16 +501,18 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
     if (candidates.length > 0) {
       const checks = await Promise.allSettled(
         candidates.map(async (cred) => {
-          const revoked = await this.verificationService.isRevoked(cred);
-          return { cred, revoked };
+          const result = await this.verificationService.isRevoked(cred);
+          return { cred, result };
         })
       );
 
-      for (const result of checks) {
-        if (result.status === 'fulfilled' && result.value.revoked) {
-          this.revokedCredentialIds.add(result.value.cred.id);
-          this.credentialCacheService.patchStatus(result.value.cred.id, 'REVOKED');
-          this.walletService.updateCredentialStatus(result.value.cred.id, 'REVOKED').subscribe();
+      // 'unknown' (status list unreachable) intentionally leaves the credential's
+      // cached status untouched — never treated as a confirmed non-revoked result.
+      for (const settled of checks) {
+        if (settled.status === 'fulfilled' && settled.value.result === 'revoked') {
+          this.revokedCredentialIds.add(settled.value.cred.id);
+          this.credentialCacheService.patchStatus(settled.value.cred.id, 'REVOKED');
+          this.walletService.updateCredentialStatus(settled.value.cred.id, 'REVOKED').subscribe();
         }
       }
     }

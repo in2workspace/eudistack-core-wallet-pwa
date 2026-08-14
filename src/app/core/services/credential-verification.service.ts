@@ -5,13 +5,19 @@ import * as pako from 'pako';
 import dayjs from 'dayjs';
 import { VerifiableCredential } from '../models/verifiable-credential';
 
-export type CheckStatus = 'pending' | 'checking' | 'passed' | 'failed';
+export type CheckStatus = 'pending' | 'checking' | 'passed' | 'failed' | 'error';
 
 export interface VerificationCheck {
   key: string;
   status: CheckStatus;
   detail?: string;
 }
+
+/**
+ * Outcome of a revocation check against the status list.
+ * 'unknown' means the status list could not be reached — never inferred as 'not-revoked'.
+ */
+export type RevocationCheckResult = 'revoked' | 'not-revoked' | 'unknown';
 
 @Injectable({ providedIn: 'root' })
 export class CredentialVerificationService {
@@ -23,18 +29,26 @@ export class CredentialVerificationService {
   }
 
   /** Checks if a credential is revoked via its bitstring status list */
-  async isRevoked(credential: VerifiableCredential): Promise<boolean> {
+  async isRevoked(credential: VerifiableCredential): Promise<RevocationCheckResult> {
+    return this.checkRevocationStatus(credential);
+  }
+
+  /**
+  * Resolves revocation status from the bitstring status list.
+  * Returns 'unknown' on fetch failure — a network/backend error MUST NOT be
+  */
+  private async checkRevocationStatus(credential: VerifiableCredential): Promise<RevocationCheckResult> {
     const status = credential.credentialStatus;
     if (!status?.statusListCredential || !status?.statusListIndex) {
-      return credential.lifeCycleStatus === 'REVOKED';
+      return credential.lifeCycleStatus === 'REVOKED' ? 'revoked' : 'not-revoked';
     }
     try {
       const jwt = await firstValueFrom(
         this.http.get(status.statusListCredential, { responseType: 'text' })
       );
-      return this.checkBitInStatusList(jwt, status.statusListIndex);
+      return this.checkBitInStatusList(jwt, status.statusListIndex) ? 'revoked' : 'not-revoked';
     } catch {
-      return credential.lifeCycleStatus === 'REVOKED';
+      return credential.lifeCycleStatus === 'REVOKED' ? 'revoked' : 'unknown';
     }
   }
 
@@ -94,24 +108,21 @@ export class CredentialVerificationService {
   }
 
   private async checkStatusList(credential: VerifiableCredential): Promise<VerificationCheck> {
-    const status = credential.credentialStatus;
-    if (!status?.statusListCredential || !status?.statusListIndex) {
-      if (credential.lifeCycleStatus === 'REVOKED') {
-        return { key: 'status', status: 'failed' };
-      }
-      return { key: 'status', status: 'passed', detail: 'verification.detail-no-status-list' };
+    const result = await this.checkRevocationStatus(credential);
+
+    if (result === 'unknown') {
+      return { key: 'status', status: 'error', detail: 'verification.detail-check-error' };
+    }
+    if (result === 'revoked') {
+      return { key: 'status', status: 'failed', detail: 'verification.detail-revoked' };
     }
 
-    try {
-      const jwt = await firstValueFrom(
-        this.http.get(status.statusListCredential, { responseType: 'text' })
-      );
-      const revoked = this.checkBitInStatusList(jwt, status.statusListIndex);
-      return { key: 'status', status: revoked ? 'failed' : 'passed', ...(revoked && { detail: 'verification.detail-revoked' }) };
-    } catch {
-      const fallbackRevoked = credential.lifeCycleStatus === 'REVOKED';
-      return { key: 'status', status: fallbackRevoked ? 'failed' : 'passed', ...(fallbackRevoked && { detail: 'verification.detail-revoked' }) };
-    }
+    const hasStatusList = !!(credential.credentialStatus?.statusListCredential && credential.credentialStatus?.statusListIndex);
+    return {
+      key: 'status',
+      status: 'passed',
+      ...(!hasStatusList && { detail: 'verification.detail-no-status-list' }),
+    };
   }
 
   private checkBitInStatusList(jwt: string, index: string): boolean {

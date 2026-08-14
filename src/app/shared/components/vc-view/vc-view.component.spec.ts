@@ -515,4 +515,79 @@ describe('VcViewComponent', () => {
     });
   });
 
+  describe('verifyCredential', () => {
+    let verificationService: CredentialVerificationServiceMock;
+
+    beforeEach(() => {
+      verificationService = TestBed.inject(CredentialVerificationService) as unknown as CredentialVerificationServiceMock;
+      // Skip the artificial UI pacing delays so the checks resolve immediately.
+      jest.spyOn(component as any, 'delay').mockResolvedValue(undefined);
+    });
+
+    it('should end as "unknown" and NOT persist REVOKED when the status check could not be completed', async () => {
+      // Arrange
+      verificationService.getCheckKeys.mockReturnValue(['status']);
+      verificationService.runCheck.mockResolvedValue({
+        key: 'status',
+        status: 'error',
+        detail: 'verification.detail-check-error',
+      });
+      const updateStatusSpy = jest.spyOn(walletService, 'updateCredentialStatus');
+
+      // Act
+      await component.verifyCredential();
+
+      // Assert — fail-closed on uncertainty: never shown as valid, never persisted as revoked
+      expect(component.verifyOverall).toBe('unknown');
+      expect(component.verifyResultKey).toBe('verification.result-unknown');
+      expect(updateStatusSpy).not.toHaveBeenCalled();
+    });
+
+    it('should end as "invalid" and persist REVOKED when the status check confirms revocation', async () => {
+      // Arrange
+      verificationService.getCheckKeys.mockReturnValue(['status']);
+      verificationService.runCheck.mockResolvedValue({
+        key: 'status',
+        status: 'failed',
+        detail: 'verification.detail-revoked',
+      });
+
+      // Act
+      await component.verifyCredential();
+
+      // Assert
+      expect(component.verifyOverall).toBe('invalid');
+      expect(component.verifyResultKey).toBe('verification.result-revoked');
+      expect(walletService.updateCredentialStatus).toHaveBeenCalledWith('testId', 'REVOKED');
+    });
+
+    it('should end as "valid" when every check passes', async () => {
+      // Arrange
+      verificationService.getCheckKeys.mockReturnValue(['issuer', 'status']);
+      verificationService.runCheck.mockImplementation(async (key: string) => ({ key, status: 'passed' as const }));
+
+      // Act
+      await component.verifyCredential();
+
+      // Assert
+      expect(component.verifyOverall).toBe('valid');
+    });
+
+    it('should prioritize a confirmed failure over an unrelated check error', async () => {
+      // Arrange — expiration genuinely failed while the status list happened to be unreachable
+      verificationService.getCheckKeys.mockReturnValue(['expiration', 'status']);
+      verificationService.runCheck.mockImplementation(async (key: string) => {
+        if (key === 'expiration') return { key, status: 'failed' as const };
+        return { key, status: 'error' as const, detail: 'verification.detail-check-error' };
+      });
+
+      // Act
+      await component.verifyCredential();
+
+      // Assert — a known, confirmed problem must never be masked by an unrelated network error
+      expect(component.verifyOverall).toBe('invalid');
+      expect(component.verifyResultKey).toBe('verification.result-expired');
+    });
+  });
+
 });
