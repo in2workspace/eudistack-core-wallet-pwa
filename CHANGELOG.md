@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **EUD-221 — `@ngx-translate/http-loader` aligned to `16.0.1`**: was pinned to `^8.0.0`, resolving `8.0.0`, which publishes `"SEE LICENSE IN LICENSE"` instead of a machine-readable SPDX identifier (SPDX License List / SPDX License Expressions), an auditability gap under NIS2 Art. 21.2(d) and CRA Annex I Part II. `16.0.1` declares `MIT` explicitly and is already the version used by `eudistack-mfe-login`/`eudistack-cgcom-mfe-issuance-portal`, same loader instantiation signature. No application code change, no observable behavior change.
+
 ### Added
 
 - **EUD-215 — recognize `eu.europa.ec.eudi.pid.1` as a supported credential type**: the PID schema/profile files were already bundled under `assets/schemas/` but never activated — `CredentialSchemaRegistryService.SUPPORTED_SCHEMAS` excluded the id (so the wallet never loaded its display metadata) and `CREDENTIAL_TYPES_ARRAY` didn't include it either (so it wasn't a valid `CredentialType` at the type-system level). Both fixed, plus the matching `CredentialTypeMap` icon entry and `VerifiableCredentialSubjectDataNormalizer` case (identity normalizer — the PID has flat claims, no `mandate` structure).
