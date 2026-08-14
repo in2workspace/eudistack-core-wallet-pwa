@@ -278,27 +278,47 @@ describe('UiTextTranslationService', () => {
     });
   });
 
-  describe('activate — concurrency (EC-07)', () => {
-    it('a second call while preparing reuses the same in-flight operation', async () => {
-      // Block on a never-resolving engine call, activate twice, and assert
-      // the engine is invoked only once — the second call coalesces onto
-      // the in-flight operation rather than starting a fresh one.
+  describe('activate — concurrency (EC-07, ES-03)', () => {
+    it('a second call for the SAME target while preparing reuses the in-flight operation', async () => {
+      // Block on a never-resolving engine call, activate twice with the same
+      // target, and assert the engine is invoked only once — the second call
+      // coalesces onto the in-flight operation rather than starting a fresh one.
       let releaseEngine!: () => void;
       engine.translateEntries.mockImplementation(() => new Promise(resolve => {
         releaseEngine = () => resolve(flatEntries());
       }));
 
       const first = service.activate('el');
-      const second = service.activate('ar'); // different target — still coalesced onto the in-flight op
+      const second = service.activate('el');
 
-      // Let the fetch + cache-read microtasks run before the engine mock is invoked.
       await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
       releaseEngine();
       await Promise.all([first, second]);
 
       expect(engine.translateEntries).toHaveBeenCalledTimes(1);
-      // The in-flight operation's own target ('el') wins — second call was coalesced, not queued.
       expect(service.targetLanguage()).toBe('el');
+    });
+
+    it('a second call for a DIFFERENT target supersedes the in-flight operation instead of being silently dropped', async () => {
+      // Regression test: picking a different language before the first
+      // activation finishes preparing must win — not be coalesced away and
+      // have the FIRST (discarded) choice persisted instead.
+      let releaseFirstEngine!: () => void;
+      engine.translateEntries.mockImplementationOnce(() => new Promise(resolve => {
+        releaseFirstEngine = () => resolve(flatEntries());
+      }));
+
+      const first = service.activate('bg'); // e.g. an accidental default, not what the user wanted
+      await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+
+      const second = service.activate('fr'); // the user's actual, deliberate choice
+      releaseFirstEngine(); // the stale 'bg' operation finally settles...
+      await Promise.all([first, second]);
+
+      // ...but must have no effect: 'fr' wins, both in memory and persisted.
+      expect(service.targetLanguage()).toBe('fr');
+      expect(service.status()).toBe('active');
+      expect(prefs.setUiTranslation).toHaveBeenLastCalledWith({ enabled: true, targetLanguage: 'fr' });
     });
   });
 

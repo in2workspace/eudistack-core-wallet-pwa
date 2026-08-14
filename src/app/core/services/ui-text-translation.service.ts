@@ -58,8 +58,10 @@ export class UiTextTranslationService {
 
   /** Monotonic generation counter — a stale async step never mutates state (ES-03). */
   private _generation = 0;
-  /** In-flight activation, reused by a concurrent `activate()` call (EC-07). */
+  /** In-flight activation, reused by a concurrent `activate()` call for the SAME target (EC-07). */
   private _operation: Promise<void> | null = null;
+  /** Target the in-flight `_operation` is preparing — lets a call for a DIFFERENT target supersede it instead of being silently coalesced away. */
+  private _inFlightTarget: LanguageTag | null = null;
   /** Probe result, memoized once per session (EC-02). */
   private _probePromise: Promise<ReadonlyArray<LanguageTag>> | null = null;
   /** In-memory copy of the last-fetched pristine bundle — lets `deactivate()` restore the native UI with 0 network requests (NFR-S-142-03). */
@@ -98,18 +100,27 @@ export class UiTextTranslationService {
 
   /**
    * Activates translation to `target`. Idempotent while already preparing
-   * for the *same or a different* target — a concurrent call reuses the
-   * in-flight operation (EC-07: double activation during preparation).
+   * for the SAME target — a concurrent call reuses the in-flight operation
+   * (EC-07: double activation during preparation). A call for a DIFFERENT
+   * target while one is in flight supersedes it instead of being coalesced
+   * away: the stale operation's own generation check makes its eventual
+   * completion a no-op (ES-03), so it never overwrites the newer choice —
+   * without this, picking a different language before the first one
+   * finishes preparing silently persisted the discarded choice instead.
    * Bounded to `TRANSLATION_BUDGET_MS` (ES-05); on timeout or any failure,
    * falls back to the native language (`status = 'error'`).
    */
   activate(target: LanguageTag): Promise<void> {
-    if (this._operation) {
+    if (this._operation && this._inFlightTarget === target) {
       return this._operation;
     }
     const generation = ++this._generation;
+    this._inFlightTarget = target;
     this._operation = this.runActivation(target, generation).finally(() => {
-      this._operation = null;
+      if (this._inFlightTarget === target) {
+        this._operation = null;
+        this._inFlightTarget = null;
+      }
     });
     return this._operation;
   }
@@ -121,6 +132,8 @@ export class UiTextTranslationService {
    */
   deactivate(): void {
     this._generation++; // invalidate any in-flight activation
+    this._operation = null;
+    this._inFlightTarget = null;
     const lastTarget = this._targetLanguage();
     this.engine.destroy();
     this.restoreNativeLanguageDisplay();
