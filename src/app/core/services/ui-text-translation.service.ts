@@ -11,7 +11,7 @@ import { LanguageTag, SCHEMA_VERSION, UiTextEntry, UiTextKey, UiTranslationStatu
 import { TRANSLATION_ENGINE } from '../ports/translation-engine.port';
 import {
   UiTextBundle, flattenUiBundle, hasIntactPlaceholders, hashUiBundle, inflateUiBundle,
-  isExcludedKey, maskPlaceholders, mergeUiBundles, unmaskPlaceholders,
+  isExcludedKey, isSafeTranslatedText, maskPlaceholders, mergeUiBundles, unmaskPlaceholders,
 } from '../../shared/helpers/ui-text-bundle';
 import { UserPreferencesService } from '../../shared/services/user-preferences.service';
 import { UiTranslationCacheService } from './ui-translation-cache.service';
@@ -162,6 +162,13 @@ export class UiTextTranslationService {
     if (!pref.enabled || !pref.targetLanguage) {
       return;
     }
+    // Defence-in-depth (security-auditor full-mode review, EUD-142 F7): the
+    // preference is user-editable storage — reject a target that isn't one
+    // of the actual candidate languages before it can reach
+    // documentElement.lang / Translator.create().
+    if (!RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES.includes(pref.targetLanguage)) {
+      return;
+    }
     await this.waitForUserActivation();
     await this.activate(pref.targetLanguage);
   }
@@ -265,7 +272,20 @@ export class UiTextTranslationService {
       // otherwise inject a foreign key into the merged bundle via
       // mergeUiBundles(). Re-derive trust from the pristine bundle on every
       // read, regardless of provenance.
-      translatedEntries = translatedEntries.filter(e => allowedKeys.has(e.key));
+      //
+      // Key validation alone is not enough (security-auditor full-mode
+      // review, EUD-142 F2): allowedKeys constrains which KEYS may be
+      // merged, but says nothing about the TEXT paired with a legitimate
+      // key — a tampered record could carry arbitrary text (incl. markup)
+      // for a real key. isSafeTranslatedText() bounds that text against its
+      // pristine counterpart before it ever reaches setTranslation().
+      const pristineByKey = new Map(translatableEntries.map(e => [e.key, e.text]));
+      translatedEntries = translatedEntries.filter(e => {
+        const pristineText = pristineByKey.get(e.key);
+        return pristineText !== undefined
+          && allowedKeys.has(e.key)
+          && isSafeTranslatedText(pristineText, e.text);
+      });
     } else {
       translatedEntries = await this.translateViaEngine(translatableEntries, nativeLang, target, generation, allowedKeys);
       if (!this.isCurrentGeneration(generation)) return;

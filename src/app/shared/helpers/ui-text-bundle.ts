@@ -141,6 +141,25 @@ export function unmaskPlaceholders(text: string): string {
 }
 
 /**
+ * `true` when `candidateText` is a plausible translation of `pristineText` —
+ * no HTML-significant characters and a bounded length. Defence-in-depth
+ * against a tampered cache record (security-auditor full-mode review,
+ * EUD-142 F2): `isCachedUiTranslation` only validates shape and `allowedKeys`
+ * only validates that a key belongs to the current pristine bundle — neither
+ * constrains the associated TEXT, which otherwise flows unescaped into UI
+ * chrome (including `alertController` `message` sinks). Genuine MT output
+ * for this bundle is short, plain, unstyled prose: it never needs `<`/`>`
+ * and does not balloon to many times the source length.
+ */
+export function isSafeTranslatedText(pristineText: string, candidateText: string): boolean {
+  if (/[<>]/.test(candidateText)) {
+    return false;
+  }
+  const maxLength = Math.max(pristineText.length * 4, 200);
+  return candidateText.length > 0 && candidateText.length <= maxLength;
+}
+
+/**
  * `true` when `translated` (already unmasked) contains exactly the same
  * multiset of interpolation params as `source` (the pristine text) — same
  * params, same count each, order-independent (translation may reorder

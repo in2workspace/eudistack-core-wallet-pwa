@@ -211,6 +211,46 @@ describe('UiTextTranslationService', () => {
     });
   });
 
+  describe('activate — cache hit, tampered record (security-auditor full-mode review, EUD-142 F2)', () => {
+    it('drops a cached entry whose key is not part of the current pristine bundle', async () => {
+      cache.read.mockResolvedValue([
+        ...flatEntries(),
+        { key: 'vc-fields.credentialInfo.issuerId' as UiTextKey, text: 'Foreign injected key' },
+      ]);
+
+      await service.activate('el');
+
+      const [, bundle] = translate.setTranslation.mock.calls[0];
+      expect(JSON.stringify(bundle)).not.toContain('Foreign injected key');
+    });
+
+    it('drops a cached entry whose text contains HTML-significant characters, even for a legitimate key', async () => {
+      cache.read.mockResolvedValue([
+        { key: 'menu.scan' as UiTextKey, text: '<img src=x onerror=alert(1)>' },
+        { key: 'menu.wallet' as UiTextKey, text: 'Cartera' },
+      ]);
+
+      await service.activate('el');
+
+      const [, bundle] = translate.setTranslation.mock.calls[0];
+      // The tainted entry is dropped, so the pristine value survives the merge (EC-06).
+      expect((bundle as { menu: { scan: string } }).menu.scan).toBe('Escáner QR');
+      expect((bundle as { menu: { wallet: string } }).menu.wallet).toBe('Cartera');
+    });
+
+    it('drops a cached entry whose text is wildly longer than its pristine counterpart', async () => {
+      cache.read.mockResolvedValue([
+        { key: 'menu.scan' as UiTextKey, text: 'x'.repeat(5000) },
+        { key: 'menu.wallet' as UiTextKey, text: 'Cartera' },
+      ]);
+
+      await service.activate('el');
+
+      const [, bundle] = translate.setTranslation.mock.calls[0];
+      expect((bundle as { menu: { scan: string } }).menu.scan).toBe('Escáner QR');
+    });
+  });
+
   describe('activate — masking and placeholder integrity (AC-14, ES-06)', () => {
     it('sends masked text to the engine, never the raw {{ }} syntax', async () => {
       http.get.mockReturnValue(of(JSON.stringify({ greeting: 'Hola {{name}}' })));
@@ -368,6 +408,23 @@ describe('UiTextTranslationService', () => {
 
     it('does nothing when enabled but no target language is set', async () => {
       prefsStore = { enabled: true, targetLanguage: null };
+
+      await service.restoreFromPreference();
+
+      expect(engine.translateEntries).not.toHaveBeenCalled();
+    });
+
+    it('rejects a persisted target that is not one of the candidate languages (security-auditor full-mode review, EUD-142 F7)', async () => {
+      prefsStore = { enabled: true, targetLanguage: 'not-a-real-lang' };
+
+      await service.restoreFromPreference();
+
+      expect(engine.translateEntries).not.toHaveBeenCalled();
+      expect(service.status()).toBe('idle');
+    });
+
+    it('rejects a natively-supported language smuggled in as a translation target (es/en/ca are never candidates, AC-07)', async () => {
+      prefsStore = { enabled: true, targetLanguage: 'es' };
 
       await service.restoreFromPreference();
 
