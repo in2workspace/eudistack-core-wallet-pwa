@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **EUD-221 — `@ngx-translate/http-loader` aligned to `16.0.1`**: was pinned to `^8.0.0`, resolving `8.0.0`, which publishes `"SEE LICENSE IN LICENSE"` instead of a machine-readable SPDX identifier (SPDX License List / SPDX License Expressions), an auditability gap under NIS2 Art. 21.2(d) and CRA Annex I Part II. `16.0.1` declares `MIT` explicitly and is already the version used by `eudistack-mfe-login`/`eudistack-cgcom-mfe-issuance-portal`, same loader instantiation signature. No application code change, no observable behavior change.
+
 ### Added
 
 - **EUD-142 US-07 — runtime UI translation to languages not natively supported** (FR-24, FR-25, FR-26): opt-in, reversible layer over the native language (es/en/ca, US-02) that translates the app's static interface text via the browser's on-device Translator API (Chrome 138+/Edge 148+ desktop) — never a cloud endpoint, never the credential screen. New "Automatic translation" section in Configuración → Idioma: toggle (off by default, hidden entirely when the device has no on-device engine), target-language selector, progress indicator during first preparation, and unavailable/error states with retry.
