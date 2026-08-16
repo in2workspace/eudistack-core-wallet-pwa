@@ -137,4 +137,55 @@ describe('UserPreferencesService', () => {
       expect(service.privacyBlur()).toBe(false);
     });
   });
+
+  describe('uiTranslation shape validation (security-auditor full-mode review, EUD-142 F7)', () => {
+    it('falls back to disabled when uiTranslation is null', () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ uiTranslation: null }));
+
+      const service = createService();
+
+      expect(service.uiTranslation()).toEqual({ enabled: false, targetLanguage: null });
+    });
+
+    it('falls back to disabled when uiTranslation is a non-object primitive', () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ uiTranslation: 'ar' }));
+
+      const service = createService();
+
+      expect(service.uiTranslation()).toEqual({ enabled: false, targetLanguage: null });
+    });
+
+    it('falls back to disabled when enabled is not a boolean', () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ uiTranslation: { enabled: 'yes', targetLanguage: 'ar' } }));
+
+      const service = createService();
+
+      expect(service.uiTranslation()).toEqual({ enabled: false, targetLanguage: null });
+    });
+
+    it('falls back to disabled when targetLanguage is neither a string nor null', () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ uiTranslation: { enabled: true, targetLanguage: 42 } }));
+
+      const service = createService();
+
+      expect(service.uiTranslation()).toEqual({ enabled: false, targetLanguage: null });
+    });
+
+    it('does not let an invalid uiTranslation shape affect other preferences', () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ privacyBlur: true, uiTranslation: null }));
+
+      const service = createService();
+
+      expect(service.privacyBlur()).toBe(true);
+      expect(service.uiTranslation()).toEqual({ enabled: false, targetLanguage: null });
+    });
+
+    it('accepts a well-formed uiTranslation shape unchanged', () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ uiTranslation: { enabled: true, targetLanguage: 'el' } }));
+
+      const service = createService();
+
+      expect(service.uiTranslation()).toEqual({ enabled: true, targetLanguage: 'el' });
+    });
+  });
 });

@@ -17,6 +17,26 @@ const DEFAULTS: UserPreferences = {
   uiTranslation: { enabled: false, targetLanguage: null },
 };
 
+/**
+ * `true` when `value` has the exact shape of `RuntimeTranslationPreference`.
+ * Defence-in-depth (security-auditor full-mode review, EUD-142 F7):
+ * `localStorage` is plain-text and can be edited by anything with page
+ * access (a devtools console, a shared-device tamperer). An unvalidated
+ * spread previously let `uiTranslation: null` reach `restoreFromPreference()`
+ * as an unhandled `TypeError`, and let an arbitrary `targetLanguage` string
+ * reach `document.documentElement.lang` / `Translator.create()`.
+ */
+function isValidUiTranslationPreference(value: unknown): value is RuntimeTranslationPreference {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate['enabled'] === 'boolean' &&
+    (candidate['targetLanguage'] === null || typeof candidate['targetLanguage'] === 'string')
+  );
+}
+
 @Injectable({ providedIn: 'root' })
 export class UserPreferencesService {
   private readonly _privacyBlur = signal(DEFAULTS.privacyBlur);
@@ -76,7 +96,11 @@ export class UserPreferencesService {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        return { ...DEFAULTS, ...JSON.parse(raw) };
+        const parsed = JSON.parse(raw);
+        const uiTranslation = isValidUiTranslationPreference(parsed?.uiTranslation)
+          ? parsed.uiTranslation
+          : DEFAULTS.uiTranslation;
+        return { ...DEFAULTS, ...parsed, uiTranslation };
       }
     } catch { /* ignore corrupt data */ }
     return { ...DEFAULTS };
