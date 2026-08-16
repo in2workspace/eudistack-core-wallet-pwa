@@ -28,14 +28,23 @@ export const RTL_LANGUAGE_TAGS: readonly LanguageTag[] = ['ar', 'he', 'fa', 'ur'
 
 /**
  * Deny-list of i18n key prefixes never eligible for runtime translation
- * (AD-3, frontier by data provenance). Scoped to the specific sub-namespaces
- * that are genuinely credential-claim vocabulary — not the whole `vc-fields.`
- * or `verification.` namespace, which also hosts pure app chrome (the detail
- * modal title, the delete/verify buttons, result banners, check labels) that
+ * (AD-3, frontier by data provenance ∪ verdict integrity). Scoped to the
+ * specific sub-namespaces that are genuinely credential-claim vocabulary or
+ * verification-verdict text — not the whole `vc-fields.`/`verification.`
+ * namespace, which also hosts pure app chrome (the detail modal title, the
+ * delete/verify buttons, banner icons/labels, check-row structure) that
  * AD-3 itself says must translate. A blanket prefix on either namespace was
  * over-broad: field LABELS and claim-derived vocabulary stay native (risk of
- * misrepresenting what the credential asserts, per AD-3's own rationale);
- * everything else in those namespaces is ordinary UI text.
+ * misrepresenting what the credential asserts, per AD-3's own rationale).
+ *
+ * `verification.result-*`/`detail-*`/`check-issuance`/`check-expiration`
+ * are excluded too (security-auditor full-mode review, EUD-142): these are
+ * the validity VERDICT and the credential's own issuance/expiry dates —
+ * MT negation-dropping or polarity flips on short declarative strings
+ * ("la credencial es válida" vs "tiene problemas") is a documented failure
+ * mode, and a wrong verdict shown to the Holder is the same class of legal
+ * risk AD-3 already assigns to claim vocabulary, only worse (assurance, not
+ * cosmetic). Everything else in those namespaces is ordinary UI text.
  */
 export const RUNTIME_TRANSLATION_EXCLUDED_KEY_PREFIXES: readonly string[] = [
   'vc-fields.credentialInfo.',
@@ -44,6 +53,10 @@ export const RUNTIME_TRANSLATION_EXCLUDED_KEY_PREFIXES: readonly string[] = [
   'vc-fields.lear-credential-machine.',
   'vc-fields.gaia-x-label-credential.',
   'vc-fields.power.',
+  'verification.result-',
+  'verification.detail-',
+  'verification.check-issuance',
+  'verification.check-expiration',
 ];
 
 /** `StorageService` key prefix for cached translations (`UiTranslationCacheService`). */

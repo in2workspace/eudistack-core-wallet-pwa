@@ -1,6 +1,6 @@
 import {
   flattenUiBundle, inflateUiBundle, mergeUiBundles, isExcludedKey, hashUiBundle,
-  maskPlaceholders, unmaskPlaceholders, hasIntactPlaceholders, UiTextBundle,
+  maskPlaceholders, unmaskPlaceholders, hasIntactPlaceholders, isSafeTranslatedText, UiTextBundle,
 } from './ui-text-bundle';
 import { UiTextKey } from 'src/app/core/models/ui-text-translation.model';
 
@@ -112,6 +112,18 @@ describe('isExcludedKey', () => {
     ['vc-fields.lear-credential-machine.mandatee.domain', true],
     ['vc-fields.gaia-x-label-credential.label-info.title', true],
     ['vc-fields.power.execute', true],
+    // Verification VERDICT / credential-date vocabulary — excluded
+    // (security-auditor full-mode review, EUD-142 F4): MT negation-dropping
+    // or polarity flips on short declarative strings risk showing the
+    // Holder the wrong validity verdict — an assurance/integrity risk, not
+    // just a claim-vocabulary one, but AD-3's own rationale applies with
+    // more force here.
+    ['verification.result-valid', true],
+    ['verification.result-invalid', true],
+    ['verification.detail-revoked', true],
+    ['verification.detail-no-status-list', true],
+    ['verification.check-issuance', true],
+    ['verification.check-expiration', true],
     // Pure app chrome sharing the same i18n namespace — NOT excluded: it
     // carries no credential-claim semantics and must translate (AD-3).
     ['vc-fields.title', false],
@@ -119,14 +131,54 @@ describe('isExcludedKey', () => {
     ['vc-fields.delete', false],
     ['vc-fields.copy-success', false],
     ['verification.button', false],
-    ['verification.result-valid', false],
+    ['verification.modal-title', false],
     ['verification.check-issuer', false],
+    ['verification.check-status', false],
     // Unrelated app chrome.
     ['menu.scan', false],
     ['credentials.title', false],
     ['', false],
   ])('isExcludedKey(%s) === %s', (key, expected) => {
     expect(isExcludedKey(key)).toBe(expected);
+  });
+});
+
+describe('isSafeTranslatedText (security-auditor full-mode review, EUD-142 F2)', () => {
+  it('accepts plain text within a reasonable length of the pristine text', () => {
+    expect(isSafeTranslatedText('Escáner QR', 'QR Scanner')).toBe(true);
+  });
+
+  it('accepts a translation up to 4x the pristine length', () => {
+    const pristine = 'OK';
+    const candidate = 'A'.repeat(8); // 4x, exactly at the floor via max(8, 200)
+
+    expect(isSafeTranslatedText(pristine, candidate)).toBe(true);
+  });
+
+  it('rejects text containing "<" (HTML injection attempt)', () => {
+    expect(isSafeTranslatedText('Credencial válida', '<img src=x onerror=alert(1)>')).toBe(false);
+  });
+
+  it('rejects text containing ">"', () => {
+    expect(isSafeTranslatedText('Credencial válida', 'valid ->')).toBe(false);
+  });
+
+  it('rejects empty text', () => {
+    expect(isSafeTranslatedText('Credencial válida', '')).toBe(false);
+  });
+
+  it('rejects text far longer than the pristine value (tampered/oversized record)', () => {
+    const pristine = 'Cerrar';
+    const candidate = 'x'.repeat(500);
+
+    expect(isSafeTranslatedText(pristine, candidate)).toBe(false);
+  });
+
+  it('applies a floor of 200 chars so short pristine strings still allow normal MT expansion', () => {
+    const pristine = 'OK'; // 2 chars * 4 = 8, but floor is 200
+    const candidate = 'A reasonably longer but still plausible translation of a short label';
+
+    expect(isSafeTranslatedText(pristine, candidate)).toBe(true);
   });
 });
 

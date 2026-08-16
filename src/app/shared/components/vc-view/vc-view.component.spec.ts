@@ -1,3 +1,6 @@
+/// <reference types="node" />
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { VcViewComponent } from './vc-view.component';
 import { WalletService } from 'src/app/core/services/wallet.service';
@@ -552,6 +555,40 @@ describe('VcViewComponent', () => {
     // markings (verified present in vc-view.component.html) are therefore checked manually per
     // the AC-10/NFR-S-142-08 checklist in quality-report.md, consistent with the test matrix's
     // own "Manual" row in technical-design.md §2.3.
+
+    // The verification modal (opened by a *sibling* <ion-modal>, not the
+    // detail modal above) has the exact same rendering limitation under
+    // jsdom. Rather than rely on the same manual-only checklist a second
+    // time — which is precisely how F1 (security-auditor full-mode review,
+    // EUD-142) shipped without a translate="no" marker on this modal's
+    // content and its issuer/date detail span — this parses the raw
+    // template source and asserts the attribute is present on every element
+    // that renders credential-provenance data, across both modals. A
+    // structural regression (removing the attribute, or adding a new
+    // unshielded credential-data binding) now fails CI instead of requiring
+    // a human to remember the checklist.
+    describe('template-source structural check (F1/F8 regression guard)', () => {
+      const templateSource = readFileSync(join(__dirname, 'vc-view.component.html'), 'utf-8');
+
+      function openingTagContaining(needle: string): string {
+        const idx = templateSource.indexOf(needle);
+        expect(idx).toBeGreaterThan(-1); // the expression must actually exist in the template
+        const tagStart = templateSource.lastIndexOf('<', idx);
+        const tagEnd = templateSource.indexOf('>', tagStart);
+        return templateSource.slice(tagStart, tagEnd + 1);
+      }
+
+      it.each([
+        ['card title', '{{ displayName() || credentialType }}'],
+        ['card field value', '{{ field.value }}'],
+        ['structured field label', '{{ item.label }}'],
+        ['structured field value', '{{ item.value }}'],
+        ['verification modal content container', 'class="verify-modal-content"'],
+        ['verification check detail (issuer/dates)', '{{ check.detail | translate }}'],
+      ])('%s carries [attr.translate]="\'no\'"', (_name, needle) => {
+        expect(openingTagContaining(needle)).toContain('[attr.translate]="\'no\'"');
+      });
+    });
   });
 
 });

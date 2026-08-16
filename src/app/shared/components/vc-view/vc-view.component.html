@@ -199,7 +199,7 @@
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="verify-modal-content">
+    <ion-content class="verify-modal-content" [attr.translate]="'no'">
       <div class="verify-modal-inner">
         <!-- Animated shield icon -->
         <div class="verify-shield" [class.verify-shield--done]="verifyOverall !== 'pending'">
@@ -230,7 +230,7 @@
               <div class="verify-row-info">
                 <span class="verify-row-label">{{ "verification.check-" + check.key | translate }}</span>
                 @if(check.detail && check.status !== 'pending' && check.status !== 'checking') {
-                  <span class="verify-row-detail">{{ check.detail | translate }}</span>
+                  <span class="verify-row-detail" [attr.translate]="'no'">{{ check.detail | translate }}</span>
                 }
               </div>
             </div>
