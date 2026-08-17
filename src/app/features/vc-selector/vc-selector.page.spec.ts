@@ -1,7 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AlertController } from '@ionic/angular';
-import { TranslateService } from '@ngx-translate/core';
+import { EventEmitter } from '@angular/core';
+import { LangChangeEvent, TranslateService } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { VcSelectorPage } from './vc-selector.page';
 import { VerifiableCredential, CredentialStatus, Issuer, CredentialSubject, Mandate, Mandatee, Mandator, Power, LifeCycleStatus } from 'src/app/core/models/verifiable-credential';
@@ -130,6 +131,15 @@ describe('VcSelectorPage', () => {
 
     mockTranslateService = {
       instant: jest.fn(),
+      // Only exercised by the translate="no" shielding test below, which calls
+      // fixture.detectChanges() and therefore triggers the `| translate` pipe on
+      // sibling nodes (header-subtitle) — every other test in this spec never
+      // renders the template, so TranslatePipe's dependencies were never needed
+      // before (same mock shape as activity-detail.component.spec.ts).
+      get: jest.fn((key: string) => of(key)),
+      onLangChange: new EventEmitter<LangChangeEvent>(),
+      onTranslationChange: new EventEmitter(),
+      onDefaultLangChange: new EventEmitter(),
       currentLang: 'es'
     } as any;
 
@@ -432,6 +442,23 @@ describe('VcSelectorPage', () => {
 
 
   // });
+
+  // AC-10 / NFR-S-142-08 (EUD-142, AD-3/AD-4): the requester name is credential-
+  // provenance content and must never be handed to a translation engine nor left
+  // translatable by the browser's page translation.
+  describe('translate="no" shielding (AC-10, NFR-S-142-08)', () => {
+    it('marks the requester name (header-title) as non-translatable', () => {
+      component.clientName = 'Cliente Test';
+      // credList rendering requires providers (HttpClient et al. via WalletService)
+      // this spec's TestBed does not set up — irrelevant to this header-only assertion.
+      component.credList = [];
+      fixture.detectChanges();
+
+      const title = fixture.nativeElement.querySelector('.header-title');
+      expect(title.getAttribute('translate')).toBe('no');
+      expect(title.textContent).toContain('Cliente Test');
+    });
+  });
 
   describe('Component integration', () => {
     it('should handle full workflow from initialization to credential selection', () => {

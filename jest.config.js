@@ -41,6 +41,17 @@ module.exports = {
     "src/app/features/activity/activity.page.ts",
     "src/app/features/about/**/*.ts",
     "src/app/core/constants/support.constants.ts",
+    // --- EUD-142: runtime UI translation ---
+    "src/app/core/models/ui-text-translation.model.ts",
+    "src/app/core/constants/ui-translation.constants.ts",
+    "src/app/core/ports/translation-engine.port.ts",
+    "src/app/core/adapters/browser-translator-engine.adapter.ts",
+    "src/app/core/services/ui-translation-cache.service.ts",
+    "src/app/core/services/ui-text-translation.service.ts",
+    "src/app/core/services/telemetry.service.ts",
+    "src/app/shared/helpers/ui-text-bundle.ts",
+    "src/app/shared/services/user-preferences.service.ts",
+    "src/app/features/language-selector/language-selector.page.ts",
   ],
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/', 
