@@ -52,6 +52,17 @@
   "language-selector": {
     "title": "Selector de idioma"
   },
+  "ui-translation": {
+    "title": "¿No encuentras tu idioma?",
+    "description": "Traduce los textos de la interfaz a tu idioma con el traductor de tu propio navegador, sin conexión a internet. Es una ayuda automática, no una traducción profesional: tus credenciales nunca se traducen ni se envían a ningún servicio de traducción.",
+    "toggle-label": "Activar traducción automática",
+    "target-language-label": "Traducir a",
+    "state-preparing": "Preparando la traducción…",
+    "state-unavailable": "No disponible en este dispositivo",
+    "state-unavailable-hint": "Tu navegador no ofrece traducción integrada en el dispositivo. Podrás usar esta función cuando esté disponible.",
+    "state-error": "No se ha podido preparar la traducción",
+    "retry": "Reintentar"
+  },
   "logs-selector": {
     "title": "Ver logs",
     "send": "Enviar logs",

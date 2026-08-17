@@ -305,6 +305,34 @@ describe('ToastServiceHandler', () => {
     }, TIME_IN_MS);
   });
 
+  describe('HTML escaping of translated text (security-auditor full-mode review, EUD-142 F2)', () => {
+    it('showErrorAlertByTranslateLabel escapes markup in the translated message before it reaches alertController', fakeAsync(() => {
+      translateService.get.mockImplementationOnce(() => of('<img src=x onerror=alert(1)>'));
+      const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+
+      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
+      tick();
+
+      expect(toastCtrlSpy).toHaveBeenCalledWith(expect.objectContaining({
+        message: expect.stringContaining('&lt;img src=x onerror=alert(1)&gt;'),
+      }));
+      const [call] = toastCtrlSpy.mock.calls;
+      expect((call[0] as { message: string }).message).not.toContain('<img');
+    }));
+
+    it('showToast escapes markup in the translated message before it reaches alertController', fakeAsync(() => {
+      translateService.instant.mockReturnValueOnce('<script>alert(1)</script>');
+      const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+
+      service.showToast('toast.success');
+      tick();
+
+      const [call] = toastCtrlSpy.mock.calls;
+      expect((call[0] as { message: string }).message).not.toContain('<script>');
+      expect((call[0] as { message: string }).message).toContain('&lt;script&gt;');
+    }));
+  });
+
   it('should create, present, and dismiss a toast after duration', fakeAsync(async () => {
     const duration = 1500;
     const messageKey = 'toast.success';
