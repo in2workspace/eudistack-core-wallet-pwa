@@ -1,4 +1,4 @@
-import { APP_INITIALIZER, enableProdMode, importProvidersFrom, isDevMode } from '@angular/core';
+import { APP_INITIALIZER, enableProdMode, importProvidersFrom, inject, isDevMode, provideAppInitializer } from '@angular/core';
 import { provideServiceWorker } from '@angular/service-worker';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { RouteReuseStrategy, provideRouter } from '@angular/router';
@@ -29,6 +29,9 @@ import { walletDiscoveryInitializer } from './app/core/initializers/wallet-disco
 import { WalletDiscoveryService } from './app/core/services/wallet-discovery.service';
 import { TenantService } from './app/core/services/tenant.service';
 import { tenantInitializer } from './app/core/initializers/tenant.initializer';
+import { TRANSLATION_ENGINE } from './app/core/ports/translation-engine.port';
+import { BrowserTranslatorEngineAdapter } from './app/core/adapters/browser-translator-engine.adapter';
+import { UiTextTranslationService } from './app/core/services/ui-text-translation.service';
 
 function initializeTheme(themeService: ThemeService): () => Promise<void> {
   return () => themeService.load();
@@ -36,6 +39,26 @@ function initializeTheme(themeService: ThemeService): () => Promise<void> {
 
 function initializePasskeyStore(store: PasskeyStoreService): () => Promise<void> {
   return () => store.init();
+}
+
+/**
+ * Restores the persisted runtime-translation preference on every app start
+ * (AC-06: "cierra la aplicación y la vuelve a abrir... sin volver a pedir la
+ * activación") — not just when the Holder happens to revisit the language
+ * selector page.
+ *
+ * Deliberately fire-and-forget: bootstrap must not block on this (up to
+ * TRANSLATION_BUDGET_MS = 20s on a cache miss) — AC-11 requires the app stay
+ * usable during preparation. The UI swaps to the target language reactively
+ * once ready, via @ngx-translate's existing onTranslationChange subscription
+ * — regardless of which page is on screen when it resolves. Must run after
+ * initializeTheme so the native language is already active when
+ * restoreFromPreference()'s internal activate() call reads it.
+ */
+function restoreUiTranslation(): Promise<void> {
+  const service = inject(UiTextTranslationService);
+  void service.restoreFromPreference();
+  return Promise.resolve();
 }
 
 disableTouchScrollOnPaths(
@@ -56,6 +79,8 @@ bootstrapApplication(AppComponent, {
     { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true },
     // Wallet discovery gateway (infrastructure adapter for Task 5).
     { provide: WALLET_DISCOVERY_GATEWAY, useClass: HttpWalletDiscoveryGateway },
+    // On-device translation engine port (EUD-142, AD-1: on-device strict).
+    { provide: TRANSLATION_ENGINE, useClass: BrowserTranslatorEngineAdapter },
     // IMPORTANT — ordering: walletDiscoveryInitializer MUST be first so that
     // WalletDiscoveryService.mode() is resolved before initializeTheme and
     // initializePasskeyStore run (AD-1, AC-009.1a).
@@ -83,6 +108,13 @@ bootstrapApplication(AppComponent, {
       deps: [PasskeyStoreService],
       multi: true
     },
+    // Must run after initializeTheme (native language already active).
+    // Uses provideAppInitializer() (Angular 19+), not the legacy
+    // { provide: APP_INITIALIZER, useFactory, deps, multi: true } object
+    // literal used by the sibling initializers above — both resolve to the
+    // same underlying APP_INITIALIZER multi-token and run in provider-array
+    // order, so the "after initializeTheme" ordering guarantee is preserved.
+    provideAppInitializer(restoreUiTranslation),
     importProvidersFrom(
       TranslateModule.forRoot({
         loader: {

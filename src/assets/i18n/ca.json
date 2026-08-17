@@ -52,6 +52,17 @@
   "language-selector": {
     "title": "Selector d'idioma"
   },
+  "ui-translation": {
+    "title": "No trobes el teu idioma?",
+    "description": "Tradueix els textos de la interfície al teu idioma amb el traductor del teu propi navegador, sense connexió a internet. És una ajuda automàtica, no una traducció professional: les teves credencials mai es tradueixen ni s'envien a cap servei de traducció.",
+    "toggle-label": "Activa la traducció automàtica",
+    "target-language-label": "Tradueix a",
+    "state-preparing": "S'està preparant la traducció…",
+    "state-unavailable": "No disponible en aquest dispositiu",
+    "state-unavailable-hint": "El teu navegador no ofereix traducció integrada al dispositiu. Podràs utilitzar aquesta funció quan estigui disponible.",
+    "state-error": "No s'ha pogut preparar la traducció",
+    "retry": "Torna-ho a provar"
+  },
   "logs-selector": {
     "title": "Veure logs",
     "send": "Enviar logs",

@@ -253,4 +253,52 @@ describe('ActivityDetailComponent', () => {
 
     await expect(createFixture(entry)).resolves.toBeTruthy();
   });
+
+  // --- translate="no" shielding (AC-10, NFR-S-142-08) -----------------------
+  // credentialName, counterpartyValue() and entry().details are credential/
+  // requester-provenance content and must never be handed to a translation
+  // engine nor left translatable by the browser's page translation. Field
+  // labels (| translate) are app chrome and stay translatable.
+
+  it('marks the credential name value as non-translatable, while its label stays translatable', async () => {
+    const entry: ActivityEntry = {
+      id: '16', type: 'presented', credentialName: 'Empleado ACME', counterparty: 'https://v.example.com', timestamp: BASE_TIMESTAMP,
+    };
+    const fixture = await createFixture(entry);
+    const el: HTMLElement = fixture.nativeElement;
+
+    const rows = Array.from(el.querySelectorAll('.detail-row'));
+    const credentialRow = rows.find(r => r.textContent?.includes('Empleado ACME'));
+    const value = credentialRow!.querySelector('.detail-value');
+    const label = credentialRow!.querySelector('.detail-label');
+    expect(value!.getAttribute('translate')).toBe('no');
+    expect(label!.getAttribute('translate')).toBeNull();
+  });
+
+  it('marks the counterparty value as non-translatable', async () => {
+    const entry: ActivityEntry = {
+      id: '17', type: 'issued', credentialName: 'Cred', counterparty: 'ACME Issuer', timestamp: BASE_TIMESTAMP,
+    };
+    const fixture = await createFixture(entry);
+    const el: HTMLElement = fixture.nativeElement;
+
+    const rows = Array.from(el.querySelectorAll('.detail-row'));
+    const counterpartyRow = rows.find(r => r.textContent?.includes('ACME Issuer'));
+    const value = counterpartyRow!.querySelector('.detail-value');
+    expect(value!.getAttribute('translate')).toBe('no');
+  });
+
+  it('marks the details value as non-translatable', async () => {
+    const entry: ActivityEntry = {
+      id: '18', type: 'issued', credentialName: 'Cred', counterparty: 'https://i.example.com', timestamp: BASE_TIMESTAMP,
+      details: 'Nota adicional',
+    };
+    const fixture = await createFixture(entry);
+    const el: HTMLElement = fixture.nativeElement;
+
+    const rows = Array.from(el.querySelectorAll('.detail-row'));
+    const detailsRow = rows.find(r => r.textContent?.includes('Nota adicional'));
+    const value = detailsRow!.querySelector('.detail-value');
+    expect(value!.getAttribute('translate')).toBe('no');
+  });
 });
