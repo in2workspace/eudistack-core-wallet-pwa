@@ -353,13 +353,8 @@ export class LoginPage {
 
     (this.authService as RemoteAuthService).verifyEmail(this.email, this.otpValue).subscribe({
       next: () => {
-        this.loading = false;
         this.passkeyFromRefreshToken = false;
-        this.needsPasskeySetup = !this.prfService.hasPasskey();
-        if (this.needsPasskeySetup) {
-          this.deviceName = this.getDeviceName();
-        }
-        this.step = 'passkey';
+        this.resolvePasskeySetupStep();
       },
       error: (err) => {
         this.errorMessage = err?.status === 429
@@ -368,6 +363,39 @@ export class LoginPage {
         this.loading = false;
       }
     });
+  }
+
+  /**
+   * The local `has_passkey` flag (PasskeyStoreService/IndexedDB) is per-browser,
+   * not per-account: it stays `true` after a different account onboarded a passkey
+   * on the same device. Right after verify-email we already hold a JWT for the
+   * account being authenticated, so we ask the server which devices THIS account
+   * actually has instead of trusting the local flag (EUD-8 tech-debt: onboarding
+   * skipped device registration when the browser had a stale passkey from
+   * another account).
+   */
+  private resolvePasskeySetupStep(): void {
+    this.passkeyApi.listPasskeys().subscribe({
+      next: (passkeys) => {
+        this.needsPasskeySetup = passkeys.length === 0;
+        this.finishPasskeySetupStep();
+      },
+      error: (err) => {
+        // Fail-safe: if we can't confirm the account's server-side devices, assume
+        // it needs one rather than silently skipping registration.
+        console.warn('[LoginPage] listPasskeys failed, defaulting to needsPasskeySetup=true', err);
+        this.needsPasskeySetup = true;
+        this.finishPasskeySetupStep();
+      }
+    });
+  }
+
+  private finishPasskeySetupStep(): void {
+    if (this.needsPasskeySetup) {
+      this.deviceName = this.getDeviceName();
+    }
+    this.step = 'passkey';
+    this.loading = false;
   }
 
   async verifyPasskey(): Promise<void> {
