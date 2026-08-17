@@ -9,6 +9,7 @@ import {
   effect,
   inject,
   input,
+  OnDestroy,
   signal
 } from '@angular/core';
 import { QRCodeComponent } from 'angularx-qrcode';
@@ -17,7 +18,7 @@ import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { EmployeeCredentialSubject, ExtendedCredentialType, LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { IonicModule } from '@ionic/angular';
-import { DisplayField, DisplaySection } from 'src/app/core/models/display-field.model';
+import { DisplayField, DisplayFieldItem, DisplaySection } from 'src/app/core/models/display-field.model';
 import dayjs from 'dayjs';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
@@ -34,7 +35,22 @@ export interface PreviewField {
   value: string;
 }
 
+export interface VerificationRow {
+  key: string;
+  label: string;
+  value: string;
+  status: 'idle' | 'checking' | 'passed' | 'failed';
+}
+
+const VERIFICATION_ROW_LABELS: Record<string, string> = {
+  issuance: 'verification.row-issuance',
+  expiration: 'verification.row-expiration',
+  issuer: 'verification.row-issuer',
+  status: 'verification.row-revocation',
+};
+
 const EXPIRY_WARNING_DAYS = 30;
+const VERIFY_COOLDOWN_MS = 5000;
 
 const HIDDEN_VALUE = '*'.repeat(15);
 
@@ -52,7 +68,7 @@ const LIFECYCLE_LABELS: Record<LifeCycleStatus, string> = {
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [IonicModule, QRCodeComponent, TranslateModule, CommonModule]
 })
-export class VcViewComponent {
+export class VcViewComponent implements OnDestroy {
   private readonly translate = inject(TranslateService);
   private readonly walletService = inject(WalletService);
   private readonly toastService = inject(ToastServiceHandler);
@@ -121,6 +137,50 @@ export class VcViewComponent {
       { label: 'vc-view.preview-expiry', value: hidden ? HIDDEN_VALUE : expiry },
     ];
   });
+
+  public get issuedBy(): string {
+    const issuer = this.credentialInput$().issuer;
+    return issuer?.commonName || issuer?.organization || '';
+  }
+
+  public get verificationRows(): VerificationRow[] {
+    const cred = this.credentialInput$();
+    const byKey = new Map(this.verificationChecks.map(c => [c.key, c.status]));
+    const asDate = (raw?: string) =>
+      raw && dayjs(raw).isValid() ? dayjs(raw).format('DD/MM/YYYY') : '';
+
+    const values: Record<string, string> = {
+      issuance: asDate(cred.validFrom),
+      expiration: asDate(cred.validUntil),
+      issuer: cred.issuer?.organizationIdentifier || cred.issuer?.id || '',
+      status: '',
+    };
+
+    return Object.keys(VERIFICATION_ROW_LABELS).map(key => ({
+      key,
+      label: VERIFICATION_ROW_LABELS[key],
+      value: values[key],
+      status: (byKey.get(key) as VerificationRow['status'])
+        ?? (this.statusBadge().tone === 'verified' ? 'passed' : 'failed'),
+    }));
+  }
+
+  public isPowersSection(section: DisplaySection): boolean {
+    return section.fields.some(field => !!field.structured?.length);
+  }
+
+  public isWideField(field: DisplayField): boolean {
+    return (field.value?.length ?? 0) > 24;
+  }
+
+  /**
+   * Placeholder: the mock shows an Execute action per power but the behaviour
+   * is not specified yet, so this only surfaces a notice.
+   */
+  public executePower(item: DisplayFieldItem): void {
+    console.warn('Power execution not implemented yet', item);
+    this.toastService.showErrorAlertByTranslateLabel('vc-fields.execute-unavailable').subscribe();
+  }
 
   private subjectName(cred: VerifiableCredential): string {
     const mandatee = (cred.credentialSubject as Partial<EmployeeCredentialSubject>)?.mandate?.mandatee;
@@ -197,6 +257,9 @@ export class VcViewComponent {
   }];
 
   public isVerifyModalOpen = false;
+  public isVerifying = false;
+  public verifyLocked = false;
+  private verifyCooldownTimer: ReturnType<typeof setTimeout> | null = null;
   public verificationChecks: VerificationCheck[] = [];
   public verifyOverall: 'pending' | 'valid' | 'invalid' = 'pending';
   public verifyResultKey: string = 'verification.result-invalid';
@@ -236,11 +299,13 @@ export class VcViewComponent {
   }
 
   public async verifyCredential(): Promise<void> {
+    if (this.verifyLocked) return;
+    this.verifyLocked = true;
+
     const keys = this.verificationService.getCheckKeys();
     this.verificationChecks = keys.map(key => ({ key, status: 'pending' as const }));
     this.verifyOverall = 'pending';
-    this.isVerifyModalOpen = true;
-    history.pushState(null, '');
+    this.isVerifying = true;
     this.cdr.markForCheck();
     
     const credential = this.credentialInput$();
@@ -277,10 +342,29 @@ export class VcViewComponent {
       }
     } catch {
       // TODO: Review behavior in case of error
-      this.closeVerifyModal();
+      this.verifyOverall = 'invalid';
     }
 
+    this.isVerifying = false;
+    this.startVerifyCooldown();
     this.cdr.markForCheck();
+  }
+
+  private startVerifyCooldown(): void {
+    if (this.verifyCooldownTimer !== null) {
+      clearTimeout(this.verifyCooldownTimer);
+    }
+    this.verifyCooldownTimer = setTimeout(() => {
+      this.verifyCooldownTimer = null;
+      this.verifyLocked = false;
+      this.cdr.markForCheck();
+    }, VERIFY_COOLDOWN_MS);
+  }
+
+  public ngOnDestroy(): void {
+    if (this.verifyCooldownTimer !== null) {
+      clearTimeout(this.verifyCooldownTimer);
+    }
   }
 
   public closeVerifyModal(): void {
