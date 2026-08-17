@@ -271,7 +271,7 @@
     "send": "Enviar"
   },
   "vc-fields": {
-    "delete": "Eliminar",
+    "delete": "Eliminar credencial",
     "copy-success": "Copiado al portapapeles",
     "modal-title": "Detalles de credencial",
     "title": "Información de credenciales",
@@ -356,7 +356,10 @@
       "delete": "Eliminar",
       "attest": "Acreditar",
       "upload": "Subir"
-    }
+    },
+    "issued-by": "Emitida por",
+    "execute": "Ejecutar",
+    "execute-unavailable": "Esta acción todavía no está disponible."
   },
   "errors": {
     "default": "Algo ha salido mal. Si vuelve a ocurrir, contacta con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
@@ -496,7 +499,7 @@
     "this-device": "Este dispositivo"
   },
   "verification": {
-    "button": "Verificar Credencial",
+    "button": "Comprobar estado de la credencial",
     "modal-title": "Verificación de Credencial",
     "verifying": "Verificando credencial...",
     "result-valid": "La credencial es válida",
@@ -509,7 +512,12 @@
     "check-status": "Estado de revocación",
     "detail-revoked": "Revocada",
     "detail-no-status-list": "Sin lista de estado",
-    "detail-no-expiry": "Sin fecha de caducidad"
+    "detail-no-expiry": "Sin fecha de caducidad",
+    "card-title": "Verificación de la credencial",
+    "row-issuance": "Fecha de emisión",
+    "row-expiration": "Fecha de caducidad",
+    "row-issuer": "Emisor",
+    "row-revocation": "Estado de revocación"
   },
   "confirmation": {
     "header": "¿Enviar Credencial?",

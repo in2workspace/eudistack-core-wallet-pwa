@@ -275,7 +275,7 @@
     "lifecycle-expired": "Expired"
   },
   "vc-fields": {
-    "delete": "Delete",
+    "delete": "Delete credential",
     "copy-success": "Copied to clipboard",
     "modal-title": "Credential Details",
     "title": "Credential Info",
@@ -360,7 +360,10 @@
       "delete": "Delete",
       "attest": "Attest",
       "upload": "Upload"
-    }
+    },
+    "issued-by": "Issued by",
+    "execute": "Execute",
+    "execute-unavailable": "This action is not available yet."
   },
   "errors": {
     "default": "Something went wrong. If it keeps happening, please contact the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
@@ -500,7 +503,7 @@
     "this-device": "This device"
   },
   "verification": {
-    "button": "Verify Credential",
+    "button": "Check credential status",
     "modal-title": "Credential Verification",
     "verifying": "Verifying credential...",
     "result-valid": "Credential is valid",
@@ -513,7 +516,12 @@
     "check-status": "Revocation status",
     "detail-revoked": "Revoked",
     "detail-no-status-list": "No status list",
-    "detail-no-expiry": "No expiry"
+    "detail-no-expiry": "No expiry",
+    "card-title": "Credential Verification",
+    "row-issuance": "Issuance date",
+    "row-expiration": "Expiration date",
+    "row-issuer": "Issuer",
+    "row-revocation": "Revocation status"
   },
   "confirmation": {
     "header": "Send credential?",

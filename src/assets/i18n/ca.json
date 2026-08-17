@@ -335,7 +335,7 @@
     "send": "Enviar"
   },
   "vc-fields": {
-    "delete": "Eliminar",
+    "delete": "Eliminar credencial",
     "copy-success": "S'ha copiat al porta-retalls",
     "modal-title": "Detalls de credencial",
     "title": "Informació de credencials",
@@ -420,7 +420,10 @@
       "delete": "Eliminar",
       "attest": "Acreditar",
       "upload": "Pujar"
-    }
+    },
+    "issued-by": "Emesa per",
+    "execute": "Executar",
+    "execute-unavailable": "Aquesta acció encara no està disponible."
   },
   "activity": {
     "title": "Activitat",
@@ -492,7 +495,7 @@
     "this-device": "Aquest dispositiu"
   },
   "verification": {
-    "button": "Verificar Credencial",
+    "button": "Comprovar l'estat de la credencial",
     "modal-title": "Verificació de Credencial",
     "verifying": "Verificant credencial...",
     "result-valid": "La credencial és vàlida",
@@ -505,7 +508,12 @@
     "check-status": "Estat de revocació",
     "detail-revoked": "Revocada",
     "detail-no-status-list": "Sense llista d'estat",
-    "detail-no-expiry": "Sense data de caducitat"
+    "detail-no-expiry": "Sense data de caducitat",
+    "card-title": "Verificació de la credencial",
+    "row-issuance": "Data d'emissió",
+    "row-expiration": "Data de caducitat",
+    "row-issuer": "Emissor",
+    "row-revocation": "Estat de revocació"
   },
   "confirmation": {
     "header": "Enviar credencial?",
