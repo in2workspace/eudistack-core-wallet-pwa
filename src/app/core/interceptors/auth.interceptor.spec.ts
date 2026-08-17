@@ -9,6 +9,7 @@
  *  T-auth-5 — external URL passes through without Authorization header
  *  T-auth-6 — /assets/* bypasses AuthService (ThemeService bootstrap timing fix)
  *  T-auth-7 — 401 response on own-backend triggers forceLogout
+ *  T-auth-8 — 401 response on own-backend marks the error via SessionExpiryMarkerService
  */
 
 import { TestBed } from '@angular/core/testing';
@@ -16,9 +17,10 @@ import {
   HttpTestingController,
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
-import { HttpClient, HttpStatusCode, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpStatusCode, provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import { AuthService } from '../services/auth.service';
+import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
 import { authInterceptor } from './auth.interceptor';
 import { environment } from 'src/environments/environment';
 
@@ -40,6 +42,7 @@ describe('authInterceptor', () => {
   let httpClient: HttpClient;
   let httpMock: HttpTestingController;
   let mockAuth: MockAuthService;
+  let sessionExpiryMarker: SessionExpiryMarkerService;
 
   beforeEach(() => {
     mockAuth = new MockAuthService();
@@ -54,6 +57,7 @@ describe('authInterceptor', () => {
 
     httpClient = TestBed.inject(HttpClient);
     httpMock = TestBed.inject(HttpTestingController);
+    sessionExpiryMarker = TestBed.inject(SessionExpiryMarkerService);
   });
 
   afterEach(() => httpMock.verify());
@@ -134,5 +138,19 @@ describe('authInterceptor', () => {
     req.flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
 
     expect(forceLogoutSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('T-auth-8: 401 response on own-backend marks the error as session-expired', () => {
+    mockAuth.setToken('expired-jwt');
+    const url = `${OWN_BACKEND}/api/v1/credentials`;
+    let capturedError: HttpErrorResponse | undefined;
+
+    httpClient.get(url).subscribe({ error: (e) => { capturedError = e; } });
+
+    const req = httpMock.expectOne(url);
+    req.flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
+
+    expect(capturedError).toBeTruthy();
+    expect(sessionExpiryMarker.isSessionExpired(capturedError as HttpErrorResponse)).toBe(true);
   });
 });
