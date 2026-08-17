@@ -314,6 +314,7 @@
   },
   "errors": {
     "default": "Something went wrong. If it keeps happening, please contact the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
+    "session-expired": "Your session has expired. Please sign in again.",
     "key-storage-unavailable": "This browser can’t securely store keys. You won’t be able to activate or use credentials on this device.",
     "key-storage-public-only": "This browser can’t securely store keys. You can add credentials, but they may stop working after you close or reload the app.",
     "credential-validation-failed": "We couldn’t validate the credential. Please try again.",

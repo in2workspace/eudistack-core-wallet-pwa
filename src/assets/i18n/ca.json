@@ -126,6 +126,7 @@
   },
   "errors": {
     "default": "Alguna cosa ha anat malament. Si et torna a passar, contacta amb l’<a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equip de suport</a>.",
+    "session-expired": "La teva sessió ha caducat. Torna a iniciar sessió.",
     "key-storage-unavailable": "Aquest navegador no pot desar claus de manera segura. No podràs activar ni fer servir credencials en aquest dispositiu.",
     "key-storage-public-only": "Aquest navegador no pot desar claus de manera segura. Pots afegir credencials, però podrien deixar de funcionar en tancar o recarregar l’app.",
     "credential-validation-failed": "No hem pogut validar la credencial. Torna-ho a provar.",
