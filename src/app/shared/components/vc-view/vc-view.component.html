@@ -115,7 +115,7 @@
 
     <ion-content class="drawer-content">
       <!-- Verification card -->
-      <section class="verify-card" [class.verify-card--busy]="isVerifying">
+      <section class="verify-card" [class.verify-card--busy]="isVerifying || showVerifyResult">
         <ion-icon name="shield-checkmark" class="verify-card__watermark" aria-hidden="true"></ion-icon>
 
         <div class="verify-card__inner">
@@ -151,9 +151,18 @@
           </ion-button>
         </div>
 
-        @if(isVerifying) {
+        @if(isVerifying || showVerifyResult) {
           <div class="verify-card__overlay">
-            <ion-spinner name="crescent"></ion-spinner>
+            @if(isVerifying) {
+              <ion-spinner name="crescent"></ion-spinner>
+            } @else {
+              <ion-icon
+                class="verify-shield"
+                [class.verify-shield--invalid]="verifyOverall !== 'valid'"
+                [src]="verifyOverall === 'valid' ? 'assets/svg/shield-checkmark.svg' : 'assets/svg/shield.svg'"
+                aria-hidden="true"
+              ></ion-icon>
+            }
           </div>
         }
       </section>

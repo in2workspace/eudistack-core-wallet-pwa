@@ -51,6 +51,7 @@ const VERIFICATION_ROW_LABELS: Record<string, string> = {
 
 const EXPIRY_WARNING_DAYS = 30;
 const VERIFY_COOLDOWN_MS = 5000;
+const VERIFY_RESULT_MS = 2000;
 
 const HIDDEN_VALUE = '*'.repeat(15);
 
@@ -258,8 +259,10 @@ export class VcViewComponent implements OnDestroy {
 
   public isVerifyModalOpen = false;
   public isVerifying = false;
+  public showVerifyResult = false;
   public verifyLocked = false;
   private verifyCooldownTimer: ReturnType<typeof setTimeout> | null = null;
+  private verifyResultTimer: ReturnType<typeof setTimeout> | null = null;
   public verificationChecks: VerificationCheck[] = [];
   public verifyOverall: 'pending' | 'valid' | 'invalid' = 'pending';
   public verifyResultKey: string = 'verification.result-invalid';
@@ -346,8 +349,21 @@ export class VcViewComponent implements OnDestroy {
     }
 
     this.isVerifying = false;
+    this.showVerifyResult = true;
+    this.startVerifyResultTimer();
     this.startVerifyCooldown();
     this.cdr.markForCheck();
+  }
+
+  private startVerifyResultTimer(): void {
+    if (this.verifyResultTimer !== null) {
+      clearTimeout(this.verifyResultTimer);
+    }
+    this.verifyResultTimer = setTimeout(() => {
+      this.verifyResultTimer = null;
+      this.showVerifyResult = false;
+      this.cdr.markForCheck();
+    }, VERIFY_RESULT_MS);
   }
 
   private startVerifyCooldown(): void {
@@ -362,6 +378,9 @@ export class VcViewComponent implements OnDestroy {
   }
 
   public ngOnDestroy(): void {
+    if (this.verifyResultTimer !== null) {
+      clearTimeout(this.verifyResultTimer);
+    }
     if (this.verifyCooldownTimer !== null) {
       clearTimeout(this.verifyCooldownTimer);
     }

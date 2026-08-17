@@ -305,6 +305,35 @@
   }
 }
 
+.verify-shield {
+  font-size: 64px;
+  color: var(--status-success, #16A34A);
+  animation: shield-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+             shield-breathe 1.6s ease-in-out 0.5s infinite;
+
+  &--invalid {
+    color: var(--status-error, #DC2626);
+  }
+}
+
+@keyframes shield-pop {
+  0%   { opacity: 0; transform: scale(0.35) rotate(-14deg); }
+  60%  { opacity: 1; transform: scale(1.15) rotate(5deg); }
+  80%  { transform: scale(0.95) rotate(-2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes shield-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .verify-shield {
+    animation: none;
+  }
+}
+
 .verify-card__title {
   margin: 0 0 10px;
   font-size: 15px;
