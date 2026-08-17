@@ -69,6 +69,17 @@
     "scan": "Scan QR",
     "install-hint": "Install the app for a better experience"
   },
+  "ui-translation": {
+    "title": "Can't find your language?",
+    "description": "Translates the interface text into your language using your own browser's translator, without an internet connection. It's an automated aid, not a professional translation: your credentials are never translated or sent to any translation service.",
+    "toggle-label": "Turn on automatic translation",
+    "target-language-label": "Translate to",
+    "state-preparing": "Preparing translation…",
+    "state-unavailable": "Not available on this device",
+    "state-unavailable-hint": "Your browser doesn't offer on-device translation yet. You'll be able to use this feature once it's available.",
+    "state-error": "Translation could not be prepared",
+    "retry": "Retry"
+  },
   "language-selector": {
     "title": "Select language"
   },

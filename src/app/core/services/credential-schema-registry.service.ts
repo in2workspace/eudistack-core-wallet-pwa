@@ -22,6 +22,7 @@ const SUPPORTED_SCHEMAS = [
   'learcredential.machine.sd.1',
   'gx.labelcredential.w3c.2',
   'doctorid.sd.1',
+  'eu.europa.ec.eudi.pid.1',
 ] as const;
 
 /**

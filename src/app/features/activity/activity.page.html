@@ -46,11 +46,18 @@
     @if (!loading() && filteredEntries().length > 0) {
       <div class="activity-list">
         @for (entry of filteredEntries(); track entry.id) {
+          <!--
+            EUD-142 (AD-4): credentialName and the counterparty name are
+            credential/requester-provenance content — shielded from the
+            browser's page translation like the detail view. The aria-label
+            deliberately omits credentialName (translatable attributes are
+            translated too) rather than relying on inheritance.
+          -->
           <div
             class="activity-card activity-card--{{ entry.type }}"
             role="button"
             tabindex="0"
-            [attr.aria-label]="('activity.type-' + entry.type | translate) + ' — ' + entry.credentialName"
+            [attr.aria-label]="'activity.type-' + entry.type | translate"
             (click)="openDetail(entry)"
             (keydown)="onEntryKeydown($event, entry)"
           >
@@ -58,11 +65,11 @@
               <h2>{{ "activity.type-" + entry.type | translate }}</h2>
               @let counterparty = formatCounterparty(entry);
               @if (counterparty && entry.type !== 'deleted') {
-                <p class="activity-subtitle">
+                <p class="activity-subtitle" [attr.translate]="'no'">
                   {{ "activity.subtitle-" + entry.type | translate: { counterparty: counterparty } }}
                 </p>
               }
-              <p class="activity-credential-name">{{ entry.credentialName }}</p>
+              <p class="activity-credential-name" [attr.translate]="'no'">{{ entry.credentialName }}</p>
             </div>
             <span class="activity-time" [title]="formatAbsoluteTime(entry.timestamp)">{{ formatTime(entry.timestamp) }}</span>
           </div>

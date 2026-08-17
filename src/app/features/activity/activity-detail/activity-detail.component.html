@@ -10,15 +10,23 @@
 </ion-header>
 
 <ion-content class="ion-padding activity-detail-content">
+  <!--
+    EUD-142 (AD-4): credentialName, counterpartyValue() and entry().details are
+    credential/requester-provenance content — shielded from the browser's page
+    translation. Uses [attr.translate] rather than the plain translate="no"
+    attribute: see the gap note in technical-design.md §3.2 (collision with
+    @ngx-translate's [translate] directive selector). Field labels (| translate)
+    stay translatable — app chrome, not credential content.
+  -->
   <div class="detail-row">
     <span class="detail-label">{{ "activity.detail-field-credential" | translate }}</span>
-    <span class="detail-value">{{ entry().credentialName }}</span>
+    <span class="detail-value" [attr.translate]="'no'">{{ entry().credentialName }}</span>
   </div>
 
   @if (showCounterparty()) {
   <div class="detail-row">
     <span class="detail-label">{{ counterpartyLabelKey()! | translate }}</span>
-    <span class="detail-value">{{ counterpartyValue() }}</span>
+    <span class="detail-value" [attr.translate]="'no'">{{ counterpartyValue() }}</span>
   </div>
   }
 
@@ -37,7 +45,7 @@
   @if (showDetails()) {
   <div class="detail-row">
     <span class="detail-label">{{ "activity.detail-field-details" | translate }}</span>
-    <span class="detail-value">{{ entry().details }}</span>
+    <span class="detail-value" [attr.translate]="'no'">{{ entry().details }}</span>
   </div>
   }
 

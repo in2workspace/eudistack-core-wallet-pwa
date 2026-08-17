@@ -1,9 +1,9 @@
 @let credentialInput = credentialInput$();
 
 <!-- VC CARD VIEW -->
-<ion-card (click)="openDetailModal()" tabindex="0" (keydown)="handleButtonKeydown($event, 'detail')" class="credential-card" [class.credential-card--revoked]="credentialInput.lifeCycleStatus === 'REVOKED'" [class.credential-card--expired]="credentialInput.lifeCycleStatus === 'EXPIRED' || expiryStatus() === 'expired'">
+<ion-card (click)="openDetailModal()" tabindex="0" (keydown)="handleButtonKeydown($event, 'detail')" class="credential-card" [attr.translate]="'no'" [class.credential-card--revoked]="credentialInput.lifeCycleStatus === 'REVOKED'" [class.credential-card--expired]="credentialInput.lifeCycleStatus === 'EXPIRED' || expiryStatus() === 'expired'">
   <div class="card-header">
-    <h2 class="card-title">{{ displayName() || credentialType }}</h2>
+    <h2 class="card-title" [attr.translate]="'no'">{{ displayName() || credentialType }}</h2>
 
     <span class="card-badge" [class]="'card-badge--' + statusBadge().tone">
       <ion-icon [name]="statusBadge().tone === 'verified' ? 'checkmark-circle' : 'warning'" aria-hidden="true"></ion-icon>
@@ -15,7 +15,7 @@
     @for(field of previewFields(); track field.label) {
       <div class="card-preview__cell">
         <dt class="card-preview__label">{{ field.label | translate }}</dt>
-        <dd class="card-preview__value">{{ field.value }}</dd>
+        <dd class="card-preview__value" [attr.translate]="'no'">{{ field.value }}</dd>
       </div>
     }
   </dl>
@@ -102,9 +102,12 @@
   <ng-template>
     <ion-header class="drawer-topbar">
       <div class="drawer-header">
-        <h2 class="drawer-title">{{ displayName() || credentialType }}</h2>
+        <h2 class="drawer-title" [attr.translate]="'no'">{{ displayName() || credentialType }}</h2>
         @if(issuedBy) {
-          <p class="drawer-subtitle">{{ "vc-fields.issued-by" | translate }} {{ issuedBy }}</p>
+          <p class="drawer-subtitle">
+            {{ "vc-fields.issued-by" | translate }}
+            <span [attr.translate]="'no'">{{ issuedBy }}</span>
+          </p>
         }
       </div>
 
@@ -113,7 +116,7 @@
       </button>
     </ion-header>
 
-    <ion-content class="drawer-content">
+    <ion-content class="drawer-content" [attr.translate]="'no'">
       <!-- Verification card -->
       <section class="verify-card" [class.verify-card--busy]="isVerifying || showVerifyResult">
         <ion-icon name="shield-checkmark" class="verify-card__watermark" aria-hidden="true"></ion-icon>
@@ -138,7 +141,7 @@
                 <div class="verify-rows__text">
                   <span class="verify-rows__label">{{ row.label | translate }}</span>
                   @if(row.value) {
-                    <span class="verify-rows__value">{{ row.value }}</span>
+                    <span class="verify-rows__value" [attr.translate]="'no'">{{ row.value }}</span>
                   }
                 </div>
               </li>
@@ -175,7 +178,7 @@
             @for(field of section.fields; track field.label) {
               @for(item of field.structured; track item.label) {
                 <div class="powers__row">
-                  <span class="field-box">{{ item.value || item.label }}</span>
+                  <span class="field-box" [attr.translate]="'no'">{{ item.value || item.label }}</span>
                   <button type="button" class="powers__execute" (click)="executePower(item)">
                     {{ "vc-fields.execute" | translate }}
                   </button>
@@ -190,7 +193,7 @@
               @for(field of section.fields; track field.label) {
                 <div class="field-grid__cell" [class.field-grid__cell--wide]="isWideField(field)">
                   <span class="field-label">{{ field.label | translate }}</span>
-                  <span class="field-box" [title]="field.value">{{ field.value }}</span>
+                  <span class="field-box" [attr.translate]="'no'" [title]="field.value">{{ field.value }}</span>
                 </div>
               }
             </div>

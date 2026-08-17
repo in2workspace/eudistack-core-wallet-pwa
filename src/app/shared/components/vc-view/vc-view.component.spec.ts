@@ -1,3 +1,6 @@
+/// <reference types="node" />
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { VcViewComponent } from './vc-view.component';
 import { WalletService } from 'src/app/core/services/wallet.service';
@@ -512,6 +515,80 @@ describe('VcViewComponent', () => {
 
       // The component should NOT have mutated the input — parent owns that
       expect(credBefore.lifeCycleStatus).toBe('VALID');
+    });
+  });
+
+  // AC-10 / NFR-S-142-08: credential content must never be handed to a page
+  // translation engine, regardless of whether the EUD-142 runtime translation
+  // feature is enabled or even available on the device (AD-4). Double marking
+  // (container + value element) because ion-modal reparents its content into
+  // the ion-app tree, where inheritance from the original host is not reliable.
+  describe('translate="no" shielding (AC-10, NFR-S-142-08)', () => {
+    it('marks the credential card container as non-translatable', () => {
+      const card = fixture.nativeElement.querySelector('ion-card.credential-card');
+      expect(card.getAttribute('translate')).toBe('no');
+    });
+
+    it('marks the card title as non-translatable', () => {
+      const title = fixture.nativeElement.querySelector('.card-title');
+      expect(title.getAttribute('translate')).toBe('no');
+    });
+
+    it('marks each card field value as non-translatable', async () => {
+      const displayService = TestBed.inject(CredentialDisplayService);
+      jest.spyOn(displayService, 'getCardFields').mockResolvedValue([{ label: 'field.label', value: 'Jane Doe' }]);
+      componentRef.setInput('credentialInput$', { ...component.credentialInput$() });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const field = fixture.nativeElement.querySelector('.card-preview__value');
+      expect(field.getAttribute('translate')).toBe('no');
+    });
+
+    // The detail modal's markup (.modal-content, .field-value, .structured-value/-label,
+    // .copy-row__text) lives inside <ion-modal><ng-template>. @ionic/angular's IonModal
+    // wrapper only materializes that ng-template into the DOM (via NgTemplateOutlet) once
+    // `isCmpOpen` flips true, which happens on real Ionic overlay lifecycle events dispatched
+    // by the @ionic/core Stencil custom element — not registered in this repo's Jest/jsdom
+    // setup (no other spec in the repo renders ion-modal content either). Their translate="no"
+    // markings (verified present in vc-view.component.html) are therefore checked manually per
+    // the AC-10/NFR-S-142-08 checklist in quality-report.md, consistent with the test matrix's
+    // own "Manual" row in technical-design.md §2.3.
+
+    // The verification modal (opened by a *sibling* <ion-modal>, not the
+    // detail modal above) has the exact same rendering limitation under
+    // jsdom. Rather than rely on the same manual-only checklist a second
+    // time — which is precisely how F1 (security-auditor full-mode review,
+    // EUD-142) shipped without a translate="no" marker on this modal's
+    // content and its issuer/date detail span — this parses the raw
+    // template source and asserts the attribute is present on every element
+    // that renders credential-provenance data, across both modals. A
+    // structural regression (removing the attribute, or adding a new
+    // unshielded credential-data binding) now fails CI instead of requiring
+    // a human to remember the checklist.
+    describe('template-source structural check (F1/F8 regression guard)', () => {
+      const templateSource = readFileSync(join(__dirname, 'vc-view.component.html'), 'utf-8');
+
+      function openingTagContaining(needle: string): string {
+        const idx = templateSource.indexOf(needle);
+        expect(idx).toBeGreaterThan(-1); // the expression must actually exist in the template
+        const tagStart = templateSource.lastIndexOf('<', idx);
+        const tagEnd = templateSource.indexOf('>', tagStart);
+        return templateSource.slice(tagStart, tagEnd + 1);
+      }
+
+      it.each([
+        ['card title', '{{ displayName() || credentialType }}'],
+        ['card preview value', '{{ field.value }}'],
+        ['drawer issuer name', '{{ issuedBy }}'],
+        ['drawer content container', 'class="drawer-content"'],
+        ['verification row value (issuer/dates)', '{{ row.value }}'],
+        ['power value', '{{ item.value || item.label }}'],
+        ['claim field value', '[title]="field.value"'],
+      ])('%s carries [attr.translate]="\'no\'"', (_name, needle) => {
+        expect(openingTagContaining(needle)).toContain('[attr.translate]="\'no\'"');
+      });
     });
   });
 

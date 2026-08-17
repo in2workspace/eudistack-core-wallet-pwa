@@ -1,7 +1,10 @@
 import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { Router, ActivatedRoute } from '@angular/router';
+import { TranslateModule } from '@ngx-translate/core';
 import { EMPTY, of } from 'rxjs';
 import { CredentialsPage } from './credentials.page';
+import { VcViewComponent } from 'src/app/shared/components/vc-view/vc-view.component';
 import { AuthorizationRequestService } from 'src/app/core/protocol/oid4vp/authorization-request.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
@@ -14,6 +17,7 @@ import { IssuerMetadataCacheService } from 'src/app/core/services/issuer-metadat
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { HapticService } from 'src/app/shared/services/haptic.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
+import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
 import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
 import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engine.service';
 import { StorageService } from 'src/app/shared/services/storage.service';
@@ -87,7 +91,10 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [CredentialsPage],
+      // TranslateModule.forRoot() only needed once the translate="no" shielding tests
+      // below render app-vc-view, which transitively injects TranslateService — every
+      // other test in this spec never renders the template.
+      imports: [CredentialsPage, TranslateModule.forRoot()],
       providers: [
         { provide: Router, useValue: mockRouter },
         // EMPTY prevents the constructor's queryParams subscription from emitting synchronously,
@@ -108,7 +115,20 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
         { provide: HapticService, useValue: { notification: jest.fn() } },
         { provide: CredentialVerificationService, useValue: { isRevoked: jest.fn().mockResolvedValue(false) } },
         { provide: Oid4vciEngineService, useValue: { performOid4vciFlow: jest.fn() } },
-        { provide: UserPreferencesService, useValue: {} },
+        // privacyBlur() is only exercised by the translate="no" shielding tests below,
+        // which render the card-grid (app-vc-view needs it for [blurred]) — every other
+        // test in this spec never renders the template.
+        { provide: UserPreferencesService, useValue: { privacyBlur: jest.fn().mockReturnValue(false) } },
+        // Likewise only needed once app-vc-view actually renders.
+        {
+          provide: CredentialDisplayService,
+          useValue: {
+            getCardFields: jest.fn().mockResolvedValue([]),
+            getDisplayName: jest.fn().mockResolvedValue('Test Credential'),
+            getFormatLabel: jest.fn().mockReturnValue(''),
+            getDetailSections: jest.fn().mockResolvedValue([]),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -239,6 +259,33 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
         expect.any(Object)
       );
     }));
+  });
+
+  // AC-10 / NFR-S-142-08 / EC-09 (EUD-142, AD-4): the app-vc-view host itself is marked
+  // non-translatable, reinforcing the component's own credential-card shielding — and
+  // this must coexist with the privacy blur (EC-09: orthogonal, blur is CSS-only, never
+  // touches translate state).
+  describe('translate="no" shielding on the credential grid (AC-10, NFR-S-142-08, EC-09)', () => {
+    it('marks the app-vc-view host as non-translatable', () => {
+      mockCredentialCacheService.credentials.mockReturnValue([mockValidVc]);
+      fixture.detectChanges();
+
+      const host = fixture.nativeElement.querySelector('.card-grid app-vc-view');
+      expect(host.getAttribute('translate')).toBe('no');
+    });
+
+    it('keeps the host non-translatable while the privacy blur is active (EC-09)', () => {
+      // EC-09: blur is orthogonal CSS state on the card, not on translate — the two
+      // must coexist without either one overriding the other.
+      (TestBed.inject(UserPreferencesService).privacyBlur as unknown as jest.Mock).mockReturnValue(true);
+      mockCredentialCacheService.credentials.mockReturnValue([mockValidVc]);
+      fixture.detectChanges();
+
+      const host = fixture.nativeElement.querySelector('.card-grid app-vc-view');
+      expect(host.getAttribute('translate')).toBe('no');
+      const vcView = fixture.debugElement.query(By.directive(VcViewComponent)).componentInstance as VcViewComponent;
+      expect(vcView.blurred()).toBe(true);
+    });
   });
 
   describe('ionViewWillEnter — display refresh guard (avoids overlap with protocol flows)', () => {
