@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **UX/UI redesign of the credentials section, login and header menu** — presentation only; no change to protocol flows, credential storage or verification logic.
+  - **Credentials list**: full-width, flat cards replace the gradient + Apple Wallet-style overlap, with a four-column preview (Name, Issuer ID, Status, Expiry) and a colour-coded status badge. New header with the section title and a Show/Hide data toggle — hiding now masks every value with a fixed-length string instead of blurring the card, and leaves the lifecycle status readable.
+  - **Empty state**: illustration, a "Scan QR code" CTA wired to the scanner, and a three-step "How does it work?" guide.
+  - **Credential detail**: now a right-hand drawer on desktop (full-screen sheet on mobile) with a pinned header. Verification runs inside it — spinner, then a green/red result shield — replacing the separate verification modal; the check button stays disabled for a few seconds after each run.
+  - **Login**: device-name field restored on the passkey step (lost in an earlier redesign pass), plus spacing and layout fixes.
+  - **Header menu**: new "Signed in as" block showing the signed-in email.
+  - `ion-button` no longer uppercases its label app-wide (Ionic's Material default), replacing four per-page overrides.
 - **EUD-221 — `@ngx-translate/http-loader` aligned to `16.0.1`**: was pinned to `^8.0.0`, resolving `8.0.0`, which publishes `"SEE LICENSE IN LICENSE"` instead of a machine-readable SPDX identifier (SPDX License List / SPDX License Expressions), an auditability gap under NIS2 Art. 21.2(d) and CRA Annex I Part II. `16.0.1` declares `MIT` explicitly and is already the version used by `eudistack-mfe-login`/`eudistack-cgcom-mfe-issuance-portal`, same loader instantiation signature. No application code change, no observable behavior change.
 
 ### Added
