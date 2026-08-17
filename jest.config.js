@@ -41,6 +41,9 @@ module.exports = {
     "src/app/features/activity/activity.page.ts",
     "src/app/features/about/**/*.ts",
     "src/app/core/constants/support.constants.ts",
+    "src/app/core/services/credential-verification.service.ts",
+    "src/app/shared/components/vc-view/vc-view.component.ts",
+    "src/app/features/credentials/credentials.page.ts",
   ],
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/', 

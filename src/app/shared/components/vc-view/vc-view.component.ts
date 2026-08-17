@@ -210,9 +210,9 @@ export class VcViewComponent {
       await this.delay(400);
       const hasFailed = this.verificationChecks.some(c => c.status === 'failed');
       const hasError = this.verificationChecks.some(c => c.status === 'error');
-      this.verifyOverall = hasFailed ? 'invalid' : hasError ? 'unknown' : 'valid';
 
       if (hasFailed) {
+        this.verifyOverall = 'invalid';
         const statusCheck = this.verificationChecks.find(c => c.key === 'status');
         const expirationCheck = this.verificationChecks.find(c => c.key === 'expiration');
 
@@ -226,9 +226,12 @@ export class VcViewComponent {
           this.verifyResultKey = 'verification.result-invalid';
         }
       } else if (hasError) {
+        this.verifyOverall = 'unknown';
         // A check could not be completed (e.g. status list unreachable) — never
         // reported as valid nor as a confirmed failure (fail-closed on uncertainty).
         this.verifyResultKey = 'verification.result-unknown';
+      } else {
+        this.verifyOverall = 'valid';
       }
     } catch {
       // TODO: Review behavior in case of error

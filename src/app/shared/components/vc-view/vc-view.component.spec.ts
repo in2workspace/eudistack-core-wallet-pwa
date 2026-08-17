@@ -561,6 +561,20 @@ describe('VcViewComponent', () => {
       expect(walletService.updateCredentialStatus).toHaveBeenCalledWith('testId', 'REVOKED');
     });
 
+    it('should end as "invalid" with the generic message when a check fails for a reason other than revocation or expiration', async () => {
+      // Arrange
+      verificationService.getCheckKeys.mockReturnValue(['issuer']);
+      verificationService.runCheck.mockResolvedValue({ key: 'issuer', status: 'failed' });
+
+      // Act
+      await component.verifyCredential();
+
+      // Assert
+      expect(component.verifyOverall).toBe('invalid');
+      expect(component.verifyResultKey).toBe('verification.result-invalid');
+      expect(walletService.updateCredentialStatus).not.toHaveBeenCalled();
+    });
+
     it('should end as "valid" when every check passes', async () => {
       // Arrange
       verificationService.getCheckKeys.mockReturnValue(['issuer', 'status']);
