@@ -126,7 +126,7 @@ export class UiTranslationCacheService {
   private async touch(cacheKey: string): Promise<void> {
     const index = await this.readIndex();
     const now = Date.now();
-    const existing = index.find(e => e.cacheKey === cacheKey);
+    const existing = index.some(e => e.cacheKey === cacheKey);
     const next = existing
       ? index.map(e => (e.cacheKey === cacheKey ? { cacheKey, lastUsedAt: now } : e))
       : [...index, { cacheKey, lastUsedAt: now }];

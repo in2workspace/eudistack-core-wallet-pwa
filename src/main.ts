@@ -1,4 +1,4 @@
-import { APP_INITIALIZER, enableProdMode, importProvidersFrom, isDevMode } from '@angular/core';
+import { APP_INITIALIZER, enableProdMode, importProvidersFrom, inject, isDevMode, provideAppInitializer } from '@angular/core';
 import { provideServiceWorker } from '@angular/service-worker';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { RouteReuseStrategy, provideRouter } from '@angular/router';
@@ -55,11 +55,10 @@ function initializePasskeyStore(store: PasskeyStoreService): () => Promise<void>
  * initializeTheme so the native language is already active when
  * restoreFromPreference()'s internal activate() call reads it.
  */
-function restoreUiTranslation(service: UiTextTranslationService): () => Promise<void> {
-  return () => {
-    void service.restoreFromPreference();
-    return Promise.resolve();
-  };
+function restoreUiTranslation(): Promise<void> {
+  const service = inject(UiTextTranslationService);
+  void service.restoreFromPreference();
+  return Promise.resolve();
 }
 
 disableTouchScrollOnPaths(
@@ -110,12 +109,12 @@ bootstrapApplication(AppComponent, {
       multi: true
     },
     // Must run after initializeTheme (native language already active).
-    {
-      provide: APP_INITIALIZER,
-      useFactory: restoreUiTranslation,
-      deps: [UiTextTranslationService],
-      multi: true
-    },
+    // Uses provideAppInitializer() (Angular 19+), not the legacy
+    // { provide: APP_INITIALIZER, useFactory, deps, multi: true } object
+    // literal used by the sibling initializers above — both resolve to the
+    // same underlying APP_INITIALIZER multi-token and run in provider-array
+    // order, so the "after initializeTheme" ordering guarantee is preserved.
+    provideAppInitializer(restoreUiTranslation),
     importProvidersFrom(
       TranslateModule.forRoot({
         loader: {

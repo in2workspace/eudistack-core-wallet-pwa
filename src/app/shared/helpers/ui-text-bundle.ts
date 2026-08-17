@@ -103,9 +103,14 @@ export function isExcludedKey(key: UiTextKey | string): boolean {
 export function hashUiBundle(json: string): string {
   let hash = 0x811c9dc5; // FNV offset basis (32-bit)
   for (let i = 0; i < json.length; i++) {
-    hash ^= json.charCodeAt(i);
-    // hash *= FNV prime (0x01000193), via shifts to stay in 32-bit int arithmetic
-    hash = (hash + ((hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24))) | 0;
+    hash ^= json.codePointAt(i) ?? 0;
+    // hash *= FNV prime (0x01000193), via shifts to stay in 32-bit int arithmetic.
+    // The `| 0` is NOT a decimal-truncation idiom (Sonar S3854 flags it as one,
+    // suggesting Math.trunc) — it's ToInt32 wraparound, load-bearing for the
+    // additions/shifts above staying within 32-bit signed range every
+    // iteration. Math.trunc() would NOT wrap an out-of-32-bit-range value and
+    // would silently break this hash's determinism. NOSONAR: false positive.
+    hash = (hash + ((hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24))) | 0; // NOSONAR
   }
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
@@ -123,7 +128,7 @@ const PLACEHOLDER_RE = /\{\{\s*([\w.]+)\s*\}\}/g;
  */
 const SENTINEL_OPEN = '⦃';
 const SENTINEL_CLOSE = '⦄';
-const SENTINEL_RE = new RegExp(`${SENTINEL_OPEN}([\\w.]+)${SENTINEL_CLOSE}`, 'g');
+const SENTINEL_RE = new RegExp(String.raw`${SENTINEL_OPEN}([\w.]+)${SENTINEL_CLOSE}`, 'g');
 
 /**
  * Replaces every `{{ param }}` interpolation marker in `text` with a sentinel
@@ -172,7 +177,7 @@ export function hasIntactPlaceholders(source: string, translated: string): boole
     for (const match of text.matchAll(PLACEHOLDER_RE)) {
       params.push(match[1]);
     }
-    return params.sort();
+    return params.sort((a, b) => a.localeCompare(b));
   };
 
   const sourceParams = extractParams(source);

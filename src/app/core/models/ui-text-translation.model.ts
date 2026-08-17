@@ -11,9 +11,14 @@
 /**
  * A BCP 47 language tag (e.g. `'el'`, `'ar'`, `'es'`). Documented alias, not a
  * validated type: validity is enforced at the boundary (candidate language list,
- * `Translator.availability()`), not by the type system.
+ * `Translator.availability()`), not by the type system. Sonar flags aliases of
+ * primitive types as redundant (typescript:S6564) — kept deliberately: it is
+ * self-documenting at every one of its dozens of call sites across this
+ * layer, and making it a genuinely validated branded type (like `UiTextKey`)
+ * would be overkill for a value that is never trusted without a runtime
+ * check anyway. NOSONAR: intentional, not an oversight.
  */
-export type LanguageTag = string;
+export type LanguageTag = string; // NOSONAR
 
 /**
  * Nominal (branded) type for i18n keys that are safe to hand to the translation

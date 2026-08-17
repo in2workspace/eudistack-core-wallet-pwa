@@ -61,7 +61,7 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
     // allowedKeys/entries pair) still aborts the WHOLE batch rather than
     // translating everything except that one entry: the rejected text
     // itself is never logged, only the fact that a rejection happened.
-    const rejected = entries.find(entry => !allowedKeys.has(entry.key) || isExcludedKey(entry.key));
+    const rejected = entries.some(entry => !allowedKeys.has(entry.key) || isExcludedKey(entry.key));
     if (rejected) {
       this.telemetry.track('ui_translation_rejected_entry', {
         sourceLanguage: pair.sourceLanguage,

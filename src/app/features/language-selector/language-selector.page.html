@@ -20,10 +20,10 @@
       <p class="settings-desc translation-description">{{ "ui-translation.description" | translate }}</p>
 
       @if (translationStatus() === 'unavailable') {
-        <div class="translation-state translation-state--unavailable" role="status">
+        <output class="translation-state translation-state--unavailable">
           <p>{{ "ui-translation.state-unavailable" | translate }}</p>
           <p class="settings-desc">{{ "ui-translation.state-unavailable-hint" | translate }}</p>
-        </div>
+        </output>
       } @else {
         <ion-item class="item translation-toggle-item" lines="none">
           <ion-label>{{ "ui-translation.toggle-label" | translate }}</ion-label>
@@ -56,19 +56,19 @@
         }
 
         @if (translationStatus() === 'preparing') {
-          <div class="translation-state translation-state--progress" role="status">
+          <output class="translation-state translation-state--progress">
             <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
             <p>{{ "ui-translation.state-preparing" | translate }}</p>
             @if (translationProgress(); as progress) {
               <ion-progress-bar [value]="progress.total > 0 ? progress.done / progress.total : 0"></ion-progress-bar>
             }
-          </div>
+          </output>
         }
 
         @if (translationStatus() === 'error') {
           <div class="translation-state translation-state--error" role="alert">
             <p>{{ "ui-translation.state-error" | translate }}</p>
-            <ion-button fill="outline" size="small" (click)="retryTranslation()">
+            <ion-button fill="outline" size="small" (keydown)="retryTranslation()" (click)="retryTranslation()">
               {{ "ui-translation.retry" | translate }}
             </ion-button>
           </div>
