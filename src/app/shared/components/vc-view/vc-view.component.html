@@ -241,13 +241,14 @@
           }
         </div>
 
-        <!-- Overall result banner -->
-        @if(verifyOverall !== 'pending') {
+        <!-- Overall result banner — confirmed outcomes only (valid/invalid).
+             The 'unknown' outcome (check could not complete) is delivered as a
+             top notification instead, see verifyCredential(). -->
+        @if(verifyOverall === 'valid' || verifyOverall === 'invalid') {
           <div class="verify-result"
                [class.verify-result--valid]="verifyOverall === 'valid'"
-               [class.verify-result--invalid]="verifyOverall === 'invalid'"
-               [class.verify-result--unknown]="verifyOverall === 'unknown'">
-            <ion-icon [name]="verifyOverall === 'valid' ? 'checkmark-circle' : verifyOverall === 'unknown' ? 'help-circle' : 'alert-circle'" aria-hidden="true"></ion-icon>
+               [class.verify-result--invalid]="verifyOverall === 'invalid'">
+            <ion-icon [name]="verifyOverall === 'valid' ? 'checkmark-circle' : 'alert-circle'" aria-hidden="true"></ion-icon>
             <span>{{ (verifyOverall === 'valid' ? "verification.result-valid" : verifyResultKey) | translate }}</span>
           </div>
         }

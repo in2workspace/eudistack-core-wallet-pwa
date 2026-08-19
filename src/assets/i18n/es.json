@@ -458,7 +458,7 @@
     "result-invalid": "La credencial tiene problemas",
     "result-revoked": "Credencial revocada",
     "result-expired": "Credencial caducada",
-    "result-unknown": "No se ha podido comprobar el estado de revocación",
+    "result-unknown": "Por un problema ajeno a esta aplicación no se ha podido comprobar el estado de revocación. Vuelve a intentarlo dentro de unos minutos.",
     "check-issuer": "Emisor",
     "check-issuance": "Fecha de emisión",
     "check-expiration": "Fecha de expiración",

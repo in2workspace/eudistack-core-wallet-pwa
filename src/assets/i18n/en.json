@@ -458,7 +458,7 @@
     "result-invalid": "Credential has issues",
     "result-revoked": "Credential revoked",
     "result-expired": "Credential expired",
-    "result-unknown": "Revocation status could not be checked",
+    "result-unknown": "Due to a problem outside this app, we couldn't check the revocation status. Please try again in a few minutes.",
     "check-issuer": "Issuer",
     "check-issuance": "Issuance date",
     "check-expiration": "Expiration date",
