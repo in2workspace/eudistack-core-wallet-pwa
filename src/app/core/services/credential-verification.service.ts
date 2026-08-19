@@ -53,7 +53,10 @@ export class CredentialVerificationService {
         this.http.get(status.statusListCredential, { responseType: 'text' })
       );
       const revoked = this.checkBitInStatusList(jwt, status.statusListIndex);
-      return revoked === null ? this.fallbackOnUncertainty(credential) : (revoked ? 'revoked' : 'not-revoked');
+      if (revoked === null) {
+        return this.fallbackOnUncertainty(credential);
+      }
+      return revoked ? 'revoked' : 'not-revoked';
     } catch {
       return this.fallbackOnUncertainty(credential);
     }
@@ -140,7 +143,7 @@ export class CredentialVerificationService {
   /** Returns null when the status can't be determined — never false on uncertainty. */
   private checkBitInStatusList(jwt: string, index: string): boolean | null {
     const bitIndex = parseInt(index, 10);
-    if (isNaN(bitIndex)) return null;
+    if (Number.isNaN(bitIndex)) return null;
 
     const payload = this.decodeJwtPayload(jwt);
     if (!payload) return null;
