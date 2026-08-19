@@ -116,6 +116,56 @@ describe('CredentialVerificationService', () => {
       expect(result).not.toBe('not-revoked');
     });
 
+    it('should return "unknown", never "not-revoked", when the response body is not a parseable JWT', async () => {
+      // Arrange
+      const credential = buildCredential();
+
+      // Act
+      const resultPromise = service.isRevoked(credential);
+      httpTestingController.expectOne(STATUS_LIST_URL).flush('this is not a jwt');
+      const result = await resultPromise;
+
+      // Assert — a 200 response with unparseable content is uncertainty too, not
+      // a confirmed "not revoked" answer.
+      expect(result).toBe('unknown');
+      expect(result).not.toBe('not-revoked');
+    });
+
+    it('should return "unknown", never "not-revoked", when statusListIndex is not numeric', async () => {
+      // Arrange
+      const credential = buildCredential({
+        credentialStatus: {
+          id: 'status-1',
+          type: 'BitstringStatusListEntry',
+          statusPurpose: 'revocation',
+          statusListIndex: 'not-a-number',
+          statusListCredential: STATUS_LIST_URL,
+        },
+      });
+
+      // Act
+      const resultPromise = service.isRevoked(credential);
+      httpTestingController.expectOne(STATUS_LIST_URL).flush(buildStatusListJwt(false));
+      const result = await resultPromise;
+
+      // Assert
+      expect(result).toBe('unknown');
+      expect(result).not.toBe('not-revoked');
+    });
+
+    it('should return "revoked" when the response is unparseable but the credential was already known REVOKED locally', async () => {
+      // Arrange
+      const credential = buildCredential({ lifeCycleStatus: 'REVOKED' });
+
+      // Act
+      const resultPromise = service.isRevoked(credential);
+      httpTestingController.expectOne(STATUS_LIST_URL).flush('this is not a jwt');
+      const result = await resultPromise;
+
+      // Assert
+      expect(result).toBe('revoked');
+    });
+
     it('should return "revoked" when the request fails but the credential was already known REVOKED locally', async () => {
       // Arrange
       const credential = buildCredential({ lifeCycleStatus: 'REVOKED' });
