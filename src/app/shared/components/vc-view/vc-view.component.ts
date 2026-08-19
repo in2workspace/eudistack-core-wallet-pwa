@@ -229,7 +229,10 @@ export class VcViewComponent {
         this.verifyOverall = 'unknown';
         // A check could not be completed (e.g. status list unreachable) — never
         // reported as valid nor as a confirmed failure (fail-closed on uncertainty).
-        this.verifyResultKey = 'verification.result-unknown';
+        // Delivered as a top notification, consistent with the rest of the app's
+        // transient messages, instead of the in-modal result banner (used for
+        // confirmed outcomes only).
+        this.toastService.showInfoToastByTranslateLabel('verification.result-unknown', 5000, 'warning');
       } else {
         this.verifyOverall = 'valid';
       }

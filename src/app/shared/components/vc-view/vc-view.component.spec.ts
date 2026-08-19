@@ -527,7 +527,7 @@ describe('VcViewComponent', () => {
       jest.spyOn(component as any, 'delay').mockResolvedValue(undefined);
     });
 
-    it('should end as "unknown" and NOT persist REVOKED when the status check could not be completed', async () => {
+    it('should end as "unknown", notify via toast (not the in-modal banner), and NOT persist REVOKED when the status check could not be completed', async () => {
       // Arrange
       verificationService.getCheckKeys.mockReturnValue(['status']);
       verificationService.runCheck.mockResolvedValue({
@@ -536,13 +536,16 @@ describe('VcViewComponent', () => {
         detail: 'verification.detail-check-error',
       });
       const updateStatusSpy = jest.spyOn(walletService, 'updateCredentialStatus');
+      const toastSpy = jest.spyOn((component as any).toastService, 'showInfoToastByTranslateLabel').mockImplementation(() => {});
 
       // Act
       await component.verifyCredential();
 
-      // Assert — fail-closed on uncertainty: never shown as valid, never persisted as revoked
+      // Assert — fail-closed on uncertainty: never shown as valid, never persisted as revoked;
+      // the explanation is delivered as a top notification, consistent with the rest of the
+      // app's messages, not the in-modal result banner (reserved for confirmed outcomes).
       expect(component.verifyOverall).toBe('unknown');
-      expect(component.verifyResultKey).toBe('verification.result-unknown');
+      expect(toastSpy).toHaveBeenCalledWith('verification.result-unknown', 5000, 'warning');
       expect(updateStatusSpy).not.toHaveBeenCalled();
     });
 
