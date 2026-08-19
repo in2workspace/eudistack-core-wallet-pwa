@@ -84,7 +84,7 @@ export class ToastServiceHandler {
     this.translate.get(message).pipe(take(1)).subscribe((translatedMessage) => {
       const el = document.createElement('div');
       el.className = 'credential-toast';
-      el.setAttribute('data-variant', variant);
+      el.dataset['variant'] = variant;
       el.innerHTML = `
         <ion-icon name="${icon}"></ion-icon>
         <span>${this.escapeHtml(translatedMessage)}</span>
