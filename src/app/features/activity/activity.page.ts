@@ -2,6 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule, ModalController, ToastController, ViewWillEnter } from '@ionic/angular';
 import { SegmentValue } from '@ionic/core';
+import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ACTIVITY_FILTERS, ActivityEntry, ActivityFilter } from 'src/app/core/models/activity.model';
 import { ActivityExportLabels, ActivityExportService } from 'src/app/core/services/activity-export.service';
@@ -23,6 +24,14 @@ export class ActivityPage implements OnInit, ViewWillEnter {
   activeFilter = signal<ActivityFilter>('all');
 
   readonly filters = ACTIVITY_FILTERS;
+
+  /**
+   * Hides the "clear history" action while product decides whether the wallet
+   * keeps it at all. The flow behind it (confirmClear → ConfirmModalComponent →
+   * ActivityService.clear) stays wired and tested; flip this to re-expose it.
+   */
+  readonly clearHistoryEnabled = false;
+
   readonly formatCounterparty = formatCounterparty;
   readonly formatAbsoluteTime = (timestamp: number) => formatAbsoluteTime(timestamp, this.translate.currentLang ?? 'en');
 
@@ -35,6 +44,7 @@ export class ActivityPage implements OnInit, ViewWillEnter {
   private readonly activityService = inject(ActivityService);
   private readonly activityExportService = inject(ActivityExportService);
   private readonly modalController = inject(ModalController);
+  private readonly router = inject(Router);
   private readonly toastController = inject(ToastController);
   private readonly translate = inject(TranslateService);
 
@@ -67,11 +77,11 @@ export class ActivityPage implements OnInit, ViewWillEnter {
         descriptionKey: 'activity.clear-description',
         cancelKey: 'activity.clear-cancel',
         actionKey: 'activity.clear-action',
-        actionVariant: 'danger',
+        actionVariant: 'primary',
       },
       backdropDismiss: false,
       showBackdrop: false,
-      cssClass: 'confirm-modal',
+      cssClass: 'confirm-modal confirm-modal--wide',
     });
 
     await modal.present();
@@ -101,18 +111,38 @@ export class ActivityPage implements OnInit, ViewWillEnter {
     }
   }
 
-  formatTime(timestamp: number): string {
-    const now = Date.now();
-    const diff = now - timestamp;
-    const minutes = Math.floor(diff / 60_000);
-    const hours = Math.floor(diff / 3_600_000);
-    const days = Math.floor(diff / 86_400_000);
+  backToWallet(): void {
+    void this.router.navigate(['/tabs/credentials']);
+  }
 
-    if (minutes < 1) return this.translate.instant('activity.time-now');
-    if (minutes < 60) return this.translate.instant('activity.time-minutes', { count: minutes });
-    if (hours < 24) return this.translate.instant('activity.time-hours', { count: hours });
-    if (days < 7) return this.translate.instant('activity.time-days', { count: days });
-    return new Date(timestamp).toLocaleDateString();
+  addCredential(): void {
+    void this.router.navigate(['/tabs/credentials'], {
+      queryParams: { showScannerView: true, showScanner: true },
+    });
+  }
+
+
+  formatTime(timestamp: number): string {
+    const date = new Date(timestamp);
+    const locale = this.translate.currentLang ?? 'en';
+    const time = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }).toLowerCase();
+    return `${this.formatDatePart(date, locale)} · ${time}`;
+  }
+
+  private formatDatePart(date: Date, locale: string): string {
+    const today = new Date();
+    const isToday =
+      date.getFullYear() === today.getFullYear() &&
+      date.getMonth() === today.getMonth() &&
+      date.getDate() === today.getDate();
+
+    if (isToday) {
+      return this.translate.instant('activity.date-today');
+    }
+
+    const day = `${date.getDate()}`.padStart(2, '0');
+    const month = date.toLocaleDateString(locale, { month: 'short' }).replace('.', '');
+    return `${day} ${month.charAt(0).toUpperCase()}${month.slice(1)} ${date.getFullYear()}`;
   }
 
   exportHistory(): void {

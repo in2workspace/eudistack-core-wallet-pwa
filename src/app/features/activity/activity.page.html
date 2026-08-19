@@ -1,17 +1,44 @@
 <ion-content [fullscreen]="true" class="activity-content">
-  <ion-grid class="settings-pages-grid">
+  <ion-grid class="activity-grid">
+    <button type="button" class="back-link" (click)="backToWallet()">
+      <ion-icon name="chevron-back-outline" aria-hidden="true"></ion-icon>
+      <span>{{ "activity.back-to-wallet" | translate }}</span>
+    </button>
+
     <div class="activity-header">
-      <b class="settings-pages-title">{{ "activity.title" | translate }}</b>
-      @if (entries().length > 0) {
-        <div class="activity-header-actions">
-          <ion-button fill="clear" (click)="exportHistory()" class="export-btn">
-            {{ "activity.export" | translate }}
-          </ion-button>
-          <ion-button fill="clear" color="danger" (click)="confirmClear()" class="clear-btn">
-            {{ "activity.clear" | translate }}
-          </ion-button>
-        </div>
-      }
+      <h1 class="activity-title">{{ "activity.title" | translate }}</h1>
+
+      <div class="activity-header-actions">
+        <button
+          type="button"
+          class="header-action export-btn"
+          [disabled]="entries().length === 0"
+          (click)="exportHistory()"
+        >
+          <ion-icon name="share-outline" aria-hidden="true"></ion-icon>
+          <span>{{ "activity.export" | translate }}</span>
+        </button>
+
+        <!--
+          TODO: pending product decision — `clearHistoryEnabled` is hardcoded to
+          false in activity.page.ts, so this action never renders. The flow behind
+          it (confirmClear → ConfirmModalComponent → ActivityService.clear) is
+          still wired and tested. Either delete the flag once product confirms the
+          wallet keeps the action, or remove this block and its flow altogether.
+        -->
+        @if (clearHistoryEnabled) {
+          <button
+            type="button"
+            class="header-action header-action--danger clear-btn"
+            [disabled]="entries().length === 0"
+            [attr.aria-label]="'activity.clear' | translate"
+            (click)="confirmClear()"
+          >
+            <ion-icon name="trash-outline" aria-hidden="true"></ion-icon>
+            <span class="header-action__label">{{ "activity.clear" | translate }}</span>
+          </button>
+        }
+      </div>
     </div>
 
     <ion-segment scrollable [value]="activeFilter()" (ionChange)="setFilter($event.detail.value)" class="activity-filter">
@@ -29,10 +56,21 @@
     }
 
     @if (!loading() && entries().length === 0) {
-      <div class="state-container">
-        <ion-icon name="time-outline" class="empty-icon"></ion-icon>
-        <ion-text color="medium">{{ "activity.empty" | translate }}</ion-text>
-        <ion-text color="medium" class="empty-hint">{{ "activity.empty-hint" | translate }}</ion-text>
+      <div class="state-container empty-state">
+        <h2 class="empty-title">{{ "activity.empty" | translate }}</h2>
+
+        <img
+          src="assets/svg/activity_search.svg"
+          alt=""
+          aria-hidden="true"
+          class="empty-illustration"
+        />
+
+        <p class="empty-hint">{{ "activity.empty-hint" | translate }}</p>
+
+        <button type="button" class="empty-cta" (click)="addCredential()">
+          {{ "activity.empty-cta" | translate }}
+        </button>
       </div>
     }
 
@@ -69,9 +107,11 @@
                   {{ "activity.subtitle-" + entry.type | translate: { counterparty: counterparty } }}
                 </p>
               }
-              <p class="activity-credential-name" [attr.translate]="'no'">{{ entry.credentialName }}</p>
+              <div class="activity-card-footer">
+                <p class="activity-credential-name" [attr.translate]="'no'">{{ entry.credentialName }}</p>
+                <span class="activity-time" [title]="formatAbsoluteTime(entry.timestamp)">{{ formatTime(entry.timestamp) }}</span>
+              </div>
             </div>
-            <span class="activity-time" [title]="formatAbsoluteTime(entry.timestamp)">{{ formatTime(entry.timestamp) }}</span>
           </div>
         }
       </div>
