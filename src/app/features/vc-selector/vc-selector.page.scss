@@ -108,6 +108,10 @@
   gap: 16px;
   padding: 16px 20px;
 
+  @include respond-to(lg) {
+    padding-inline: clamp(32px, 8vw, 120px);
+  }
+
   .selectable-card {
     opacity: 0;
     animation: card-slide-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -127,9 +131,16 @@
   display: block;
   position: relative;
   width: 100%;
+  // 400px squeezes the card's four preview columns (name / issuer / status /
+  // expiry) until they ellipsize. From tablet up the card gets the same room it
+  // has on the credential list page, capped so it stays readable on wide screens.
   max-width: 400px;
   cursor: pointer;
   border-radius: 24px;
+
+  @include respond-to(lg) {
+    max-width: 900px;
+  }
   transition:
     transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 0.3s ease;
