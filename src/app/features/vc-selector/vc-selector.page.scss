@@ -125,15 +125,11 @@
 }
 
 .selectable-card {
-  // Reset native button styles but keep block layout
   all: unset;
   box-sizing: border-box;
   display: block;
   position: relative;
   width: 100%;
-  // 400px squeezes the card's four preview columns (name / issuer / status /
-  // expiry) until they ellipsize. From tablet up the card gets the same room it
-  // has on the credential list page, capped so it stays readable on wide screens.
   max-width: 400px;
   cursor: pointer;
   border-radius: 24px;
