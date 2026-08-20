@@ -369,15 +369,23 @@ export class LoginPage {
    * The local `has_passkey` flag (PasskeyStoreService/IndexedDB) is per-browser,
    * not per-account: it stays `true` after a different account onboarded a passkey
    * on the same device. Right after verify-email we already hold a JWT for the
-   * account being authenticated, so we ask the server which devices THIS account
-   * actually has instead of trusting the local flag (EUD-8 tech-debt: onboarding
-   * skipped device registration when the browser had a stale passkey from
-   * another account).
+   * account being authenticated, so we check whether THIS device's local
+   * credential is among the account's server-side passkeys instead of trusting
+   * the local flag alone (EUD-8 tech-debt: onboarding skipped device registration
+   * when the browser had a stale passkey from another account).
+   *
+   * Checking `passkeys.length === 0` alone is not enough: an account can already
+   * have passkeys registered on OTHER devices, and this device's local credential
+   * (if any) must still be found among them, or `verifyPasskey()` will fail with
+   * "No passkey found" / a WebAuthn assertion error with no way to register instead.
    */
   private resolvePasskeySetupStep(): void {
+    const localCredentialId = this.prfService.getCredentialId();
+
     this.passkeyApi.listPasskeys().subscribe({
       next: (passkeys) => {
-        this.needsPasskeySetup = passkeys.length === 0;
+        this.needsPasskeySetup = !localCredentialId
+          || !passkeys.some(passkey => passkey.credentialId === localCredentialId);
         this.finishPasskeySetupStep();
       },
       error: (err) => {

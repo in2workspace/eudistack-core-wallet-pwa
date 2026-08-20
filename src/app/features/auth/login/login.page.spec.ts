@@ -169,9 +169,9 @@ describe('LoginPage (server mode)', () => {
       expect(component.deviceName).toBeTruthy();
     });
 
-    it('does not force setup when the account already has server-side passkeys', () => {
+    it('does not force setup when this device\'s local credentialId matches one of the account\'s server-side passkeys', () => {
       mockPasskeyApi.listPasskeys.mockReturnValue(of([
-        { id: 'p1', credentialId: 'cred-1', displayName: 'Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
+        { id: 'p1', credentialId: 'cred-local-1', displayName: 'This Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
       ]));
       component.email = 'existing-account@example.com';
       component.otpValue = '123456';
@@ -179,6 +179,34 @@ describe('LoginPage (server mode)', () => {
       component.verifyCode();
 
       expect(component.needsPasskeySetup).toBe(false);
+      expect(component.step).toBe('passkey');
+    });
+
+    it('forces setup when the account has other passkeys but none match this device\'s local credentialId', () => {
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([
+        { id: 'p1', credentialId: 'cred-on-phone', displayName: 'Phone', createdAt: '', lastUsedAt: null, activeSessions: 1 }
+      ]));
+      component.email = 'existing-account@example.com';
+      component.otpValue = '123456';
+
+      component.verifyCode();
+
+      expect(component.needsPasskeySetup).toBe(true);
+      expect(component.step).toBe('passkey');
+      expect(component.deviceName).toBeTruthy();
+    });
+
+    it('forces setup when this device has no local credentialId at all, even if the account has server-side passkeys', () => {
+      mockPrfService.getCredentialId.mockReturnValue(null);
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([
+        { id: 'p1', credentialId: 'cred-on-phone', displayName: 'Phone', createdAt: '', lastUsedAt: null, activeSessions: 1 }
+      ]));
+      component.email = 'existing-account@example.com';
+      component.otpValue = '123456';
+
+      component.verifyCode();
+
+      expect(component.needsPasskeySetup).toBe(true);
       expect(component.step).toBe('passkey');
     });
 
