@@ -454,13 +454,15 @@
     "result-invalid": "La credencial té problemes",
     "result-revoked": "Credencial revocada",
     "result-expired": "Credencial caducada",
+    "result-unknown": "Per un problema aliè a aquesta aplicació no s'ha pogut comprovar l'estat de revocació. Torna-ho a provar d'aquí a uns minuts.",
     "check-issuer": "Emissor",
     "check-issuance": "Data d'emissió",
     "check-expiration": "Data d'expiració",
     "check-status": "Estat de revocació",
     "detail-revoked": "Revocada",
     "detail-no-status-list": "Sense llista d'estat",
-    "detail-no-expiry": "Sense data de caducitat"
+    "detail-no-expiry": "Sense data de caducitat",
+    "detail-check-error": "No s'ha pogut verificar"
   },
   "confirmation": {
     "header": "Enviar credencial?",

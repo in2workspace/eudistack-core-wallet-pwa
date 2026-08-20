@@ -458,13 +458,15 @@
     "result-invalid": "Credential has issues",
     "result-revoked": "Credential revoked",
     "result-expired": "Credential expired",
+    "result-unknown": "Due to a problem outside this app, we couldn't check the revocation status. Please try again in a few minutes.",
     "check-issuer": "Issuer",
     "check-issuance": "Issuance date",
     "check-expiration": "Expiration date",
     "check-status": "Revocation status",
     "detail-revoked": "Revoked",
     "detail-no-status-list": "No status list",
-    "detail-no-expiry": "No expiry"
+    "detail-no-expiry": "No expiry",
+    "detail-check-error": "Could not be verified"
   },
   "confirmation": {
     "header": "Send credential?",
