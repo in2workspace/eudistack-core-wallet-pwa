@@ -372,9 +372,7 @@
       "attest": "Attest",
       "upload": "Upload"
     },
-    "issued-by": "Issued by",
-    "execute": "Execute",
-    "execute-unavailable": "This action is not available yet."
+    "issued-by": "Issued by"
   },
   "errors": {
     "default": "Something went wrong. If it keeps happening, please contact the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",

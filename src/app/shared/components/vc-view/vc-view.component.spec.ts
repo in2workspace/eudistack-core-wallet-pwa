@@ -584,7 +584,8 @@ describe('VcViewComponent', () => {
         ['drawer issuer name', '{{ issuedBy }}'],
         ['drawer content container', 'class="drawer-content"'],
         ['verification row value (issuer/dates)', '{{ row.value }}'],
-        ['power value', '{{ item.value || item.label }}'],
+        ['power name', '{{ item.label }}'],
+        ['power action', '{{ action }}'],
         ['claim field value', '[title]="field.value"'],
       ])('%s carries [attr.translate]="\'no\'"', (_name, needle) => {
         expect(openingTagContaining(needle)).toContain('[attr.translate]="\'no\'"');

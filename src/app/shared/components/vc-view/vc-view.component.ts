@@ -174,13 +174,11 @@ export class VcViewComponent implements OnDestroy {
     return (field.value?.length ?? 0) > 24;
   }
 
-  /**
-   * Placeholder: the mock shows an Execute action per power but the behaviour
-   * is not specified yet, so this only surfaces a notice.
-   */
-  public executePower(item: DisplayFieldItem): void {
-    console.warn('Power execution not implemented yet', item);
-    this.toastService.showErrorAlertByTranslateLabel('vc-fields.execute-unavailable').subscribe();
+  public powerActions(item: DisplayFieldItem): string[] {
+    return (item.value ?? '')
+      .split(',')
+      .map(action => action.trim())
+      .filter(Boolean);
   }
 
   private subjectName(cred: VerifiableCredential): string {

@@ -368,9 +368,7 @@
       "attest": "Acreditar",
       "upload": "Subir"
     },
-    "issued-by": "Emitida por",
-    "execute": "Ejecutar",
-    "execute-unavailable": "Esta acción todavía no está disponible."
+    "issued-by": "Emitida por"
   },
   "errors": {
     "default": "Algo ha salido mal. Si vuelve a ocurrir, contacta con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
@@ -551,15 +549,15 @@
   },
   "single-instance": {
     "type-window": "ventana",
-    "type-tab": "pesta\u00f1a",
+    "type-tab": "pestaña",
     "title-deep-link": "Credencial enviada a EUDI Wallet",
-    "title-already-open": "EUDI Wallet ya est\u00e1 abierto",
+    "title-already-open": "EUDI Wallet ya está abierto",
     "subtitle-deep-link": "La credencial se ha enviado a la {{type}} activa de EUDI Wallet. Puedes cerrar esta {{type}}.",
     "subtitle-already-open": "Ya tienes EUDI Wallet abierto en otra {{type}}. Puedes cerrar esta.",
     "hint-standalone": "Vuelve a la otra ventana de EUDI Wallet.",
-    "hint-tab": "Usa Ctrl+Tab para volver a la pesta\u00f1a activa.",
+    "hint-tab": "Usa Ctrl+Tab para volver a la pestaña activa.",
     "close-fallback-standalone": "Cierra esta ventana manualmente",
-    "close-fallback-tab": "Cierra esta pesta\u00f1a con Ctrl+W (\u2318+W en Mac)",
+    "close-fallback-tab": "Cierra esta pestaña con Ctrl+W (⌘+W en Mac)",
     "close-button": "Cerrar esta {{type}}"
   },
   "tenantNotFound": {

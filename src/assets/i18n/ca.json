@@ -433,9 +433,7 @@
       "attest": "Acreditar",
       "upload": "Pujar"
     },
-    "issued-by": "Emesa per",
-    "execute": "Executar",
-    "execute-unavailable": "Aquesta acció encara no està disponible."
+    "issued-by": "Emesa per"
   },
   "activity": {
     "title": "Activitat",
