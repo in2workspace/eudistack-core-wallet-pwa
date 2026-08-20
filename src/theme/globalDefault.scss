@@ -242,6 +242,16 @@ input[type="number"] {
 }
 
 // Dark mode   
+
+// Credential drawer in dark mode. `ion-modal` reparents it out of app-vc-view,
+// so the component's own stylesheet cannot reach it with an ancestor selector.
+// The `html` prefix is deliberate: the component rule compiles to
+// `.powers[_ngcontent]`, also (0,2,0), and component styles are injected after
+// this sheet — a plain `.dark-theme .powers` would tie and lose.
+html.dark-theme .powers {
+  background: #33436B;
+}
+
 .dark-theme {
   .copy-row__actions ion-button {
     --color: var(--text-secondary);
