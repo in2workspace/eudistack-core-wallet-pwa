@@ -123,14 +123,15 @@
   margin-bottom: var(--space-md);
 
   ion-segment-button {
+    --background-checked: #B6CAEC;
     --color: var(--text-primary);
     --color-checked: var(--text-primary);
-    --background-checked: #B6CAEC;
     --indicator-color: transparent;
     --border-radius: 14px;
-    --padding-start: 28px;
-    --padding-end: 28px;
-    min-height: 40px;
+    --padding-start: 32px;
+    --padding-end: 32px;
+    min-height: 36px;
+    height: 36px;
     font-size: 14px;
     font-weight: 600;
     text-transform: none;
@@ -139,6 +140,11 @@
     ion-label {
       white-space: nowrap;
       overflow: visible;
+    }
+
+    &::part(native) {
+      border-radius: var(--border-radius);
+      overflow: hidden;
     }
   }
 
@@ -150,7 +156,7 @@
   @include respond-to(lg) {
     ion-segment-button {
       flex: 1 1 0;
-      min-width: 0;
+      min-width: 10px;
     }
   }
 }
