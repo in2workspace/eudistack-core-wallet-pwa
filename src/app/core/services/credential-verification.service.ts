@@ -15,7 +15,8 @@ export interface VerificationCheck {
 
 /**
  * Outcome of a revocation check against the status list.
- * 'unknown' means the status list could not be reached — never inferred as 'not-revoked'.
+ * 'unknown' means the status could not be determined (unreachable or unparseable) —
+ * never inferred as 'not-revoked'.
  */
 export type RevocationCheckResult = 'revoked' | 'not-revoked' | 'unknown';
 
@@ -34,9 +35,14 @@ export class CredentialVerificationService {
   }
 
   /**
-  * Resolves revocation status from the bitstring status list.
-  * Returns 'unknown' on fetch failure — a network/backend error MUST NOT be
-  */
+   * Resolves revocation status from the bitstring status list.
+   * Returns 'unknown' whenever the status can't be determined — a network/backend
+   * fetch failure, or a 200 response whose body can't be parsed into a usable
+   * status list (malformed JWT, unrecognized shape, non-numeric index). Neither
+   * case MUST be reported as 'not-revoked' (fail-open would let a revoked
+   * credential look valid). A credential already known locally as REVOKED stays
+   * 'revoked' even under uncertainty — that fact doesn't need re-confirming.
+   */
   private async checkRevocationStatus(credential: VerifiableCredential): Promise<RevocationCheckResult> {
     const status = credential.credentialStatus;
     if (!status?.statusListCredential || !status?.statusListIndex) {
@@ -46,10 +52,19 @@ export class CredentialVerificationService {
       const jwt = await firstValueFrom(
         this.http.get(status.statusListCredential, { responseType: 'text' })
       );
-      return this.checkBitInStatusList(jwt, status.statusListIndex) ? 'revoked' : 'not-revoked';
+      const revoked = this.checkBitInStatusList(jwt, status.statusListIndex);
+      if (revoked === null) {
+        return this.fallbackOnUncertainty(credential);
+      }
+      return revoked ? 'revoked' : 'not-revoked';
     } catch {
-      return credential.lifeCycleStatus === 'REVOKED' ? 'revoked' : 'unknown';
+      return this.fallbackOnUncertainty(credential);
     }
+  }
+
+  /** Shared fallback when the status list fetch fails or its content can't be parsed. */
+  private fallbackOnUncertainty(credential: VerifiableCredential): RevocationCheckResult {
+    return credential.lifeCycleStatus === 'REVOKED' ? 'revoked' : 'unknown';
   }
 
   /** Runs a single named check and returns the result */
@@ -125,11 +140,13 @@ export class CredentialVerificationService {
     };
   }
 
-  private checkBitInStatusList(jwt: string, index: string): boolean {
+  /** Returns null when the status can't be determined — never false on uncertainty. */
+  private checkBitInStatusList(jwt: string, index: string): boolean | null {
     const bitIndex = parseInt(index, 10);
-    if (isNaN(bitIndex)) return false;
+    if (Number.isNaN(bitIndex)) return null;
 
     const payload = this.decodeJwtPayload(jwt);
+    if (!payload) return null;
 
     let encodedList: string | undefined =
       payload?.vc?.credentialSubject?.encodedList
@@ -139,7 +156,7 @@ export class CredentialVerificationService {
       return this.checkTokenStatusList(payload.status_list.lst, payload.status_list.bits ?? 1, bitIndex);
     }
 
-    if (!encodedList) return false;
+    if (!encodedList) return null;
 
     if (encodedList.startsWith('u')) {
       encodedList = encodedList.substring(1);
