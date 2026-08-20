@@ -1,7 +1,7 @@
 import { Component, OnInit, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
+import { Router } from '@angular/router';
 import { TranslateModule,TranslateService } from '@ngx-translate/core';
 import { StorageService } from 'src/app/shared/services/storage.service';
 import { BehaviorSubject, distinctUntilChanged, shareReplay } from 'rxjs';
@@ -12,7 +12,7 @@ import { LanguageTag } from 'src/app/core/models/ui-text-translation.model';
     selector: 'app-language-selector',
     templateUrl: './language-selector.page.html',
     styleUrls: ['./language-selector.page.scss'],
-    imports: [IonicModule, CommonModule, FormsModule, TranslateModule]
+    imports: [IonicModule, CommonModule, TranslateModule]
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class LanguageSelectorPage implements OnInit {
@@ -43,6 +43,7 @@ export class LanguageSelectorPage implements OnInit {
   );
 
   private storageService = inject(StorageService);
+  private readonly router = inject(Router);
 
   // --- EUD-142: runtime UI translation section ------------------------------
 
@@ -81,6 +82,10 @@ export class LanguageSelectorPage implements OnInit {
     void this.uiTranslation.probeAvailability();
     this.selectedTargetLanguage = this.uiTranslation.targetLanguage();
     void this.uiTranslation.restoreFromPreference();
+  }
+
+  public backToWallet(): void {
+    void this.router.navigate(['/tabs/credentials']);
   }
 
   public languageChange(code: string) {

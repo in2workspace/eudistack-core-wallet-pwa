@@ -60,7 +60,9 @@
     "install-hint": "Instala la app para una mejor experiencia"
   },
   "language-selector": {
-    "title": "Selector de idioma"
+    "title": "Idioma",
+    "subtitle": "Elige el idioma de la interfaz de la wallet.",
+    "back-to-wallet": "Volver a la wallet"
   },
   "ui-translation": {
     "title": "¿No encuentras tu idioma?",

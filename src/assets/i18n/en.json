@@ -81,7 +81,9 @@
     "retry": "Retry"
   },
   "language-selector": {
-    "title": "Select language"
+    "title": "Language",
+    "subtitle": "Choose your preferred language for the wallet interface.",
+    "back-to-wallet": "Back to wallet"
   },
   "logs-selector": {
     "title": "View logs",

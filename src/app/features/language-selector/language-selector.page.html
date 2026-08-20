@@ -1,28 +1,41 @@
-<ion-content [fullscreen]="true" class="background-content">
-  <div class="language-grid">
-    <div class="settings-box">
-      <div class="settings-pages-title">{{"language-selector.title"|translate}}</div>
-      <ion-list class="list">
-        <ion-radio-group class="radio-group" [ngModel]="languageSelected | async" (ionChange)="languageChange($event.detail.value)">
-          @for (language of languageList; track language) {
-            <ion-item class="item" button="true" detail="false" (click)="languageChange(language.code)">
-              <ion-label>{{ language.name }}</ion-label>
-              <ion-radio [value]="language.code" mode="md" slot="start"></ion-radio>
-            </ion-item>
-          }
-        </ion-radio-group>
-      </ion-list>
+<ion-content [fullscreen]="true" class="language-content">
+  <ion-grid class="language-grid">
+    <button type="button" class="back-link" (click)="backToWallet()">
+      <ion-icon name="chevron-back-outline" aria-hidden="true"></ion-icon>
+      <span>{{ "language-selector.back-to-wallet" | translate }}</span>
+    </button>
+
+    <header class="language-header">
+      <h1 class="language-title">{{ "language-selector.title" | translate }}</h1>
+      <p class="language-subtitle">{{ "language-selector.subtitle" | translate }}</p>
+    </header>
+
+    @let currentLanguage = languageSelected | async;
+
+    <div class="language-options" role="radiogroup" [attr.aria-label]="'language-selector.title' | translate">
+      @for (language of languageList; track language.code) {
+        <button
+          type="button"
+          role="radio"
+          class="language-card"
+          [class.language-card--selected]="currentLanguage === language.code"
+          [attr.aria-checked]="currentLanguage === language.code"
+          (click)="languageChange(language.code)"
+        >
+          {{ language.name }}
+        </button>
+      }
     </div>
 
     <!-- EUD-142: runtime UI translation (additive layer over the native language above; AC-07). -->
-    <div class="settings-box translation-box">
-      <div class="settings-pages-title">{{ "ui-translation.title" | translate }}</div>
-      <p class="settings-desc translation-description">{{ "ui-translation.description" | translate }}</p>
+    <section class="settings-card translation-box">
+      <h2 class="settings-card__title">{{ "ui-translation.title" | translate }}</h2>
+      <p class="settings-card__desc translation-description">{{ "ui-translation.description" | translate }}</p>
 
       @if (translationStatus() === 'unavailable') {
         <output class="translation-state translation-state--unavailable">
           <p>{{ "ui-translation.state-unavailable" | translate }}</p>
-          <p class="settings-desc">{{ "ui-translation.state-unavailable-hint" | translate }}</p>
+          <p class="settings-card__desc">{{ "ui-translation.state-unavailable-hint" | translate }}</p>
         </output>
       } @else {
         <ion-item class="item translation-toggle-item" lines="none">
@@ -74,6 +87,6 @@
           </div>
         }
       }
-    </div>
-  </div>
+    </section>
+  </ion-grid>
 </ion-content>

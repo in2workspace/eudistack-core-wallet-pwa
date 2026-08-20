@@ -60,7 +60,9 @@
     "install-hint": "Instal·la l'app per a una millor experiència"
   },
   "language-selector": {
-    "title": "Selector d'idioma"
+    "title": "Idioma",
+    "subtitle": "Tria l'idioma de la interfície de la cartera.",
+    "back-to-wallet": "Torna a la cartera"
   },
   "ui-translation": {
     "title": "No trobes el teu idioma?",

@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { EventEmitter, signal } from '@angular/core';
 import { LangChangeEvent, TranslateModule, TranslateService } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import { Router } from '@angular/router';
 import { LanguageSelectorPage } from './language-selector.page';
 import { StorageService } from 'src/app/shared/services/storage.service';
 import { UiTextTranslationService } from 'src/app/core/services/ui-text-translation.service';
@@ -88,7 +89,8 @@ describe('LanguageSelectorPage — runtime UI translation section (EUD-142)', ()
       expect(el.textContent).toContain('ui-translation.state-unavailable');
       expect(el.textContent).toContain('ui-translation.state-unavailable-hint');
       // Native language selector (US-02) is unaffected.
-      expect(el.querySelector('.radio-group')).toBeTruthy();
+      expect(el.querySelector('.language-options')).toBeTruthy();
+      expect(el.querySelectorAll('.language-card').length).toBe(3);
     });
   });
 
@@ -260,5 +262,57 @@ describe('LanguageSelectorPage — runtime UI translation section (EUD-142)', ()
       fixture.componentInstance.onTranslationToggle(true);
       expect(translationMock.activate).toHaveBeenCalledWith('el');
     });
+  });
+});
+
+describe('LanguageSelectorPage — native language cards', () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  function cards(fixture: ComponentFixture<LanguageSelectorPage>): HTMLButtonElement[] {
+    return Array.from(fixture.nativeElement.querySelectorAll('.language-card'));
+  }
+
+  it('renders one card per supported language and marks the stored one as selected', async () => {
+    storageMock.get.mockResolvedValue('es');
+    const fixture = await createFixture(createTranslationServiceMock());
+
+    const [english, castellano, catala] = cards(fixture);
+    expect([english, castellano, catala].map((c) => c.textContent!.trim()))
+      .toEqual(['English', 'Castellano', 'Català']);
+
+    expect(castellano.classList).toContain('language-card--selected');
+    expect(castellano.getAttribute('aria-checked')).toBe('true');
+    expect(english.classList).not.toContain('language-card--selected');
+    expect(english.getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('switching card applies the language, persists it and moves the selected state', async () => {
+    storageMock.get.mockResolvedValue('es');
+    const fixture = await createFixture(createTranslationServiceMock());
+
+    cards(fixture)[0].dispatchEvent(new MouseEvent('click'));
+    fixture.detectChanges();
+
+    expect(translateServiceMock.use).toHaveBeenCalledWith('en');
+    expect(storageMock.set).toHaveBeenCalledWith('language', 'en');
+
+    const [english, castellano] = cards(fixture);
+    expect(english.classList).toContain('language-card--selected');
+    expect(castellano.classList).not.toContain('language-card--selected');
+  });
+
+  it('the header back link returns to the credential list', async () => {
+    const fixture = await createFixture(createTranslationServiceMock());
+    const router = TestBed.inject(Router);
+    const navigate = jest.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const back: HTMLElement = fixture.nativeElement.querySelector('.back-link');
+    expect(back).toBeTruthy();
+
+    back.dispatchEvent(new MouseEvent('click'));
+
+    expect(navigate).toHaveBeenCalledWith(['/tabs/credentials']);
   });
 });
