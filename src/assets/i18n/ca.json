@@ -254,6 +254,9 @@
     "wallet-mode-business": "Business Wallet"
   },
   "about": {
+    "subtitle": "Coneix més sobre la cartera, accedeix als recursos de suport i consulta la informació legal.",
+    "back-to-wallet": "Torna a la cartera",
+    "section-provider": "Proveïdor de la cartera",
     "section-info": "Informació de l'aplicació",
     "section-legal": "Legal",
     "section-support": "Suport",
@@ -267,7 +270,7 @@
     },
     "support": {
       "help-center": "Centre d'ajuda",
-      "email": "Contactar per email",
+      "email": "Contacta amb suport",
       "email-copy": "Copiar adreça",
       "email-copied": "Adreça copiada",
       "report-issue": "Reportar una incidència",

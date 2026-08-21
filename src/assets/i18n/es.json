@@ -190,6 +190,9 @@
     "wallet-mode-business": "Business Wallet"
   },
   "about": {
+    "subtitle": "Conoce más sobre la wallet, accede a los recursos de soporte y consulta la información legal.",
+    "back-to-wallet": "Volver a la wallet",
+    "section-provider": "Proveedor de la wallet",
     "section-info": "Información de la aplicación",
     "section-legal": "Legal",
     "section-support": "Soporte",
@@ -203,7 +206,7 @@
     },
     "support": {
       "help-center": "Centro de ayuda",
-      "email": "Contactar por email",
+      "email": "Contactar con soporte",
       "email-copy": "Copiar dirección",
       "email-copied": "Dirección copiada",
       "report-issue": "Reportar incidencia",
