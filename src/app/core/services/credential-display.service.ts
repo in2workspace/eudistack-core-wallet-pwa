@@ -1,17 +1,14 @@
 import { inject, Injectable } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
-import { CredentialSchemaRegistryService } from './credential-schema-registry.service';
 import { CredentialMetadata, ClaimDefinition, MetadataDisplay } from '../models/dto/CredentialIssuerMetadata';
 import { VerifiableCredential } from '../models/verifiable-credential';
 import { DisplayField, DisplayFieldItem, DisplaySection } from '../models/display-field.model';
-import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
 
 @Injectable({ providedIn: 'root' })
 export class CredentialDisplayService {
 
   private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
-  private readonly schemaRegistry = inject(CredentialSchemaRegistryService);
   private readonly translate = inject(TranslateService);
 
   private resolveDisplayName(displays: MetadataDisplay[] | undefined, fallback: string): string {
@@ -24,25 +21,12 @@ export class CredentialDisplayService {
     return fallback;
   }
 
-  /**
-   * Resolves credential metadata from:
-   * 1. Issuer metadata cache (runtime, from OID4VCI flow)
-   * 2. Bundled schema registry (preconfigured supported types)
-   */
+  /** Resolves credential metadata from the issuer metadata cache (runtime, from OID4VCI/OID4VP flows). */
   async resolveMetadata(credential: VerifiableCredential): Promise<CredentialMetadata | null> {
     const issuerMeta = await this.issuerMetadataCache.findCredentialMetadata(
       credential.id, credential.type, credential.credentialFormat
     );
-    if (issuerMeta?.claims?.length) return issuerMeta;
-
-    await this.schemaRegistry.ensureLoaded();
-    const credType = getExtendedCredentialType(credential);
-    if (isValidCredentialType(credType)) {
-      const schemaMeta = this.schemaRegistry.getCredentialMetadata(credType);
-      if (schemaMeta?.claims?.length) return schemaMeta;
-    }
-
-    return null;
+    return issuerMeta?.claims?.length ? issuerMeta : null;
   }
 
   // ── Core: shared field generation from claims ────────
@@ -83,17 +67,7 @@ export class CredentialDisplayService {
 
   /** Returns 2-3 summary fields for the card view (scalar values only). */
   async getCardFields(credential: VerifiableCredential): Promise<DisplayField[]> {
-    // For card summary, prefer schema registry (curated with summary_claims).
-    await this.schemaRegistry.ensureLoaded();
-    const credType = getExtendedCredentialType(credential);
-    let meta: CredentialMetadata | null = null;
-
-    if (isValidCredentialType(credType)) {
-      meta = this.schemaRegistry.getCredentialMetadata(credType);
-    }
-    if (!meta?.claims?.length) {
-      meta = await this.resolveMetadata(credential);
-    }
+    const meta = await this.resolveMetadata(credential);
     if (!meta?.claims?.length) return [];
 
     // Use summary_claims if defined — only include those specific claims.
