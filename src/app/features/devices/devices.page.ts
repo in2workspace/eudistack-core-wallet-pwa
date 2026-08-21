@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -37,6 +37,17 @@ export class DevicesPage implements OnInit {
   }
   readonly currentCredentialId = this.passkeyStore.getCredentialId();
 
+  readonly currentDevice = computed<PasskeyInfo | null>(() => {
+    const credentialId = this.currentCredentialId;
+    if (!credentialId) return null;
+    return this.passkeys().find((p) => p.credentialId === credentialId) ?? null;
+  });
+
+  readonly otherDevices = computed<PasskeyInfo[]>(() => {
+    const current = this.currentDevice();
+    return this.passkeys().filter((p) => p.id !== current?.id);
+  });
+
   ngOnInit(): void {
     if (!this.isServerMode) {
       // Redirect to settings if not in server mode
@@ -44,6 +55,22 @@ export class DevicesPage implements OnInit {
       return;
     }
     this.loadPasskeys();
+  }
+
+  backToWallet(): void {
+    void this.router.navigate(['/tabs/credentials']);
+  }
+
+  deviceIcon(passkey: PasskeyInfo): string {
+    const name = passkey.displayName?.toLowerCase() ?? '';
+
+    if (/ipad|tablet|galaxy tab|surface/.test(name)) {
+      return 'tablet-portrait-outline';
+    }
+    if (/iphone|android|phone|pixel|galaxy|mobile|xiaomi|huawei/.test(name)) {
+      return 'phone-portrait-outline';
+    }
+    return 'desktop-outline';
   }
 
   loadPasskeys(): void {
