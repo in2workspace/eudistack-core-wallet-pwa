@@ -1,4 +1,5 @@
-import { Component, inject, ViewChild } from '@angular/core';
+import { Component, DestroyRef, inject, ViewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AsyncPipe } from '@angular/common';
@@ -250,6 +251,7 @@ export class LoginPage {
   private readonly walletService = inject(WalletService);
   private readonly activityService = inject(ActivityService);
   private readonly credentialCache = inject(CredentialCacheService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
   readonly hasExistingPasskey = this.prfService.hasPasskey();
@@ -332,7 +334,9 @@ export class LoginPage {
     this.loading = true;
     this.errorMessage = '';
 
-    (this.authService as RemoteAuthService).register(this.email, 'login').subscribe({
+    (this.authService as RemoteAuthService).register(this.email, 'login').pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: () => {
         this.step = 'code';
         this.otpValue = '';
@@ -351,7 +355,9 @@ export class LoginPage {
     this.loading = true;
     this.errorMessage = '';
 
-    (this.authService as RemoteAuthService).verifyEmail(this.email, this.otpValue).subscribe({
+    (this.authService as RemoteAuthService).verifyEmail(this.email, this.otpValue).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: () => {
         this.passkeyFromRefreshToken = false;
         this.resolvePasskeySetupStep();
@@ -382,7 +388,9 @@ export class LoginPage {
   private resolvePasskeySetupStep(): void {
     const localCredentialId = this.prfService.getCredentialId();
 
-    this.passkeyApi.listPasskeys().subscribe({
+    this.passkeyApi.listPasskeys().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (passkeys) => {
         this.needsPasskeySetup = !localCredentialId
           || !passkeys.some(passkey => passkey.credentialId === localCredentialId);
@@ -553,7 +561,9 @@ export class LoginPage {
   }
 
   private syncCredentialCache(): void {
-    this.walletService.syncCredentials().subscribe({
+    this.walletService.syncCredentials().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       error: err => {
         // Same reasoning as syncCredentialsThenNavigate: force a terminal state
         // so the store never gets stuck in 'loading' on a failed server fetch.

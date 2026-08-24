@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **CI — control de composición de software (SCA)**
+  - **Trivy** añadido a `pr.yml`: escaneo `fs` de la raíz del repositorio (lee `package-lock.json`), severidad `HIGH,CRITICAL`, con caché de la base de vulnerabilidades, informe JSON como artefacto y `config/trivy/.trivyignore` para riesgos aceptados documentados. El parser npm de Trivy omite las dependencias de desarrollo por defecto, así que el escaneo refleja lo que llega al navegador.
+  - **`exit-code: 0` de forma deliberada:** entra como línea base, todavía no como puerta. El árbol de dependencias de producción arrastra advisories HIGH en `@angular/common`, `@angular/core` y `@angular/compiler`. Un bump de patch a `19.2.25` (última 19.x publicada) cierra CVE-2026-50170 y CVE-2026-50171; las seis restantes (CVE-2026-54266, 54267, 54268, 68945 y 69151) solo tienen fix en `20.3.25+`, `21.2.17+` o `22.x`, así que limpiar el árbol exige la subida de major de Angular. Se girará a `1` cuando esa subida aterrice o cuando los riesgos aceptados queden listados en `.trivyignore`.
+  - **SBOM CycloneDX** (`@cyclonedx/cyclonedx-npm@6.0.1`, spec 1.6, solo dependencias de producción) generado en `ci-cd.yml`, publicado como artefacto con 90 días de retención y adjuntado al GitHub Release como `sbom.cdx.json`.
+  - **Dependabot**: configuración de actualizaciones para `npm` y `github-actions`. Tener las alertas activadas no basta — sin fichero de configuración el grafo de dependencias no estaba produciendo alertas en este repositorio.
+  - `config/trivy/**` añadido al `paths-ignore` de `ci-cd.yml`: cambiar la lista de exclusiones es un cambio de política, no un despliegue.
+
+
 ### Changed
 
 - **Removed the bundled credential-schema registry — the issuer metadata endpoint is now the single source of truth for credential display metadata**: the wallet used to carry its own local copy of the JSON Schema profiles (`CredentialSchemaRegistryService`, synced at build time from `dev-tools/schemas/` into `src/assets/schemas/` and shipped in the SPA bundle), in parallel with the metadata already served live by `/.well-known/openid-credential-issuer`. That meant a config-only change (a display label, a new `value_map`) required a full app rebuild and redeploy, plus extra requests on every cold start. `CredentialDisplayService` now resolves claims, display names and `summary_claims` exclusively through `IssuerMetadataCacheService`; `CredentialSchemaRegistryService`, `scripts/sync-schemas.js` and the CI steps that checked out `dev-tools/schemas` were removed entirely.
