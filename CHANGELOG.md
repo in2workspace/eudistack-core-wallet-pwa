@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **CI — control de composición de software (SCA)**
+  - **Trivy** añadido a `pr.yml`: escaneo `fs` de la raíz del repositorio (lee `package-lock.json`), severidad `HIGH,CRITICAL`, con caché de la base de vulnerabilidades, informe JSON como artefacto y `config/trivy/.trivyignore` para riesgos aceptados documentados. El parser npm de Trivy omite las dependencias de desarrollo por defecto, así que el escaneo refleja lo que llega al navegador.
+  - **`exit-code: 0` de forma deliberada:** entra como línea base, todavía no como puerta. El árbol de dependencias de producción arrastra advisories HIGH en `@angular/common`, `@angular/core` y `@angular/compiler`. Un bump de patch a `19.2.25` (última 19.x publicada) cierra CVE-2026-50170 y CVE-2026-50171; las seis restantes (CVE-2026-54266, 54267, 54268, 68945 y 69151) solo tienen fix en `20.3.25+`, `21.2.17+` o `22.x`, así que limpiar el árbol exige la subida de major de Angular. Se girará a `1` cuando esa subida aterrice o cuando los riesgos aceptados queden listados en `.trivyignore`.
+  - **SBOM CycloneDX** (`@cyclonedx/cyclonedx-npm@6.0.1`, spec 1.6, solo dependencias de producción) generado en `ci-cd.yml`, publicado como artefacto con 90 días de retención y adjuntado al GitHub Release como `sbom.cdx.json`.
+  - **Dependabot**: configuración de actualizaciones para `npm` y `github-actions`. Tener las alertas activadas no basta — sin fichero de configuración el grafo de dependencias no estaba produciendo alertas en este repositorio.
+  - `config/trivy/**` añadido al `paths-ignore` de `ci-cd.yml`: cambiar la lista de exclusiones es un cambio de política, no un despliegue.
+
+
 ### Changed
 
 - **EUD-221 — `@ngx-translate/http-loader` aligned to `16.0.1`**: was pinned to `^8.0.0`, resolving `8.0.0`, which publishes `"SEE LICENSE IN LICENSE"` instead of a machine-readable SPDX identifier (SPDX License List / SPDX License Expressions), an auditability gap under NIS2 Art. 21.2(d) and CRA Annex I Part II. `16.0.1` declares `MIT` explicitly and is already the version used by `eudistack-mfe-login`/`eudistack-cgcom-mfe-issuance-portal`, same loader instantiation signature. No application code change, no observable behavior change.
