@@ -1,4 +1,5 @@
-import { Component, inject, ViewChild } from '@angular/core';
+import { Component, DestroyRef, inject, ViewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AsyncPipe } from '@angular/common';
@@ -250,6 +251,7 @@ export class LoginPage {
   private readonly walletService = inject(WalletService);
   private readonly activityService = inject(ActivityService);
   private readonly credentialCache = inject(CredentialCacheService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
   readonly hasExistingPasskey = this.prfService.hasPasskey();
@@ -332,7 +334,9 @@ export class LoginPage {
     this.loading = true;
     this.errorMessage = '';
 
-    (this.authService as RemoteAuthService).register(this.email, 'login').subscribe({
+    (this.authService as RemoteAuthService).register(this.email, 'login').pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: () => {
         this.step = 'code';
         this.otpValue = '';
@@ -351,15 +355,12 @@ export class LoginPage {
     this.loading = true;
     this.errorMessage = '';
 
-    (this.authService as RemoteAuthService).verifyEmail(this.email, this.otpValue).subscribe({
+    (this.authService as RemoteAuthService).verifyEmail(this.email, this.otpValue).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: () => {
-        this.loading = false;
         this.passkeyFromRefreshToken = false;
-        this.needsPasskeySetup = !this.prfService.hasPasskey();
-        if (this.needsPasskeySetup) {
-          this.deviceName = this.getDeviceName();
-        }
-        this.step = 'passkey';
+        this.resolvePasskeySetupStep();
       },
       error: (err) => {
         this.errorMessage = err?.status === 429
@@ -368,6 +369,49 @@ export class LoginPage {
         this.loading = false;
       }
     });
+  }
+
+  /**
+   * The local `has_passkey` flag (PasskeyStoreService/IndexedDB) is per-browser,
+   * not per-account: it stays `true` after a different account onboarded a passkey
+   * on the same device. Right after verify-email we already hold a JWT for the
+   * account being authenticated, so we check whether THIS device's local
+   * credential is among the account's server-side passkeys instead of trusting
+   * the local flag alone (EUD-8 tech-debt: onboarding skipped device registration
+   * when the browser had a stale passkey from another account).
+   *
+   * Checking `passkeys.length === 0` alone is not enough: an account can already
+   * have passkeys registered on OTHER devices, and this device's local credential
+   * (if any) must still be found among them, or `verifyPasskey()` will fail with
+   * "No passkey found" / a WebAuthn assertion error with no way to register instead.
+   */
+  private resolvePasskeySetupStep(): void {
+    const localCredentialId = this.prfService.getCredentialId();
+
+    this.passkeyApi.listPasskeys().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (passkeys) => {
+        this.needsPasskeySetup = !localCredentialId
+          || !passkeys.some(passkey => passkey.credentialId === localCredentialId);
+        this.finishPasskeySetupStep();
+      },
+      error: (err) => {
+        // Fail-safe: if we can't confirm the account's server-side devices, assume
+        // it needs one rather than silently skipping registration.
+        console.warn('[LoginPage] listPasskeys failed, defaulting to needsPasskeySetup=true', err);
+        this.needsPasskeySetup = true;
+        this.finishPasskeySetupStep();
+      }
+    });
+  }
+
+  private finishPasskeySetupStep(): void {
+    if (this.needsPasskeySetup) {
+      this.deviceName = this.getDeviceName();
+    }
+    this.step = 'passkey';
+    this.loading = false;
   }
 
   async verifyPasskey(): Promise<void> {
@@ -517,7 +561,9 @@ export class LoginPage {
   }
 
   private syncCredentialCache(): void {
-    this.walletService.syncCredentials().subscribe({
+    this.walletService.syncCredentials().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       error: err => {
         // Same reasoning as syncCredentialsThenNavigate: force a terminal state
         // so the store never gets stuck in 'loading' on a failed server fetch.
