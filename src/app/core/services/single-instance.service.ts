@@ -2,6 +2,7 @@ import { Injectable, OnDestroy, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from './auth.service';
+import { InstanceGroupService } from './instance-group.service';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
 
 interface SingleInstanceMessage {
@@ -10,27 +11,114 @@ interface SingleInstanceMessage {
   url?: string;
 }
 
+/** Minimal surface both a same-origin `BroadcastChannel` and `RelayTransport` implement. */
+interface MessageTransport {
+  postMessage(data: SingleInstanceMessage): void;
+  onmessage: ((ev: MessageEvent) => void) | null;
+  close(): void;
+}
+
 const CHANNEL_NAME = 'wallet-single-instance';
 const ELECTION_TIMEOUT_MS = 300;
+const RELAY_CONNECT_TIMEOUT_MS = 400;
+
+/**
+ * Bridges the single-instance `BroadcastChannel` across origins that are
+ * front-door aliases for the same wallet backend (see `InstanceGroup`).
+ *
+ * `BroadcastChannel` is scoped per-origin by the browser, so two tabs open
+ * on different aliases (e.g. the canonical domain and a DOME vanity domain)
+ * can never see each other directly. This class embeds a hidden iframe
+ * pointed at a fixed "anchor" URL (`brokerUrl`) shared by every member of
+ * the group; because the iframe always runs in that one origin regardless
+ * of which member origin embeds it, a `BroadcastChannel` opened inside it
+ * (see `instance-broker.html`) is genuinely shared across the whole group.
+ * This class only relays postMessage traffic to/from that iframe — it knows
+ * nothing about the single-instance protocol itself.
+ */
+export class RelayTransport implements MessageTransport {
+  public onmessage: ((ev: MessageEvent) => void) | null = null;
+
+  private readonly onWindowMessage = (event: MessageEvent): void => {
+    if (event.source !== this.iframe.contentWindow || event.origin !== this.brokerOrigin) {
+      return;
+    }
+    if (event.data?.type === 'RELAY_IN') {
+      this.onmessage?.({ data: event.data.payload } as MessageEvent);
+    }
+  };
+
+  private constructor(
+    private readonly iframe: HTMLIFrameElement,
+    private readonly brokerOrigin: string,
+  ) {
+    window.addEventListener('message', this.onWindowMessage);
+  }
+
+  /** Resolves once the broker iframe confirms readiness, or `null` on timeout/failure. */
+  public static connect(brokerUrl: string, timeoutMs: number): Promise<RelayTransport | null> {
+    return new Promise((resolve) => {
+      let settled = false;
+      const brokerOrigin = new URL(brokerUrl).origin;
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.setAttribute('aria-hidden', 'true');
+      iframe.src = brokerUrl;
+
+      const onReady = (event: MessageEvent): void => {
+        if (settled || event.source !== iframe.contentWindow || event.origin !== brokerOrigin) {
+          return;
+        }
+        if (event.data?.type === 'BROKER_READY') {
+          settled = true;
+          clearTimeout(timeout);
+          window.removeEventListener('message', onReady);
+          resolve(new RelayTransport(iframe, brokerOrigin));
+        }
+      };
+
+      const timeout = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        window.removeEventListener('message', onReady);
+        iframe.remove();
+        resolve(null);
+      }, timeoutMs);
+
+      window.addEventListener('message', onReady);
+      document.body.appendChild(iframe);
+    });
+  }
+
+  public postMessage(data: SingleInstanceMessage): void {
+    this.iframe.contentWindow?.postMessage({ type: 'RELAY_OUT', payload: data }, this.brokerOrigin);
+  }
+
+  public close(): void {
+    window.removeEventListener('message', this.onWindowMessage);
+    this.iframe.remove();
+  }
+}
 
 @Injectable({ providedIn: 'root' })
 export class SingleInstanceService implements OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
+  private readonly instanceGroupService = inject(InstanceGroupService);
 
-  private channel: BroadcastChannel | null = null;
+  private channel: MessageTransport | null = null;
   private readonly tabId = crypto.randomUUID();
   private isLeader = false;
 
   /** Resolves `true` if this tab becomes the leader, `false` if one already exists. */
-  public elect(): Promise<boolean> {
+  public async elect(): Promise<boolean> {
     if (!('BroadcastChannel' in window)) {
       // Unsupported browser — always act as leader.
-      return Promise.resolve(true);
+      return true;
     }
 
-    this.channel = new BroadcastChannel(CHANNEL_NAME);
+    this.channel = await this.acquireTransport();
     this.channel.onmessage = (ev: MessageEvent<SingleInstanceMessage>) => {
       this.handleMessage(ev.data);
     };
@@ -68,6 +156,28 @@ export class SingleInstanceService implements OnDestroy {
         }
       };
     });
+  }
+
+  /**
+   * Resolves the transport used for this tab's election. Grouped origins
+   * (front-door aliases sharing a backend) get the cross-origin relay;
+   * everything else — including localhost dev-network origins, which are
+   * never listed in any instance group — keeps the plain same-origin
+   * `BroadcastChannel`, unchanged from before this class existed.
+   */
+  private async acquireTransport(): Promise<MessageTransport> {
+    const group = await this.instanceGroupService.resolveGroupForOrigin();
+    if (group) {
+      const relay = await RelayTransport.connect(group.brokerUrl, RELAY_CONNECT_TIMEOUT_MS);
+      if (relay) {
+        return relay;
+      }
+      console.warn(
+        `[SingleInstanceService] Instance broker for group "${group.id}" did not respond within ${RELAY_CONNECT_TIMEOUT_MS}ms.`,
+        `Falling back to same-origin leader election — duplicate-tab detection will NOT span ${group.memberOrigins.join(', ')} for this tab.`,
+      );
+    }
+    return new BroadcastChannel(CHANNEL_NAME);
   }
 
   private becomeLeader(): void {

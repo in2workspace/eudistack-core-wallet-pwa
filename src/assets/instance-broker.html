@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Wallet instance broker</title>
+</head>
+<body>
+<script>
+  // Cross-origin relay for the wallet's single-instance guard.
+  //
+  // This page is always loaded from the same fixed "anchor" origin
+  // (instance-groups.json `brokerUrl`) regardless of which member origin
+  // embeds it. Because every embedding tab's iframe therefore shares this
+  // one origin, a BroadcastChannel opened here IS shared across tabs that
+  // are open on different front-door domains for the same backend — unlike
+  // a BroadcastChannel opened directly by the parent page, which the
+  // browser scopes strictly per-origin.
+  //
+  // The parent (SingleInstanceService) only ever sees postMessage in/out;
+  // it has no idea this relay exists. This page never inspects message
+  // contents — it is a dumb relay — so the single-instance protocol can
+  // evolve in single-instance.service.ts without touching this file.
+  (function () {
+    var CHANNEL_NAME = 'wallet-single-instance';
+    var parentOrigin = null;
+    var channel = ('BroadcastChannel' in window) ? new BroadcastChannel(CHANNEL_NAME) : null;
+
+    function isAllowedOrigin(origin, allowedOrigins) {
+      return allowedOrigins.indexOf(origin) !== -1;
+    }
+
+    fetch('/assets/tenants/instance-groups.json')
+      .then(function (res) { return res.json(); })
+      .then(function (config) {
+        var allowedOrigins = (config.groups || []).reduce(function (acc, group) {
+          return acc.concat(group.memberOrigins || []);
+        }, []);
+
+        window.addEventListener('message', function (event) {
+          if (!parent || event.source !== parent) {
+            return;
+          }
+          if (!isAllowedOrigin(event.origin, allowedOrigins)) {
+            return;
+          }
+          parentOrigin = event.origin;
+
+          if (event.data && event.data.type === 'RELAY_OUT' && channel) {
+            channel.postMessage(event.data.payload);
+          }
+        });
+
+        if (channel) {
+          channel.onmessage = function (ev) {
+            if (parentOrigin) {
+              parent.postMessage({ type: 'RELAY_IN', payload: ev.data }, parentOrigin);
+            }
+          };
+        }
+
+        // Handshake: tell the parent the relay is up. The parent doesn't know
+        // its own origin from inside the iframe context, so broadcast to '*'
+        // for this single readiness ping only — it carries no user data.
+        parent.postMessage({ type: 'BROKER_READY' }, '*');
+      })
+      .catch(function () {
+        // No config reachable — stay silent. The parent times out and falls
+        // back to same-origin behaviour (see SingleInstanceService.elect()).
+      });
+  })();
+</script>
+</body>
+</html>

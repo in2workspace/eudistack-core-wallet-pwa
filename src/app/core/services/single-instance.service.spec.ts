@@ -1,8 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
-import { SingleInstanceService } from './single-instance.service';
+import { SingleInstanceService, RelayTransport } from './single-instance.service';
 import { AuthService } from './auth.service';
+import { InstanceGroupService } from './instance-group.service';
+import { InstanceGroup } from '../models/instance-group.model';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
 
 const SINGLE_INSTANCE_I18N: Record<string, string> = {
@@ -66,6 +68,7 @@ describe('SingleInstanceService', () => {
   let routerMock: jest.Mocked<Pick<Router, 'navigateByUrl'>>;
   let authServiceMock: jest.Mocked<Pick<AuthService, 'isLoggedIn' | 'dispose'>>;
   let translateServiceMock: jest.Mocked<Pick<TranslateService, 'instant'>>;
+  let instanceGroupServiceMock: jest.Mocked<Pick<InstanceGroupService, 'resolveGroupForOrigin'>>;
   let baseQuerySpy: jest.SpyInstance;
 
   beforeAll(() => {
@@ -91,6 +94,10 @@ describe('SingleInstanceService', () => {
         return text;
       }),
     } as unknown as jest.Mocked<Pick<TranslateService, 'instant'>>;
+    // Ungrouped by default — matches every real origin except the DOME STG aliases.
+    instanceGroupServiceMock = {
+      resolveGroupForOrigin: jest.fn().mockResolvedValue(null),
+    } as unknown as jest.Mocked<Pick<InstanceGroupService, 'resolveGroupForOrigin'>>;
 
     // Simulate <base href="/wallet/"> in the document
     baseQuerySpy = jest.spyOn(document, 'querySelector').mockImplementation((selector) => {
@@ -106,6 +113,7 @@ describe('SingleInstanceService', () => {
         { provide: Router, useValue: routerMock },
         { provide: AuthService, useValue: authServiceMock },
         { provide: TranslateService, useValue: translateServiceMock },
+        { provide: InstanceGroupService, useValue: instanceGroupServiceMock },
       ],
     });
 
@@ -323,6 +331,97 @@ describe('SingleInstanceService', () => {
 
       expect(document.body.innerHTML).toContain('ventana');
       expect(document.body.innerHTML).not.toContain('Ctrl+Tab');
+    });
+  });
+
+  describe('elect() — transport selection', () => {
+    const domeStgGroup: InstanceGroup = {
+      id: 'dome-stg',
+      brokerUrl: 'https://dome.stg.eudistack.net/wallet/assets/instance-broker.html',
+      memberOrigins: [
+        'https://dome.stg.eudistack.net',
+        'https://wallet.dome-marketplace-lcl.org',
+        'https://wallet.dome-marketplace-sbx.org',
+      ],
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('uses the same-origin BroadcastChannel directly when the origin belongs to no instance group', async () => {
+      // Arrange
+      instanceGroupServiceMock.resolveGroupForOrigin.mockResolvedValue(null);
+      const connectSpy = jest.spyOn(RelayTransport, 'connect');
+
+      // Act
+      const isLeader = await service.elect();
+
+      // Assert
+      expect(connectSpy).not.toHaveBeenCalled();
+      expect(isLeader).toBe(true);
+      expect((service as any).channel).toBeInstanceOf(BroadcastChannelMock);
+    });
+
+    it('routes election through the cross-origin relay when the origin belongs to an instance group', async () => {
+      // Arrange
+      instanceGroupServiceMock.resolveGroupForOrigin.mockResolvedValue(domeStgGroup);
+      const fakeRelay = { postMessage: jest.fn(), onmessage: null, close: jest.fn() };
+      const connectSpy = jest.spyOn(RelayTransport, 'connect').mockResolvedValue(fakeRelay as any);
+
+      // Act
+      const isLeader = await service.elect();
+
+      // Assert
+      expect(connectSpy).toHaveBeenCalledWith(domeStgGroup.brokerUrl, 400);
+      expect(fakeRelay.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'NEW_TAB' }));
+      expect(isLeader).toBe(true);
+    });
+
+    it('detects a leader reachable only through the relay (cross-origin duplicate tab)', async () => {
+      // Arrange
+      instanceGroupServiceMock.resolveGroupForOrigin.mockResolvedValue(domeStgGroup);
+      const fakeRelay = {
+        postMessage: jest.fn((msg: { type: string }) => {
+          if (msg.type === 'NEW_TAB') {
+            // Delivered on a later tick, like a real cross-context postMessage/BroadcastChannel
+            // round-trip — the election code relies on that asynchrony (see the TODO in elect())
+            // to have its LEADER_ACK listener installed before any reply can arrive.
+            setTimeout(() => {
+              fakeRelay.onmessage?.({ data: { type: 'LEADER_ACK', tabId: 'other-origin-leader' } } as MessageEvent);
+            }, 0);
+          }
+        }),
+        onmessage: null as ((ev: MessageEvent) => void) | null,
+        close: jest.fn(),
+      };
+      jest.spyOn(RelayTransport, 'connect').mockResolvedValue(fakeRelay as any);
+
+      // Act
+      const isLeader = await service.elect();
+
+      // Assert
+      expect(isLeader).toBe(false);
+      expect(document.body.innerHTML).toContain('EUDI Wallet ya está abierto');
+      expect(fakeRelay.close).toHaveBeenCalled();
+    });
+
+    it('logs a warning and falls back to the same-origin BroadcastChannel when the relay does not connect in time', async () => {
+      // Arrange
+      instanceGroupServiceMock.resolveGroupForOrigin.mockResolvedValue(domeStgGroup);
+      jest.spyOn(RelayTransport, 'connect').mockResolvedValue(null);
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      // Act
+      const isLeader = await service.elect();
+
+      // Assert
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('dome-stg'),
+        expect.stringContaining('dome.stg.eudistack.net'),
+      );
+      expect(isLeader).toBe(true);
+      expect((service as any).channel).toBeInstanceOf(BroadcastChannelMock);
     });
   });
 });
