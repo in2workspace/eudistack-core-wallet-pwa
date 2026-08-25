@@ -21,12 +21,16 @@ export class CredentialDisplayService {
     return fallback;
   }
 
-  /** Resolves credential metadata from the issuer metadata cache (runtime, from OID4VCI/OID4VP flows). */
+  /**
+   * Resolves credential metadata from the issuer metadata cache (runtime, from OID4VCI/OID4VP
+   * flows). Returned as-is, including when `claims` is empty/absent — display-only metadata
+   * (name, no claims) is still useful to `getDisplayName()`. Callers that need claims check
+   * `meta?.claims?.length` themselves.
+   */
   async resolveMetadata(credential: VerifiableCredential): Promise<CredentialMetadata | null> {
-    const issuerMeta = await this.issuerMetadataCache.findCredentialMetadata(
+    return this.issuerMetadataCache.findCredentialMetadata(
       credential.id, credential.type, credential.credentialFormat
     );
-    return issuerMeta?.claims?.length ? issuerMeta : null;
   }
 
   // ── Core: shared field generation from claims ────────

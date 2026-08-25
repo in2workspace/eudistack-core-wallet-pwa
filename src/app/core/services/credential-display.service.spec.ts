@@ -10,7 +10,7 @@ function buildCredential(overrides: Partial<VerifiableCredential> = {}): Verifia
     '@context': ['https://www.w3.org/ns/credentials/v2'],
     id: 'urn:uuid:test-credential',
     type: ['VerifiableCredential', 'gx.labelcredential.w3c.2'],
-    lifeCycleStatus: 'VALID' as any,
+    lifeCycleStatus: 'VALID',
     issuer: { id: 'did:key:issuer' },
     validFrom: '2026-01-01T00:00:00Z',
     validUntil: '2027-01-01T00:00:00Z',
@@ -74,13 +74,14 @@ describe('CredentialDisplayService', () => {
       );
     });
 
-    it('returns null when the issuer metadata has no claims', async () => {
-      const findCredentialMetadata = jest.fn().mockResolvedValue({ display: [], claims: [] });
+    it('returns the issuer metadata as-is even when claims is empty (display-only metadata)', async () => {
+      const meta: CredentialMetadata = { display: [{ name: 'Display Only', locale: 'en' }], claims: [] };
+      const findCredentialMetadata = jest.fn().mockResolvedValue(meta);
       const service = setup(findCredentialMetadata);
 
       const result = await service.resolveMetadata(buildCredential());
 
-      expect(result).toBeNull();
+      expect(result).toBe(meta);
     });
 
     it('returns null when the issuer metadata cache has nothing for this credential', async () => {
@@ -142,6 +143,15 @@ describe('CredentialDisplayService', () => {
 
       expect(fields).toEqual([]);
     });
+
+    it('returns an empty array for display-only metadata (no claims)', async () => {
+      const findCredentialMetadata = jest.fn().mockResolvedValue({ display: [{ name: 'Display Only', locale: 'en' }], claims: [] });
+      const service = setup(findCredentialMetadata);
+
+      const fields = await service.getCardFields(buildCredential());
+
+      expect(fields).toEqual([]);
+    });
   });
 
   describe('createSectionsFromClaims', () => {
@@ -173,6 +183,15 @@ describe('CredentialDisplayService', () => {
       const name = await service.getDisplayName(buildCredential());
 
       expect(name).toBe('gx.labelcredential.w3c.2');
+    });
+
+    it('resolves the display name from display-only metadata (no claims)', async () => {
+      const findCredentialMetadata = jest.fn().mockResolvedValue({ display: [{ name: 'Display Only', locale: 'en' }], claims: [] });
+      const service = setup(findCredentialMetadata);
+
+      const name = await service.getDisplayName(buildCredential());
+
+      expect(name).toBe('Display Only');
     });
   });
 });
