@@ -59,15 +59,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # SCHEMAS_SRC points at dev-tools/schemas/, vendored in this repo from
-      # eudistack-platform-dev's own dev-tools/schemas/ (single source of truth).
-      # This used to be a cross-repo checkout using PLATFORM_DEV_READ_TOKEN, but
-      # that made this repo's CI depend on a token/secret owned by another repo
-      # for something as basic as building — the wallet should stand on its own.
-      # Update the source in eudistack-platform-dev, then re-copy here.
       - name: Build
-        env:
-          SCHEMAS_SRC: ${{ github.workspace }}/dev-tools/schemas
         run: npm run build -- --configuration=development
 
       - name: Test
@@ -182,11 +174,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # SCHEMAS_SRC: see the same step in the `build` job above — vendored
-      # locally at dev-tools/schemas/, no cross-repo token needed.
       - name: Build
-        env:
-          SCHEMAS_SRC: ${{ github.workspace }}/dev-tools/schemas
         run: npm run build -- --configuration=development
 
       - name: Serve static bundle
