@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Removed the bundled credential-schema registry — the issuer metadata endpoint is now the single source of truth for credential display metadata**: the wallet used to carry its own local copy of the JSON Schema profiles (`CredentialSchemaRegistryService`, synced at build time from `dev-tools/schemas/` into `src/assets/schemas/` and shipped in the SPA bundle), in parallel with the metadata already served live by `/.well-known/openid-credential-issuer`. That meant a config-only change (a display label, a new `value_map`) required a full app rebuild and redeploy, plus extra requests on every cold start. `CredentialDisplayService` now resolves claims, display names and `summary_claims` exclusively through `IssuerMetadataCacheService`; `CredentialSchemaRegistryService`, `scripts/sync-schemas.js` and the CI steps that checked out `dev-tools/schemas` were removed entirely.
+  - Trade-off accepted: the wallet can no longer render a credential's fields when the issuer metadata isn't cached and the issuer is unreachable (previously the bundled schemas covered that gap for the non-legacy types). Legacy credential types already worked this way.
+
 - **EUD-221 — `@ngx-translate/http-loader` aligned to `16.0.1`**: was pinned to `^8.0.0`, resolving `8.0.0`, which publishes `"SEE LICENSE IN LICENSE"` instead of a machine-readable SPDX identifier (SPDX License List / SPDX License Expressions), an auditability gap under NIS2 Art. 21.2(d) and CRA Annex I Part II. `16.0.1` declares `MIT` explicitly and is already the version used by `eudistack-mfe-login`/`eudistack-cgcom-mfe-issuance-portal`, same loader instantiation signature. No application code change, no observable behavior change.
 
 ### Added
