@@ -9,15 +9,16 @@ import {
   effect,
   inject,
   input,
+  OnDestroy,
   signal
 } from '@angular/core';
 import { QRCodeComponent } from 'angularx-qrcode';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { ExtendedCredentialType, LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
+import { EmployeeCredentialSubject, ExtendedCredentialType, LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { IonicModule } from '@ionic/angular';
-import { DisplayField, DisplaySection } from 'src/app/core/models/display-field.model';
+import { DisplayField, DisplayFieldItem, DisplaySection } from 'src/app/core/models/display-field.model';
 import dayjs from 'dayjs';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
@@ -27,8 +28,39 @@ import { CredentialVerificationService, VerificationCheck } from 'src/app/core/s
 import { Router } from '@angular/router';
 
 export type ExpiryStatus = 'valid' | 'expiring-soon' | 'expired';
+export type CardStatusTone = 'verified' | 'expired' | 'revoked';
+
+export interface PreviewField {
+  label: string;
+  value: string;
+}
+
+export interface VerificationRow {
+  key: string;
+  label: string;
+  value: string;
+  status: 'idle' | 'checking' | 'passed' | 'failed';
+}
+
+const VERIFICATION_ROW_LABELS: Record<string, string> = {
+  issuance: 'verification.row-issuance',
+  expiration: 'verification.row-expiration',
+  issuer: 'verification.row-issuer',
+  status: 'verification.row-revocation',
+};
 
 const EXPIRY_WARNING_DAYS = 30;
+const VERIFY_COOLDOWN_MS = 5000;
+const VERIFY_RESULT_MS = 2000;
+
+const HIDDEN_VALUE = '*'.repeat(15);
+
+const LIFECYCLE_LABELS: Record<LifeCycleStatus, string> = {
+  VALID: 'vc-view.lifecycle-valid',
+  ISSUED: 'vc-view.lifecycle-issued',
+  REVOKED: 'vc-view.lifecycle-revoked',
+  EXPIRED: 'vc-view.lifecycle-expired',
+};
 
 @Component({
     selector: 'app-vc-view',
@@ -37,7 +69,7 @@ const EXPIRY_WARNING_DAYS = 30;
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [IonicModule, QRCodeComponent, TranslateModule, CommonModule]
 })
-export class VcViewComponent {
+export class VcViewComponent implements OnDestroy {
   private readonly translate = inject(TranslateService);
   private readonly walletService = inject(WalletService);
   private readonly toastService = inject(ToastServiceHandler);
@@ -79,6 +111,83 @@ export class VcViewComponent {
     const days = expiry.diff(dayjs(), 'day');
     return days >= 0 ? days : null;
   });
+
+  public readonly statusBadge = computed<{ label: string; tone: CardStatusTone }>(() => {
+    const cred = this.credentialInput$();
+    if (cred.lifeCycleStatus === 'REVOKED') {
+      return { label: 'vc-view.badge-revoked', tone: 'revoked' };
+    }
+    if (cred.lifeCycleStatus === 'EXPIRED' || this.expiryStatus() === 'expired') {
+      return { label: 'vc-view.badge-expired', tone: 'expired' };
+    }
+    return { label: 'vc-view.badge-verified', tone: 'verified' };
+  });
+
+  public readonly previewFields = computed<PreviewField[]>(() => {
+    const cred = this.credentialInput$();
+    const hidden = this.blurred();
+    const issuerId = cred.issuer?.organizationIdentifier || cred.issuer?.id || '';
+    const expiry = cred.validUntil && dayjs(cred.validUntil).isValid()
+      ? dayjs(cred.validUntil).format('DD/MM/YYYY')
+      : '';
+
+    return [
+      { label: 'vc-view.preview-name', value: hidden ? HIDDEN_VALUE : this.subjectName(cred) },
+      { label: 'vc-view.preview-issuer', value: hidden ? HIDDEN_VALUE : issuerId },
+      { label: 'vc-view.preview-status', value: this.translate.instant(LIFECYCLE_LABELS[cred.lifeCycleStatus]) },
+      { label: 'vc-view.preview-expiry', value: hidden ? HIDDEN_VALUE : expiry },
+    ];
+  });
+
+  public get issuedBy(): string {
+    const issuer = this.credentialInput$().issuer;
+    return issuer?.commonName || issuer?.organization || '';
+  }
+
+  public get verificationRows(): VerificationRow[] {
+    const cred = this.credentialInput$();
+    const byKey = new Map(this.verificationChecks.map(c => [c.key, c.status]));
+    const asDate = (raw?: string) =>
+      raw && dayjs(raw).isValid() ? dayjs(raw).format('DD/MM/YYYY') : '';
+
+    const values: Record<string, string> = {
+      issuance: asDate(cred.validFrom),
+      expiration: asDate(cred.validUntil),
+      issuer: cred.issuer?.organizationIdentifier || cred.issuer?.id || '',
+      status: '',
+    };
+
+    return Object.keys(VERIFICATION_ROW_LABELS).map(key => ({
+      key,
+      label: VERIFICATION_ROW_LABELS[key],
+      value: values[key],
+      status: (byKey.get(key) as VerificationRow['status'])
+        ?? (this.statusBadge().tone === 'verified' ? 'passed' : 'failed'),
+    }));
+  }
+
+  public isPowersSection(section: DisplaySection): boolean {
+    return section.fields.some(field => !!field.structured?.length);
+  }
+
+  public isWideField(field: DisplayField): boolean {
+    return (field.value?.length ?? 0) > 24;
+  }
+
+  public powerActions(item: DisplayFieldItem): string[] {
+    return (item.value ?? '')
+      .split(',')
+      .map(action => action.trim())
+      .filter(Boolean);
+  }
+
+  private subjectName(cred: VerifiableCredential): string {
+    const mandatee = (cred.credentialSubject as Partial<EmployeeCredentialSubject>)?.mandate?.mandatee;
+    const fullName = [mandatee?.firstName, mandatee?.lastName].filter(Boolean).join(' ');
+    if (fullName) return fullName;
+
+    return this.cardFields().slice(0, 2).map(f => f.value).filter(Boolean).join(' ');
+  }
 
   private readonly loadCardDataEffect = effect(async () => {
     const cred = this.credentialInput$();
@@ -147,6 +256,11 @@ export class VcViewComponent {
   }];
 
   public isVerifyModalOpen = false;
+  public isVerifying = false;
+  public showVerifyResult = false;
+  public verifyLocked = false;
+  private verifyCooldownTimer: ReturnType<typeof setTimeout> | null = null;
+  private verifyResultTimer: ReturnType<typeof setTimeout> | null = null;
   public verificationChecks: VerificationCheck[] = [];
   public verifyOverall: 'pending' | 'valid' | 'invalid' = 'pending';
   public verifyResultKey: string = 'verification.result-invalid';
@@ -186,11 +300,13 @@ export class VcViewComponent {
   }
 
   public async verifyCredential(): Promise<void> {
+    if (this.verifyLocked) return;
+    this.verifyLocked = true;
+
     const keys = this.verificationService.getCheckKeys();
     this.verificationChecks = keys.map(key => ({ key, status: 'pending' as const }));
     this.verifyOverall = 'pending';
-    this.isVerifyModalOpen = true;
-    history.pushState(null, '');
+    this.isVerifying = true;
     this.cdr.markForCheck();
     
     const credential = this.credentialInput$();
@@ -227,10 +343,45 @@ export class VcViewComponent {
       }
     } catch {
       // TODO: Review behavior in case of error
-      this.closeVerifyModal();
+      this.verifyOverall = 'invalid';
     }
 
+    this.isVerifying = false;
+    this.showVerifyResult = true;
+    this.startVerifyResultTimer();
+    this.startVerifyCooldown();
     this.cdr.markForCheck();
+  }
+
+  private startVerifyResultTimer(): void {
+    if (this.verifyResultTimer !== null) {
+      clearTimeout(this.verifyResultTimer);
+    }
+    this.verifyResultTimer = setTimeout(() => {
+      this.verifyResultTimer = null;
+      this.showVerifyResult = false;
+      this.cdr.markForCheck();
+    }, VERIFY_RESULT_MS);
+  }
+
+  private startVerifyCooldown(): void {
+    if (this.verifyCooldownTimer !== null) {
+      clearTimeout(this.verifyCooldownTimer);
+    }
+    this.verifyCooldownTimer = setTimeout(() => {
+      this.verifyCooldownTimer = null;
+      this.verifyLocked = false;
+      this.cdr.markForCheck();
+    }, VERIFY_COOLDOWN_MS);
+  }
+
+  public ngOnDestroy(): void {
+    if (this.verifyResultTimer !== null) {
+      clearTimeout(this.verifyResultTimer);
+    }
+    if (this.verifyCooldownTimer !== null) {
+      clearTimeout(this.verifyCooldownTimer);
+    }
   }
 
   public closeVerifyModal(): void {

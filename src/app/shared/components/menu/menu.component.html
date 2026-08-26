@@ -1,4 +1,27 @@
+@if (userName()) {
+<div class="menu-account">
+  <p class="menu-account__label">{{ 'menu.signed-in-as' | translate }}</p>
+  <p class="menu-account__email" [title]="userName()">{{ userName() }}</p>
+</div>
+}
+
 <ion-list class="menu-list" lines="none">
+  <ion-item button [routerLink]="['/tabs/activity']" detail="false">
+    <ion-icon name="repeat-outline" slot="start"></ion-icon>
+    <ion-label>{{ 'menu.activity' | translate }}</ion-label>
+  </ion-item>
+  <ion-item button [routerLink]="['/tabs/language-selector']" detail="false">
+    <ion-icon name="language-outline" slot="start"></ion-icon>
+    <ion-label>{{ 'menu.language' | translate }}</ion-label>
+  </ion-item>
+  <ion-item button [routerLink]="['/tabs/devices']" detail="false">
+    <ion-icon name="phone-portrait-outline" slot="start"></ion-icon>
+    <ion-label>{{ 'menu.connected-devices' | translate }}</ion-label>
+  </ion-item>
+  <ion-item button [routerLink]="['/tabs/about']" detail="false">
+    <ion-icon name="information-circle" slot="start"></ion-icon>
+    <ion-label>{{ 'menu.about' | translate }}</ion-label>
+  </ion-item>
   <ion-item button (click)="logout()" (keydown)="logoutOnKeydown($event)">
     <ion-icon name="log-out-outline" slot="start"></ion-icon>
     <ion-label>{{ 'menu.logout' | translate }}</ion-label>

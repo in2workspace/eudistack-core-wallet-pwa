@@ -14,4 +14,5 @@ export const CredentialTypeMap: Record<CredentialType, CredentialMapConfig> = {
   'learcredential.machine.sd.1':   { icon: 'assets/icons/LearCredentialMachine.png' },
   'gx.labelcredential.w3c.2':      { icon: 'assets/icons/LabelCredential.png' },
   'urn:es.cgcom:doctorid:1':       { icon: 'assets/icons/LearCredentialEmployee.png' },
+  'eu.europa.ec.eudi.pid.1':       { icon: 'assets/icons/LearCredentialEmployee.png' },
 };

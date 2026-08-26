@@ -8,6 +8,7 @@
     "privacy-policy": "Política de Privacidad",
     "faqs": "FAQs",
     "settings": "Ajustes",
+    "signed-in-as": "Sesión iniciada como",
     "logout": "Cerrar sesión",
     "install": "Instalar app",
     "wallet": "Cartera"
@@ -29,7 +30,16 @@
     "add": "Añade",
     "nocred": "No tienes ninguna credencial cargada",
     "nocred-title": "Sin credenciales",
-    "nocred-subtitle": "Escanea un código QR o acepta una oferta de credencial para empezar.",
+    "nocred-subtitle": "Tus credenciales verificadas aparecerán aquí en cuanto se añadan a tu cartera.",
+    "nocred-scan": "Escanear código QR",
+    "show-data": "Mostrar datos",
+    "hide-data": "Ocultar datos",
+    "how-it-works": {
+      "title": "¿Cómo funciona?",
+      "step-scan": "Escanea un código QR",
+      "step-add": "Añade la credencial",
+      "step-manage": "Gestiónala aquí"
+    },
     "expiration": "Caducado",
     "expiring-soon": "Caduca pronto",
     "expiredCredential": "Credencial caducada",
@@ -51,6 +61,17 @@
   },
   "language-selector": {
     "title": "Selector de idioma"
+  },
+  "ui-translation": {
+    "title": "¿No encuentras tu idioma?",
+    "description": "Traduce los textos de la interfaz a tu idioma con el traductor de tu propio navegador, sin conexión a internet. Es una ayuda automática, no una traducción profesional: tus credenciales nunca se traducen ni se envían a ningún servicio de traducción.",
+    "toggle-label": "Activar traducción automática",
+    "target-language-label": "Traducir a",
+    "state-preparing": "Preparando la traducción…",
+    "state-unavailable": "No disponible en este dispositivo",
+    "state-unavailable-hint": "Tu navegador no ofrece traducción integrada en el dispositivo. Podrás usar esta función cuando esté disponible.",
+    "state-error": "No se ha podido preparar la traducción",
+    "retry": "Reintentar"
   },
   "logs-selector": {
     "title": "Ver logs",
@@ -241,7 +262,18 @@
     "unsigned-header": "Credencial sin firmar",
     "unsigned-message": "Su credencial aún no ha sido firmada y no puede ser utilizada. Espere a que el emisor complete el proceso de firma.",
     "revoked": "Revocado",
-    "delete-success": "Credencial eliminada correctamente"
+    "delete-success": "Credencial eliminada correctamente",
+    "badge-verified": "Credencial verificada",
+    "badge-expired": "Credencial caducada",
+    "badge-revoked": "Credencial revocada",
+    "preview-name": "Nombre",
+    "preview-issuer": "ID del emisor",
+    "preview-status": "Estado",
+    "preview-expiry": "Caducidad",
+    "lifecycle-valid": "Válida",
+    "lifecycle-issued": "Sin firmar",
+    "lifecycle-revoked": "Revocada",
+    "lifecycle-expired": "Caducada"
   },
   "scanner": {
     "initializing": "Inicializando escáner...",
@@ -250,7 +282,7 @@
     "send": "Enviar"
   },
   "vc-fields": {
-    "delete": "Eliminar",
+    "delete": "Eliminar credencial",
     "copy-success": "Copiado al portapapeles",
     "modal-title": "Detalles de credencial",
     "title": "Información de credenciales",
@@ -335,10 +367,12 @@
       "delete": "Eliminar",
       "attest": "Acreditar",
       "upload": "Subir"
-    }
+    },
+    "issued-by": "Emitida por"
   },
   "errors": {
     "default": "Algo ha salido mal. Si vuelve a ocurrir, contacta con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
+    "session-expired": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
     "key-storage-unavailable": "Este navegador no puede guardar claves de forma segura. No podrás activar ni usar credenciales en este dispositivo.",
     "key-storage-public-only": "Este navegador no puede guardar claves de forma segura. Puedes añadir credenciales, pero podrían dejar de funcionar al cerrar o recargar la app.",
     "credential-validation-failed": "No hemos podido validar la credencial. Inténtalo de nuevo.",
@@ -475,7 +509,7 @@
     "this-device": "Este dispositivo"
   },
   "verification": {
-    "button": "Verificar Credencial",
+    "button": "Comprobar estado de la credencial",
     "modal-title": "Verificación de Credencial",
     "verifying": "Verificando credencial...",
     "result-valid": "La credencial es válida",
@@ -488,7 +522,12 @@
     "check-status": "Estado de revocación",
     "detail-revoked": "Revocada",
     "detail-no-status-list": "Sin lista de estado",
-    "detail-no-expiry": "Sin fecha de caducidad"
+    "detail-no-expiry": "Sin fecha de caducidad",
+    "card-title": "Verificación de la credencial",
+    "row-issuance": "Fecha de emisión",
+    "row-expiration": "Fecha de caducidad",
+    "row-issuer": "Emisor",
+    "row-revocation": "Estado de revocación"
   },
   "confirmation": {
     "header": "¿Enviar Credencial?",
@@ -510,15 +549,15 @@
   },
   "single-instance": {
     "type-window": "ventana",
-    "type-tab": "pesta\u00f1a",
+    "type-tab": "pestaña",
     "title-deep-link": "Credencial enviada a EUDI Wallet",
-    "title-already-open": "EUDI Wallet ya est\u00e1 abierto",
+    "title-already-open": "EUDI Wallet ya está abierto",
     "subtitle-deep-link": "La credencial se ha enviado a la {{type}} activa de EUDI Wallet. Puedes cerrar esta {{type}}.",
     "subtitle-already-open": "Ya tienes EUDI Wallet abierto en otra {{type}}. Puedes cerrar esta.",
     "hint-standalone": "Vuelve a la otra ventana de EUDI Wallet.",
-    "hint-tab": "Usa Ctrl+Tab para volver a la pesta\u00f1a activa.",
+    "hint-tab": "Usa Ctrl+Tab para volver a la pestaña activa.",
     "close-fallback-standalone": "Cierra esta ventana manualmente",
-    "close-fallback-tab": "Cierra esta pesta\u00f1a con Ctrl+W (\u2318+W en Mac)",
+    "close-fallback-tab": "Cierra esta pestaña con Ctrl+W (⌘+W en Mac)",
     "close-button": "Cerrar esta {{type}}"
   },
   "tenantNotFound": {

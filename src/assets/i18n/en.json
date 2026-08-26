@@ -8,6 +8,11 @@
     "privacy-policy": "Privacy Policy",
     "faqs": "FAQs",
     "settings": "Settings",
+    "signed-in-as": "Signed in as",
+    "activity": "Activity",
+    "language": "Language",
+    "connected-devices": "Connected Devices",
+    "about": "About",
     "logout": "Logout",
     "install": "Install App",
     "wallet": "Wallet"
@@ -35,7 +40,16 @@
     "add": "Add",
     "nocred": "You have no saved credentials.\nAdd one to start using the Wallet.",
     "nocred-title": "No credentials yet",
-    "nocred-subtitle": "Scan a QR code or accept a credential offer to get started.",
+    "nocred-subtitle": "Your verified credentials will appear here once they are added to your wallet.",
+    "nocred-scan": "Scan QR code",
+    "show-data": "Show data",
+    "hide-data": "Hide data",
+    "how-it-works": {
+      "title": "How does it work?",
+      "step-scan": "Scan a QR code",
+      "step-add": "Add new credential",
+      "step-manage": "Manage it here"
+    },
     "expiration": "Expired",
     "expiring-soon": "Expiring soon",
     "expiredCredential": "Credential expired",
@@ -54,6 +68,17 @@
     "rejected-msg": "Credential offer rejected",
     "scan": "Scan QR",
     "install-hint": "Install the app for a better experience"
+  },
+  "ui-translation": {
+    "title": "Can't find your language?",
+    "description": "Translates the interface text into your language using your own browser's translator, without an internet connection. It's an automated aid, not a professional translation: your credentials are never translated or sent to any translation service.",
+    "toggle-label": "Turn on automatic translation",
+    "target-language-label": "Translate to",
+    "state-preparing": "Preparing translation…",
+    "state-unavailable": "Not available on this device",
+    "state-unavailable-hint": "Your browser doesn't offer on-device translation yet. You'll be able to use this feature once it's available.",
+    "state-error": "Translation could not be prepared",
+    "retry": "Retry"
   },
   "language-selector": {
     "title": "Select language"
@@ -247,10 +272,21 @@
     "unsigned-header": "Unsigned Credential",
     "unsigned-message": "Your credential has not yet been signed and cannot be used. Wait for the issuer to complete the signing process.",
     "revoked": "Revoked",
-    "delete-success": "Credential deleted successfully"
+    "delete-success": "Credential deleted successfully",
+    "badge-verified": "Credential verified",
+    "badge-expired": "Credential expired",
+    "badge-revoked": "Credential revoked",
+    "preview-name": "Name",
+    "preview-issuer": "Issuer ID",
+    "preview-status": "Status",
+    "preview-expiry": "Expiry",
+    "lifecycle-valid": "Valid",
+    "lifecycle-issued": "Unsigned",
+    "lifecycle-revoked": "Revoked",
+    "lifecycle-expired": "Expired"
   },
   "vc-fields": {
-    "delete": "Delete",
+    "delete": "Delete credential",
     "copy-success": "Copied to clipboard",
     "modal-title": "Credential Details",
     "title": "Credential Info",
@@ -335,10 +371,12 @@
       "delete": "Delete",
       "attest": "Attest",
       "upload": "Upload"
-    }
+    },
+    "issued-by": "Issued by"
   },
   "errors": {
     "default": "Something went wrong. If it keeps happening, please contact the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
+    "session-expired": "Your session has expired. Please sign in again.",
     "key-storage-unavailable": "This browser can’t securely store keys. You won’t be able to activate or use credentials on this device.",
     "key-storage-public-only": "This browser can’t securely store keys. You can add credentials, but they may stop working after you close or reload the app.",
     "credential-validation-failed": "We couldn’t validate the credential. Please try again.",
@@ -475,7 +513,7 @@
     "this-device": "This device"
   },
   "verification": {
-    "button": "Verify Credential",
+    "button": "Check credential status",
     "modal-title": "Credential Verification",
     "verifying": "Verifying credential...",
     "result-valid": "Credential is valid",
@@ -488,7 +526,12 @@
     "check-status": "Revocation status",
     "detail-revoked": "Revoked",
     "detail-no-status-list": "No status list",
-    "detail-no-expiry": "No expiry"
+    "detail-no-expiry": "No expiry",
+    "card-title": "Credential Verification",
+    "row-issuance": "Issuance date",
+    "row-expiration": "Expiration date",
+    "row-issuer": "Issuer",
+    "row-revocation": "Revocation status"
   },
   "confirmation": {
     "header": "Send credential?",
@@ -518,7 +561,7 @@
     "hint-standalone": "Return to the other EUDI Wallet window.",
     "hint-tab": "Use Ctrl+Tab to return to the active tab.",
     "close-fallback-standalone": "Close this window manually",
-    "close-fallback-tab": "Close this tab with Ctrl+W (\u2318+W on Mac)",
+    "close-fallback-tab": "Close this tab with Ctrl+W (⌘+W on Mac)",
     "close-button": "Close this {{type}}"
   },
   "tenantNotFound": {

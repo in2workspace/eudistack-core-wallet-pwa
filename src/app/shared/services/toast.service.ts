@@ -43,7 +43,7 @@ export class ToastServiceHandler {
         const alert = await this.alertController.create({
           message: `
             <div style="display: flex; align-items: center; gap: 50px;">
-              <span>${translatedMessage}</span>
+              <span>${this.escapeHtml(translatedMessage)}</span>
             </div>
           `,
           buttons: [
@@ -111,7 +111,7 @@ export class ToastServiceHandler {
       message: `
         <div style="display: flex; align-items: center; gap: 50px;">
           <ion-icon name="checkmark-circle"></ion-icon>
-          <span>${this.translate.instant(messageKey)}</span>
+          <span>${this.escapeHtml(this.translate.instant(messageKey))}</span>
         </div>
       `,
       cssClass: 'custom-alert-ok',

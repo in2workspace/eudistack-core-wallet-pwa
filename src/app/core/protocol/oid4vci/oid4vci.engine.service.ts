@@ -120,7 +120,7 @@ export class Oid4vciEngineService {
       // GET CREDENTIAL (with DPoP proof if token is DPoP-bound)
       let credentialDpopJwt: string | undefined;
       if (tokenResponse.token_type?.toLowerCase() === 'dpop' && credentialIssuerMetadata.credentialEndpoint) {
-        const dpopProof = await this.dpopService.issueProof('POST', credentialIssuerMetadata.credentialEndpoint);
+        const dpopProof = await this.dpopService.issueProof('POST', credentialIssuerMetadata.credentialEndpoint, tokenResponse.access_token);
         credentialDpopJwt = dpopProof.jwt;
       }
 

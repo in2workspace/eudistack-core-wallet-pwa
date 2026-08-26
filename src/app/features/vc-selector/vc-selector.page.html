@@ -10,7 +10,15 @@
       </div>
     }
     @if (clientName) {
-      <h2 class="header-title">{{ clientName }}</h2>
+      <!--
+        EUD-142 (AD-3/AD-4): the requester name (clientName) is credential-provenance
+        content per AD-3 — shielded like credential content, never fed to the runtime
+        translator nor left translatable by the browser's page translation. Uses
+        [attr.translate] rather than the plain translate="no" attribute: see the gap
+        note in technical-design.md §3.2 (collision with @ngx-translate's [translate]
+        directive selector).
+      -->
+      <h2 class="header-title" [attr.translate]="'no'">{{ clientName }}</h2>
       <h2 class="header-subtitle">{{ "vc-selector.presentation-request-verifier" | translate }}</h2>
     }
     @else {

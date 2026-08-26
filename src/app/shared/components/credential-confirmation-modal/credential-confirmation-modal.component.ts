@@ -9,8 +9,15 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
   standalone: true,
   imports: [CommonModule, IonicModule, TranslateModule],
   template: `
+    <!--
+      EUD-142 (AD-4): credential-content shielding against the browser's page translation.
+      Uses [attr.translate]="'no'" rather than the plain \`translate="no"\` HTML attribute:
+      @ngx-translate's TranslateDirective selector is \`[translate]\` and would otherwise hijack
+      this attribute, treating "no" as an i18n key instead of the platform's translate mode.
+      See Tech Debt ticket referenced in technical-design.md §3.2 gap note.
+    -->
     <div class="modal-backdrop">
-      <div class="modal-content" [class.enter]="animateIn">
+      <div class="modal-content" [attr.translate]="'no'" [class.enter]="animateIn">
 
         <div class="modal-header">
           <div class="icon-wrapper" [class.icon-enter]="animateIn">
@@ -22,7 +29,7 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
 
         <div class="credential-card" [class.card-enter]="animateIn">
           <div class="card-header">
-            <span class="credential-name">{{ preview.displayName }}</span>
+            <span class="credential-name" [attr.translate]="'no'">{{ preview.displayName }}</span>
             <span class="format-badge" *ngIf="preview.format">{{ formatLabel }}</span>
           </div>
 
@@ -30,17 +37,17 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
 
           <div class="card-sections">
             <div class="section-block" *ngFor="let section of preview.sections">
-              <span class="section-title">{{ section.section }}</span>
+              <span class="section-title" [attr.translate]="'no'">{{ section.section }}</span>
               <div class="section-fields">
                 <ng-container *ngFor="let field of section.fields">
                   <!-- Structured field (array of objects like powers) -->
                   <div class="field-row" *ngIf="field.structured?.length; else simpleField">
-                    <span class="field-label">{{ field.label }}</span>
+                    <span class="field-label" [attr.translate]="'no'">{{ field.label }}</span>
                     <div class="structured-list">
                       <div class="structured-item" *ngFor="let item of field.structured">
                         <span class="structured-entry">
-                          <span class="structured-key">{{ item.label }}</span>
-                          <span class="structured-val">{{ item.value }}</span>
+                          <span class="structured-key" [attr.translate]="'no'">{{ item.label }}</span>
+                          <span class="structured-val" [attr.translate]="'no'">{{ item.value }}</span>
                         </span>
                       </div>
                     </div>
@@ -48,8 +55,8 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
                   <!-- Simple text field -->
                   <ng-template #simpleField>
                     <div class="field-row">
-                      <span class="field-label">{{ field.label }}</span>
-                      <span class="field-value">{{ field.value }}</span>
+                      <span class="field-label" [attr.translate]="'no'">{{ field.label }}</span>
+                      <span class="field-value" [attr.translate]="'no'">{{ field.value }}</span>
                     </div>
                   </ng-template>
                 </ng-container>

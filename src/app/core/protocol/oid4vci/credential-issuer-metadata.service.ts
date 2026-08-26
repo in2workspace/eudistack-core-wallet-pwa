@@ -26,7 +26,7 @@ export class CredentialIssuerMetadataService {
       });
     }
 
-    const credentialIssuerURL = `${issuer}/.well-known/openid-credential-issuer`;
+    const credentialIssuerURL = this.buildWellKnownUrl(issuer);
 
     try {
       const responseText = await this.fetchCredentialIssuerMetadata(credentialIssuerURL);
@@ -39,6 +39,17 @@ export class CredentialIssuerMetadataService {
         translationKey: 'errors.default',
       });
     }
+  }
+
+  /**
+   * Builds the metadata URL per OID4VCI 1.0 §12.2.2: the well-known path is
+   * inserted between the origin and the issuer's own path (not appended
+   * after it), e.g. "https://host/tenant" -> "https://host/.well-known/openid-credential-issuer/tenant".
+   */
+  private buildWellKnownUrl(issuer: string): string {
+    const issuerUrl = new URL(issuer);
+    const issuerPath = issuerUrl.pathname === '/' ? '' : issuerUrl.pathname;
+    return `${issuerUrl.origin}/.well-known/openid-credential-issuer${issuerPath}`;
   }
 
   private async fetchCredentialIssuerMetadata(credentialIssuerURL: string): Promise<string> {

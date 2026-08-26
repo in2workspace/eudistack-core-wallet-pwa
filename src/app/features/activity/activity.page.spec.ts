@@ -566,6 +566,38 @@ describe('ActivityPage (EUD-137)', () => {
 
     expect(fixture.componentInstance.entries()).toEqual([PRESENTED_ENTRY]);
   });
+
+  // --- translate="no" shielding (EUD-142, AC-10, NFR-S-142-08) ------------
+  // credentialName and the counterparty are credential/requester-provenance
+  // content and must never be handed to a translation engine nor left
+  // translatable by the browser's page translation — same guarantee as the
+  // detail view (activity-detail.component.spec.ts).
+  describe('translate="no" shielding (AC-10, NFR-S-142-08)', () => {
+    it('marks the credential name as non-translatable', async () => {
+      mockActivityService.findAll.mockResolvedValue([PRESENTED_ENTRY]);
+      const fixture = await createModule();
+
+      const name = fixture.nativeElement.querySelector('.activity-credential-name');
+      expect(name.getAttribute('translate')).toBe('no');
+      expect(name.textContent.trim()).toBe('Empleado ACME');
+    });
+
+    it('marks the counterparty subtitle as non-translatable', async () => {
+      mockActivityService.findAll.mockResolvedValue([PRESENTED_ENTRY]);
+      const fixture = await createModule();
+
+      const subtitle = fixture.nativeElement.querySelector('.activity-subtitle');
+      expect(subtitle.getAttribute('translate')).toBe('no');
+    });
+
+    it('never includes credentialName in the card aria-label', async () => {
+      mockActivityService.findAll.mockResolvedValue([PRESENTED_ENTRY]);
+      const fixture = await createModule();
+
+      const card = fixture.nativeElement.querySelector('.activity-card');
+      expect(card.getAttribute('aria-label')).not.toContain('Empleado ACME');
+    });
+  });
 });
 
 describe('ActivityPage — activity detail modal (EUD-139)', () => {

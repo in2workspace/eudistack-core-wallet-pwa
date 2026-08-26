@@ -8,6 +8,7 @@
     "privacy-policy": "Política de Privacitat",
     "faqs": "FAQs",
     "settings": "Configuració",
+    "signed-in-as": "Sessió iniciada com a",
     "logout": "Tancar sessió",
     "install": "Instal·lar app",
     "wallet": "Cartera"
@@ -29,7 +30,16 @@
     "add": "Afegeix",
     "nocred": "No tens cap credencial carregada",
     "nocred-title": "Sense credencials",
-    "nocred-subtitle": "Escaneja un codi QR o accepta una oferta de credencial per començar.",
+    "nocred-subtitle": "Les teves credencials verificades apareixeran aquí quan s'afegeixin a la teva cartera.",
+    "nocred-scan": "Escaneja el codi QR",
+    "show-data": "Mostrar dades",
+    "hide-data": "Ocultar dades",
+    "how-it-works": {
+      "title": "Com funciona?",
+      "step-scan": "Escaneja un codi QR",
+      "step-add": "Afegeix la credencial",
+      "step-manage": "Gestiona-la aquí"
+    },
     "expiration": "Caducat",
     "expiring-soon": "Caduca aviat",
     "expiredCredential": "Credencial caducada",
@@ -51,6 +61,17 @@
   },
   "language-selector": {
     "title": "Selector d'idioma"
+  },
+  "ui-translation": {
+    "title": "No trobes el teu idioma?",
+    "description": "Tradueix els textos de la interfície al teu idioma amb el traductor del teu propi navegador, sense connexió a internet. És una ajuda automàtica, no una traducció professional: les teves credencials mai es tradueixen ni s'envien a cap servei de traducció.",
+    "toggle-label": "Activa la traducció automàtica",
+    "target-language-label": "Tradueix a",
+    "state-preparing": "S'està preparant la traducció…",
+    "state-unavailable": "No disponible en aquest dispositiu",
+    "state-unavailable-hint": "El teu navegador no ofereix traducció integrada al dispositiu. Podràs utilitzar aquesta funció quan estigui disponible.",
+    "state-error": "No s'ha pogut preparar la traducció",
+    "retry": "Torna-ho a provar"
   },
   "logs-selector": {
     "title": "Veure logs",
@@ -151,6 +172,7 @@
   },
   "errors": {
     "default": "Alguna cosa ha anat malament. Si et torna a passar, contacta amb l’<a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equip de suport</a>.",
+    "session-expired": "La teva sessió ha caducat. Torna a iniciar sessió.",
     "key-storage-unavailable": "Aquest navegador no pot desar claus de manera segura. No podràs activar ni fer servir credencials en aquest dispositiu.",
     "key-storage-public-only": "Aquest navegador no pot desar claus de manera segura. Pots afegir credencials, però podrien deixar de funcionar en tancar o recarregar l’app.",
     "credential-validation-failed": "No hem pogut validar la credencial. Torna-ho a provar.",
@@ -305,7 +327,18 @@
     "unsigned-header": "Credencial sense signar",
     "unsigned-message": "La seva credencial encara no ha estat signada i no pot ser utilitzada. Esperi que l'emissor completi el procés de signatura.",
     "revoked": "Revocat",
-    "delete-success": "Credencial eliminada correctament"
+    "delete-success": "Credencial eliminada correctament",
+    "badge-verified": "Credencial verificada",
+    "badge-expired": "Credencial caducada",
+    "badge-revoked": "Credencial revocada",
+    "preview-name": "Nom",
+    "preview-issuer": "ID de l'emissor",
+    "preview-status": "Estat",
+    "preview-expiry": "Caducitat",
+    "lifecycle-valid": "Vàlida",
+    "lifecycle-issued": "Sense signar",
+    "lifecycle-revoked": "Revocada",
+    "lifecycle-expired": "Caducada"
   },
   "scanner": {
     "initializing": "Inicialitzant escàner...",
@@ -314,7 +347,7 @@
     "send": "Enviar"
   },
   "vc-fields": {
-    "delete": "Eliminar",
+    "delete": "Eliminar credencial",
     "copy-success": "S'ha copiat al porta-retalls",
     "modal-title": "Detalls de credencial",
     "title": "Informació de credencials",
@@ -399,7 +432,8 @@
       "delete": "Eliminar",
       "attest": "Acreditar",
       "upload": "Pujar"
-    }
+    },
+    "issued-by": "Emesa per"
   },
   "activity": {
     "title": "Activitat",
@@ -471,7 +505,7 @@
     "this-device": "Aquest dispositiu"
   },
   "verification": {
-    "button": "Verificar Credencial",
+    "button": "Comprovar l'estat de la credencial",
     "modal-title": "Verificació de Credencial",
     "verifying": "Verificant credencial...",
     "result-valid": "La credencial és vàlida",
@@ -484,7 +518,12 @@
     "check-status": "Estat de revocació",
     "detail-revoked": "Revocada",
     "detail-no-status-list": "Sense llista d'estat",
-    "detail-no-expiry": "Sense data de caducitat"
+    "detail-no-expiry": "Sense data de caducitat",
+    "card-title": "Verificació de la credencial",
+    "row-issuance": "Data d'emissió",
+    "row-expiration": "Data de caducitat",
+    "row-issuer": "Emissor",
+    "row-revocation": "Estat de revocació"
   },
   "confirmation": {
     "header": "Enviar credencial?",
@@ -508,13 +547,13 @@
     "type-window": "finestra",
     "type-tab": "pestanya",
     "title-deep-link": "Credencial enviada a EUDI Wallet",
-    "title-already-open": "EUDI Wallet ja est\u00e0 obert",
+    "title-already-open": "EUDI Wallet ja està obert",
     "subtitle-deep-link": "La credencial s'ha enviat a la {{type}} activa de EUDI Wallet. Pots tancar aquesta {{type}}.",
     "subtitle-already-open": "Ja tens EUDI Wallet obert en una altra {{type}}. Pots tancar aquesta.",
     "hint-standalone": "Torna a l'altra finestra de EUDI Wallet.",
     "hint-tab": "Usa Ctrl+Tab per tornar a la pestanya activa.",
     "close-fallback-standalone": "Tanca aquesta finestra manualment",
-    "close-fallback-tab": "Tanca aquesta pestanya amb Ctrl+W (\u2318+W a Mac)",
+    "close-fallback-tab": "Tanca aquesta pestanya amb Ctrl+W (⌘+W a Mac)",
     "close-button": "Tanca aquesta {{type}}"
   },
   "tenantNotFound": {
