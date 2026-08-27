@@ -27,7 +27,12 @@ export class IssuerNotificationService {
       'Content-Type': 'application/json',
     });
 
-    const body = { notificationId, event, eventDescription };
+    // OID4VCI 1.0 FINAL §11.1 names these fields notification_id/event_description
+    // (snake_case) - sending the camelCase Java-style keys this file always used only
+    // "worked" because the Issuer's own NotificationRequest had the mirror-image bug
+    // (matching only notificationId, until fixed to accept both - see the companion fix
+    // in eudistack-core-issuer). A spec-conformant issuer expects snake_case here.
+    const body = { notification_id: notificationId, event, event_description: eventDescription };
 
     return this.http.post<void>(notificationEndpoint, body, { headers });
   }
