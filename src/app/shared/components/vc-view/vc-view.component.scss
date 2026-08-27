@@ -12,7 +12,11 @@ ion-modal.stack-modal {
 
 .credential-card {
   position: relative;
-  background: linear-gradient(135deg, var(--card-background, var(--primary-color, var(--ion-color-primary))) 0%, var(--card-gradient-end, var(--secondary-color, var(--ion-color-primary-shade))) 100%);
+  // `--card-background-image` is set only when the issuer publishes `background_image`
+  // (OID4VCI 1.0 Final section 12.2.4), and then it covers the gradient underneath.
+  background:
+    var(--card-background-image, none) center / cover no-repeat,
+    linear-gradient(135deg, var(--card-background, var(--primary-color, var(--ion-color-primary))) 0%, var(--card-gradient-end, var(--secondary-color, var(--ion-color-primary-shade))) 100%);
   width: 100%;
   max-width: 400px;
   min-width: 240px;
@@ -39,7 +43,15 @@ ion-modal.stack-modal {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 
     .card-title,
-    .card-field,
+    .card-field,// Shown in place of the generic shield when the issuer publishes a logo of its own.
+.card-logo {
+  height: clamp(18px, 5vw, 22px);
+  max-width: clamp(60px, 20vw, 88px);
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+
     .card-shield-icon {
       opacity: 0.6;
     }

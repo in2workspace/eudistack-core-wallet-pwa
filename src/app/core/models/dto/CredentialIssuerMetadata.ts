@@ -34,6 +34,15 @@ export interface MetadataDisplay {
   name: string;
   locale: string;
   description?: string;
+  logo?: DisplayImage;
+  background_color?: string;
+  background_image?: DisplayImage;
+  text_color?: string;
+}
+
+export interface DisplayImage {
+  uri: string;
+  alt_text?: string;
 }
 
 export interface ClaimDefinition {

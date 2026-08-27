@@ -124,6 +124,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
           provide: CredentialDisplayService,
           useValue: {
             getCardFields: jest.fn().mockResolvedValue([]),
+            getCardStyle: jest.fn().mockResolvedValue(null),
             getDisplayName: jest.fn().mockResolvedValue('Test Credential'),
             getFormatLabel: jest.fn().mockReturnValue(''),
             getDetailSections: jest.fn().mockResolvedValue([]),

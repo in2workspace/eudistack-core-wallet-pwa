@@ -17,7 +17,7 @@ import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ExtendedCredentialType, LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { IonicModule } from '@ionic/angular';
-import { DisplayField, DisplaySection } from 'src/app/core/models/display-field.model';
+import { CardStyle, DisplayField, DisplaySection } from 'src/app/core/models/display-field.model';
 import dayjs from 'dayjs';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
@@ -49,6 +49,8 @@ export class VcViewComponent {
   public credentialInput$ = input.required<VerifiableCredential>();
   public detailViewSections$ = signal<DisplaySection[]>([]);
   public cardFields = signal<DisplayField[]>([]);
+  /** Null while unresolved, and whenever the issuer publishes no styling: the tenant theme rules. */
+  public cardStyle = signal<CardStyle | null>(null);
   public displayName = signal<string>('');
   public formatLabel = signal<string>('');
 
@@ -83,6 +85,7 @@ export class VcViewComponent {
   private readonly loadCardDataEffect = effect(async () => {
     const cred = this.credentialInput$();
     this.cardFields.set(await this.displayService.getCardFields(cred));
+    this.cardStyle.set(await this.displayService.getCardStyle(cred));
     this.displayName.set(await this.displayService.getDisplayName(cred));
     this.formatLabel.set(this.displayService.getFormatLabel(cred));
   });

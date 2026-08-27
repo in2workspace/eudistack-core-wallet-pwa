@@ -184,4 +184,57 @@ describe('CredentialDisplayService', () => {
       expect(name).toBe('Display Only');
     });
   });
+
+  describe('getCardStyle', () => {
+    it('returns null when the issuer publishes no card styling', async () => {
+      const findCredentialMetadata = jest.fn().mockResolvedValue(buildLabelLevelMetadata());
+      const service = setup(findCredentialMetadata);
+
+      expect(await service.getCardStyle(buildCredential())).toBeNull();
+    });
+
+    it('derives the gradient stop from the published background colour', async () => {
+      const meta = { ...buildLabelLevelMetadata() };
+      meta.display = [{ name: 'LEAR', locale: 'en', background_color: '#1B2A41', text_color: '#FFFFFF' }];
+      const service = setup(jest.fn().mockResolvedValue(meta));
+
+      const style = await service.getCardStyle(buildCredential());
+
+      expect(style).toEqual({
+        background: '#1B2A41',
+        gradientEnd: '#3b485c',
+        text: '#FFFFFF',
+        backgroundImage: undefined,
+        logoUri: undefined,
+        logoAlt: undefined,
+      });
+    });
+
+    it('keeps a colour it cannot lighten as the second stop', async () => {
+      const meta = { ...buildLabelLevelMetadata() };
+      meta.display = [{ name: 'LEAR', locale: 'en', background_color: 'rebeccapurple' }];
+      const service = setup(jest.fn().mockResolvedValue(meta));
+
+      const style = await service.getCardStyle(buildCredential());
+
+      expect(style?.gradientEnd).toBe('rebeccapurple');
+    });
+
+    it('carries the background image and the logo when the issuer publishes them', async () => {
+      const meta = { ...buildLabelLevelMetadata() };
+      meta.display = [{
+        name: 'LEAR',
+        locale: 'en',
+        background_image: { uri: 'https://issuer.example.com/bg.svg' },
+        logo: { uri: 'https://issuer.example.com/logo.svg', alt_text: 'Issuer' },
+      }];
+      const service = setup(jest.fn().mockResolvedValue(meta));
+
+      const style = await service.getCardStyle(buildCredential());
+
+      expect(style?.backgroundImage).toBe('https://issuer.example.com/bg.svg');
+      expect(style?.logoUri).toBe('https://issuer.example.com/logo.svg');
+      expect(style?.logoAlt).toBe('Issuer');
+    });
+  });
 });

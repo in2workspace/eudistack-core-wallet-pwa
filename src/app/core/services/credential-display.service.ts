@@ -3,7 +3,10 @@ import { TranslateService } from '@ngx-translate/core';
 import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
 import { CredentialMetadata, ClaimDefinition, MetadataDisplay } from '../models/dto/CredentialIssuerMetadata';
 import { VerifiableCredential } from '../models/verifiable-credential';
-import { DisplayField, DisplayFieldItem, DisplaySection } from '../models/display-field.model';
+import { CardStyle, DisplayField, DisplayFieldItem, DisplaySection } from '../models/display-field.model';
+
+/** How far the derived gradient stop is lifted towards white. Enough for depth, not a wash. */
+const GRADIENT_LIGHTEN = 0.14;
 
 @Injectable({ providedIn: 'root' })
 export class CredentialDisplayService {
@@ -11,14 +14,17 @@ export class CredentialDisplayService {
   private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
   private readonly translate = inject(TranslateService);
 
+  /** The display object for the active language, falling back to English and then to the first. */
+  private pickDisplay(displays: MetadataDisplay[] | undefined): MetadataDisplay | null {
+    if (!displays?.length) return null;
+    const lang = this.translate.currentLang || this.translate.defaultLang;
+    return displays.find(d => d.locale === lang)
+      ?? displays.find(d => d.locale === 'en')
+      ?? displays[0];
+  }
+
   private resolveDisplayName(displays: MetadataDisplay[] | undefined, fallback: string): string {
-    if (displays?.length) {
-      const lang = this.translate.currentLang || this.translate.defaultLang;
-      return displays.find(d => d.locale === lang)?.name
-        ?? displays.find(d => d.locale === 'en')?.name
-        ?? displays[0].name;
-    }
-    return fallback;
+    return this.pickDisplay(displays)?.name ?? fallback;
   }
 
   /**
@@ -74,6 +80,30 @@ export class CredentialDisplayService {
     return this.buildFieldsFromClaims(credential.credentialSubject, meta)
       .filter(f => !f.structured && !!f.value)
       .slice(0, 3);
+  }
+
+  /**
+   * The card styling the issuer publishes for this credential, or null when it publishes none —
+   * in which case the caller keeps whatever the wallet's own theme decides.
+   *
+   * `background_color` and `text_color` are OID4VCI display members, so any issuer can drive
+   * the look of its own credentials and the same credential type looks the same in every
+   * wallet. `background_image` wins over the colour when present, per section 12.2.4.
+   */
+  async getCardStyle(credential: VerifiableCredential): Promise<CardStyle | null> {
+    const meta = await this.resolveMetadata(credential);
+    const display = this.pickDisplay(meta?.display);
+    if (!display?.background_color && !display?.background_image?.uri) return null;
+
+    const background = display.background_color ?? 'transparent';
+    return {
+      background,
+      gradientEnd: lightenHex(background, GRADIENT_LIGHTEN) ?? background,
+      text: display.text_color,
+      backgroundImage: display.background_image?.uri,
+      logoUri: display.logo?.uri,
+      logoAlt: display.logo?.alt_text,
+    };
   }
 
   // ── Detail view ──────────────────────────────────────
@@ -208,6 +238,23 @@ function stringifyValue(value: unknown): string {
   if (Array.isArray(value)) return value.map(v => stringifyValue(v)).join(', ');
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
+}
+
+/**
+ * Mixes a `#rgb`/`#rrggbb` colour towards white by `ratio`. Returns null for anything else —
+ * a named colour or a `color()` function is valid CSS the issuer may publish, and a card with
+ * a flat background reads better than one with a wrong second stop.
+ */
+function lightenHex(color: string, ratio: number): string | null {
+  const hex = color.trim().replace('#', '');
+  const full = hex.length === 3 ? [...hex].map(c => c + c).join('') : hex;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return null;
+
+  const channels = [0, 2, 4]
+    .map(i => parseInt(full.slice(i, i + 2), 16))
+    .map(value => Math.round(value + (255 - value) * ratio))
+    .map(value => value.toString(16).padStart(2, '0'));
+  return `#${channels.join('')}`;
 }
 
 function humanizeKey(str: string): string {

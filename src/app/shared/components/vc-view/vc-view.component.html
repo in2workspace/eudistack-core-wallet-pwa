@@ -8,7 +8,18 @@
   this attribute, treating "no" as an i18n key instead of the platform's translate mode.
   See Tech Debt ticket referenced in technical-design.md §3.2 gap note.
 -->
-<ion-card (click)="openDetailModal()" tabindex="0" (keydown)="handleButtonKeydown($event, 'detail')" class="credential-card" [attr.translate]="'no'" [class.credential-card--revoked]="credentialInput.lifeCycleStatus === 'REVOKED'" [class.credential-card--expired]="credentialInput.lifeCycleStatus === 'EXPIRED' || expiryStatus() === 'expired'">
+@let style = cardStyle();
+
+<!--
+  The issuer's own display metadata (OID4VCI 1.0 Final section 12.2.4) wins over the tenant
+  theme, and only on this card: the same credential type then looks the same whoever issues
+  it. Unset custom properties fall through to the theme's values in the stylesheet.
+-->
+<ion-card (click)="openDetailModal()" tabindex="0" (keydown)="handleButtonKeydown($event, 'detail')" class="credential-card" [attr.translate]="'no'"
+  [style.--card-background]="style?.background"
+  [style.--card-gradient-end]="style?.gradientEnd"
+  [style.--card-text]="style?.text"
+  [style.--card-background-image]="style?.backgroundImage ? 'url(' + style!.backgroundImage + ')' : null" [class.credential-card--revoked]="credentialInput.lifeCycleStatus === 'REVOKED'" [class.credential-card--expired]="credentialInput.lifeCycleStatus === 'EXPIRED' || expiryStatus() === 'expired'">
   <!-- Decorative circles for visual depth -->
   <div class="card-deco-circle card-deco-1"></div>
   <div class="card-deco-circle card-deco-2"></div>
@@ -36,7 +47,11 @@
 
   <div class="card-body">
     <div class="card-title-row">
-      <ion-icon name="shield-checkmark-outline" class="card-shield-icon" aria-hidden="true"></ion-icon>
+      @if (style?.logoUri) {
+        <img class="card-logo" [src]="style!.logoUri" [alt]="style!.logoAlt ?? ''" />
+      } @else {
+        <ion-icon name="shield-checkmark-outline" class="card-shield-icon" aria-hidden="true"></ion-icon>
+      }
       <span class="card-title" [attr.translate]="'no'">{{ displayName() || credentialType }}</span>
     </div>
     <div class="card-fields" [class.card-blurred]="blurred()">
