@@ -59,10 +59,7 @@ export class CredentialDisplayService {
         continue;
       }
 
-      const mapped = claim.value_map && typeof value === 'string' && value in claim.value_map
-        ? claim.value_map[value]
-        : value;
-      fields.push({ label, value: stringifyValue(mapped) });
+      fields.push({ label, value: stringifyValue(value) });
     }
     return fields;
   }
@@ -73,16 +70,6 @@ export class CredentialDisplayService {
   async getCardFields(credential: VerifiableCredential): Promise<DisplayField[]> {
     const meta = await this.resolveMetadata(credential);
     if (!meta?.claims?.length) return [];
-
-    // Use summary_claims if defined — only include those specific claims.
-    if (meta.summary_claims?.length) {
-      const summaryClaims = meta.claims.filter(c =>
-        meta!.summary_claims!.some(sp => arraysEqual(c.path, sp))
-      );
-      const summaryMeta = { ...meta, claims: summaryClaims };
-      return this.buildFieldsFromClaims(credential.credentialSubject, summaryMeta)
-        .filter(f => !f.structured && !!f.value);
-    }
 
     return this.buildFieldsFromClaims(credential.credentialSubject, meta)
       .filter(f => !f.structured && !!f.value)
@@ -153,15 +140,10 @@ export class CredentialDisplayService {
 
     const scalarSections = Array.from(groups.entries()).map(([key, items]) => ({
       section: humanizeKey(key.split('.').pop() ?? key),
-      fields: items.map(({ claim, value }) => {
-        const mapped = claim.value_map && typeof value === 'string' && value in claim.value_map
-          ? claim.value_map[value]
-          : value;
-        return {
-          label: this.resolveDisplayName(claim.display, claim.path[claim.path.length - 1]),
-          value: stringifyValue(mapped),
-        };
-      }),
+      fields: items.map(({ claim, value }) => ({
+        label: this.resolveDisplayName(claim.display, claim.path[claim.path.length - 1]),
+        value: stringifyValue(value),
+      })),
     }));
 
     return [...scalarSections, ...arraySections];
@@ -233,8 +215,4 @@ function humanizeKey(str: string): string {
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/[_-]/g, ' ');
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
-
-function arraysEqual(a: string[], b: string[]): boolean {
-  return a.length === b.length && a.every((v, i) => v === b[i]);
 }

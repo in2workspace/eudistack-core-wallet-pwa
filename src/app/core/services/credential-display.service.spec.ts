@@ -35,14 +35,12 @@ function buildLabelLevelMetadata(): CredentialMetadata {
       {
         path: ['credentialSubject', 'gx:labelLevel'],
         display: [{ name: 'Label Level', locale: 'en' }],
-        value_map: { BL: 'Baseline', P: 'Professional', 'P+': 'Professional Plus' },
       },
       {
         path: ['credentialSubject', 'gx:engineVersion'],
         display: [{ name: 'Engine Version', locale: 'en' }],
       },
     ],
-    summary_claims: [['credentialSubject', 'gx:labelLevel']],
   };
 }
 
@@ -95,27 +93,16 @@ describe('CredentialDisplayService', () => {
   });
 
   describe('buildFieldsFromClaims', () => {
-    it('maps a claim value through value_map when the value matches a key', () => {
+    it('renders the claim value as published by the issuer', () => {
       const service = setup(jest.fn());
       const credential = buildCredential();
 
       const fields = service.buildFieldsFromClaims(credential.credentialSubject, buildLabelLevelMetadata());
 
-      expect(fields).toContainEqual({ label: 'Label Level', value: 'Professional' });
+      expect(fields).toContainEqual({ label: 'Label Level', value: 'P' });
     });
 
-    it('keeps the raw value when it has no entry in value_map', () => {
-      const service = setup(jest.fn());
-      const credential = buildCredential({
-        credentialSubject: { ...buildCredential().credentialSubject, 'gx:labelLevel': 'UNKNOWN' } as any,
-      });
-
-      const fields = service.buildFieldsFromClaims(credential.credentialSubject, buildLabelLevelMetadata());
-
-      expect(fields).toContainEqual({ label: 'Label Level', value: 'UNKNOWN' });
-    });
-
-    it('leaves the value untouched when the claim has no value_map', () => {
+    it('renders every scalar claim of the metadata', () => {
       const service = setup(jest.fn());
       const credential = buildCredential();
 
@@ -126,13 +113,16 @@ describe('CredentialDisplayService', () => {
   });
 
   describe('getCardFields', () => {
-    it('restricts the summary to the claims listed in summary_claims', async () => {
+    it('summarises the scalar claims in metadata order', async () => {
       const findCredentialMetadata = jest.fn().mockResolvedValue(buildLabelLevelMetadata());
       const service = setup(findCredentialMetadata);
 
       const fields = await service.getCardFields(buildCredential());
 
-      expect(fields).toEqual([{ label: 'Label Level', value: 'Professional' }]);
+      expect(fields).toEqual([
+        { label: 'Label Level', value: 'P' },
+        { label: 'Engine Version', value: '1.0' },
+      ]);
     });
 
     it('returns an empty array when there is no resolvable metadata', async () => {
@@ -155,14 +145,14 @@ describe('CredentialDisplayService', () => {
   });
 
   describe('createSectionsFromClaims', () => {
-    it('maps grouped claim values through value_map', () => {
+    it('groups the claim values as published by the issuer', () => {
       const service = setup(jest.fn());
       const credential = buildCredential();
 
       const sections = service.createSectionsFromClaims(credential.credentialSubject, buildLabelLevelMetadata());
 
       const allFields = sections.flatMap(s => s.fields);
-      expect(allFields).toContainEqual({ label: 'Label Level', value: 'Professional' });
+      expect(allFields).toContainEqual({ label: 'Label Level', value: 'P' });
     });
   });
 
