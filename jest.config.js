@@ -58,6 +58,9 @@ module.exports = {
     "src/app/shared/helpers/ui-text-bundle.ts",
     "src/app/shared/services/user-preferences.service.ts",
     "src/app/features/language-selector/language-selector.page.ts",
+    // --- LCL/STG cross-origin single-instance guard ---
+    "src/app/core/services/single-instance.service.ts",
+    "src/app/core/services/instance-group.service.ts",
   ],
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/', 
