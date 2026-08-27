@@ -24,11 +24,9 @@ export class InstanceGroupService {
   }
 
   private loadConfig(): Promise<InstanceGroupsConfig> {
-    if (!this.configPromise) {
-      this.configPromise = firstValueFrom(
-        this.http.get<InstanceGroupsConfig>(INSTANCE_GROUPS_CONFIG_URL),
-      ).catch(() => EMPTY_CONFIG);
-    }
+    this.configPromise ??= firstValueFrom(
+      this.http.get<InstanceGroupsConfig>(INSTANCE_GROUPS_CONFIG_URL),
+    ).catch(() => EMPTY_CONFIG);
     return this.configPromise;
   }
 }
