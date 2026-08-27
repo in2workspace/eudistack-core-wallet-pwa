@@ -85,6 +85,18 @@ describe('InstanceGroupService', () => {
       expect(result).toBeNull();
     });
 
+    it('defaults to window.location.origin when no origin is given', async () => {
+      // Arrange
+      const promise = service.resolveGroupForOrigin();
+
+      // Act
+      http.expectOne(CONFIG_URL).flush(DOME_STG_CONFIG);
+      const result = await promise;
+
+      // Assert — the test runner's own origin is never a member of any group.
+      expect(result).toBeNull();
+    });
+
     it('memoises the config request across calls', async () => {
       // Arrange
       const first = service.resolveGroupForOrigin('https://dome.stg.eudistack.net');

@@ -363,6 +363,26 @@ describe('SingleInstanceService', () => {
       expect((service as any).channel).toBeInstanceOf(BroadcastChannelMock);
     });
 
+    it('delegates a non-LEADER_ACK message received mid-election instead of resolving early', async () => {
+      // Arrange
+      instanceGroupServiceMock.resolveGroupForOrigin.mockResolvedValue(null);
+      const electPromise = service.elect();
+      // acquireTransport() resolves the transport asynchronously — flush microtasks
+      // so `channel` is assigned before we try to reach it from the outside.
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const ownChannel = (service as any).channel as InstanceType<typeof BroadcastChannelMock>;
+      const otherTab = new BroadcastChannelMock(ownChannel.name);
+
+      // Act — another tab announces itself; this tab isn't leader yet, so it's a harmless no-op,
+      // but the election must keep running (not resolve false) and must not throw.
+      otherTab.postMessage({ type: 'NEW_TAB', tabId: 'someone-else' });
+      const isLeader = await electPromise;
+
+      // Assert
+      expect(isLeader).toBe(true);
+      otherTab.close();
+    });
+
     it('routes election through the cross-origin relay when the origin belongs to an instance group', async () => {
       // Arrange
       instanceGroupServiceMock.resolveGroupForOrigin.mockResolvedValue(domeStgGroup);
@@ -423,5 +443,166 @@ describe('SingleInstanceService', () => {
       expect(isLeader).toBe(true);
       expect((service as any).channel).toBeInstanceOf(BroadcastChannelMock);
     });
+
+    it('acts as leader without touching InstanceGroupService when BroadcastChannel is unsupported', async () => {
+      // Arrange
+      const original = (globalThis as any).BroadcastChannel;
+      delete (globalThis as any).BroadcastChannel;
+
+      try {
+        // Act
+        const isLeader = await service.elect();
+
+        // Assert
+        expect(isLeader).toBe(true);
+        expect(instanceGroupServiceMock.resolveGroupForOrigin).not.toHaveBeenCalled();
+      } finally {
+        (globalThis as any).BroadcastChannel = original;
+      }
+    });
+  });
+});
+
+describe('RelayTransport (real implementation, no mocks)', () => {
+  const brokerUrl = 'https://dome.stg.eudistack.net/wallet/assets/instance-broker.html';
+  const brokerOrigin = 'https://dome.stg.eudistack.net';
+
+  function getIframe(): HTMLIFrameElement {
+    const iframe = document.body.querySelector('iframe');
+    if (!iframe) throw new Error('connect() did not append an iframe');
+    return iframe;
+  }
+
+  function dispatchFromBroker(iframe: HTMLIFrameElement, data: unknown, origin = brokerOrigin): void {
+    window.dispatchEvent(new MessageEvent('message', { source: iframe.contentWindow, origin, data }));
+  }
+
+  afterEach(() => {
+    document.body.querySelectorAll('iframe').forEach(el => el.remove());
+  });
+
+  it('appends a hidden iframe pointed at the broker URL', () => {
+    // Arrange & Act
+    void RelayTransport.connect(brokerUrl, 400);
+    const iframe = getIframe();
+
+    // Assert
+    expect(iframe.src).toBe(brokerUrl);
+    expect(iframe.style.display).toBe('none');
+  });
+
+  it('resolves a RelayTransport once BROKER_READY arrives from the iframe', async () => {
+    // Arrange
+    const connectPromise = RelayTransport.connect(brokerUrl, 400);
+    const iframe = getIframe();
+
+    // Act
+    dispatchFromBroker(iframe, { type: 'BROKER_READY' });
+    const relay = await connectPromise;
+
+    // Assert
+    expect(relay).toBeInstanceOf(RelayTransport);
+  });
+
+  it('ignores a BROKER_READY from an unrelated origin', async () => {
+    // Arrange
+    const connectPromise = RelayTransport.connect(brokerUrl, 60);
+    const iframe = getIframe();
+
+    // Act — wrong origin, then let the real timeout elapse.
+    dispatchFromBroker(iframe, { type: 'BROKER_READY' }, 'https://evil.example');
+    const relay = await connectPromise;
+
+    // Assert
+    expect(relay).toBeNull();
+  });
+
+  it('resolves null and removes the iframe when the broker never responds', async () => {
+    // Arrange
+    const connectPromise = RelayTransport.connect(brokerUrl, 60);
+    getIframe();
+
+    // Act
+    const relay = await connectPromise;
+
+    // Assert
+    expect(relay).toBeNull();
+    expect(document.body.querySelector('iframe')).toBeNull();
+  });
+
+  it('forwards postMessage to the iframe wrapped as RELAY_OUT, targeted at the broker origin', async () => {
+    // Arrange
+    const connectPromise = RelayTransport.connect(brokerUrl, 400);
+    const iframe = getIframe();
+    dispatchFromBroker(iframe, { type: 'BROKER_READY' });
+    const relay = await connectPromise;
+    const postSpy = jest.spyOn(iframe.contentWindow as Window, 'postMessage');
+
+    // Act
+    relay!.postMessage({ type: 'NEW_TAB', tabId: 'tab-1' });
+
+    // Assert
+    expect(postSpy).toHaveBeenCalledWith(
+      { type: 'RELAY_OUT', payload: { type: 'NEW_TAB', tabId: 'tab-1' } },
+      brokerOrigin,
+    );
+  });
+
+  it('unwraps a RELAY_IN message from the iframe and forwards it through onmessage', async () => {
+    // Arrange
+    const connectPromise = RelayTransport.connect(brokerUrl, 400);
+    const iframe = getIframe();
+    dispatchFromBroker(iframe, { type: 'BROKER_READY' });
+    const relay = await connectPromise;
+    const onmessage = jest.fn();
+    relay!.onmessage = onmessage;
+    const payload = { type: 'LEADER_ACK', tabId: 'other-tab' };
+
+    // Act
+    dispatchFromBroker(iframe, { type: 'RELAY_IN', payload });
+
+    // Assert
+    expect(onmessage).toHaveBeenCalledWith(expect.objectContaining({ data: payload }));
+  });
+
+  it('ignores messages whose source is not this transport\'s own iframe', async () => {
+    // Arrange
+    const connectPromise = RelayTransport.connect(brokerUrl, 400);
+    const iframe = getIframe();
+    dispatchFromBroker(iframe, { type: 'BROKER_READY' });
+    const relay = await connectPromise;
+    const onmessage = jest.fn();
+    relay!.onmessage = onmessage;
+    const otherIframe = document.createElement('iframe');
+    document.body.appendChild(otherIframe);
+
+    // Act
+    window.dispatchEvent(new MessageEvent('message', {
+      source: otherIframe.contentWindow,
+      origin: brokerOrigin,
+      data: { type: 'RELAY_IN', payload: { type: 'LEADER_ACK', tabId: 'x' } },
+    }));
+
+    // Assert
+    expect(onmessage).not.toHaveBeenCalled();
+    otherIframe.remove();
+  });
+
+  it('close() removes the iframe and stops listening for messages', async () => {
+    // Arrange
+    const connectPromise = RelayTransport.connect(brokerUrl, 400);
+    const iframe = getIframe();
+    dispatchFromBroker(iframe, { type: 'BROKER_READY' });
+    const relay = await connectPromise;
+    const onmessage = jest.fn();
+    relay!.onmessage = onmessage;
+
+    // Act
+    relay!.close();
+    dispatchFromBroker(iframe, { type: 'RELAY_IN', payload: { type: 'LEADER_ACK', tabId: 'x' } });
+
+    // Assert
+    expect(document.body.querySelector('iframe')).toBeNull();
+    expect(onmessage).not.toHaveBeenCalled();
   });
 });
