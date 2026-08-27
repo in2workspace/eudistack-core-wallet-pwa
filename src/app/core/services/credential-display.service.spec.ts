@@ -42,7 +42,6 @@ function buildLabelLevelMetadata(): CredentialMetadata {
         display: [{ name: 'Engine Version', locale: 'en' }],
       },
     ],
-    summary_claims: [['credentialSubject', 'gx:labelLevel']],
   };
 }
 
@@ -126,13 +125,16 @@ describe('CredentialDisplayService', () => {
   });
 
   describe('getCardFields', () => {
-    it('restricts the summary to the claims listed in summary_claims', async () => {
+    it('summarises the scalar claims in metadata order', async () => {
       const findCredentialMetadata = jest.fn().mockResolvedValue(buildLabelLevelMetadata());
       const service = setup(findCredentialMetadata);
 
       const fields = await service.getCardFields(buildCredential());
 
-      expect(fields).toEqual([{ label: 'Label Level', value: 'Professional' }]);
+      expect(fields).toEqual([
+        { label: 'Label Level', value: 'Professional' },
+        { label: 'Engine Version', value: '1.0' },
+      ]);
     });
 
     it('returns an empty array when there is no resolvable metadata', async () => {

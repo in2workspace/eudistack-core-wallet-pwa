@@ -67,7 +67,6 @@ export class AuthorisationServerMetadataService {
         authorizationEndpoint: root?.authorization_endpoint ?? root?.authorizationEndpoint,
         jwksUri: root?.jwks_uri ?? root?.jwksUri,
         pushedAuthorizationRequestEndpoint: root?.pushed_authorization_request_endpoint,
-        nonceEndpoint: root?.nonce_endpoint,
         requirePushedAuthorizationRequests: root?.require_pushed_authorization_requests,
         codeChallengeMethodsSupported: root?.code_challenge_methods_supported,
         dpopSigningAlgValuesSupported: root?.dpop_signing_alg_values_supported,
