@@ -1,0 +1,67 @@
+<ion-content [fullscreen]="true" class="ios-onboarding-bg">
+  <div class="ios-onboarding-wrapper">
+    <div class="ios-onboarding-card">
+
+      <!-- Header -->
+      <div class="ios-onboarding-header">
+        <div class="ios-onboarding-icon-circle" role="img" [attr.aria-label]="'ios-install.icon-aria' | translate">
+          <ion-icon name="phone-portrait-outline" aria-hidden="true"></ion-icon>
+        </div>
+
+        <h1 class="ios-onboarding-title">
+          {{ (state === 'already-bootstrapped'
+              ? 'ios-install.already-bootstrapped-title'
+              : 'ios-install.title') | translate }}
+        </h1>
+
+        <p class="ios-onboarding-subtitle">
+          {{ (state === 'already-bootstrapped'
+              ? 'ios-install.already-bootstrapped-subtitle'
+              : 'ios-install.subtitle') | translate }}
+        </p>
+      </div>
+
+      <!-- 4-step wizard (AC-008.3) — shown for not-bootstrapped and already-bootstrapped -->
+      <ol class="ios-install-steps" [attr.aria-label]="'ios-install.steps-aria' | translate">
+        <li
+          *ngFor="let step of steps; let i = index"
+          class="ios-install-step"
+        >
+          <div
+            class="step-icon-wrap"
+            role="img"
+            [attr.aria-label]="step.labelKey | translate"
+          >
+            <span class="step-number" aria-hidden="true">{{ i + 1 }}</span>
+            <ion-icon [name]="step.icon" aria-hidden="true"></ion-icon>
+          </div>
+          <div class="step-text">
+            <span class="step-label">{{ step.labelKey | translate }}</span>
+            <span class="step-detail">{{ step.detailKey | translate }}</span>
+          </div>
+        </li>
+      </ol>
+
+      <!-- Learn more link (AC-008.4) -->
+      <button
+        class="ios-learn-more-btn"
+        (click)="openLearnMore()"
+        (keydown.enter)="openLearnMore()"
+        type="button"
+      >
+        {{ 'ios-install.learn-more' | translate }}
+      </button>
+
+      <!-- "Continue anyway" — opens confirmation dialog (AC-008.7) -->
+      <button
+        class="ios-continue-anyway-btn"
+        (click)="continueAnyway()"
+        (keydown.enter)="continueAnyway()"
+        type="button"
+      >
+        {{ 'ios-install.continue-anyway' | translate }}
+      </button>
+
+    </div>
+  </div>
+</ion-content>

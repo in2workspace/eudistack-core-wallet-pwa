@@ -5,6 +5,12 @@ html, body {
   }
 }
 
+// Text selection — brand-independent, WCAG AA
+::selection {
+  background-color: var(--ui-selection-bg);
+  color: var(--ui-selection-fg);
+}
+
 .main-content{
   margin-top: 4rem;
   background-color: var(--surface-page);

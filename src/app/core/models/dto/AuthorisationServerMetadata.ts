@@ -6,7 +6,6 @@ export interface AuthorisationServerMetadata {
 
   // Authorization Code / HAIP fields
   pushedAuthorizationRequestEndpoint?: string;
-  nonceEndpoint?: string;
   requirePushedAuthorizationRequests?: boolean;
   codeChallengeMethodsSupported?: string[];
   dpopSigningAlgValuesSupported?: string[];

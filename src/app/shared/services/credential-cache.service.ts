@@ -1,5 +1,5 @@
-import { Injectable } from '@angular/core';
-import { ExtendedCredentialType, VerifiableCredential } from '../../core/models/verifiable-credential';
+import { Injectable, Signal, computed, signal } from '@angular/core';
+import { ExtendedCredentialType, LifeCycleStatus, VerifiableCredential } from '../../core/models/verifiable-credential';
 import { DcqlCredentialQuery, DcqlQuery } from '../../core/protocol/oid4vp/authorization-request.model';
 
 const SCOPE_TO_TYPE: Record<string, string> = {
@@ -7,25 +7,68 @@ const SCOPE_TO_TYPE: Record<string, string> = {
   'learcredential.machine': 'learcredential.machine.w3c.3',
 };
 
+export type CredentialLoadStatus = 'idle' | 'loading' | 'loaded' | 'error';
+
+export interface CredentialState {
+  status: CredentialLoadStatus;
+  credentials: VerifiableCredential[];
+}
+
+/**
+ * Single reactive source of truth for the wallet credential list.
+ *
+ * State is held in a signal (project convention: signals for local state).
+ * `WalletService` owns the I/O and pushes state here via the mutators; the
+ * credentials page reads the derived signals, and the OID4VP flow filters over
+ * `snapshot()`. `status` lets consumers distinguish "loading" / "load error" /
+ * "genuinely empty" instead of collapsing all three into an empty array.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class CredentialCacheService {
 
-  private credentials: VerifiableCredential[] = [];
+  private readonly _state = signal<CredentialState>({ status: 'idle', credentials: [] });
 
-  syncFromBackend(credentials: VerifiableCredential[]): void {
-    this.credentials = [...credentials];
+  readonly credentials: Signal<VerifiableCredential[]> = computed(() => [...this._state().credentials]);
+  readonly status: Signal<CredentialLoadStatus> = computed(() => this._state().status);
+
+  /** Synchronous snapshot of the current state (for imperative reads, e.g. VP filtering). */
+  snapshot(): CredentialState {
+    return this._state();
+  }
+
+  setLoading(): void {
+    this._state.update(s => ({ status: 'loading', credentials: s.credentials }));
+  }
+
+  setLoaded(credentials: VerifiableCredential[]): void {
+    this._state.set({ status: 'loaded', credentials: [...credentials] });
+  }
+
+  /** Marks a failed load WITHOUT clearing the current list — a transient error must not blank the wallet. */
+  setError(): void {
+    this._state.update(s => ({ status: 'error', credentials: s.credentials }));
+  }
+
+  patchStatus(id: string, lifeCycleStatus: LifeCycleStatus): void {
+    this._state.update(s => ({
+      status: s.status,
+      credentials: s.credentials.map(cred =>
+        cred.id === id ? { ...cred, lifeCycleStatus } : cred
+      ),
+    }));
+  }
+
+  remove(id: string): void {
+    this._state.update(s => ({
+      status: s.status,
+      credentials: s.credentials.filter(cred => cred.id !== id),
+    }));
   }
 
   getAll(): VerifiableCredential[] {
-    return [...this.credentials];
-  }
-
-  findCredentialsByType(type: string): VerifiableCredential[] {
-    return this.credentials.filter(
-      cred => cred.type?.includes(type as ExtendedCredentialType) && cred.lifeCycleStatus === 'VALID'
-    );
+    return [...this._state().credentials];
   }
 
   findCredentialsByDcqlQuery(dcqlQuery: DcqlQuery): VerifiableCredential[] {
@@ -52,7 +95,7 @@ export class CredentialCacheService {
 
     if (types.length === 0) return [];
 
-    return this.credentials.filter(
+    return this._state().credentials.filter(
       cred => cred.lifeCycleStatus === 'VALID' &&
         cred.type?.some(t => types.includes(t))
     );
@@ -63,7 +106,7 @@ export class CredentialCacheService {
   }
 
   private matchCredentialQuery(credQuery: DcqlCredentialQuery): VerifiableCredential[] {
-    return this.credentials.filter(cred => {
+    return this._state().credentials.filter(cred => {
       if (cred.lifeCycleStatus !== 'VALID') return false;
 
       // Match by format-specific metadata

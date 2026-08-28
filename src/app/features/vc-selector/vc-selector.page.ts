@@ -14,6 +14,7 @@ import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
 import { Oid4vpEngineService } from 'src/app/core/protocol/oid4vp/oid4vp.engine.service';
 import { CredentialDecisionService } from 'src/app/core/services/credential-decision.service';
+import {UserPreferencesService} from "../../shared/services/user-preferences.service";
 
 // todo: show only VCs with powers to login
 // todo: if user has only one VC, use this directly
@@ -41,6 +42,12 @@ export class VcSelectorPage {
   public isAlertOpen = false;
   public errorAlertOpen = false;
   public sendCredentialAlert = false;
+  public clientName = '';
+  public clientLogo = '';
+  public needsFallback = false;
+  public policyUri = '';
+  public tosUri = '';
+  public clientUri = '';
 
   public _VCReply: VCReply = {
     selectedVcList: [],
@@ -57,7 +64,7 @@ export class VcSelectorPage {
   private readonly translate = inject(TranslateService);
   private readonly oid4vpEngineService = inject(Oid4vpEngineService);
   private readonly credentialDecisionService = inject(CredentialDecisionService);
-
+  private readonly userPrefs = inject(UserPreferencesService);
 
   public constructor() {
       this.route.queryParams.pipe(takeUntilDestroyed()).subscribe((params) => {
@@ -76,6 +83,52 @@ export class VcSelectorPage {
       this._VCReply.clientId = this.executionResponse['clientId'];
       this._VCReply.dcqlQuery = this.executionResponse['dcqlQuery'];
       this.requesterDomain = this.extractDomain(this.executionResponse['clientId'] || this.executionResponse['redirectUri'] || '');
+      this.extractConsentData();
+  }
+
+  private extractConsentData(): void {
+    const metadata = this.executionResponse['clientMetadata'];
+    const currentLocale = this.translate.currentLang || navigator.language || 'es';
+
+    if (!metadata) {
+      console.warn('ClientMetadata not found');
+    }
+    this.clientName = this.getMetadataValue(metadata, 'client_name', currentLocale, this.requesterDomain);
+    this.clientUri = this.getMetadataValue(metadata, 'client_uri', currentLocale, this.requesterDomain);
+    this.policyUri = this.getMetadataValue(metadata, 'policy_uri', currentLocale, '');
+    this.tosUri = this.getMetadataValue(metadata, 'tos_uri', currentLocale, '');
+    this.clientLogo = this.getLogoByTheme(metadata, currentLocale);
+  }
+
+  private getMetadataValue(metadata: any, field: string, locale: string, fallback: string): string {
+    if (!metadata) return fallback;
+    const language = locale.split('-')[0];
+
+    return (metadata.localizedClaims && metadata.localizedClaims[`${field}#${locale}`]) ||
+      (metadata.localizedClaims && metadata.localizedClaims[`${field}#${language}`]) ||
+      metadata[`${field}#${locale}`] ||
+      metadata[`${field}#${language}`] ||
+      metadata[field] ||
+      fallback;
+  }
+
+  private getLogoByTheme(metadata: any, locale: string) {
+    const lightLogo = this.getMetadataValue(metadata, 'logo_uri', locale, '');
+    const darkLogo = this.getMetadataValue(metadata, 'logo_dark_uri', locale, '');
+    const isDarkMode = this.userPrefs.darkMode();
+
+    if (!isDarkMode && darkLogo !== '') {
+      this.needsFallback = false;
+      return darkLogo;
+    }
+    else if (isDarkMode && lightLogo !== '') {
+      this.needsFallback = false;
+      return lightLogo;
+    }
+    else {
+      this.needsFallback = true;
+      return lightLogo;
+    }
   }
 
   public goBack(): void {

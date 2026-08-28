@@ -8,7 +8,7 @@ import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message'
 
 @Injectable({ providedIn: 'root' })
 export class CredentialOfferService {
- 
+
   private readonly walletService = inject(WalletService);
 
     async getCredentialOfferFromCredentialOfferUri(credentialOfferUri: string): Promise<CredentialOffer> {
@@ -34,10 +34,14 @@ export class CredentialOfferService {
 
   private parseCredentialOfferUri(credentialOfferUri: string): string {
     try {
-      const parts = credentialOfferUri.split('=');
-      const value = parts[1];
-      if (!value) return credentialOfferUri;
-      return decodeURIComponent(value);
+      const url = new URL(credentialOfferUri);
+      const offerParams = url.searchParams.get('credential_offer_uri');
+
+      if (offerParams) {
+        console.log('Detected wrapped offer URI:', offerParams);
+        return offerParams;
+      }
+      return credentialOfferUri;
     } catch {
       console.warn('Error parsing credential offer URI, using original value as fallback.');
       return credentialOfferUri;

@@ -58,6 +58,18 @@
   // Touch-target minimum (WCAG 2.5.5)
   --touch-min: 44px;
 
+  /**
+   * Interaction tokens — brand-independent, never overridden by ThemeService.
+   * Guarantee WCAG AA regardless of tenant branding. Use these for caret,
+   * focus rings and text selection — not brand colors.
+   */
+  --ui-caret: #1A1A2E;
+  --ui-caret-on-dark: #FFFFFF;
+  --ui-focus-ring: #2563EB;
+  --ui-focus-ring-rgb: 37, 99, 235;
+  --ui-selection-bg: #2563EB;
+  --ui-selection-fg: #FFFFFF;
+
   /** Ionic color palette — mapped to semantic tokens **/
   --ion-color-primary: var(--primary-color);
   --ion-color-primary-rgb: var(--primary-color-rgb);
@@ -159,6 +171,14 @@
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
   --shadow-md: 0 4px 6px rgba(0,0,0,0.3);
   --shadow-lg: 0 10px 15px rgba(0,0,0,0.4);
+
+  // Interaction tokens — dark-mode variants (still brand-independent)
+  --ui-caret: #F0F1F4;
+  --ui-caret-on-dark: #F0F1F4;
+  --ui-focus-ring: #60A5FA;
+  --ui-focus-ring-rgb: 96, 165, 250;
+  --ui-selection-bg: #60A5FA;
+  --ui-selection-fg: #0F1117;
 
   --ion-background-color: var(--surface-page);
   --ion-text-color: var(--text-primary);
