@@ -1,6 +1,6 @@
 {
   "name": "eudistack-core-wallet-pwa",
-  "version": "3.16.2",
+  "version": "3.16.3",
   "author": "EUDIStack",
   "homepage": "https://ionicframework.com/",
   "scripts": {
@@ -18,7 +18,8 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci",
     "lint": "ng lint",
-    "eje": "copy customTheme customTheme2"
+    "eje": "copy customTheme customTheme2",
+    "sbom": "cyclonedx-npm --spec-version 1.6 --output-format JSON --output-file build/sbom/sbom.json --package-lock-only --output-reproducible"
   },
   "private": true,
   "dependencies": {
@@ -59,6 +60,7 @@
     "@angular/compiler-cli": "^19.2.19",
     "@angular/language-service": "^19.2.19",
     "@capacitor/cli": "6.1.2",
+    "@cyclonedx/cyclonedx-npm": "6.0.1",
     "@ionic/angular-toolkit": "^12.1.1",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.5.3",

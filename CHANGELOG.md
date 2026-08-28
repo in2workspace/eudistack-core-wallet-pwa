@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **EUD-38 — inventario CycloneDX y gate de licencias**: el repositorio genera su inventario CycloneDX 1.6 en cada construcción, lo publica como activo de cada release (`sbom-v<version>.cdx.json`, comprobando que la versión del inventario coincide con la del artefacto) y evalúa cada pull request contra la lista de licencias admitidas (`.github/license-policy.json`, transcripción de `conv-quality-security-gates.md` §16.1). El evaluador y su suite de tests viven en `.github/scripts/`, sin dependencias de terceros y sin depender de ningún otro repositorio. Guía operativa: `docs/_shared/guides/license-gate-and-sbom.md` en `eudistack-platform-dev`.
+
+### Changed
+
+- **Generación del inventario fijada y reproducible**: `@cyclonedx/cyclonedx-npm` pasa a ser `devDependency` con versión exacta y se ejecuta mediante `npm run sbom` después de `npm ci`, en lugar de descargarse con `npx --yes` en tiempo de construcción. Los componentes de desarrollo se mantienen marcados en el inventario en vez de omitirse: el gate ya distingue por ámbito y bloquea solo lo que se distribuye en ejecución.
+
+### Fixed
+
+- **`package-lock.json` referenciaba `bytes@3.7.2`, una versión que no existe en el registro**: `npm ls` la marcaba como inválida y, con ella, ningún inventario de componentes podía generarse. Re-resuelta a `bytes@3.1.2`, la última publicada y la que piden `body-parser`, `compression` y `raw-body`.
+
+### Added
+
 - **CI — control de composición de software (SCA)**
   - **Trivy** añadido a `pr.yml`: escaneo `fs` de la raíz del repositorio (lee `package-lock.json`), severidad `HIGH,CRITICAL`, con caché de la base de vulnerabilidades, informe JSON como artefacto y `config/trivy/.trivyignore` para riesgos aceptados documentados. El parser npm de Trivy omite las dependencias de desarrollo por defecto, así que el escaneo refleja lo que llega al navegador.
   - **`exit-code: 0` de forma deliberada:** entra como línea base, todavía no como puerta. El árbol de dependencias de producción arrastra advisories HIGH en `@angular/common`, `@angular/core` y `@angular/compiler`. Un bump de patch a `19.2.25` (última 19.x publicada) cierra CVE-2026-50170 y CVE-2026-50171; las seis restantes (CVE-2026-54266, 54267, 54268, 68945 y 69151) solo tienen fix en `20.3.25+`, `21.2.17+` o `22.x`, así que limpiar el árbol exige la subida de major de Angular. Se girará a `1` cuando esa subida aterrice o cuando los riesgos aceptados queden listados en `.trivyignore`.
