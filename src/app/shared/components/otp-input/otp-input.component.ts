@@ -1,14 +1,16 @@
 import {
   Component,
   EventEmitter,
+  inject,
   Input,
   Output,
   ViewChildren,
   QueryList,
   ElementRef,
-  AfterViewInit, OnChanges, OnInit, SimpleChanges,
+  AfterViewInit,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-otp-input',
@@ -17,21 +19,27 @@ import { CommonModule } from '@angular/common';
   template: `
     <div class="otp-container">
       <input
-        *ngFor="let d of digits; let i = index; trackBy: trackByFn"
+        *ngFor="let d of digits; let i = index; trackBy: trackByIndex"
         #otpBox
         type="text"
         inputmode="numeric"
         maxlength="1"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
         class="otp-box"
         [class.filled]="digits[i] !== ''"
         [class.error]="error"
         [value]="digits[i]"
+        [attr.aria-label]="digitAriaLabel(i)"
         (input)="onInput($event, i)"
         (keydown)="onKeydown($event, i)"
         (paste)="onPaste($event)"
         (focus)="onFocus(i)"
       />
     </div>
+    <div class="sr-only" role="alert" aria-live="assertive">{{ errorMessage }}</div>
   `,
   styles: [`
     .otp-container {
@@ -78,7 +86,7 @@ import { CommonModule } from '@angular/common';
     }
   `],
 })
-export class OtpInputComponent implements OnInit, OnChanges, AfterViewInit {
+export class OtpInputComponent implements AfterViewInit {
   @ViewChildren('otpBox') boxes!: QueryList<ElementRef<HTMLInputElement>>;
 
   /** Number of digit boxes (4 for PIN, 6 for email OTP) */
@@ -90,21 +98,31 @@ export class OtpInputComponent implements OnInit, OnChanges, AfterViewInit {
   /** Show error styling */
   @Input() error = false;
 
+  /** Error text announced via aria-live when set */
+  @Input() errorMessage = '';
+
   /** Emits the complete code when all digits are filled */
   @Output() completed = new EventEmitter<string>();
 
   /** Emits partial value on every change */
   @Output() changed = new EventEmitter<string>();
 
+  private readonly translate = inject(TranslateService);
+
   digits: string[] = [];
 
-  ngOnInit() { this.initDigits(); }
-  ngOnChanges(): void { this.initDigits(); }
+  digitAriaLabel(index: number): string {
+    return this.translate.instant('otp-input.digit-aria', { index: index + 1, length: this.length });
+  }
 
-  private initDigits(): void {
+  ngOnChanges(): void {
     if (this.digits.length !== this.length) {
       this.digits = Array(this.length).fill('');
     }
+  }
+
+  ngOnInit(): void {
+    this.digits = Array(this.length).fill('');
   }
 
   ngAfterViewInit(): void {
@@ -117,51 +135,56 @@ export class OtpInputComponent implements OnInit, OnChanges, AfterViewInit {
     return this.digits.join('');
   }
 
-  trackByFn(index: number) { return index; }
+  trackByIndex(index: number): number {
+    return index;
+  }
+
+  /** Programmatic reset */
+  reset(): void {
+    this.digits = Array(this.length).fill('');
+    this.focusBox(0);
+  }
 
   onInput(event: Event, index: number): void {
     const input = event.target as HTMLInputElement;
-    let val = input.value.replace(/\D/g, '');
+    const val = input.value.replace(/\D/g, '');
 
-    if (val.length > 0) {
-      val = val.substring(val.length - 1);
-      this.digits[index] = val;
-      input.value = val;
+    if (val) {
+      this.digits[index] = val[0];
+      input.value = val[0];
 
       if (index < this.length - 1) {
-        setTimeout (() => this.focusBox(index + 1), 0);
+        setTimeout(() => this.focusBox(index + 1), 0);
       }
+
+      this.changed.emit(this.value);
     } else {
       this.digits[index] = '';
+      input.value = '';
+      this.changed.emit(this.value);
     }
-    this.emitChanges();
   }
 
   onKeydown(event: KeyboardEvent, index: number): void {
-    const input = event.target as HTMLInputElement;
-
     if (event.key === 'Backspace') {
-      event.preventDefault();
-
       if (this.digits[index] !== '') {
         this.digits[index] = '';
-        input.value = '';
-      }
-      else if (index > 0) {
+        if (index > 0) {
+          this.focusBox(index - 1);
+        }
+      } else if (index > 0) {
         this.digits[index - 1] = '';
         this.focusBox(index - 1);
+        event.preventDefault();
       }
-      this.emitChanges();
-    }
-    else if (event.key === 'ArrowLeft' && index > 0) {
+      this.changed.emit(this.value);
+    } else if (event.key === 'ArrowLeft' && index > 0) {
       this.focusBox(index - 1);
       event.preventDefault();
-    }
-    else if (event.key === 'ArrowRight' && index < this.length - 1) {
+    } else if (event.key === 'ArrowRight' && index < this.length - 1) {
       this.focusBox(index + 1);
       event.preventDefault();
-    }
-    else if (event.key === 'Enter' && this.value.length === this.length) {
+    } else if (event.key === 'Enter' && this.value.length === this.length) {
       this.completed.emit(this.value);
     }
   }
@@ -171,16 +194,16 @@ export class OtpInputComponent implements OnInit, OnChanges, AfterViewInit {
     const pasted = (event.clipboardData?.getData('text') || '')
       .replace(/\D/g, '')
       .slice(0, this.length);
-
     if (!pasted) return;
 
-    this.digits = Array(this.length).fill('').map((_, i) => pasted[i] || '');
+    for (let i = 0; i < this.length; i++) {
+      this.digits[i] = pasted[i] || '';
+    }
 
-    setTimeout(() => {
-      const nextEmpty = this.digits.findIndex(d => d === '');
-      this.focusBox(nextEmpty >= 0 ? nextEmpty : this.length - 1);
-      this.emitChanges();
-    }, 0);
+    const nextEmpty = this.digits.findIndex(d => d === '');
+    this.focusBox(nextEmpty >= 0 ? nextEmpty : this.length - 1);
+
+    this.changed.emit(this.value);
   }
 
   onFocus(index: number): void {
@@ -191,18 +214,13 @@ export class OtpInputComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   private focusBox(index: number): void {
-   const boxes = this.boxes?.toArray();
-   if (boxes && boxes[index]) {
-     const el = boxes[index].nativeElement;
-     el.focus();
-     setTimeout(() => el.select(), 0);
-   }
-  }
-
-  private emitChanges(): void {
-    this.changed.emit(this.value);
-    if (this.value.length === this.length) {
-      this.completed.emit(this.value);
+    const boxes = this.boxes?.toArray();
+    if (boxes?.[index]) {
+      const el = boxes[index].nativeElement;
+      if (el.value !== this.digits[index]) {
+        el.value = this.digits[index];
+      }
+      el.focus();
     }
   }
 }

@@ -1,0 +1,148 @@
+.oss-licenses-page {
+  --background: var(--surface-page);
+}
+
+.oss-licenses-container {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: var(--space-md);
+}
+
+.oss-licenses-loading,
+.oss-licenses-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 48px 16px;
+  color: var(--text-secondary);
+}
+
+.oss-licenses-empty {
+  ion-icon {
+    font-size: 40px;
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    font-size: 17px;
+    color: var(--text-primary);
+    margin: 0;
+  }
+}
+
+.oss-licenses-contact-link {
+  margin-top: 8px;
+  color: var(--status-info);
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+  }
+}
+
+// -- Count summary ------------------------------------------------------------
+
+.oss-licenses-count {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin: 0 4px 8px;
+}
+
+// -- Grouped card (same pattern as Settings / About) --------------------------
+
+.settings-group {
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.settings-list {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+
+  --ion-item-background: transparent;
+}
+
+.item-divider {
+  height: 1px;
+  background: var(--border-default);
+  margin-left: 16px;
+  margin-right: 0;
+}
+
+// -- License row: generous spacing, no grid feel -------------------------------
+
+.oss-license-item {
+  --min-height: 68px;
+  --padding-start: 16px;
+  --padding-end: 12px;
+  --inner-padding-end: 0;
+  --border-width: 0;
+  --inner-border-width: 0;
+
+  ion-label {
+    margin-top: 12px;
+    margin-bottom: 12px;
+  }
+}
+
+.oss-license-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 6px;
+  word-break: break-word;
+}
+
+.oss-license-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.oss-license-version {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.oss-license-badge {
+  --background: var(--action-secondary);
+  --color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: none;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.oss-license-repo-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md, 8px);
+
+  &:hover {
+    background: var(--action-secondary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--status-info);
+    outline-offset: 2px;
+  }
+
+  ion-icon {
+    font-size: 20px;
+  }
+}

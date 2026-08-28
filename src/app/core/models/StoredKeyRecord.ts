@@ -12,6 +12,8 @@ export interface PublicKeyInfo {
   publicKeyJwk: JsonWebKey;
   kid: string; // JWK thumbprint (RFC 7638)
   createdAt: string;
+  /** Pre-built JWS proof from server-side key generation (compact serialization). Present only in server wallet mode. */
+  prebuiltJwsProof?: string;
 }
 
 export interface KeyInfo {

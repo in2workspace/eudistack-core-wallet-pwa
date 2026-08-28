@@ -1,0 +1,14 @@
+{
+  "$comment": "Approved license exceptions. Each record requires purl (version-pinned), license, reason, approved_by, approved_on, expires_on (max 180 days) and ticket. Protected by .github/CODEOWNERS.",
+  "exceptions": [
+    {
+      "purl": "pkg:npm/pako@2.1.0",
+      "license": "(MIT AND Zlib)",
+      "reason": "Both terms of the conjunction are permissive and neither carries copyleft, so there is nothing to decide here. The gate blocks it only because it refuses to interpret any AND expression at all. EUD-235 teaches the evaluator to accept a conjunction whose every term is allowlisted; this exception disappears with it.",
+      "approved_by": "DevOps Lead",
+      "approved_on": "2026-08-27",
+      "expires_on": "2027-02-23",
+      "ticket": "EUD-235"
+    }
+  ]
+}
