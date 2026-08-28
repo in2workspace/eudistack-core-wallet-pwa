@@ -1,0 +1,10 @@
+<ion-content [fullscreen]="true" class="ion-padding tenant-not-found">
+  <div class="content">
+    <img class="logo" src="assets/icons/pwa-192x192.png" alt="EUDIStack" />
+    <h1>{{ 'tenantNotFound.title' | translate }}</h1>
+    <p>{{ 'tenantNotFound.message' | translate: { tenant: tenant } }}</p>
+    <ion-button expand="block" (click)="goToFallback()">
+      {{ 'tenantNotFound.cta' | translate }}
+    </ion-button>
+  </div>
+</ion-content>

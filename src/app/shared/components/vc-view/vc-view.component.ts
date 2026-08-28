@@ -5,7 +5,6 @@ import {
   computed,
   EventEmitter,
   HostListener,
-  OnInit,
   Output,
   effect,
   inject,
@@ -19,7 +18,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ExtendedCredentialType, LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { IonicModule } from '@ionic/angular';
 import { DisplayField, DisplaySection } from 'src/app/core/models/display-field.model';
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
 import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
 import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
@@ -38,7 +37,7 @@ const EXPIRY_WARNING_DAYS = 30;
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [IonicModule, QRCodeComponent, TranslateModule, CommonModule]
 })
-export class VcViewComponent implements OnInit {
+export class VcViewComponent {
   private readonly translate = inject(TranslateService);
   private readonly walletService = inject(WalletService);
   private readonly toastService = inject(ToastServiceHandler);
@@ -99,7 +98,9 @@ export class VcViewComponent implements OnInit {
     new EventEmitter();
   @Output() public statusChanged = new EventEmitter<{ id: string; status: LifeCycleStatus }>();
 
-  credentialType!: ExtendedCredentialType;
+  public readonly credentialType = computed<ExtendedCredentialType>(
+    () => getExtendedCredentialType(this.credentialInput$())
+  );
 
   public cred_cbor = '';
   public isAlertOpenNotFound = false;
@@ -147,7 +148,7 @@ export class VcViewComponent implements OnInit {
 
   public isVerifyModalOpen = false;
   public verificationChecks: VerificationCheck[] = [];
-  public verifyOverall: 'pending' | 'valid' | 'invalid' = 'pending';
+  public verifyOverall: 'pending' | 'valid' | 'invalid' | 'unknown' = 'pending';
   public verifyResultKey: string = 'verification.result-invalid';
 
   public async openDetailModal(): Promise<void> {
@@ -207,14 +208,15 @@ export class VcViewComponent implements OnInit {
       }
       
       await this.delay(400);
-      const allPassed = this.verificationChecks.every(c => c.status === 'passed');
-      this.verifyOverall = allPassed ? 'valid' : 'invalid';
-  
-      if (!allPassed) {
+      const hasFailed = this.verificationChecks.some(c => c.status === 'failed');
+      const hasError = this.verificationChecks.some(c => c.status === 'error');
+
+      if (hasFailed) {
+        this.verifyOverall = 'invalid';
         const statusCheck = this.verificationChecks.find(c => c.key === 'status');
         const expirationCheck = this.verificationChecks.find(c => c.key === 'expiration');
-  
-        if (statusCheck?.status === 'failed' && statusCheck?.detail === 'revoked') {
+
+        if (statusCheck?.status === 'failed' && statusCheck?.detail === 'verification.detail-revoked') {
           this.verifyResultKey = 'verification.result-revoked';
           this.updateLifeCycleStatus('REVOKED');
         } else if (expirationCheck?.status === 'failed') {
@@ -223,6 +225,16 @@ export class VcViewComponent implements OnInit {
         } else {
           this.verifyResultKey = 'verification.result-invalid';
         }
+      } else if (hasError) {
+        this.verifyOverall = 'unknown';
+        // A check could not be completed (e.g. status list unreachable) — never
+        // reported as valid nor as a confirmed failure (fail-closed on uncertainty).
+        // Delivered as a top notification, consistent with the rest of the app's
+        // transient messages, instead of the in-modal result banner (used for
+        // confirmed outcomes only).
+        this.toastService.showInfoToastByTranslateLabel('verification.result-unknown', 5000, 'warning');
+      } else {
+        this.verifyOverall = 'valid';
       }
     } catch {
       // TODO: Review behavior in case of error
@@ -252,10 +264,6 @@ export class VcViewComponent implements OnInit {
 
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  public ngOnInit(): void {
-    this.credentialType = getExtendedCredentialType(this.credentialInput$());
   }
 
   public async copyToClipboard(text: string): Promise<void> {
@@ -339,8 +347,9 @@ export class VcViewComponent implements OnInit {
   }
 
   get iconUrl(): string | undefined {
-    return isValidCredentialType(this.credentialType)
-      ? CredentialTypeMap[this.credentialType]?.icon
+    const type = this.credentialType();
+    return isValidCredentialType(type)
+      ? CredentialTypeMap[type]?.icon
       : undefined;
   }
 
@@ -363,7 +372,12 @@ export class VcViewComponent implements OnInit {
 
     const detailSections = await this.displayService.getDetailSections(vc);
 
-    const showEncoded = this.credentialType?.startsWith('learcredential.machine.') || this.credentialType?.startsWith('gx.labelcredential.');
+    const credentialType = getExtendedCredentialType(vc);
+    const showEncoded = credentialType?.startsWith('learcredential.machine.')
+    || credentialType?.startsWith('gx.labelcredential.')
+    || credentialType === "LEARCredentialMachine"
+    || credentialType === 'gx:LabelCredential';
+    
     if (showEncoded && vc.credentialEncoded) {
       detailSections.push({
         section: 'vc-fields.credentialEncoded',

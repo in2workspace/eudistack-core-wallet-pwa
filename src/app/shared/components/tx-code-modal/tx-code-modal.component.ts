@@ -117,7 +117,7 @@ export class TxCodeModalComponent {
 
   remainingSeconds = 0;
   error = '';
-  private interval: number | undefined;
+  private interval: ReturnType<typeof globalThis.setInterval> | undefined;
 
   constructor(private modalCtrl: ModalController) {}
 

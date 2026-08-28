@@ -60,6 +60,18 @@ export class PasskeyStoreService {
     }
   }
 
+  /**
+   * Clears the local passkey credential state after a self-revoke.
+   *
+   * Must also drop `has_passkey`, not just the credential ID: `AuthService.forceLogout()`
+   * branches on `hasPasskey()` to route to `/auth/login` vs `/auth/register` (re-onboarding),
+   * so leaving it `true` would send the holder to a login screen for a passkey that no
+   * longer exists on the account instead of the EUD-8 re-onboarding flow.
+   */
+  async clearCredentialId(): Promise<void> {
+    await this.clear();
+  }
+
   // --- Initialisation (called from APP_INITIALIZER) ---
 
   async init(): Promise<void> {

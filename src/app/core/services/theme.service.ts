@@ -1,13 +1,16 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { TranslateService } from '@ngx-translate/core';
 import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { Theme } from '../models/theme.model';
 import { ColorService } from '../../shared/services/color-service.service';
 import { StorageService } from '../../shared/services/storage.service';
+import { FALLBACK_TENANT } from '../constants/tenants.constants';
+import { TenantService } from './tenant.service';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
+  private readonly tenantService = inject(TenantService);
   private theme$ = new BehaviorSubject<Theme | null>(null);
 
   constructor(
@@ -18,10 +21,50 @@ export class ThemeService {
   ) {}
 
   async load(): Promise<void> {
-    const theme = await firstValueFrom(this.http.get<Theme>('/assets/theme.json'));
+    await this.tenantService.resolve();
+    const tenant = this.tenantService.tenant() ?? FALLBACK_TENANT;
+    const assetsBase = `/assets/tenants/${tenant}`;
+    let theme: Theme;
+    try {
+      theme = await firstValueFrom(this.http.get<Theme>(`${assetsBase}/theme.json`));
+    } catch {
+      const fallbackBase = `/assets/tenants/${FALLBACK_TENANT}`;
+      theme = await firstValueFrom(this.http.get<Theme>(`${fallbackBase}/theme.json`));
+      this.rewriteAssetPaths(theme, fallbackBase);
+      this.theme$.next(theme);
+      this.applyTheme(theme);
+      await this.setupI18n(theme);
+      return;
+    }
+    this.rewriteAssetPaths(theme, assetsBase);
     this.theme$.next(theme);
     this.applyTheme(theme);
     await this.setupI18n(theme);
+  }
+
+  /**
+   * Rewrite tenant-relative paths (assets/tenant/logo.svg or /assets/tenant/logo.svg)
+   * to absolute paths under the shared bucket layout (/assets/tenants/<tenant>/logo.svg).
+   * Keeps already-absolute /assets/tenants/* paths untouched.
+   */
+  private rewriteAssetPaths(theme: Theme, assetsBase: string): void {
+    const rewrite = (path: string | null | undefined): string | null => {
+      if (!path) return null;
+      if (path.startsWith('/assets/tenants/')) return path;
+      const normalized = path.startsWith('/') ? path.slice(1) : path;
+      if (normalized.startsWith('assets/tenant/')) {
+        return `${assetsBase}/${normalized.slice('assets/tenant/'.length)}`;
+      }
+      return path;
+    };
+    if (theme.branding) {
+      theme.branding.logoUrl = rewrite(theme.branding.logoUrl) as string;
+      theme.branding.logoDarkUrl = rewrite(theme.branding.logoDarkUrl) as string;
+      theme.branding.faviconUrl = rewrite(theme.branding.faviconUrl) as string;
+      if (theme.branding.pwaIconUrl) {
+        theme.branding.pwaIconUrl = rewrite(theme.branding.pwaIconUrl) as string;
+      }
+    }
   }
 
   getTheme(): Observable<Theme | null> {
@@ -90,29 +133,31 @@ export class ThemeService {
 
   private updateManifest(theme: Theme): void {
     const origin = window.location.origin;
+    const base = document.querySelector('base')?.getAttribute('href') || '/';
+    const baseUrl = `${origin}${base}`;
     const manifest = {
       name: `${theme.branding.name || 'EUDI'} Wallet`,
       short_name: theme.branding.name || 'Wallet',
       theme_color: theme.branding.primaryColor,
       background_color: getComputedStyle(document.documentElement).getPropertyValue('--surface-page').trim(),
       display: 'standalone',
-      scope: `${origin}/`,
-      start_url: `${origin}/`,
+      scope: baseUrl,
+      start_url: baseUrl,
       orientation: 'portrait',
-      icons: theme.branding.pwaIconUrl && this.isRelativeAssetPath(theme.branding.pwaIconUrl)
+      icons: theme.branding.pwaIconUrl && this.isSafeAssetPath(theme.branding.pwaIconUrl)
         ? [
-            { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '192x192', type: 'image/png', purpose: 'any' },
-            { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '512x512', type: 'image/png', purpose: 'any' },
-            { src: `${origin}/${theme.branding.pwaIconUrl}`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            { src: this.toAbsoluteAssetUrl(theme.branding.pwaIconUrl, baseUrl), sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: this.toAbsoluteAssetUrl(theme.branding.pwaIconUrl, baseUrl), sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: this.toAbsoluteAssetUrl(theme.branding.pwaIconUrl, baseUrl), sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ]
         : [
-            { src: `${origin}/assets/icons/pwa-192x192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
-            { src: `${origin}/assets/icons/pwa-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
-            { src: `${origin}/assets/icons/pwa-maskable-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            { src: `${baseUrl}assets/icons/pwa-192x192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: `${baseUrl}assets/icons/pwa-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: `${baseUrl}assets/icons/pwa-maskable-512x512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           ],
       screenshots: [
-        { src: `${origin}/assets/screenshots/screenshot-wide.png`, sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: `${theme.branding.name || 'EUDI'} Wallet` },
-        { src: `${origin}/assets/screenshots/screenshot-mobile.png`, sizes: '540x720', type: 'image/png', label: `${theme.branding.name || 'EUDI'} Wallet` },
+        { src: `${baseUrl}assets/screenshots/screenshot-wide.png`, sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: `${theme.branding.name || 'EUDI'} Wallet` },
+        { src: `${baseUrl}assets/screenshots/screenshot-mobile.png`, sizes: '540x720', type: 'image/png', label: `${theme.branding.name || 'EUDI'} Wallet` },
       ],
     };
 
@@ -197,13 +242,21 @@ export class ThemeService {
     return undefined;
   }
 
-  /** Returns true if the URL is a safe relative path (no external URLs). */
-  private isRelativeAssetPath(url: string): boolean {
+  /** Returns true if the URL is a same-origin assets path (no external URLs). */
+  private isSafeAssetPath(url: string): boolean {
     return url.startsWith('assets/') || url.startsWith('/assets/');
   }
 
+  /**
+   * Resolve an assets URL to an absolute origin-scoped URL. Absolute paths
+   * (/assets/...) are returned as-is; relative paths are joined to the SPA base.
+   */
+  private toAbsoluteAssetUrl(url: string, baseUrl: string): string {
+    return url.startsWith('/') ? `${window.location.origin}${url}` : `${baseUrl}${url}`;
+  }
+
   private setFavicon(url: string): void {
-    if (!this.isRelativeAssetPath(url)) return;
+    if (!this.isSafeAssetPath(url)) return;
 
     let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
     if (!link) {
