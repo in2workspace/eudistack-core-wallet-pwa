@@ -1,38 +1,62 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { throwError } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
-import { environment } from 'src/environments/environment';
+import { UrlResolverService } from '../services/url-resolver.service';
+import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
+import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const authService = inject(AuthService);
+  // --- Early exits: never need a token, and must NOT trigger inject(AuthService)
+  // because APP_INITIALIZER runs these requests before WalletDiscoveryService
+  // resolves its snapshot (AUTH_SERVICE_PROVIDER factory timing, EUDISTACK-502).
+  const urlResolver = inject(UrlResolverService);
 
-  // Don't add auth header to auth endpoints (they handle their own auth)
-  // EXCEPT for passkey management endpoints which require authentication
+  // Public well-known endpoint (EUDISTACK-412)
+  if (req.url.endsWith(WALLET_DISCOVERY_PATH)) {
+    return next(req);
+  }
+
+  // Static assets — never authenticated; also fired by ThemeService during bootstrap
+  if (req.url.startsWith('/assets/') || req.url.includes('/assets/tenants/')) {
+    return next(req);
+  }
+
+  // Auth endpoints handle their own credentials (except passkey management)
   const isAuthEndpoint = req.url.includes('/api/v1/auth/');
   const isPasskeyEndpoint = req.url.includes('/api/v1/auth/passkeys');
-
   if (isAuthEndpoint && !isPasskeyEndpoint) {
     return next(req);
   }
 
-  // Don't add auth header to external requests (e.g. verifier auth-response).
-  // When server_url is empty (nginx proxy mode), own-origin requests use
-  // relative paths, so any absolute URL is external.
-  const serverUrl = environment.server_url;
-  const isOwnBackend = serverUrl
-    ? req.url.startsWith(serverUrl)
-    : req.url.startsWith('/');
+  // External requests (e.g. verifier auth-response, issuer well-known)
+  const serverUrl = urlResolver.serverUrl();
+  const isOwnBackend = req.url.startsWith(serverUrl);
   if (!isOwnBackend) {
     return next(req);
   }
 
+  // Only inject AuthService here — all bootstrap requests have already returned above.
+  // At this point APP_INITIALIZER has resolved and _snapshot is set (AD-1).
+  const authService = inject(AuthService);
+  const sessionExpiryMarker = inject(SessionExpiryMarkerService);
   const token = authService.getToken();
-  if (token) {
-    const clonedReq = req.clone({
-      setHeaders: { Authorization: `Bearer ${token}` }
-    });
-    return next(clonedReq);
-  }
 
-  return next(req);
+  const authorizedReq = token
+    ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
+    : req;
+
+  return next(authorizedReq).pipe(
+    catchError((err: HttpErrorResponse) => {
+      if (err.status === 401) {
+        // Mark before forceLogout()/rethrow so HttpErrorInterceptor — which sees
+        // this same error next on the way back up the chain — knows the session
+        // was already handled and shows one dedicated message, not its generic one.
+        sessionExpiryMarker.markSessionExpired(err);
+        authService.forceLogout();
+      }
+      return throwError(() => err);
+    })
+  );
 };

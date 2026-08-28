@@ -1,6 +1,7 @@
 import {
   Component,
   EventEmitter,
+  inject,
   Input,
   Output,
   ViewChildren,
@@ -9,6 +10,7 @@ import {
   AfterViewInit,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-otp-input',
@@ -30,12 +32,14 @@ import { CommonModule } from '@angular/common';
         [class.filled]="digits[i] !== ''"
         [class.error]="error"
         [value]="digits[i]"
+        [attr.aria-label]="digitAriaLabel(i)"
         (input)="onInput($event, i)"
         (keydown)="onKeydown($event, i)"
         (paste)="onPaste($event)"
         (focus)="onFocus(i)"
       />
     </div>
+    <div class="sr-only" role="alert" aria-live="assertive">{{ errorMessage }}</div>
   `,
   styles: [`
     .otp-container {
@@ -94,13 +98,22 @@ export class OtpInputComponent implements AfterViewInit {
   /** Show error styling */
   @Input() error = false;
 
+  /** Error text announced via aria-live when set */
+  @Input() errorMessage = '';
+
   /** Emits the complete code when all digits are filled */
   @Output() completed = new EventEmitter<string>();
 
   /** Emits partial value on every change */
   @Output() changed = new EventEmitter<string>();
 
+  private readonly translate = inject(TranslateService);
+
   digits: string[] = [];
+
+  digitAriaLabel(index: number): string {
+    return this.translate.instant('otp-input.digit-aria', { index: index + 1, length: this.length });
+  }
 
   ngOnChanges(): void {
     if (this.digits.length !== this.length) {
@@ -145,10 +158,6 @@ export class OtpInputComponent implements AfterViewInit {
       }
 
       this.changed.emit(this.value);
-
-      if (this.value.length === this.length) {
-        this.completed.emit(this.value);
-      }
     } else {
       this.digits[index] = '';
       input.value = '';
@@ -195,10 +204,6 @@ export class OtpInputComponent implements AfterViewInit {
     this.focusBox(nextEmpty >= 0 ? nextEmpty : this.length - 1);
 
     this.changed.emit(this.value);
-
-    if (this.value.length === this.length) {
-      this.completed.emit(this.value);
-    }
   }
 
   onFocus(index: number): void {
