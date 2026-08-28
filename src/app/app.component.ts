@@ -15,6 +15,8 @@ import { UserPreferencesService } from './shared/services/user-preferences.servi
 import { SingleInstanceService } from './core/services/single-instance.service';
 import { SwUpdateService } from './core/services/sw-update.service';
 import { AuthService } from './core/services/auth.service';
+import { TelemetryService } from './core/services/telemetry.service';
+import { PwaInstallService } from './shared/services/pwa-install.service';
 
 @Component({
     selector: 'app-root',
@@ -37,6 +39,8 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly singleInstance = inject(SingleInstanceService);
   private readonly swUpdate = inject(SwUpdateService);
   private readonly authService = inject(AuthService);
+  private readonly telemetry = inject(TelemetryService);
+  private readonly pwaInstall = inject(PwaInstallService);
 
   public routerEvents$ = this.router.events;
   // if the route is "/", don't allow menu popover
@@ -66,9 +70,11 @@ export class AppComponent implements OnInit, OnDestroy {
         return;
       }
 
+      this.singleInstance.consumeLaunchQueue();
       this.initOid4vciEngine();
       this.issuerMetadataCache.refreshStaleMetadata().catch(console.warn);
       this.alertIncompatibleDevice();
+      this.trackIosFirstStandaloneBoot();
     });
   }
 
@@ -79,6 +85,16 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private initOid4vciEngine(): void {
     this.oid4vciEngine.init().catch(console.error);
+  }
+
+  /** AC-008.10: fires once when an iOS PWA opens in standalone for the first time. */
+  private trackIosFirstStandaloneBoot(): void {
+    const ua = navigator.userAgent;
+    const isIosDevice = /iP(hone|od|ad)/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    if (isIosDevice && this.pwaInstall.isStandalone && !localStorage.getItem('ios_pwa_first_standalone')) {
+      localStorage.setItem('ios_pwa_first_standalone', 'true');
+      this.telemetry.track('ios_pwa_installed');
+    }
   }
 
   //alert for IOs below 14.3

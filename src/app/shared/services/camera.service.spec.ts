@@ -2,6 +2,7 @@ import { TestBed, fakeAsync, tick, flush } from '@angular/core/testing';
 import { CameraService } from './camera.service';
 import { StorageService } from './storage.service';
 import { ToastServiceHandler } from './toast.service';
+import { CameraLogsService } from './camera-logs.service';
 import { CameraOrientation } from '../../core/models/camera';
 import { signal } from '@angular/core';
 import { EMPTY, of } from 'rxjs';
@@ -62,18 +63,27 @@ describe('CameraService', () => {
   let cameraService: CameraService;
   let mockStorageService: MockStorageService;
   let mockToastService: {
-    showErrorAlertByTranslateLabel: jest.Mock
+    showErrorAlertByTranslateLabel: jest.Mock,
+    showInfoToastByTranslateLabel: jest.Mock
+  }
+  let mockCameraLogsService: {
+    addCameraLog: jest.Mock
   }
 
   beforeEach(() => {
     mockToastService = {
-      showErrorAlertByTranslateLabel: jest.fn().mockReturnValue(EMPTY)
+      showErrorAlertByTranslateLabel: jest.fn().mockReturnValue(EMPTY),
+      showInfoToastByTranslateLabel: jest.fn()
+    }
+    mockCameraLogsService = {
+      addCameraLog: jest.fn().mockReturnValue(Promise.resolve())
     }
     TestBed.configureTestingModule({
       providers: [
         CameraService,
         { provide: StorageService, useClass: MockStorageService },
-        { provide: ToastServiceHandler, useValue: mockToastService }
+        { provide: ToastServiceHandler, useValue: mockToastService },
+        { provide: CameraLogsService, useValue: mockCameraLogsService }
       ],
     });
 
@@ -614,10 +624,11 @@ describe('CameraService', () => {
       expect(mockToastService.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.camera.not-readable');
     });
   
-    it('should display "errors.camera.not-allowed" if the error is NotAllowedError', () => {
+    it('should display "errors.camera.not-allowed" as an info toast if the error is NotAllowedError', () => {
       cameraService.alertCameraErrorsByErrorName('NotAllowedError: Permission denied');
-  
-      expect(mockToastService.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.camera.not-allowed');
+
+      expect(mockToastService.showInfoToastByTranslateLabel).toHaveBeenCalledWith('errors.camera.not-allowed');
+      expect(mockToastService.showErrorAlertByTranslateLabel).not.toHaveBeenCalled();
     });
   
     it('should display "errors.camera.not-found" if the error is NotFoundError', () => {

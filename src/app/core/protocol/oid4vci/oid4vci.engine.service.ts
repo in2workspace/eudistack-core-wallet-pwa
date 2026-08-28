@@ -6,7 +6,7 @@ import { PreAuthorizedTokenService } from './pre-authorized-token.service';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { ProofBuilderService } from './proof-builder.service';
-import { KeyStorageProvider } from '../../spi/key-storage.provider.service';
+import { KeyStorageProvider, OID4VCIKeyGenContext } from '../../spi/key-storage.provider.service';
 import { JwtService } from './jwt.service';
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { CredentialService } from './credential.service';
@@ -86,8 +86,9 @@ export class Oid4vciEngineService {
       this.loader.addLoadingProcess();
       const cfg = this.findCredentialConfigurationContext(credentialOffer, credentialIssuerMetadata);
 
-      const nonceEndpoint = credentialIssuerMetadata.nonceEndpoint
-        ?? authorisationServerMetadata.nonceEndpoint;
+      // OID4VCI 1.0 Final section 12.2.4: the Nonce Endpoint is published in the
+      // Credential Issuer metadata.
+      const nonceEndpoint = credentialIssuerMetadata.nonceEndpoint;
 
       const nonce = nonceEndpoint
         ? await this.nonceService.fetchNonce(nonceEndpoint)
@@ -95,15 +96,23 @@ export class Oid4vciEngineService {
 
       let jwtProof = null;
       let proofPublicJwk: JsonWebKey | null = null;
+      let holderKeyId: string | undefined;
+      let holderKid: string | undefined;
 
       if (cfg.isCryptographicBindingSupported && credentialIssuerMetadata.credentialIssuer) {
+        const credentialId = `holder-${crypto.randomUUID()}`;
         const proofContext = await this.issueProofJwt({
           nonce,
           credentialIssuer: credentialIssuerMetadata.credentialIssuer,
           credentialConfigurationId: cfg.credentialConfigurationId,
+          format: cfg.format,
+          supportedAlgs: cfg.supportedAlgs ?? ['ES256'],
+          credentialId,
         });
         jwtProof = proofContext.jwt;
         proofPublicJwk = proofContext.publicKeyJwk;
+        holderKeyId = proofContext.holderKeyId;
+        holderKid = proofContext.thumbprint;
       }
 
       const format = cfg.format;
@@ -112,7 +121,7 @@ export class Oid4vciEngineService {
       // GET CREDENTIAL (with DPoP proof if token is DPoP-bound)
       let credentialDpopJwt: string | undefined;
       if (tokenResponse.token_type?.toLowerCase() === 'dpop' && credentialIssuerMetadata.credentialEndpoint) {
-        const dpopProof = await this.dpopService.issueProof('POST', credentialIssuerMetadata.credentialEndpoint);
+        const dpopProof = await this.dpopService.issueProof('POST', credentialIssuerMetadata.credentialEndpoint, tokenResponse.access_token);
         credentialDpopJwt = dpopProof.jwt;
       }
 
@@ -145,7 +154,9 @@ export class Oid4vciEngineService {
         authorisationServerMetadata,
         tokenObtainedAt,
         format,
-        credentialConfigurationId
+        credentialConfigurationId,
+        holderKeyId,
+        holderKid,
       };
     }});
 
@@ -252,18 +263,40 @@ export class Oid4vciEngineService {
 
     const methods = configuration.cryptographic_binding_methods_supported;
     const isCryptographicBindingSupported = !!(methods && methods.length > 0);
+    const supportedAlgs: string[] =
+      (configuration as any).proof_types_supported?.jwt?.proof_signing_alg_values_supported ?? ['ES256'];
 
     return {
       credentialConfigurationId,
       configuration,
       format,
       isCryptographicBindingSupported,
+      supportedAlgs,
     };
   }
 
-  private async issueProofJwt(params: { nonce: string; credentialIssuer: string; credentialConfigurationId: string }): Promise<ProofJwtContext> {
-    const keyId = `${params.credentialIssuer}:${params.credentialConfigurationId}`;
-    const keyInfo = await this.keyStorageProvider.generateKeyPair('ES256', keyId);
+  private async issueProofJwt(params: { nonce: string; credentialIssuer: string; credentialConfigurationId: string; format?: string; supportedAlgs?: string[]; credentialId: string }): Promise<ProofJwtContext> {
+    const keyId = params.credentialId;
+    const context: OID4VCIKeyGenContext | undefined = params.format
+      ? {
+          credentialId: keyId,
+          format: params.format,
+          supportedAlgs: params.supportedAlgs ?? ['ES256'],
+          issuerIdentifier: params.credentialIssuer,
+          cNonce: params.nonce || undefined,
+        }
+      : undefined;
+    const keyInfo = await this.keyStorageProvider.generateKeyPair('ES256', keyId, context);
+
+    // Server mode: EBW already signed the proof internally — use it directly.
+    if (keyInfo.prebuiltJwsProof) {
+      return {
+        jwt: keyInfo.prebuiltJwsProof,
+        publicKeyJwk: keyInfo.publicKeyJwk,
+        thumbprint: keyInfo.kid,
+        holderKeyId: keyInfo.keyId,
+      };
+    }
 
     const publicKeyJwk = keyInfo.publicKeyJwk;
 
@@ -276,10 +309,10 @@ export class Oid4vciEngineService {
 
     const signature = await this.keyStorageProvider.sign(keyInfo.keyId, new TextEncoder().encode(signingInput));
 
-    return { 
-      jwt: `${signingInput}.${this.jwtService.base64UrlEncode(signature)}`, 
-      publicKeyJwk, 
-      thumbprint: keyInfo.kid 
+    return {
+      jwt: `${signingInput}.${this.jwtService.base64UrlEncode(signature)}`,
+      publicKeyJwk,
+      thumbprint: keyInfo.kid,
     };
   }
 

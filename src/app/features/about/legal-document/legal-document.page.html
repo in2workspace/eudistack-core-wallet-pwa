@@ -1,0 +1,47 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button
+        defaultHref="/tabs/about"
+        text=""
+        [attr.aria-label]="'about.legal-document.back' | translate"
+      ></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ docId ? (('about.legal.' + docId) | translate) : '' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="legal-document-page">
+  <div class="legal-document-container">
+
+    @switch (state()) {
+      @case ('loading') {
+        <div class="legal-document-loading" role="status" aria-live="polite">
+          <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+          <p>{{ "about.legal-document.loading" | translate }}</p>
+        </div>
+      }
+
+      @case ('ready') {
+        @if (document()?.isFallbackLanguage) {
+          <p class="legal-document-fallback-notice" role="status">
+            {{ "about.legal-document.fallback-language-notice" | translate }}
+          </p>
+        }
+        <div class="legal-document-content" [innerHTML]="document()?.html"></div>
+      }
+
+      @case ('error') {
+        <div class="legal-document-error" role="alert">
+          <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+          <h2>{{ "about.legal-document.error-title" | translate }}</h2>
+          <p>{{ "about.legal-document.error-description" | translate }}</p>
+          <button type="button" class="legal-document-retry-btn" (click)="retry()">
+            {{ "about.legal-document.retry" | translate }}
+          </button>
+        </div>
+      }
+    }
+
+  </div>
+</ion-content>

@@ -43,7 +43,7 @@ export class ToastServiceHandler {
         const alert = await this.alertController.create({
           message: `
             <div style="display: flex; align-items: center; gap: 50px;">
-              <span>${translatedMessage}</span>
+              <span>${this.escapeHtml(translatedMessage)}</span>
             </div>
           `,
           buttons: [
@@ -62,12 +62,61 @@ export class ToastServiceHandler {
     );
   }
 
+  /**
+   * Non-blocking, non-alarming notice for user-recoverable situations (e.g.
+   * camera permission denied) — a centered red modal alert makes it look
+   * like something crashed, when the user just needs to grant a permission
+   * and retry.
+   *
+   * Reuses the .credential-toast pattern (a plain div, not an ion-toast):
+   * ion-toast::part(container) is force-styled app-wide (customAlert.scss),
+   * which fought any color/background passed through Ionic's ToastController
+   * and rendered the message invisible (white text on the forced white card
+   * background). The plain div sidesteps that entirely and is already
+   * compact/centered by design — no full-width banner.
+   */
+  public showInfoToastByTranslateLabel(
+    message: string,
+    durationMs: number = 5000,
+    variant: 'info' | 'warning' = 'info'
+  ): void {
+    const icon = variant === 'warning' ? 'warning' : 'information-circle';
+    this.translate.get(message).pipe(take(1)).subscribe((translatedMessage) => {
+      const el = document.createElement('div');
+      el.className = 'credential-toast';
+      el.dataset['variant'] = variant;
+      el.innerHTML = `
+        <ion-icon name="${icon}"></ion-icon>
+        <span>${this.escapeHtml(translatedMessage)}</span>
+      `;
+
+      document.body.appendChild(el);
+
+      requestAnimationFrame(() => el.classList.add('visible'));
+
+      setTimeout(() => {
+        el.classList.remove('visible');
+        el.classList.add('exiting');
+        el.addEventListener('animationend', () => el.remove(), { once: true });
+        setTimeout(() => el.remove(), 500);
+      }, durationMs);
+    });
+  }
+
+  private escapeHtml(value: string): string {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   public showToast(messageKey: string, duration: number = 2000): void {
     this.alertController.create({
       message: `
         <div style="display: flex; align-items: center; gap: 50px;">
           <ion-icon name="checkmark-circle"></ion-icon>
-          <span>${this.translate.instant(messageKey)}</span>
+          <span>${this.escapeHtml(this.translate.instant(messageKey))}</span>
         </div>
       `,
       cssClass: 'custom-alert-ok',

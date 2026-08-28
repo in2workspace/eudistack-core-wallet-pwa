@@ -1,0 +1,68 @@
+<ion-header class="ion-no-border">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button
+        defaultHref="/tabs/about"
+        text=""
+        [attr.aria-label]="'about.legal-document.back' | translate"
+      ></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ "about.oss-licenses.title" | translate }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="oss-licenses-page">
+  <div class="oss-licenses-container">
+
+    @if (loading()) {
+      <div class="oss-licenses-loading" role="status" aria-live="polite">
+        <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+      </div>
+    } @else if (licenses().length === 0) {
+      <div class="oss-licenses-empty" role="status">
+        <ion-icon name="document-outline" aria-hidden="true"></ion-icon>
+        <h2>{{ "about.oss-licenses.empty-title" | translate }}</h2>
+        <p>{{ "about.oss-licenses.empty-description" | translate }}</p>
+        <a class="oss-licenses-contact-link" [href]="supportMailto">
+          {{ "about.oss-licenses.contact-support" | translate }}
+        </a>
+      </div>
+    } @else {
+      <p class="oss-licenses-count">
+        {{ licenses().length }} {{ "about.oss-licenses.count-suffix" | translate }}
+      </p>
+
+      <div class="settings-group">
+        <ion-list lines="none" class="settings-list oss-licenses-list">
+          @for (license of licenses(); track license.name + '@' + license.version; let last = $last) {
+            <ion-item detail="false" class="settings-item oss-license-item" lines="none">
+              <ion-label>
+                <h3 class="oss-license-name">{{ license.name }}</h3>
+                <div class="oss-license-meta">
+                  <span class="oss-license-version">v{{ license.version }}</span>
+                  <ion-badge class="oss-license-badge">{{ license.license }}</ion-badge>
+                </div>
+              </ion-label>
+              @if (license.repository) {
+                <a
+                  [href]="license.repository"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="oss-license-repo-link"
+                  slot="end"
+                  [attr.aria-label]="license.name + ' ' + ('about.opens-new-window' | translate)"
+                >
+                  <ion-icon name="open-outline" aria-hidden="true"></ion-icon>
+                </a>
+              }
+            </ion-item>
+            @if (!last) {
+              <div class="item-divider"></div>
+            }
+          }
+        </ion-list>
+      </div>
+    }
+
+  </div>
+</ion-content>

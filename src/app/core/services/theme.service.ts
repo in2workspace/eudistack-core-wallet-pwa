@@ -1,14 +1,16 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { TranslateService } from '@ngx-translate/core';
 import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { Theme } from '../models/theme.model';
 import { ColorService } from '../../shared/services/color-service.service';
 import { StorageService } from '../../shared/services/storage.service';
-import { FALLBACK_TENANT, resolveTenant } from '../constants/tenants.constants';
+import { FALLBACK_TENANT } from '../constants/tenants.constants';
+import { TenantService } from './tenant.service';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
+  private readonly tenantService = inject(TenantService);
   private theme$ = new BehaviorSubject<Theme | null>(null);
 
   constructor(
@@ -19,7 +21,8 @@ export class ThemeService {
   ) {}
 
   async load(): Promise<void> {
-    const tenant = this.resolveTenantId();
+    await this.tenantService.resolve();
+    const tenant = this.tenantService.tenant() ?? FALLBACK_TENANT;
     const assetsBase = `/assets/tenants/${tenant}`;
     let theme: Theme;
     try {
@@ -37,10 +40,6 @@ export class ThemeService {
     this.theme$.next(theme);
     this.applyTheme(theme);
     await this.setupI18n(theme);
-  }
-
-  private resolveTenantId(): string {
-    return resolveTenant(window.location.hostname) || FALLBACK_TENANT;
   }
 
   /**

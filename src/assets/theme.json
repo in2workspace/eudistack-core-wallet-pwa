@@ -12,7 +12,8 @@
   },
   "content": {
     "links": [],
-    "footer": null
+    "footer": null,
+    "knowledgeBaseUrl": "https://docs.eudistack.net/"
   },
   "i18n": {
     "defaultLang": "es",
