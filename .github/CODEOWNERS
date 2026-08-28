@@ -1,3 +1,5 @@
+* @in2workspace/kizunaops
+
 # License gate — append these lines at the END of .github/CODEOWNERS.
 #
 # Order matters: GitHub applies the LAST matching pattern, so a catch-all such
