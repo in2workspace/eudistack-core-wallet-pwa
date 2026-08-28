@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IonicModule, ViewWillLeave } from '@ionic/angular';
+import { IonicModule, ViewWillEnter, ViewWillLeave } from '@ionic/angular';
 import { StorageService } from 'src/app/shared/services/storage.service';
 import { BarcodeScannerComponent } from 'src/app/shared/components/barcode-scanner/barcode-scanner.component';
 import { WalletService } from 'src/app/core/services/wallet.service';
@@ -9,7 +9,6 @@ import { VcViewComponent } from '../../shared/components/vc-view/vc-view.compone
 import { TranslateModule } from '@ngx-translate/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
-import { VerifiableCredentialSubjectDataNormalizer } from 'src/app/core/models/verifiable-credential-subject-data-normalizer';
 import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
@@ -17,9 +16,8 @@ import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
 import { catchError, EMPTY, finalize, forkJoin, from, Observable, of, switchMap, take, tap } from 'rxjs';
 import { ExtendedHttpErrorResponse } from 'src/app/core/models/errors';
 import { LoaderService } from 'src/app/shared/services/loader.service';
-import { getExtendedCredentialType, isValidCredentialType } from 'src/app/shared/helpers/get-credential-type.helpers';
 import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engine.service';
-import { AuthorizationRequestService } from 'src/app/core/protocol/oid4vp/authorization-request.service';
+import { AuthorizationRequestService, InvalidQrError } from 'src/app/core/protocol/oid4vp/authorization-request.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 import { CredentialPreviewBuilderService } from 'src/app/core/services/credential-preview-builder.service';
 import { CredentialDecisionService } from 'src/app/core/services/credential-decision.service';
@@ -31,7 +29,7 @@ import { ActivityService } from 'src/app/core/services/activity.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { HapticService } from 'src/app/shared/services/haptic.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 //todo restore tests
 
 // TODO separate scan in another component/ page
@@ -53,11 +51,9 @@ import * as dayjs from 'dayjs';
 })
 
 // eslint-disable-next-line @angular-eslint/component-class-suffix
-export class CredentialsPage implements OnInit, ViewWillLeave {
-  public credList: Array<VerifiableCredential> = [];
+export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
   public showScannerView = false;
   public showScanner = false;
-  public isFirstCredentialLoadCompleted = false;
   public credentialOfferUri = '';
   public manualQrValue = '';
   readonly prefs = inject(UserPreferencesService);
@@ -85,6 +81,12 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   private authorizationRequest = '';
   private revokedCredentialIds = new Set<string>();
 
+  /** Reactive credential list + load status, owned by CredentialCacheService. */
+  public readonly credList = this.credentialCacheService.credentials;
+  public readonly loadStatus = this.credentialCacheService.status;
+  /** True once ngOnInit has run; distinguishes first mount from later (cached-page) navigations. */
+  private initialized = false;
+
   public constructor(){
     //todo move to ngOnInit to avoid using credentialOfferUri
     this.route.queryParams
@@ -92,28 +94,62 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       .subscribe((params) => {
         this.showScannerView = params['showScannerView'] === 'true';
         this.showScanner = params['showScanner']     === 'true';
-        this.credentialOfferUri = params['credentialOfferUri'];
+        this.credentialOfferUri = params['credentialOfferUri'] || params['credential_offer_uri'];
         this.authorizationRequest = params['authorizationRequest'] ?? '';
         this.selectedCredentialId = params['id'] ?? null;
         this.cdr.detectChanges();
+
+        // IonicRouteStrategy caches pages — ngOnInit won't re-run when the leader tab
+        // receives a NAVIGATE / deep-link replay and lands here with new protocol params.
+        // Once initialized, trigger the flow directly. Both flows self-load credentials,
+        // so no readiness guard is needed.
+        if (this.initialized) {
+          this.runPendingProtocolFlow();
+        }
       });
   }
 
   public ngOnInit(): void {
-    this.loadCredentials()
-    .pipe(
-      finalize(() => this.isFirstCredentialLoadCompleted = true),
-      takeUntilDestroyed(this.destroyRef)
-    )
-    .subscribe(() => {
-      // Protocol flows run after credentials are loaded so the cache is populated
-      if (this.credentialOfferUri) {
-        this.sameDeviceVcActivationFlow(this.credentialOfferUri);
-      } else if (this.authorizationRequest) {
-        console.info('Processing authorization request via same-device flow.');
-        this.verifiablePresentationFlow(this.authorizationRequest);
-      }
-    });
+    this.initialized = true;
+    // Protocol flows self-load the credential list (VP gates on refreshCredentials()).
+    // A plain visit relies on ionViewWillEnter to populate the reactive store.
+    this.runPendingProtocolFlow();
+  }
+
+  public ionViewWillEnter(): void {
+    // When a protocol flow (VP / credential offer) is pending, that flow owns the
+    // credential load (verifiablePresentationFlow gates on refreshCredentials) and
+    // then navigates away. Refreshing here too would be a redundant, overlapping
+    // IndexedDB read and could flicker the skeleton on an empty wallet.
+    if (!this.authorizationRequest && !this.credentialOfferUri) {
+      this.refreshForDisplay();
+    }
+    this.cdr.detectChanges();
+  }
+
+  private runPendingProtocolFlow(): void {
+    if (this.credentialOfferUri) {
+      this.sameDeviceVcActivationFlow(this.credentialOfferUri);
+    } else if (this.authorizationRequest) {
+      console.info('Processing authorization request via same-device flow.');
+      this.verifiablePresentationFlow(this.authorizationRequest);
+    }
+  }
+
+  /** Reloads the reactive store for display; the skeleton is driven by loadStatus(). */
+  private refreshForDisplay(): void {
+    this.walletService.refreshCredentials()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.reapplyKnownRevocations();
+        this.checkCredentialStatuses();
+      });
+  }
+
+  private reapplyKnownRevocations(): void {
+    for (const id of this.revokedCredentialIds) {
+      this.credentialCacheService.patchStatus(id, 'REVOKED');
+    }
   }
 
   public ionViewDidEnter(): void {
@@ -161,13 +197,9 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   }
 
   public onCredentialStatusChanged(event: { id: string; status: LifeCycleStatus }): void {
-    const cred = this.credList.find(c => c.id === event.id);
-    if (cred) {
-      cred.lifeCycleStatus = event.status;
-      if (event.status === 'REVOKED') {
-        this.revokedCredentialIds.add(event.id);
-      }
-      this.cdr.detectChanges();
+    this.credentialCacheService.patchStatus(event.id, event.status);
+    if (event.status === 'REVOKED') {
+      this.revokedCredentialIds.add(event.id);
     }
   }
 
@@ -181,12 +213,11 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         this.activityService.log('deleted', credName, issuer);
         this.toastServiceHandler.showToast('vc-view.delete-success');
       }),
-      switchMap(() => this.loadCredentials()),
-      finalize(() => this.loader.removeLoadingProcess())
+      switchMap(() => this.walletService.refreshCredentials()),
+      finalize(() => this.loader.removeLoadingProcess()),
+      takeUntilDestroyed(this.destroyRef)
     )
-    .subscribe(() => {
-      this.loader.removeLoadingProcess();
-    });
+    .subscribe();
   }
 
   public submitManualQr(): void {
@@ -197,13 +228,16 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     }
   }
 
-  public handleRefresh(event: any): void {
-    this.loadCredentials()
+  public handleRefresh(event: { target: { complete: () => void } }): void {
+    this.walletService.refreshCredentials()
       .pipe(
         finalize(() => event.target.complete()),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe();
+      .subscribe(() => {
+        this.reapplyKnownRevocations();
+        this.checkCredentialStatuses();
+      });
   }
 
   public qrCodeEmit(qrCode: string): void {
@@ -213,19 +247,36 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       return;
     }
 
+    let uriToProcess = qrCode;
+
+    if (qrCode.toLowerCase().startsWith('http')) {
+      try {
+        const url = new URL(qrCode);
+        const credentialOfferUri = url.searchParams.get('credential_offer_uri');
+        const authorizationRequest = url.searchParams.get('authorization_request');
+        if (credentialOfferUri) {
+          uriToProcess = credentialOfferUri;
+        } else if (authorizationRequest) {
+          uriToProcess = authorizationRequest;
+        }
+      } catch (e) {
+        console.warn('Could not parse as URL; attempting to process the original string.');
+      }
+    }
+
     const isCredentialOffer = qrCode.includes('credential_offer_uri');
     if(isCredentialOffer){
       //CROSS-DEVICE VC OFFER
       //show VCs list
       this.closeScannerViewAndScanner();
       console.info('Requesting Credential Offer via cross-device flow.');
-      this.credentialActivationFlow(qrCode);
+      this.credentialActivationFlow(uriToProcess);
     }else{
       // VERIFIABLE PRESENTATION
       // hide scanner but don't show VCs list
       this.closeScanner();
       console.info('Processing QR code for verifiable presentation.');
-      this.verifiablePresentationFlow(qrCode);
+      this.verifiablePresentationFlow(uriToProcess);
       }
   }
 
@@ -233,7 +284,8 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     return qrCode.includes('credential_offer_uri')
       || qrCode.startsWith('openid4vp://')
       || qrCode.includes('request_uri=')
-      || qrCode.includes('request=');
+      || qrCode.includes('request=')
+      || qrCode.includes('authorization_request=');
   }
 
   private sameDeviceVcActivationFlow(credentialOfferUri: string): void {
@@ -305,7 +357,7 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     const configId = flowResult.credentialConfigurationId;
     if (!issuerUrl || !configId) return;
 
-    // Registration is fire-and-forget; credential ID will be mapped when loadCredentials() runs
+    // Registration is fire-and-forget; credential ID will be mapped when refreshCredentials() runs
     // We use a placeholder since we don't have the backend-assigned ID yet
     // The actual mapping will happen when the credential list is reloaded
     this.issuerMetadataCache.registerIssuance(
@@ -343,48 +395,67 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
   private verifiablePresentationFlow(qrCode: string): void{
     this.loader.addLoadingProcess();
 
-    from(this.authorizationRequestService.parseAuthorizationRequestFromQr(qrCode)).pipe(
-      switchMap((authRequest) => {
-        // Filter credentials using DCQL query or scope fallback
-        let selectableVcList: VerifiableCredential[];
-        if (authRequest.dcqlQuery) {
-          selectableVcList = this.credentialCacheService.findCredentialsByDcqlQuery(authRequest.dcqlQuery);
-        } else if (authRequest.scope) {
-          selectableVcList = this.credentialCacheService.findCredentialsByScope(authRequest.scope);
-        } else {
-          selectableVcList = this.credentialCacheService.getAll();
-        }
-
-        selectableVcList = selectableVcList.filter(c => c.lifeCycleStatus === 'VALID');
-        if (selectableVcList.length === 0) {
+    // Gate on the load operation: refreshCredentials() completes once the store is
+    // 'loaded' or 'error', so we never filter against a half-synced / stale cache.
+    this.walletService.refreshCredentials().pipe(
+      switchMap(() => {
+        // A load FAILURE is not an empty wallet — surface a load error, not "no credentials".
+        if (this.credentialCacheService.status() === 'error') {
           return from(this.router.navigate(['/tabs/credentials'])).pipe(
             switchMap(() =>
               this.toastServiceHandler
-                .showErrorAlertByTranslateLabel('errors.no-credentials-available')
+                .showErrorAlertByTranslateLabel('errors.loading-VCs')
                 .pipe(take(1))
             ),
             switchMap(() => EMPTY)
           );
         }
 
-        const executionResponse = {
-          redirectUri: authRequest.responseUri,
-          state: authRequest.state,
-          nonce: authRequest.nonce,
-          clientId: authRequest.clientId,
-          dcqlQuery: authRequest.dcqlQuery,
-          selectableVcList,
-        };
+        return from(this.authorizationRequestService.parseAuthorizationRequestFromQr(qrCode)).pipe(
+          switchMap((authRequest) => {
+            // Filter credentials using DCQL query or scope fallback
+            let selectableVcList: VerifiableCredential[];
+            if (authRequest.dcqlQuery) {
+              selectableVcList = this.credentialCacheService.findCredentialsByDcqlQuery(authRequest.dcqlQuery);
+            } else if (authRequest.scope) {
+              selectableVcList = this.credentialCacheService.findCredentialsByScope(authRequest.scope);
+            } else {
+              selectableVcList = this.credentialCacheService.getAll();
+            }
 
-        return from(
-          this.router.navigate(['/tabs/vc-selector/'], {
-            queryParams: { executionResponse: JSON.stringify(executionResponse) },
+            selectableVcList = selectableVcList.filter(c => c.lifeCycleStatus === 'VALID');
+            if (selectableVcList.length === 0) {
+              // Genuinely empty (store is loaded, no matching credentials).
+              return from(this.router.navigate(['/tabs/credentials'])).pipe(
+                switchMap(() =>
+                  this.toastServiceHandler
+                    .showErrorAlertByTranslateLabel('errors.no-credentials-available')
+                    .pipe(take(1))
+                ),
+                switchMap(() => EMPTY)
+              );
+            }
+
+            const executionResponse = {
+              redirectUri: authRequest.responseUri,
+              state: authRequest.state,
+              nonce: authRequest.nonce,
+              clientId: authRequest.clientId,
+              dcqlQuery: authRequest.dcqlQuery,
+              selectableVcList,
+              clientMetadata: authRequest.clientMetadata,
+            };
+
+            return from(
+              this.router.navigate(['/tabs/vc-selector/'], {
+                queryParams: { executionResponse: JSON.stringify(executionResponse) },
+              })
+            );
           })
         );
       }),
 
       finalize(() => {
-        console.log("Finished processing QR code. Hiding loader.");
         this.loader.removeLoadingProcess();
       }),
 
@@ -397,12 +468,11 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     .subscribe();
   }
 
-  
+
   private handleActivationSuccess(): Observable<boolean> {
-    console.log("Handling successful credential activation...");
     this.loader.addLoadingProcess();
 
-    return this.loadCredentials()
+    return this.walletService.refreshCredentials()
       .pipe(
         switchMap(() => from(this.router.navigate(['/tabs/credentials']))),
         tap(() => {
@@ -411,114 +481,56 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
       )
   }
 
-  
-  private loadCredentials(): Observable<VerifiableCredential[]> {
-    // todo this conditional should be removed when scanner is moved to another page
-    const isScannerOpen = this.isScannerOpen();
-    if(!isScannerOpen){
-      this.loader.addLoadingProcess();
-    }
-
-    const normalizer = new VerifiableCredentialSubjectDataNormalizer();
-
-    return this.walletService.getAllVCs().pipe(
-      takeUntilDestroyed(this.destroyRef),
-      tap((credentialListResponse: VerifiableCredential[]) => {
-        // Sync credential cache for OID4VP credential filtering
-        this.credentialCacheService.syncFromBackend(credentialListResponse);
-
-        // Iterate over the list and normalize each credentialSubject
-        this.credList = credentialListResponse.slice().reverse().map(cred => {
-          if (cred.credentialSubject && cred.type) {
-            const credType = getExtendedCredentialType(cred);
-            if(isValidCredentialType(credType)){
-              cred.credentialSubject = normalizer.normalizeLearCredentialSubject(cred.credentialSubject, credType);
-            }
-          }
-          return cred;
-
-        });
-        // Apply cached revocation status immediately so UI stays consistent
-        for (const cred of this.credList) {
-          if (this.revokedCredentialIds.has(cred.id)) {
-            cred.lifeCycleStatus = 'REVOKED';
-          }
-        }
-        // todo avoid this
-        this.cdr.detectChanges();
-        if(!isScannerOpen){
-          this.loader.removeLoadingProcess();
-        }
-        this.checkCredentialStatuses();
-      }),
-      catchError((error: ExtendedHttpErrorResponse) => {
-        if (error.status === 404) {
-          this.credList = [];
-          this.cdr.detectChanges();
-        } else {
-          console.error("Error fetching credentials:", error);
-        }
-        if(!isScannerOpen){
-          this.loader.removeLoadingProcess();
-        }
-        return of([]);
-      })
-    )
-
-  }
-
   private async checkCredentialStatuses(): Promise<void> {
-    let changed = false;
+    const credentials = this.credentialCacheService.snapshot().credentials;
 
     // Check expiration for VALID credentials
-    for (const cred of this.credList) {
+    for (const cred of credentials) {
       if (cred.lifeCycleStatus === 'VALID' && cred.validUntil) {
         const expiry = dayjs(cred.validUntil);
         if (expiry.isValid() && expiry.isBefore(dayjs())) {
-          cred.lifeCycleStatus = 'EXPIRED';
+          this.credentialCacheService.patchStatus(cred.id, 'EXPIRED');
           this.walletService.updateCredentialStatus(cred.id, 'EXPIRED').subscribe();
-          changed = true;
         }
       }
     }
 
     // Check revocation via status list for remaining VALID credentials
-    const candidates = this.credList.filter(c => c.lifeCycleStatus === 'VALID' && c.credentialStatus?.statusListCredential);
+    const candidates = this.credentialCacheService.snapshot().credentials
+      .filter(c => c.lifeCycleStatus === 'VALID' && c.credentialStatus?.statusListCredential);
     if (candidates.length > 0) {
       const checks = await Promise.allSettled(
         candidates.map(async (cred) => {
-          const revoked = await this.verificationService.isRevoked(cred);
-          return { cred, revoked };
+          const result = await this.verificationService.isRevoked(cred);
+          return { cred, result };
         })
       );
 
-      for (const result of checks) {
-        if (result.status === 'fulfilled' && result.value.revoked) {
-          result.value.cred.lifeCycleStatus = 'REVOKED';
-          this.revokedCredentialIds.add(result.value.cred.id);
-          this.walletService.updateCredentialStatus(result.value.cred.id, 'REVOKED').subscribe();
-          changed = true;
+      // 'unknown' (status list unreachable) intentionally leaves the credential's
+      // cached status untouched — never treated as a confirmed non-revoked result.
+      for (const settled of checks) {
+        if (settled.status === 'fulfilled' && settled.value.result === 'revoked') {
+          this.revokedCredentialIds.add(settled.value.cred.id);
+          this.credentialCacheService.patchStatus(settled.value.cred.id, 'REVOKED');
+          this.walletService.updateCredentialStatus(settled.value.cred.id, 'REVOKED').subscribe();
         }
       }
-    }
-
-    if (changed) {
-      this.cdr.detectChanges();
     }
   }
 
   private requestPendingSignatures(): void {
-    if(this.credList.length === 0){
+    const credentials = this.credList();
+    if(credentials.length === 0){
       return;
     }
-    const pendingCredentials = this.credList.filter(
+    const pendingCredentials = credentials.filter(
       (credential) => credential.lifeCycleStatus === 'ISSUED'
     );
-    
+
     if (pendingCredentials.length === 0) {
       return;
     }
-    
+
     console.log('Requesting signatures for pending credentials...');
 
     const requests = pendingCredentials.map((credential) =>
@@ -529,14 +541,14 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
         })
       )
     );
-  
+
     forkJoin(requests).subscribe({
       next: (responses: (HttpResponse<string> | { status: number })[]) => {
         const successfulResponses = responses.filter(response => response.status === 204);
-    
+
         if (successfulResponses.length > 0) {
           console.log('Signed credentials:', successfulResponses.length);
-          this.reloadCredentials();
+          this.refreshForDisplay();
         }
       },
       error: (error: HttpErrorResponse) => {
@@ -546,30 +558,29 @@ export class CredentialsPage implements OnInit, ViewWillLeave {
     });
   }
 
-  private reloadCredentials(): void {
-    this.loadCredentials()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe();
-  }
-
   //todo review this (it is storing camera logs, but is used after API calls)
-  private handleContentExecutionError(errorResponse: ExtendedHttpErrorResponse): void{
-    const httpErr = errorResponse?.error;
-    const message = httpErr?.message || errorResponse?.message || 'No error message';
-    const title = httpErr?.title || errorResponse?.title || '(No title)';
-    const path = httpErr?.path || errorResponse?.path || '(No path)';
+  private handleContentExecutionError(errorResponse: ExtendedHttpErrorResponse | Error): void{
+    const httpErr = (errorResponse as ExtendedHttpErrorResponse)?.error;
+    const message = httpErr?.message || (errorResponse as ExtendedHttpErrorResponse)?.message || errorResponse?.message || 'No error message';
+    const title = httpErr?.title || (errorResponse as ExtendedHttpErrorResponse)?.title || '(No title)';
+    const path = httpErr?.path || (errorResponse as ExtendedHttpErrorResponse)?.path || '(No path)';
 
     const error = title + ' . ' + message + ' . ' + path;
     this.cameraLogsService.addCameraLog(new Error(error), 'httpError');
 
     console.error(errorResponse);
+
+    const translationKey = errorResponse instanceof InvalidQrError
+      ? 'errors.invalid-qr'
+      : 'errors.failed-qr-process';
+    this.toastServiceHandler
+      .showErrorAlertByTranslateLabel(translationKey)
+      .pipe(take(1))
+      .subscribe();
+
     setTimeout(()=>{
       this.router.navigate(['/tabs/home'])
     }, 1000);
-  }
-
-  private isScannerOpen(): boolean{
-    return this.showScanner === true && this.showScannerView === true;
   }
 
 }

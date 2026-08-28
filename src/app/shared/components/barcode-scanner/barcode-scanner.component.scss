@@ -57,4 +57,9 @@
   height: 100%;
   overflow: hidden;
   border-radius: inherit;
+
+  zxing-scanner {
+    width: inherit;
+    height: inherit;
+  }
 }
