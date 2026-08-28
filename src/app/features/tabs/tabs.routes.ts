@@ -44,6 +44,11 @@ const routes: Routes = [
           import('../activity/activity.page').then((m) => m.ActivityPage),
       },
       {
+        path: 'devices',
+        loadComponent: () =>
+          import('../devices/devices.page').then((m) => m.DevicesPage),
+      },
+      {
         path: 'logs',
         canActivate: [logsEnabledGuard],
         loadComponent: () =>
@@ -70,6 +75,10 @@ const routes: Routes = [
         canActivate: [authGuard],
         loadComponent: () =>
           import('../vc-selector/vc-selector.page').then((m) => m.VcSelectorPage),
+      },
+      {
+        path: 'about',
+        loadChildren: () => import('../about/about.routes'),
       },
       {
         path: '',

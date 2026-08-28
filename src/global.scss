@@ -98,6 +98,19 @@ ion-content {
   --padding-top: env(safe-area-inset-top, 0);
 }
 
+// ── Visually-hidden utility (screen-reader only) ──
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 ion-content::part(scroll) {
   scrollbar-width: none;
   overflow: -moz-scrollbars-none;

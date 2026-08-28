@@ -11,15 +11,15 @@
   span {
     font-size: 13px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--text-secondary);
   }
 }
 
 .scanner-loading-ring {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: rgba(255, 255, 255, 0.6);
+  border: 3px solid var(--surface-muted);
+  border-top-color: var(--text-secondary);
   border-radius: 50%;
   animation: ring-spin 0.8s linear infinite;
 }
@@ -40,13 +40,13 @@
 
   ion-icon {
     font-size: 40px;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--text-disabled);
   }
 
   span {
     font-size: 13px;
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--text-secondary);
   }
 }
 
@@ -57,4 +57,9 @@
   height: 100%;
   overflow: hidden;
   border-radius: inherit;
+
+  zxing-scanner {
+    width: inherit;
+    height: inherit;
+  }
 }

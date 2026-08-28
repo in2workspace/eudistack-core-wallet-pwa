@@ -1,0 +1,74 @@
+.legal-document-page {
+  --background: var(--surface-page);
+}
+
+.legal-document-container {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: var(--space-md);
+}
+
+.legal-document-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 16px;
+  color: var(--text-secondary);
+}
+
+.legal-document-fallback-notice {
+  background: var(--action-secondary);
+  color: var(--text-secondary);
+  border-radius: var(--radius-md, 8px);
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.legal-document-content {
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.legal-document-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 48px 16px;
+  color: var(--text-secondary);
+
+  ion-icon {
+    font-size: 40px;
+    color: var(--status-error);
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    font-size: 17px;
+    color: var(--text-primary);
+    margin: 0;
+  }
+}
+
+.legal-document-retry-btn {
+  margin-top: 12px;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: var(--radius-md, 8px);
+  border: none;
+  background: var(--status-info);
+  color: var(--neutral-white);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--status-info);
+    outline-offset: 2px;
+  }
+}

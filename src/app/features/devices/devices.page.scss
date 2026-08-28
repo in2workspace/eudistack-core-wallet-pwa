@@ -1,0 +1,130 @@
+.devices-page {
+  --background: var(--surface-page);
+}
+
+.devices-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--space-md);
+}
+
+.devices-subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: var(--space-lg);
+  text-align: center;
+}
+
+.loading-state,
+.error-state,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  text-align: center;
+  color: var(--text-secondary);
+
+  ion-icon {
+    font-size: 48px;
+    margin-bottom: var(--space-md);
+    opacity: 0.5;
+  }
+}
+
+.passkey-list {
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.passkey-card {
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.passkey-item {
+  --padding-start: 16px;
+  --padding-end: 8px;
+  --min-height: 72px;
+}
+
+.passkey-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+
+  ion-icon {
+    color: var(--primary-contrast-color);
+    font-size: 20px;
+  }
+}
+
+.passkey-meta {
+  margin-top: 4px;
+}
+
+.session-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 12px;
+
+  &.active {
+    background: var(--status-success);
+    color: white;
+  }
+
+  &.inactive {
+    background: var(--text-disabled);
+    color: white;
+  }
+}
+
+.passkey-date {
+  font-size: 12px;
+  color: var(--text-disabled);
+  margin-top: 2px;
+}
+
+/* T3 — lastUsedAt render (AC-02, EC-02) */
+.passkey-last-used {
+  font-size: 12px;
+  color: var(--text-disabled);
+  margin-top: 2px;
+}
+
+/* T4 — current device (AC-03): text badge, non-colour-only (WCAG 2.1 AA) */
+.passkey-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.this-device-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--primary-color);
+  color: var(--primary-contrast-color);
+  white-space: nowrap;
+}
+
+.passkey-item.current-device {
+  --background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+}
+
+.revoke-section {
+  padding: 0 16px 12px;
+  margin-top: -8px;
+}

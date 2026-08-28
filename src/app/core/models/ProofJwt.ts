@@ -4,6 +4,7 @@ export type ProofJwtContext = {
   jwt: string;
   publicKeyJwk: JsonWebKey;
   thumbprint: string;
+  holderKeyId?: string;
 };
 
 export interface ProofJwtHeaderAndPayload {

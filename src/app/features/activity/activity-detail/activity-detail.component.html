@@ -1,0 +1,67 @@
+<ion-header>
+  <ion-toolbar class="modal-toolbar">
+    <ion-title class="modal-title">{{ typeLabelKey() | translate }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="clear" [attr.aria-label]="'activity.detail-close' | translate" (click)="close()">
+        <ion-icon name="close-outline" class="close-icon"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding activity-detail-content">
+  <!--
+    EUD-142 (AD-4): credentialName, counterpartyValue() and entry().details are
+    credential/requester-provenance content — shielded from the browser's page
+    translation. Uses [attr.translate] rather than the plain translate="no"
+    attribute: see the gap note in technical-design.md §3.2 (collision with
+    @ngx-translate's [translate] directive selector). Field labels (| translate)
+    stay translatable — app chrome, not credential content.
+  -->
+  <div class="detail-row">
+    <span class="detail-label">{{ "activity.detail-field-credential" | translate }}</span>
+    <span class="detail-value" [attr.translate]="'no'">{{ entry().credentialName }}</span>
+  </div>
+
+  @if (showCounterparty()) {
+  <div class="detail-row">
+    <span class="detail-label">{{ counterpartyLabelKey()! | translate }}</span>
+    <span class="detail-value" [attr.translate]="'no'">{{ counterpartyValue() }}</span>
+  </div>
+  }
+
+  <div class="detail-row">
+    <span class="detail-label">{{ "activity.detail-field-date" | translate }}</span>
+    <span class="detail-value">{{ absoluteDate() }}</span>
+  </div>
+
+  <div class="detail-row">
+    <span class="detail-label">{{ "activity.detail-field-result" | translate }}</span>
+    <span class="detail-value">
+      <span class="result-pill">{{ "activity.detail-result-completed" | translate }}</span>
+    </span>
+  </div>
+
+  @if (showDetails()) {
+  <div class="detail-row">
+    <span class="detail-label">{{ "activity.detail-field-details" | translate }}</span>
+    <span class="detail-value" [attr.translate]="'no'">{{ entry().details }}</span>
+  </div>
+  }
+
+  @if (showSharedAttributes()) {
+  <div class="shared-attributes-section">
+    <h3 class="section-title">{{ "activity.detail-shared-attributes-title" | translate }}</h3>
+
+    @if (sharedAttributes().length > 0) {
+    <ul class="shared-attributes-list">
+      @for (attribute of sharedAttributes(); track attribute) {
+      <li class="shared-attribute-item">{{ attribute }}</li>
+      }
+    </ul>
+    } @else {
+    <p class="shared-attributes-empty">{{ "activity.detail-shared-attributes-empty" | translate }}</p>
+    }
+  </div>
+  }
+</ion-content>

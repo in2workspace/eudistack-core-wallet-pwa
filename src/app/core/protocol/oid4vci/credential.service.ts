@@ -10,6 +10,7 @@ import { JWT_VC_JSON, DC_SD_JWT } from 'src/app/core/constants/jwt.constants';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
 import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
+import { HttpErrorResponse } from '@angular/common/http';
 
 @Injectable({ providedIn: 'root' })
 export class CredentialService {
@@ -41,7 +42,7 @@ export class CredentialService {
       });
     }
 
-    return await this.postCredentialRequest({
+    return await this.postCredentialRequestWithRetry({
       accessToken,
       endpoint,
       body: request,
@@ -81,6 +82,43 @@ export class CredentialService {
     }
 
     return request;
+  }
+
+  private static readonly MAX_RETRIES = 2;
+  private static readonly RETRY_DELAYS_MS = [3000, 6000];
+
+  private async postCredentialRequestWithRetry(params: {
+    accessToken: string;
+    endpoint: string;
+    body: unknown;
+    tokenType?: string;
+    dpopJwt?: string;
+  }): Promise<CredentialResponseWithStatus> {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= CredentialService.MAX_RETRIES; attempt++) {
+      try {
+        return await this.postCredentialRequest(params);
+      } catch (e: unknown) {
+        lastError = e;
+        const isServerError = e instanceof Oid4vciError && e.cause instanceof HttpErrorResponse && e.cause.status >= 500;
+        const hasRetriesLeft = attempt < CredentialService.MAX_RETRIES;
+
+        if (isServerError && hasRetriesLeft) {
+          await new Promise(r => setTimeout(r, CredentialService.RETRY_DELAYS_MS[attempt]));
+          continue;
+        }
+        break;
+      }
+    }
+
+    if (lastError instanceof Oid4vciError && lastError.cause instanceof HttpErrorResponse && lastError.cause.status >= 500) {
+      throw new Oid4vciError('Credential request failed after retries (possible signing issue)', {
+        cause: lastError.cause,
+        translationKey: 'errors.signing-failed',
+      });
+    }
+    throw lastError;
   }
 
   private async postCredentialRequest(params: {

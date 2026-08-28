@@ -1,0 +1,46 @@
+<ion-content [fullscreen]="true" class="hybrid-onboarding-bg">
+  <div class="hybrid-onboarding-wrapper">
+    <div class="hybrid-onboarding-card">
+
+      <div class="hybrid-onboarding-header">
+        <div class="hybrid-onboarding-icon-circle"
+             role="img"
+             [attr.aria-label]="'hybrid-onboarding.warning-icon-aria' | translate">
+          <ion-icon name="warning-outline" aria-hidden="true"></ion-icon>
+        </div>
+
+        <h1 class="hybrid-onboarding-title">
+          {{ 'hybrid-onboarding.title' | translate }}
+        </h1>
+
+        <p class="hybrid-onboarding-subtitle">
+          {{ 'hybrid-onboarding.subtitle' | translate }}
+        </p>
+      </div>
+
+      <ul class="hybrid-onboarding-bullets" [attr.aria-label]="'hybrid-onboarding.title' | translate">
+        @for (key of bullets; track key) {
+          <li class="hybrid-onboarding-bullet">
+            <ion-icon name="checkmark-circle-outline" aria-hidden="true"></ion-icon>
+            <span>{{ key | translate }}</span>
+          </li>
+        }
+      </ul>
+
+      <button
+        class="hybrid-accept-btn"
+        (click)="accept()"
+        type="button">
+        {{ 'hybrid-onboarding.accept' | translate }}
+      </button>
+
+      <button
+        class="hybrid-learn-more-btn"
+        (click)="openLearnMore()"
+        type="button">
+        {{ 'hybrid-onboarding.learn-more' | translate }}
+      </button>
+
+    </div>
+  </div>
+</ion-content>

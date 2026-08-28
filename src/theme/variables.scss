@@ -9,9 +9,15 @@
   --secondary-color: #132153;
   --secondary-contrast-color: #ffffff;
 
+  /** Static, brand-independent neutral color palette　(not overridden by ThemeService)  **/
+  --neutral-strong: #333333;
+  --neutral-medium: #6B7280;
+  --neutral-light: #9CA3AF;
+  --neutral-white: #ffffff;
+  
   /** Semantic design tokens — neutral, brand-independent **/
   --surface-page: #F5F7FA;
-  --surface-card: #FFFFFF;
+  --surface-card: #FFFFFF;  // this variable is used in theme.service.ts
   --surface-muted: #E8ECF1;
 
   --text-primary: #1A1A2E;
@@ -21,13 +27,11 @@
   --border-default: #D1D5DB;
   --border-strong: #9CA3AF;
 
-  --action-primary: #2563EB;
-  --action-primary-hover: #1D4ED8;
-  --action-primary-contrast: #FFFFFF;
   --action-secondary: #F3F4F6;
   --action-secondary-hover: #E5E7EB;
   --action-secondary-text: #374151;
 
+  // These variables are used in theme.service.ts
   --status-success: #059669;
   --status-warning: #D97706;
   --status-error: #DC2626;
@@ -53,6 +57,18 @@
 
   // Touch-target minimum (WCAG 2.5.5)
   --touch-min: 44px;
+
+  /**
+   * Interaction tokens — brand-independent, never overridden by ThemeService.
+   * Guarantee WCAG AA regardless of tenant branding. Use these for caret,
+   * focus rings and text selection — not brand colors.
+   */
+  --ui-caret: #1A1A2E;
+  --ui-caret-on-dark: #FFFFFF;
+  --ui-focus-ring: #2563EB;
+  --ui-focus-ring-rgb: 37, 99, 235;
+  --ui-selection-bg: #2563EB;
+  --ui-selection-fg: #FFFFFF;
 
   /** Ionic color palette — mapped to semantic tokens **/
   --ion-color-primary: var(--primary-color);
@@ -155,6 +171,14 @@
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
   --shadow-md: 0 4px 6px rgba(0,0,0,0.3);
   --shadow-lg: 0 10px 15px rgba(0,0,0,0.4);
+
+  // Interaction tokens — dark-mode variants (still brand-independent)
+  --ui-caret: #F0F1F4;
+  --ui-caret-on-dark: #F0F1F4;
+  --ui-focus-ring: #60A5FA;
+  --ui-focus-ring-rgb: 96, 165, 250;
+  --ui-selection-bg: #60A5FA;
+  --ui-selection-fg: #0F1117;
 
   --ion-background-color: var(--surface-page);
   --ion-text-color: var(--text-primary);

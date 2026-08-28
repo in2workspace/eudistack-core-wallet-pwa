@@ -9,8 +9,15 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
   standalone: true,
   imports: [CommonModule, IonicModule, TranslateModule],
   template: `
+    <!--
+      EUD-142 (AD-4): credential-content shielding against the browser's page translation.
+      Uses [attr.translate]="'no'" rather than the plain \`translate="no"\` HTML attribute:
+      @ngx-translate's TranslateDirective selector is \`[translate]\` and would otherwise hijack
+      this attribute, treating "no" as an i18n key instead of the platform's translate mode.
+      See Tech Debt ticket referenced in technical-design.md §3.2 gap note.
+    -->
     <div class="modal-backdrop">
-      <div class="modal-content" [class.enter]="animateIn">
+      <div class="modal-content" [attr.translate]="'no'" [class.enter]="animateIn">
 
         <div class="modal-header">
           <div class="icon-wrapper" [class.icon-enter]="animateIn">
@@ -22,7 +29,7 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
 
         <div class="credential-card" [class.card-enter]="animateIn">
           <div class="card-header">
-            <span class="credential-name">{{ preview.displayName }}</span>
+            <span class="credential-name" [attr.translate]="'no'">{{ preview.displayName }}</span>
             <span class="format-badge" *ngIf="preview.format">{{ formatLabel }}</span>
           </div>
 
@@ -30,17 +37,17 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
 
           <div class="card-sections">
             <div class="section-block" *ngFor="let section of preview.sections">
-              <span class="section-title">{{ section.section }}</span>
+              <span class="section-title" [attr.translate]="'no'">{{ section.section }}</span>
               <div class="section-fields">
                 <ng-container *ngFor="let field of section.fields">
                   <!-- Structured field (array of objects like powers) -->
                   <div class="field-row" *ngIf="field.structured?.length; else simpleField">
-                    <span class="field-label">{{ field.label }}</span>
+                    <span class="field-label" [attr.translate]="'no'">{{ field.label }}</span>
                     <div class="structured-list">
                       <div class="structured-item" *ngFor="let item of field.structured">
                         <span class="structured-entry">
-                          <span class="structured-key">{{ item.label }}</span>
-                          <span class="structured-val">{{ item.value }}</span>
+                          <span class="structured-key" [attr.translate]="'no'">{{ item.label }}</span>
+                          <span class="structured-val" [attr.translate]="'no'">{{ item.value }}</span>
                         </span>
                       </div>
                     </div>
@@ -48,8 +55,8 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
                   <!-- Simple text field -->
                   <ng-template #simpleField>
                     <div class="field-row">
-                      <span class="field-label">{{ field.label }}</span>
-                      <span class="field-value">{{ field.value }}</span>
+                      <span class="field-label" [attr.translate]="'no'">{{ field.label }}</span>
+                      <span class="field-value" [attr.translate]="'no'">{{ field.value }}</span>
                     </div>
                   </ng-template>
                 </ng-container>
@@ -110,9 +117,14 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
     .icon-wrapper {
       display: inline-flex; align-items: center; justify-content: center;
       width: 64px; height: 64px; border-radius: 50%;
-      background: var(--action-primary, #2563EB);
+      background: var(--primary-color);
+      border: 1px solid var(--primary-contrast-color);
+      box-sizing: content-box;
       margin-bottom: 16px; opacity: 0; transform: scale(0.5);
-      ion-icon { font-size: 32px; color: #fff; }
+      ion-icon { 
+        font-size: 32px; 
+        color: var(--primary-contrast-color);
+      }
       &.icon-enter { animation: pop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.15s forwards; }
     }
     @keyframes pop { to { opacity: 1; transform: scale(1); } }
@@ -136,9 +148,14 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
     }
     .credential-name { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); }
     .format-badge {
-      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
-      padding: 3px 8px; border-radius: 4px;
-      background: var(--action-primary, #2563EB); color: #fff;
+      font-size: 0.65rem;
+      font-weight: 600; 
+      text-transform: uppercase;
+      padding: 3px 8px; 
+      border-radius: 4px;
+      background: var(--primary-color); 
+      color: var(--primary-contrast-color);
+      border: 1px solid var(--primary-contrast-color);
     }
     .card-divider { height: 1px; background: var(--border-default, #D1D5DB); margin: 14px 0; opacity: 0.6; }
 
@@ -146,7 +163,7 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
     .section-block { display: flex; flex-direction: column; gap: 8px; }
     .section-title {
       font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.05em; color: var(--action-primary, #2563EB);
+      letter-spacing: 0.05em; color: var(--text-primary);
       padding-bottom: 4px; border-bottom: 1px solid var(--border-default, #D1D5DB);
     }
     .section-fields { display: flex; flex-direction: column; gap: 8px; }
@@ -179,7 +196,7 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
 
     .countdown-section { margin-bottom: 20px; text-align: center; }
     .countdown-bar-track { height: 4px; border-radius: 2px; background: var(--surface-muted, #E8ECF1); overflow: hidden; margin-bottom: 8px; }
-    .countdown-bar-fill { height: 100%; border-radius: 2px; background: var(--action-primary, #2563EB); transition: width 1s linear; }
+    .countdown-bar-fill { height: 100%; border-radius: 2px; background: var(--neutral-medium); transition: width 1s linear; }
     .countdown-text { font-size: 0.8rem; color: var(--text-secondary); }
 
     .modal-actions { display: flex; gap: 12px; }
@@ -194,7 +211,11 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
       background: var(--surface-card, #FFF); color: #374151;
       border: 1px solid var(--border-default, #D1D5DB);
     }
-    .btn-primary { background: var(--action-primary, #2563EB); color: #fff; }
+    .btn-primary { 
+      background: var(--primary-color);
+      color: var(--primary-contrast-color);
+      border: 1px solid var(--border-default, #D1D5DB);
+    }
   `],
 })
 export class CredentialConfirmationModalComponent {

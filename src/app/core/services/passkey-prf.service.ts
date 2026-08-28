@@ -5,6 +5,7 @@ import { p256 } from '@noble/curves/nist.js';
 import { PasskeyStoreService } from './passkey-store.service';
 
 const HKDF_INFO = 'eudistack:p256:v1';
+const MASTER_SALT = new TextEncoder().encode('eudistack:master:v1');
 
 export type PrfSupportStatus = 'available' | 'unavailable';
 
@@ -87,18 +88,12 @@ export class PasskeyPrfService {
     return credentialId;
   }
 
-  /**
-   * Derive a P-256 signing key from the passkey PRF output.
-   *
-   * Flow: PRF(passkey, salt) → HKDF → 32-byte scalar d → (x, y) → CryptoKey
-   *
-   * Each call triggers a biometric prompt.
-   */
+  /** Derive a P-256 signing key from the passkey PRF output. Always requires a biometric prompt. */
   async deriveSigningKey(salt: Uint8Array): Promise<{
     privateKey: CryptoKey;
     publicKeyJwk: JsonWebKey;
   }> {
-    // Serialize PRF evaluations to prevent concurrent biometric prompts
+    // Serialize concurrent callers — only one biometric prompt at a time.
     while (this.prfLock) {
       await this.prfLock;
     }
@@ -112,19 +107,19 @@ export class PasskeyPrfService {
 
     const credentialIdBytes = base64UrlDecode(credentialIdB64);
 
-    let resolve: () => void;
-    this.prfLock = new Promise<void>(r => resolve = r);
+    let resolve!: () => void;
+    this.prfLock = new Promise<void>(r => { resolve = r; });
 
     try {
-      const prfOutput = await this.evaluatePrf(credentialIdBytes, salt);
-      return this.deriveP256KeyFromBytes(prfOutput, salt);
+      const master = await this.evaluatePrf(credentialIdBytes, MASTER_SALT);
+      return this.deriveP256KeyFromBytes(master, salt);
     } finally {
       this.prfLock = null;
-      resolve!();
+      resolve();
     }
   }
 
-  /** Remove the stored passkey credential ID (logout / reset). */
+  /** Remove the stored passkey credential ID. */
   async clearPasskey(): Promise<void> {
     await this.store.clear();
   }
@@ -142,7 +137,7 @@ export class PasskeyPrfService {
     const assertion = (await navigator.credentials.get({
       publicKey: {
         challenge,
-        allowCredentials: [{ id: credentialId, type: 'public-key' }],
+        allowCredentials: [{ id: credentialId.slice(), type: 'public-key' }],
         userVerification: 'required',
         extensions: {
           // @ts-ignore — PRF extension not yet in TS lib types
@@ -177,7 +172,7 @@ export class PasskeyPrfService {
     // Step 1: Import PRF output as HKDF master key
     const masterKey = await globalThis.crypto.subtle.importKey(
       'raw',
-      prfOutput,
+      prfOutput.slice(), // .slice() ensures ArrayBuffer-backed Uint8Array
       'HKDF',
       false,
       ['deriveBits']
@@ -187,9 +182,9 @@ export class PasskeyPrfService {
     const derivedBits = await globalThis.crypto.subtle.deriveBits(
       {
         name: 'HKDF',
-        salt,
+        salt: salt.slice(), // .slice() ensures ArrayBuffer-backed Uint8Array
         hash: 'SHA-256',
-        info: new TextEncoder().encode(HKDF_INFO),
+        info: new TextEncoder().encode(HKDF_INFO).slice(),
       },
       masterKey,
       256
@@ -229,18 +224,13 @@ export class PasskeyPrfService {
       return 'unavailable';
     }
 
-    // Check if the platform supports PRF via the static method (WebAuthn L3)
     try {
-      const extensions =
-        (PublicKeyCredential as any).getClientExtensionResults?.() ??
-        undefined;
-
       // Heuristic: if PublicKeyCredential exists and we have a secure context,
       // assume PRF *might* be available. Definitive check happens at first use.
       const isSecure =
         globalThis.isSecureContext ??
-        location.protocol === 'https:' ??
-        ['localhost', '127.0.0.1'].includes(location.hostname);
+        (location.protocol === 'https:' ||
+         ['localhost', '127.0.0.1'].includes(location.hostname));
 
       return isSecure ? 'available' : 'unavailable';
     } catch {

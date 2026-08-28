@@ -1,26 +1,53 @@
 <ion-content [fullscreen]="true" class="vc-selector-content">
   <div class="vc-selector-header">
-    <div class="header-icon">
-      <ion-icon name="shield-checkmark-outline"></ion-icon>
-    </div>
-    <h2 class="header-title">{{ "vc-selector.presentation-request" | translate }}</h2>
-    <p class="header-subtitle">{{ "vc-selector.select-instruction" | translate }}</p>
-    @if (requesterDomain) {
-      <div class="requester-badge">
-        <ion-icon name="globe-outline"></ion-icon>
-        <span>{{ requesterDomain }}</span>
+    @if (clientLogo) {
+      <div [class.header-logo-fallback]="needsFallback">
+        <img [src]="clientLogo" class="header-logo" alt="RP Logo">
+      </div>
+    } @else {
+      <div class="header-icon">
+        <ion-icon name="shield-checkmark-outline"></ion-icon>
       </div>
     }
+    @if (clientName) {
+      <!--
+        EUD-142 (AD-3/AD-4): the requester name (clientName) is credential-provenance
+        content per AD-3 — shielded like credential content, never fed to the runtime
+        translator nor left translatable by the browser's page translation. Uses
+        [attr.translate] rather than the plain translate="no" attribute: see the gap
+        note in technical-design.md §3.2 (collision with @ngx-translate's [translate]
+        directive selector).
+      -->
+      <h2 class="header-title" [attr.translate]="'no'">{{ clientName }}</h2>
+      <h2 class="header-subtitle">{{ "vc-selector.presentation-request-verifier" | translate }}</h2>
+    }
+    @else {
+      <h2 class="header-title">{{ "vc-selector.presentation-request" | translate }}</h2>
+      <p class="header-subtitle">{{ "vc-selector.select-instruction" | translate }}</p>
+    }
+    <div class="legal-links">
+      @if (clientUri) {
+        <a [href]="clientUri" target="_blank" class="legal-link">{{ "vc-selector.official-site" | translate }}</a>
+      }
+      @if (clientUri && policyUri || tosUri) { <span class="divider">|</span> }
+      @if (policyUri) {
+        <a [href]="policyUri" target="_blank" class="legal-link">{{ "vc-selector.privacy-policy" | translate }}</a>
+      }
+      @if (policyUri && tosUri) { <span class="divider">|</span> }
+      @if (tosUri) {
+        <a [href]="tosUri" target="_blank" class="legal-link">{{ "vc-selector.tds" | translate }}</a>
+      }
+    </div>
   </div>
 
   <div class="credential-list">
     @for (cred of credList; track cred) {
-      <button class="selectable-card" (click)="sendCred(cred)">
+      <div role="button" class="selectable-card" tabindex="0" (click)="sendCred(cred)" (keydown.enter)="sendCred(cred)" (keydown.space)="$event.preventDefault()" (keyup.space)="sendCred(cred)" [attr.aria-label]="'vc-selector.select-cred' | translate">
         <app-vc-view [credentialInput$]="cred" [enableDetailView$]="false"></app-vc-view>
         <div class="card-action-hint">
-          <ion-icon name="chevron-forward-outline"></ion-icon>
+          <ion-icon name="chevron-forward-outline" aria-hidden="true"></ion-icon>
         </div>
-      </button>
+      </div>
     }
   </div>
 </ion-content>
