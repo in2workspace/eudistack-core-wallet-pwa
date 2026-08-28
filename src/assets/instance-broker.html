@@ -23,49 +23,91 @@
   (function () {
     var CHANNEL_NAME = 'wallet-single-instance';
     var parentOrigin = null;
+    // null = allowlist not loaded yet; traffic in both directions is
+    // buffered below instead of dropped, so a NEW_TAB sent by the parent
+    // right after BROKER_READY (before the config fetch below resolves)
+    // is not lost to the race.
+    var allowedOrigins = null;
+    var pendingOutbound = []; // [{origin, payload}] — from parent, awaiting validation
+    var pendingInbound = [];  // raw channel payloads, awaiting a validated parentOrigin
     var channel = ('BroadcastChannel' in window) ? new BroadcastChannel(CHANNEL_NAME) : null;
 
-    function isAllowedOrigin(origin, allowedOrigins) {
-      return allowedOrigins.indexOf(origin) !== -1;
+    function isAllowedOrigin(origin) {
+      return allowedOrigins !== null && allowedOrigins.indexOf(origin) !== -1;
     }
+
+    function flushInbound() {
+      if (!parentOrigin) return;
+      while (pendingInbound.length) {
+        parent.postMessage({ type: 'RELAY_IN', payload: pendingInbound.shift() }, parentOrigin);
+      }
+    }
+
+    function flushOutbound() {
+      while (pendingOutbound.length) {
+        var item = pendingOutbound.shift();
+        if (isAllowedOrigin(item.origin)) {
+          parentOrigin = item.origin;
+          if (channel) channel.postMessage(item.payload);
+        }
+      }
+    }
+
+    window.addEventListener('message', function (event) {
+      if (!parent || event.source !== parent) {
+        return;
+      }
+      if (!event.data || event.data.type !== 'RELAY_OUT') {
+        return;
+      }
+      if (allowedOrigins === null) {
+        pendingOutbound.push({ origin: event.origin, payload: event.data.payload });
+        return;
+      }
+      if (isAllowedOrigin(event.origin)) {
+        parentOrigin = event.origin;
+        if (channel) channel.postMessage(event.data.payload);
+      }
+    });
+
+    if (channel) {
+      channel.onmessage = function (ev) {
+        if (parentOrigin) {
+          parent.postMessage({ type: 'RELAY_IN', payload: ev.data }, parentOrigin);
+        } else {
+          pendingInbound.push(ev.data);
+        }
+      };
+    }
+
+    // Handshake immediately — do NOT wait for the allowlist fetch below. The
+    // parent's RELAY_CONNECT_TIMEOUT_MS budget has to cover this page's own
+    // network round-trip on top of the parent's — gating readiness on our
+    // own fetch finishing first was eating most of that budget on a cold
+    // cache, degrading the relay to same-origin fallback in practice.
+    // '*' is safe here: this message carries no data, and the parent
+    // discards anything not from this exact iframe/origin (see
+    // RelayTransport.connect's onReady in single-instance.service.ts).
+    parent.postMessage({ type: 'BROKER_READY' }, '*');
 
     fetch('/assets/tenants/instance-groups.json')
       .then(function (res) { return res.json(); })
       .then(function (config) {
-        var allowedOrigins = (config.groups || []).reduce(function (acc, group) {
-          return acc.concat(group.memberOrigins || []);
-        }, []);
+        // Scoped to the group whose brokerUrl is THIS page, not every group in
+        // the document — a future second group (e.g. PRO) sharing the same
+        // instance-groups.json must not let its origins talk through this broker.
+        var ownGroup = (config.groups || []).filter(function (group) {
+          return group.brokerUrl === location.href;
+        })[0];
+        allowedOrigins = ownGroup ? (ownGroup.memberOrigins || []) : [];
 
-        window.addEventListener('message', function (event) {
-          if (!parent || event.source !== parent) {
-            return;
-          }
-          if (!isAllowedOrigin(event.origin, allowedOrigins)) {
-            return;
-          }
-          parentOrigin = event.origin;
-
-          if (event.data && event.data.type === 'RELAY_OUT' && channel) {
-            channel.postMessage(event.data.payload);
-          }
-        });
-
-        if (channel) {
-          channel.onmessage = function (ev) {
-            if (parentOrigin) {
-              parent.postMessage({ type: 'RELAY_IN', payload: ev.data }, parentOrigin);
-            }
-          };
-        }
-
-        // Handshake: tell the parent the relay is up. The parent doesn't know
-        // its own origin from inside the iframe context, so broadcast to '*'
-        // for this single readiness ping only — it carries no user data.
-        parent.postMessage({ type: 'BROKER_READY' }, '*');
+        flushOutbound();
+        flushInbound();
       })
       .catch(function () {
-        // No config reachable — stay silent. The parent times out and falls
-        // back to same-origin behaviour (see SingleInstanceService.elect()).
+        // No config reachable — leave allowedOrigins at null (nothing gets
+        // validated, buffers never flush). The parent's own
+        // RELAY_CONNECT_TIMEOUT_MS already caps how long it waits on us.
       });
   })();
 </script>

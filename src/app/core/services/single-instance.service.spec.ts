@@ -167,11 +167,15 @@ describe('SingleInstanceService', () => {
       (service as any).channel = new BroadcastChannelMock('wallet-single-instance');
     });
 
+    // As of the cross-origin fix, the sender (elect()) already strips its own
+    // <base href> before putting `url` on the wire — these payloads are what
+    // a real follower now sends, not a raw pathname+search.
+
     it('navigates to deep-link /protocol/ when logged in', () => {
       (service as any).handleMessage({
         type: 'NAVIGATE',
         tabId: 'other-tab',
-        url: '/wallet/protocol/callback?code=abc',
+        url: '/protocol/callback?code=abc',
       });
 
       expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/protocol/callback?code=abc');
@@ -184,7 +188,7 @@ describe('SingleInstanceService', () => {
       (service as any).handleMessage({
         type: 'NAVIGATE',
         tabId: 'other-tab',
-        url: '/wallet/protocol/callback?code=abc',
+        url: '/protocol/callback?code=abc',
       });
 
       expect(routerMock.navigateByUrl).not.toHaveBeenCalled();
@@ -195,7 +199,7 @@ describe('SingleInstanceService', () => {
       (service as any).handleMessage({
         type: 'NAVIGATE',
         tabId: 'other-tab',
-        url: '/wallet/tabs/vc-selector?authorization_request=openid4vp%3A%2F%2F',
+        url: '/tabs/vc-selector?authorization_request=openid4vp%3A%2F%2F',
       });
 
       expect(routerMock.navigateByUrl).toHaveBeenCalledWith(
@@ -207,7 +211,7 @@ describe('SingleInstanceService', () => {
       (service as any).handleMessage({
         type: 'NAVIGATE',
         tabId: 'other-tab',
-        url: '/wallet/tabs/credentials?credentialOfferUri=openid-credential-offer%3A%2F%2F',
+        url: '/tabs/credentials?credentialOfferUri=openid-credential-offer%3A%2F%2F',
       });
 
       expect(routerMock.navigateByUrl).toHaveBeenCalledWith(
@@ -221,7 +225,7 @@ describe('SingleInstanceService', () => {
       (service as any).handleMessage({
         type: 'NAVIGATE',
         tabId: 'other-tab',
-        url: '/wallet/tabs/credentials?credentialOfferUri=openid-credential-offer%3A%2F%2F',
+        url: '/tabs/credentials?credentialOfferUri=openid-credential-offer%3A%2F%2F',
       });
 
       expect(routerMock.navigateByUrl).not.toHaveBeenCalled();
@@ -234,7 +238,7 @@ describe('SingleInstanceService', () => {
       (service as any).handleMessage({
         type: 'NAVIGATE',
         tabId: 'other-tab',
-        url: '/wallet/home',
+        url: '/home',
       });
 
       expect(routerMock.navigateByUrl).not.toHaveBeenCalled();
@@ -247,7 +251,7 @@ describe('SingleInstanceService', () => {
       (service as any).handleMessage({
         type: 'NAVIGATE',
         tabId: 'other-tab',
-        url: '/wallet/protocol/callback?code=abc',
+        url: '/protocol/callback?code=abc',
       });
 
       expect(routerMock.navigateByUrl).not.toHaveBeenCalled();
@@ -259,10 +263,32 @@ describe('SingleInstanceService', () => {
       (service as any).handleMessage({
         type: 'NAVIGATE',
         tabId: ownTabId,
-        url: '/wallet/protocol/callback?code=abc',
+        url: '/protocol/callback?code=abc',
       });
 
       expect(routerMock.navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('trusts the sender\'s already-stripped url as-is, even when this (leader) tab has a different <base href>', () => {
+      // Arrange — this tab's own base differs from whatever base the sender used;
+      // if handleMessage still re-stripped with ITS OWN base, a path that doesn't
+      // start with '/' (this tab's base, trimmed) would be misread.
+      baseQuerySpy.mockImplementation((selector) => {
+        if (selector === 'base') {
+          return { getAttribute: (attr: string) => attr === 'href' ? '/' : null } as unknown as Element;
+        }
+        return null;
+      });
+
+      // Act — payload as a follower on base "/wallet/" would send after stripping.
+      (service as any).handleMessage({
+        type: 'NAVIGATE',
+        tabId: 'other-tab',
+        url: '/protocol/callback?code=abc',
+      });
+
+      // Assert
+      expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/protocol/callback?code=abc');
     });
   });
 
@@ -393,7 +419,7 @@ describe('SingleInstanceService', () => {
       const isLeader = await service.elect();
 
       // Assert
-      expect(connectSpy).toHaveBeenCalledWith(domeStgGroup.brokerUrl, 400);
+      expect(connectSpy).toHaveBeenCalledWith(domeStgGroup.brokerUrl, 2000);
       expect(fakeRelay.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'NEW_TAB' }));
       expect(isLeader).toBe(true);
     });
@@ -439,6 +465,23 @@ describe('SingleInstanceService', () => {
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('dome-stg'),
         expect.stringContaining('dome.stg.eudistack.net'),
+      );
+      expect(isLeader).toBe(true);
+      expect((service as any).channel).toBeInstanceOf(BroadcastChannelMock);
+    });
+
+    it('logs a warning and falls back to the same-origin BroadcastChannel when resolving the group throws unexpectedly', async () => {
+      // Arrange
+      instanceGroupServiceMock.resolveGroupForOrigin.mockRejectedValue(new Error('boom'));
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      // Act
+      const isLeader = await service.elect();
+
+      // Assert — elect() must never reject just because the group lookup blew up.
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[SingleInstanceService]'),
+        expect.any(Error),
       );
       expect(isLeader).toBe(true);
       expect((service as any).channel).toBeInstanceOf(BroadcastChannelMock);

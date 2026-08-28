@@ -177,6 +177,7 @@ jobs:
             --delete \
             --exclude "index.html" \
             --exclude "assets/env.js" \
+            --exclude "assets/instance-broker.html" \
             --cache-control "public, max-age=31536000, immutable"
 
           aws s3 cp dist/out/browser/index.html "s3://${S3_BUCKET}/${SPA_PREFIX}/index.html" \
@@ -186,6 +187,14 @@ jobs:
           aws s3 cp dist/out/browser/assets/env.js "s3://${S3_BUCKET}/${SPA_PREFIX}/assets/env.js" \
             --cache-control "no-store" \
             --content-type "application/javascript"
+
+          # Cross-origin instance-group members embed this page directly (not via
+          # Angular routing), so it must never be served `immutable` — an alias
+          # origin's iframe would keep fetching a stale copy for up to a year
+          # regardless of CloudFront invalidation.
+          aws s3 cp dist/out/browser/assets/instance-broker.html "s3://${S3_BUCKET}/${SPA_PREFIX}/assets/instance-broker.html" \
+            --cache-control "no-store" \
+            --content-type "text/html"
 
       - name: Invalidate CloudFront distributions
         env:
@@ -265,6 +274,7 @@ jobs:
             --delete \
             --exclude "index.html" \
             --exclude "assets/env.js" \
+            --exclude "assets/instance-broker.html" \
             --cache-control "public, max-age=31536000, immutable"
 
           aws s3 cp dist/out/browser/index.html "s3://${S3_BUCKET}/${SPA_PREFIX}/index.html" \
@@ -274,6 +284,14 @@ jobs:
           aws s3 cp dist/out/browser/assets/env.js "s3://${S3_BUCKET}/${SPA_PREFIX}/assets/env.js" \
             --cache-control "no-store" \
             --content-type "application/javascript"
+
+          # Cross-origin instance-group members embed this page directly (not via
+          # Angular routing), so it must never be served `immutable` — an alias
+          # origin's iframe would keep fetching a stale copy for up to a year
+          # regardless of CloudFront invalidation.
+          aws s3 cp dist/out/browser/assets/instance-broker.html "s3://${S3_BUCKET}/${SPA_PREFIX}/assets/instance-broker.html" \
+            --cache-control "no-store" \
+            --content-type "text/html"
 
       - name: Invalidate CloudFront distributions
         env:

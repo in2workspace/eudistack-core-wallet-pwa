@@ -85,6 +85,37 @@ describe('InstanceGroupService', () => {
       expect(result).toBeNull();
     });
 
+    it('treats a malformed config (missing groups) as no groups instead of throwing', async () => {
+      // Arrange
+      const promise = service.resolveGroupForOrigin('https://dome.stg.eudistack.net');
+
+      // Act — a 200 response that doesn't match the expected shape at all.
+      http.expectOne(CONFIG_URL).flush({} as unknown as InstanceGroupsConfig);
+      const result = await promise;
+
+      // Assert
+      expect(result).toBeNull();
+    });
+
+    it('falls back to no groups when the GET does not complete within the timeout', async () => {
+      // Arrange
+      jest.useFakeTimers();
+
+      try {
+        const promise = service.resolveGroupForOrigin('https://dome.stg.eudistack.net');
+        http.expectOne(CONFIG_URL); // request made, but never flushed — simulates a hung connection
+
+        // Act
+        await jest.advanceTimersByTimeAsync(3001);
+        const result = await promise;
+
+        // Assert
+        expect(result).toBeNull();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
     it('defaults to window.location.origin when no origin is given', async () => {
       // Arrange
       const promise = service.resolveGroupForOrigin();

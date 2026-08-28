@@ -65,17 +65,26 @@ export class AppComponent implements OnInit, OnDestroy {
   public ngOnInit() {
     this.logoSrc = this.themeService.getLogoUrl('light');
     this.swUpdate.init();
-    this.singleInstance.elect().then((isLeader) => {
-      if (!isLeader) {
-        return;
-      }
+    // elect() itself falls back to a same-origin channel on any internal
+    // failure and should not reject — this catch is a last-resort guard so
+    // a truly unexpected rejection still leaves this tab with a working
+    // OID4VCI engine instead of silently never initializing it.
+    this.singleInstance.elect()
+      .catch((err) => {
+        console.warn('[AppComponent] elect() rejected unexpectedly, defaulting this tab to leader', err);
+        return true;
+      })
+      .then((isLeader) => {
+        if (!isLeader) {
+          return;
+        }
 
-      this.singleInstance.consumeLaunchQueue();
-      this.initOid4vciEngine();
-      this.issuerMetadataCache.refreshStaleMetadata().catch(console.warn);
-      this.alertIncompatibleDevice();
-      this.trackIosFirstStandaloneBoot();
-    });
+        this.singleInstance.consumeLaunchQueue();
+        this.initOid4vciEngine();
+        this.issuerMetadataCache.refreshStaleMetadata().catch(console.warn);
+        this.alertIncompatibleDevice();
+        this.trackIosFirstStandaloneBoot();
+      });
   }
 
   public ngOnDestroy(){

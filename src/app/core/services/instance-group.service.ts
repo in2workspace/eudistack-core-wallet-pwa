@@ -1,9 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { InstanceGroup, InstanceGroupsConfig } from '../models/instance-group.model';
 
 const INSTANCE_GROUPS_CONFIG_URL = '/assets/tenants/instance-groups.json';
+const CONFIG_FETCH_TIMEOUT_MS = 3000;
 const EMPTY_CONFIG: InstanceGroupsConfig = { groups: [] };
 
 /**
@@ -20,12 +21,14 @@ export class InstanceGroupService {
 
   public async resolveGroupForOrigin(origin: string = window.location.origin): Promise<InstanceGroup | null> {
     const config = await this.loadConfig();
-    return config.groups.find(group => group.memberOrigins.includes(origin)) ?? null;
+    // A malformed-but-200 response (e.g. `{}`) must degrade to "no groups",
+    // not throw and take elect() down with it.
+    return (config.groups ?? []).find(group => group.memberOrigins.includes(origin)) ?? null;
   }
 
   private loadConfig(): Promise<InstanceGroupsConfig> {
     this.configPromise ??= firstValueFrom(
-      this.http.get<InstanceGroupsConfig>(INSTANCE_GROUPS_CONFIG_URL),
+      this.http.get<InstanceGroupsConfig>(INSTANCE_GROUPS_CONFIG_URL).pipe(timeout(CONFIG_FETCH_TIMEOUT_MS)),
     ).catch(() => EMPTY_CONFIG);
     return this.configPromise;
   }

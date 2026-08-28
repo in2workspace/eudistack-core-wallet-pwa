@@ -36,6 +36,7 @@
       "urls": [
         "/assets/env.js",
         "/assets/tenants/custom-domain.json",
+        "/assets/tenants/instance-groups.json",
         "/assets/tenants/*/theme.json"
       ],
       "cacheConfig": {

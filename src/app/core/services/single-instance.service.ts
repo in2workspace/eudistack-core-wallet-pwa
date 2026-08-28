@@ -20,7 +20,7 @@ interface MessageTransport {
 
 const CHANNEL_NAME = 'wallet-single-instance';
 const ELECTION_TIMEOUT_MS = 300;
-const RELAY_CONNECT_TIMEOUT_MS = 400;
+const RELAY_CONNECT_TIMEOUT_MS = 2000;
 
 /**
  * Bridges the single-instance `BroadcastChannel` across origins that are
@@ -124,12 +124,12 @@ export class SingleInstanceService implements OnDestroy {
     };
 
     return new Promise<boolean>((resolve) => {
-      const currentUrl = window.location.pathname + window.location.search;
+      const appRelativeUrl = SingleInstanceService.stripBase(window.location.pathname + window.location.search);
 
       this.channel!.postMessage({
         type: 'NEW_TAB',
         tabId: this.tabId,
-        url: currentUrl,
+        url: appRelativeUrl,
       } satisfies SingleInstanceMessage);
 // TODO: There is a potential race condition here. This should be improved in a future update.
       const timeout = setTimeout(() => {
@@ -144,11 +144,10 @@ export class SingleInstanceService implements OnDestroy {
           this.channel!.postMessage({
             type: 'NAVIGATE',
             tabId: this.tabId,
-            url: currentUrl,
+            url: appRelativeUrl,
           } satisfies SingleInstanceMessage);
           this.channel!.onmessage = originalHandler;
-          const appRelative = SingleInstanceService.stripBase(currentUrl);
-          const isDeepLink = appRelative.startsWith('/protocol/') || appRelative.startsWith('/tabs/vc-selector') || appRelative.startsWith('/tabs/credentials');
+          const isDeepLink = appRelativeUrl.startsWith('/protocol/') || appRelativeUrl.startsWith('/tabs/vc-selector') || appRelativeUrl.startsWith('/tabs/credentials');
           this.renderDuplicateTabMessage(isDeepLink);
           resolve(false);
         } else {
@@ -164,18 +163,27 @@ export class SingleInstanceService implements OnDestroy {
    * everything else — including localhost dev-network origins, which are
    * never listed in any instance group — keeps the plain same-origin
    * `BroadcastChannel`, unchanged from before this class existed.
+   *
+   * Never rejects: any unexpected failure resolving the group or connecting
+   * the relay falls back to the same-origin channel, so a transient error
+   * here can't leave `elect()` — and the app's leader-only init in
+   * `app.component.ts` — permanently unresolved.
    */
   private async acquireTransport(): Promise<MessageTransport> {
-    const group = await this.instanceGroupService.resolveGroupForOrigin();
-    if (group) {
-      const relay = await RelayTransport.connect(group.brokerUrl, RELAY_CONNECT_TIMEOUT_MS);
-      if (relay) {
-        return relay;
+    try {
+      const group = await this.instanceGroupService.resolveGroupForOrigin();
+      if (group) {
+        const relay = await RelayTransport.connect(group.brokerUrl, RELAY_CONNECT_TIMEOUT_MS);
+        if (relay) {
+          return relay;
+        }
+        console.warn(
+          `[SingleInstanceService] Instance broker for group "${group.id}" did not respond within ${RELAY_CONNECT_TIMEOUT_MS}ms.`,
+          `Falling back to same-origin leader election — duplicate-tab detection will NOT span ${group.memberOrigins.join(', ')} for this tab.`,
+        );
       }
-      console.warn(
-        `[SingleInstanceService] Instance broker for group "${group.id}" did not respond within ${RELAY_CONNECT_TIMEOUT_MS}ms.`,
-        `Falling back to same-origin leader election — duplicate-tab detection will NOT span ${group.memberOrigins.join(', ')} for this tab.`,
-      );
+    } catch (err) {
+      console.warn('[SingleInstanceService] Failed to resolve the instance group or connect the relay — falling back to same-origin leader election.', err);
     }
     return new BroadcastChannel(CHANNEL_NAME);
   }
@@ -244,10 +252,10 @@ export class SingleInstanceService implements OnDestroy {
 
       case 'NAVIGATE': {
         window.focus();
-        // Strip the base href from the raw pathname+search sent by the follower.
-        // APP_BASE_HREF token resolves to '/' in some setups, so we read the
-        // <base href> directly from the DOM for reliability.
-        const appRelative = SingleInstanceService.stripBase(msg.url ?? '');
+        // The sender already stripped its own <base href> before sending
+        // (see elect()) — re-stripping here with THIS tab's base would be
+        // wrong when a cross-origin group member uses a different one.
+        const appRelative = msg.url ?? '';
 
         if (appRelative.startsWith('/protocol/') || appRelative.startsWith('/tabs/vc-selector') || appRelative.startsWith('/tabs/credentials')) {
           if (this.authService.isLoggedIn()) {
