@@ -16,14 +16,18 @@ export interface VerifiableCredential {
   credentialFormat?: string;
 }
 
-// Must match credential_configuration_id in assets/schemas/*.json
+// Must match credential_configuration_id / vct advertised by the issuer metadata endpoint
 export const CREDENTIAL_TYPES_ARRAY = [
+  'LEARCredentialEmployee',
+  'LEARCredentialMachine',
+  'gx:LabelCredential',
   'learcredential.employee.w3c.4',
   'learcredential.employee.sd.1',
   'learcredential.machine.w3c.3',
   'learcredential.machine.sd.1',
   'gx.labelcredential.w3c.2',
-  'doctorid.sd.1',
+  'urn:es.cgcom:doctorid:1',
+  'eu.europa.ec.eudi.pid.1',
 ] as const;
 export type CredentialType = typeof CREDENTIAL_TYPES_ARRAY[number];
 export type ExtendedCredentialType =  'VerifiableCredential' | CredentialType;

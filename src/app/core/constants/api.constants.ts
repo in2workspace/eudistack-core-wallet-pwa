@@ -1,21 +1,27 @@
 const apiV1Path = '/api/v1';
+const apiV1KeysPath = `${apiV1Path}/keys`;
+const apiV1HybridPath = `${apiV1KeysPath}/hybrid`;
 
 const OPENID_OFFER = `${apiV1Path}/openid-credential-offer` as const;
 
 export const SERVER_PATH = Object.freeze({
+  ACTIVITY: `${apiV1Path}/activity`,
   CBOR : `${apiV1Path}/vp/cbor`,
   CREDENTIALS: `${apiV1Path}/credentials`,
   CREDENTIALS_SIGNED_BY_ID: `${apiV1Path}/request-signed-credential`,
   REQUEST_CREDENTIAL: OPENID_OFFER,
   CREDENTIAL_RESPONSE: `${OPENID_OFFER}/credential-response`,
+  KEYS_GENERATE: `${apiV1KeysPath}/generate`,
+  KEYS_IMPORT: `${apiV1KeysPath}/import`,
+  KEYS_BY_ID: (keyId: string) => `${apiV1KeysPath}/${encodeURIComponent(keyId)}`,
+  KEYS_SIGN: (keyId: string) => `${apiV1KeysPath}/${encodeURIComponent(keyId)}/sign`,
+  KEYS_EXPORT: (keyId: string) => `${apiV1KeysPath}/${encodeURIComponent(keyId)}/export`,
+  HYBRID_SIGN_PREPARE: `${apiV1HybridPath}/sign/prepare`,
+  HYBRID_SIGN_SUBMIT: `${apiV1HybridPath}/sign/submit`,
+  HYBRID_CONSTRAINT_ACCEPTED: `${apiV1HybridPath}/constraint-accepted`,
+  HYBRID_ONBOARDING_INIT: `${apiV1HybridPath}/onboarding/init`,
+  HYBRID_ONBOARDING_COMMIT: `${apiV1HybridPath}/onboarding/commit`,
+  HYBRID_ONBOARDING_BLOCK: `${apiV1HybridPath}/onboarding/block`,
 });
 
-/**
- * Path of the EBW public discovery endpoint (EUDISTACK-412).
- *
- * The full URL is `${window.location.origin}${WALLET_DISCOVERY_PATH}`.
- * The Spring backend registers this route via RouterFunction OUTSIDE the
- * `webflux.base-path=/business-wallet` prefix, so the correct resolved URL is
- * `https://<tenant-host>/.well-known/wallet-config-metadata` (no /business-wallet).
- */
-export const WALLET_DISCOVERY_PATH = '/.well-known/wallet-config-metadata' as const;
+export const WALLET_DISCOVERY_PATH = '/business-wallet/.well-known/wallet-config-metadata' as const;

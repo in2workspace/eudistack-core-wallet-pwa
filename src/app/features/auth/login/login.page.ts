@@ -1,4 +1,5 @@
-import { Component, inject, ViewChild } from '@angular/core';
+import { Component, DestroyRef, inject, ViewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AsyncPipe } from '@angular/common';
@@ -16,6 +17,9 @@ import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { LocalAuthService } from 'src/app/core/services/local-auth.service';
 import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input.component';
+import { WalletService } from 'src/app/core/services/wallet.service';
+import { ActivityService } from 'src/app/core/services/activity.service';
+import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 
 @Component({
     selector: 'app-login',
@@ -72,18 +76,30 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
               </div>
             </div>
 
-            <h2 class="auth-title">{{ 'auth.login.title' | translate }}</h2>
-            <p class="auth-subtitle">{{ 'auth.login.subtitle' | translate }}</p>
+            <h2 class="auth-title">{{ (hasExistingPasskey ? 'auth.login.title-welcome' : 'auth.login.title') | translate }}</h2>
+            <p class="auth-subtitle">{{ (hasExistingPasskey ? 'auth.login.subtitle' : 'auth.login.create-passkey-subtitle') | translate }}</p>
 
-            <ion-button
-              expand="block"
-              (click)="loginBrowserMode()"
-              [disabled]="loading"
-              class="auth-button"
-            >
-              <ion-icon name="finger-print-outline" slot="start"></ion-icon>
-              {{ 'auth.login.passkey-button' | translate }}
-            </ion-button>
+            @if (hasExistingPasskey) {
+              <ion-button
+                expand="block"
+                (click)="loginBrowserMode()"
+                [disabled]="loading"
+                class="auth-button"
+              >
+                <ion-icon name="finger-print-outline" slot="start"></ion-icon>
+                {{ 'auth.login.passkey-button' | translate }}
+              </ion-button>
+            } @else {
+              <ion-button
+                expand="block"
+                (click)="createWalletBrowserMode()"
+                [disabled]="loading"
+                class="auth-button"
+              >
+                <ion-icon name="key-outline" slot="start"></ion-icon>
+                {{ 'auth.passkey.register-button' | translate }}
+              </ion-button>
+            }
 
             @if (loading) {
               <div class="auth-status">
@@ -96,7 +112,7 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
 
             <!-- Server mode: email + OTP + passkey flow -->
             <ng-container *ngIf="!isBrowserMode && ((pwaInstall.installDecision$ | async) === false || !showInstallScreen)">
-              <h2 class="auth-title">{{ 'auth.login.title' | translate }}</h2>
+              <h2 class="auth-title">{{ (step === 'passkey' && !needsPasskeySetup ? 'auth.login.title-welcome' : 'auth.login.title') | translate }}</h2>
               <p class="auth-subtitle">
                 <span *ngIf="step === 'email'">{{ 'auth.login.enter-email' | translate }}</span>
                 <span *ngIf="step === 'code'">{{ 'auth.register.code-sent' | translate }}</span>
@@ -135,6 +151,7 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
                   [length]="6"
                   [autofocus]="true"
                   [error]="!!errorMessage"
+                  [errorMessage]="errorMessage"
                   (changed)="otpValue = $event; errorMessage = ''"
                 ></app-otp-input>
 
@@ -172,7 +189,20 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
                   </div>
                 </div>
 
-                <ion-button expand="block" (click)="createPasskeyForDevice()" [disabled]="loading" class="auth-button">
+                <div class="input-group">
+                  <ion-icon name="phone-portrait-outline" class="input-icon"></ion-icon>
+                  <ion-input
+                    [(ngModel)]="deviceName"
+                    type="text"
+                    maxlength="100"
+                    [attr.aria-label]="'auth.passkey.device-name-label' | translate"
+                    [placeholder]="'auth.passkey.device-name-placeholder' | translate"
+                    class="modern-input"
+                    (keyup.enter)="deviceName.trim() && !loading && createPasskeyForDevice()"
+                  ></ion-input>
+                </div>
+
+                <ion-button expand="block" (click)="createPasskeyForDevice()" [disabled]="loading || !deviceName.trim()" class="auth-button">
                   <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
                   <ion-icon *ngIf="!loading" name="finger-print-outline" slot="start"></ion-icon>
                   <span *ngIf="!loading">{{ 'auth.passkey.register-button' | translate }}</span>
@@ -209,6 +239,7 @@ export class LoginPage {
   otpValue = '';
   step: 'email' | 'code' | 'passkey' = 'email';
   needsPasskeySetup = false;
+  deviceName = '';
   private passkeyFromRefreshToken = false;
 
   private readonly authService = inject(AuthService);
@@ -217,8 +248,13 @@ export class LoginPage {
   private readonly passkeyApi = inject(PasskeyApiService);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
+  private readonly walletService = inject(WalletService);
+  private readonly activityService = inject(ActivityService);
+  private readonly credentialCache = inject(CredentialCacheService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
+  readonly hasExistingPasskey = this.prfService.hasPasskey();
 
   ionViewWillEnter(): void {
     this.loading = false;
@@ -228,6 +264,9 @@ export class LoginPage {
       this.step = 'passkey';
       this.passkeyFromRefreshToken = true;
       this.needsPasskeySetup = !this.prfService.hasPasskey();
+      if (this.needsPasskeySetup) {
+        this.deviceName = this.getDeviceName();
+      }
     } else {
       this.step = 'email';
       this.passkeyFromRefreshToken = false;
@@ -261,6 +300,21 @@ export class LoginPage {
     }
   }
 
+  // --- Browser mode: passkey creation (register) ---
+
+  async createWalletBrowserMode(): Promise<void> {
+    this.loading = true;
+    this.errorMessage = '';
+    try {
+      await (this.authService as LocalAuthService).setupPasskey();
+      this.navigateHome();
+    } catch (err: any) {
+      this.errorMessage = err?.message || 'Failed to create passkey';
+    } finally {
+      this.loading = false;
+    }
+  }
+
   // --- Server mode: email + OTP + passkey flow ---
 
   onOtpCompleted(code: string): void {
@@ -280,7 +334,9 @@ export class LoginPage {
     this.loading = true;
     this.errorMessage = '';
 
-    (this.authService as RemoteAuthService).register(this.email, 'login').subscribe({
+    (this.authService as RemoteAuthService).register(this.email, 'login').pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: () => {
         this.step = 'code';
         this.otpValue = '';
@@ -299,12 +355,12 @@ export class LoginPage {
     this.loading = true;
     this.errorMessage = '';
 
-    (this.authService as RemoteAuthService).verifyEmail(this.email, this.otpValue).subscribe({
+    (this.authService as RemoteAuthService).verifyEmail(this.email, this.otpValue).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: () => {
-        this.loading = false;
         this.passkeyFromRefreshToken = false;
-        this.needsPasskeySetup = !this.prfService.hasPasskey();
-        this.step = 'passkey';
+        this.resolvePasskeySetupStep();
       },
       error: (err) => {
         this.errorMessage = err?.status === 429
@@ -313,6 +369,49 @@ export class LoginPage {
         this.loading = false;
       }
     });
+  }
+
+  /**
+   * The local `has_passkey` flag (PasskeyStoreService/IndexedDB) is per-browser,
+   * not per-account: it stays `true` after a different account onboarded a passkey
+   * on the same device. Right after verify-email we already hold a JWT for the
+   * account being authenticated, so we check whether THIS device's local
+   * credential is among the account's server-side passkeys instead of trusting
+   * the local flag alone (EUD-8 tech-debt: onboarding skipped device registration
+   * when the browser had a stale passkey from another account).
+   *
+   * Checking `passkeys.length === 0` alone is not enough: an account can already
+   * have passkeys registered on OTHER devices, and this device's local credential
+   * (if any) must still be found among them, or `verifyPasskey()` will fail with
+   * "No passkey found" / a WebAuthn assertion error with no way to register instead.
+   */
+  private resolvePasskeySetupStep(): void {
+    const localCredentialId = this.prfService.getCredentialId();
+
+    this.passkeyApi.listPasskeys().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (passkeys) => {
+        this.needsPasskeySetup = !localCredentialId
+          || !passkeys.some(passkey => passkey.credentialId === localCredentialId);
+        this.finishPasskeySetupStep();
+      },
+      error: (err) => {
+        // Fail-safe: if we can't confirm the account's server-side devices, assume
+        // it needs one rather than silently skipping registration.
+        console.warn('[LoginPage] listPasskeys failed, defaulting to needsPasskeySetup=true', err);
+        this.needsPasskeySetup = true;
+        this.finishPasskeySetupStep();
+      }
+    });
+  }
+
+  private finishPasskeySetupStep(): void {
+    if (this.needsPasskeySetup) {
+      this.deviceName = this.getDeviceName();
+    }
+    this.step = 'passkey';
+    this.loading = false;
   }
 
   async verifyPasskey(): Promise<void> {
@@ -326,7 +425,7 @@ export class LoginPage {
         await firstValueFrom((this.authService as RemoteAuthService).refreshAccessToken());
       }
 
-      this.navigateHome();
+      await this.syncCredentialsThenNavigate();
     } catch (err: any) {
       if (this.passkeyFromRefreshToken) {
         localStorage.removeItem('wallet_refresh_token');
@@ -344,23 +443,32 @@ export class LoginPage {
     this.loading = true;
     this.errorMessage = '';
 
+    let credentialId: string | null;
     try {
       await this.prfService.createPasskey(this.email || 'Wallet User');
-
-      this.navigateHome();
-
-      const credentialId = this.passkeyStore.getCredentialId();
-      if (credentialId) {
-        this.passkeyApi.registerPasskey({
-          credentialId,
-          displayName: this.getDeviceName(),
-          userAgent: navigator.userAgent
-        }).subscribe({
-          error: (err: any) => console.warn('Failed to register passkey on server:', err)
-        });
-      }
+      credentialId = this.passkeyStore.getCredentialId();
     } catch (err: any) {
       this.errorMessage = err?.message || 'Failed to create passkey';
+      this.loading = false;
+      return;
+    }
+
+    if (!credentialId) {
+      this.errorMessage = 'Failed to create passkey';
+      this.loading = false;
+      return;
+    }
+
+    try {
+      await firstValueFrom(this.passkeyApi.registerPasskey({
+        credentialId,
+        displayName: this.deviceName.trim() || this.getDeviceName(),
+        userAgent: navigator.userAgent
+      }));
+      await this.syncCredentialsThenNavigate();
+    } catch {
+      this.errorMessage = this.translate.instant('auth.errors.passkey-register-failed');
+    } finally {
       this.loading = false;
     }
   }
@@ -407,5 +515,61 @@ export class LoginPage {
     if (/Windows/.test(ua)) return 'Windows PC';
     if (/Linux/.test(ua)) return 'Linux';
     return 'Unknown Device';
+  }
+
+  /**
+   * Syncs credentials from the backend and then navigates. When the pending deep link
+   * is a protocol link (VP / credential offer), we AWAIT the sync so IndexedDB holds the
+   * server data before the credentials page runs the VP flow — this prevents a false
+   * "no credentials available to login". For a normal login we don't block: the reactive
+   * store updates on its own and the credentials tab reflects it as soon as it settles.
+   */
+  private async syncCredentialsThenNavigate(): Promise<void> {
+    const pending = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
+    // Show the skeleton immediately while the sync runs.
+    this.credentialCache.setLoading();
+
+    if (this.isProtocolDeepLink(pending)) {
+      try {
+        await firstValueFrom(this.walletService.syncCredentials());
+      } catch (err) {
+        // If the server fetch fails, syncCredentials errors before
+        // refreshCredentials() runs, so the store would stay 'loading' (stuck
+        // skeleton). Force a terminal 'error' state so the credentials page /
+        // VP flow can surface it instead of spinning forever.
+        console.error('Credential sync failed', err);
+        this.credentialCache.setError();
+      }
+    } else {
+      this.syncCredentialCache();
+    }
+
+    // Fire regardless of which credential-sync path ran above (EUD-141 AC-01/AC-02).
+    this.activityService.syncFromServer();
+    this.navigateHome();
+  }
+
+  private isProtocolDeepLink(url: string | null): boolean {
+    if (!url) return false;
+    return url.startsWith('/protocol/')
+      || url.startsWith('/wallet/protocol/')
+      || url.startsWith('/tabs/vc-selector')
+      || url.startsWith('/wallet/tabs/vc-selector')
+      || url.includes('authorizationRequest')
+      || url.includes('credentialOfferUri')
+      || url.includes('credential_offer_uri');
+  }
+
+  private syncCredentialCache(): void {
+    this.walletService.syncCredentials().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      error: err => {
+        // Same reasoning as syncCredentialsThenNavigate: force a terminal state
+        // so the store never gets stuck in 'loading' on a failed server fetch.
+        console.error('Sync failed', err);
+        this.credentialCache.setError();
+      }
+    });
   }
 }

@@ -2,11 +2,13 @@ import { inject, Injectable, OnDestroy, Provider } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
-import { environment } from 'src/environments/environment';
 import { Router } from '@angular/router';
 import { LocalAuthService } from './local-auth.service';
 import { PasskeyStoreService } from './passkey-store.service';
 import { WalletDiscoveryService } from './wallet-discovery.service';
+import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
+import { UrlResolverService } from './url-resolver.service';
+import { TenantService } from './tenant.service';
 
 export interface TokenPairResponse {
   accessToken: string;
@@ -47,7 +49,6 @@ export const AUTH_SERVICE_PROVIDER: Provider = {
   },
 };
 
-const AUTH_BASE = `${environment.server_url}/api/v1/auth`;
 
 /**
  * Auth service for server/enterprise mode.
@@ -71,6 +72,11 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly passkeyStore = inject(PasskeyStoreService);
+  private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
+  private readonly urlResolver = inject(UrlResolverService);
+  private readonly tenantService = inject(TenantService);
+
+  private get authBase(): string { return `${this.urlResolver.serverUrl()}/api/v1/auth`; }
 
   constructor() {
     super();
@@ -82,11 +88,11 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   // --- Registration flow (email + OTP → JWT tokens) ---
 
   register(email: string, mode: 'register' | 'login' = 'register'): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${AUTH_BASE}/register`, { email, mode });
+    return this.http.post<{ message: string }>(`${this.authBase}/register`, { email, mode });
   }
 
   verifyEmail(email: string, code: string): Observable<TokenPairResponse> {
-    return this.http.post<TokenPairResponse>(`${AUTH_BASE}/verify-email`, { email, code }).pipe(
+    return this.http.post<TokenPairResponse>(`${this.authBase}/verify-email`, { email, code }).pipe(
       tap(response => this.handleTokenResponse(response))
     );
   }
@@ -97,7 +103,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     if (!this.refreshTokenValue) {
       return throwError(() => new Error('No refresh token'));
     }
-    return this.http.post<TokenPairResponse>(`${AUTH_BASE}/refresh`, {
+    return this.http.post<TokenPairResponse>(`${this.authBase}/refresh`, {
       refreshToken: this.refreshTokenValue
     }).pipe(
       tap(response => this.handleTokenResponse(response)),
@@ -169,6 +175,28 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
     this.authenticated$.next(true);
     this.scheduleTokenRefresh(response.expiresIn);
+
+    void this.preloadIssuerMetadata();
+  }
+
+  /**
+   * Preloads the OID4VCI metadata of the wallet's own issuer. The issuer base
+   * URL is resolved dynamically from the tenant configuration so it is correct
+   * both on canonical (same-origin `/issuer`) and custom domains (issuer host
+   * declared in custom-domain.json). Fire-and-forget: a failure must never
+   * break the login flow.
+   */
+  private async preloadIssuerMetadata(): Promise<void> {
+    if (this.disposed) return;
+
+    try {
+      const issuerUrl = await this.tenantService.resolveIssuerBaseUrl();
+      if (this.disposed) return;
+      await this.issuerMetadataCache.fetchAndCacheIfMissing(issuerUrl);
+    } catch (e) {
+      // Fire-and-forget: never break login flow if preload fails.
+      console.warn('[RemoteAuthService] Failed to resolve issuer URL for metadata preload', e);
+    }
   }
 
   private scheduleTokenRefresh(expiresInSeconds: number): void {

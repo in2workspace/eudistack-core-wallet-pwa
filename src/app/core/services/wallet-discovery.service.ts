@@ -24,8 +24,9 @@ const VALID_WALLET_MODES: ReadonlySet<string> = new Set<WalletMode>(['browser', 
  * Lifecycle:
  *  1. `walletDiscoveryInitializer` (Task 5) calls `resolve()` once inside
  *     `APP_INITIALIZER`, before Angular activates the first route.
- *  2. `resolve()` queries the EBW well-known endpoint via the injected
- *     `WalletDiscoveryGateway`, applies the fallback chain on any failure,
+ *  2. `resolve()` queries the wallet-config-metadata well-known endpoint via
+ *     the injected `WalletDiscoveryGateway` (path resolved dynamically by
+ *     `UrlResolverService`), applies the fallback chain on any failure,
  *     and persists the result in the `_snapshot` signal.
  *  3. All downstream consumers (`AUTH_SERVICE_PROVIDER`, `WalletService`,
  *     `SettingsPage`, `DevicesPage`) call `mode()` synchronously — no

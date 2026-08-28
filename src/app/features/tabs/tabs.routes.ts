@@ -77,6 +77,10 @@ const routes: Routes = [
           import('../vc-selector/vc-selector.page').then((m) => m.VcSelectorPage),
       },
       {
+        path: 'about',
+        loadChildren: () => import('../about/about.routes'),
+      },
+      {
         path: '',
         redirectTo: 'home',
         pathMatch: 'full',

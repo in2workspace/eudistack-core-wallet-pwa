@@ -1,8 +1,422 @@
 # Changelog
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- **EUD-38 — inventario CycloneDX y gate de licencias**: el repositorio genera su inventario CycloneDX 1.6 en cada construcción, lo publica como activo de cada release (`sbom-v<version>.cdx.json`, comprobando que la versión del inventario coincide con la del artefacto) y evalúa cada pull request contra la lista de licencias admitidas (`.github/license-policy.json`, transcripción de `conv-quality-security-gates.md` §16.1). El evaluador y su suite de tests viven en `.github/scripts/`, sin dependencias de terceros y sin depender de ningún otro repositorio. Guía operativa: `docs/_shared/guides/license-gate-and-sbom.md` en `eudistack-platform-dev`.
+
+### Changed
+
+- **Generación del inventario fijada y reproducible**: `@cyclonedx/cyclonedx-npm` pasa a ser `devDependency` con versión exacta y se ejecuta mediante `npm run sbom` después de `npm ci`, en lugar de descargarse con `npx --yes` en tiempo de construcción. Los componentes de desarrollo se mantienen marcados en el inventario en vez de omitirse: el gate ya distingue por ámbito y bloquea solo lo que se distribuye en ejecución.
+
+### Fixed
+
+- **`package-lock.json` referenciaba `bytes@3.7.2`, una versión que no existe en el registro**: `npm ls` la marcaba como inválida y, con ella, ningún inventario de componentes podía generarse. Re-resuelta a `bytes@3.1.2`, la última publicada y la que piden `body-parser`, `compression` y `raw-body`.
+
+### Added
+
+- **CI — control de composición de software (SCA)**
+  - **Trivy** añadido a `pr.yml`: escaneo `fs` de la raíz del repositorio (lee `package-lock.json`), severidad `HIGH,CRITICAL`, con caché de la base de vulnerabilidades, informe JSON como artefacto y `config/trivy/.trivyignore` para riesgos aceptados documentados. El parser npm de Trivy omite las dependencias de desarrollo por defecto, así que el escaneo refleja lo que llega al navegador.
+  - **`exit-code: 0` de forma deliberada:** entra como línea base, todavía no como puerta. El árbol de dependencias de producción arrastra advisories HIGH en `@angular/common`, `@angular/core` y `@angular/compiler`. Un bump de patch a `19.2.25` (última 19.x publicada) cierra CVE-2026-50170 y CVE-2026-50171; las seis restantes (CVE-2026-54266, 54267, 54268, 68945 y 69151) solo tienen fix en `20.3.25+`, `21.2.17+` o `22.x`, así que limpiar el árbol exige la subida de major de Angular. Se girará a `1` cuando esa subida aterrice o cuando los riesgos aceptados queden listados en `.trivyignore`.
+  - **SBOM CycloneDX** (`@cyclonedx/cyclonedx-npm@6.0.1`, spec 1.6, solo dependencias de producción) generado en `ci-cd.yml`, publicado como artefacto con 90 días de retención y adjuntado al GitHub Release como `sbom.cdx.json`.
+  - **Dependabot**: configuración de actualizaciones para `npm` y `github-actions`. Tener las alertas activadas no basta — sin fichero de configuración el grafo de dependencias no estaba produciendo alertas en este repositorio.
+  - `config/trivy/**` añadido al `paths-ignore` de `ci-cd.yml`: cambiar la lista de exclusiones es un cambio de política, no un despliegue.
+
+
+### Changed
+
+- **Removed the bundled credential-schema registry — the issuer metadata endpoint is now the single source of truth for credential display metadata**: the wallet used to carry its own local copy of the JSON Schema profiles (`CredentialSchemaRegistryService`, synced at build time from `dev-tools/schemas/` into `src/assets/schemas/` and shipped in the SPA bundle), in parallel with the metadata already served live by `/.well-known/openid-credential-issuer`. That meant a config-only change (a display label, a new `value_map`) required a full app rebuild and redeploy, plus extra requests on every cold start. `CredentialDisplayService` now resolves claims, display names and `summary_claims` exclusively through `IssuerMetadataCacheService`; `CredentialSchemaRegistryService`, `scripts/sync-schemas.js` and the CI steps that checked out `dev-tools/schemas` were removed entirely.
+  - Trade-off accepted: the wallet can no longer render a credential's fields when the issuer metadata isn't cached and the issuer is unreachable (previously the bundled schemas covered that gap for the non-legacy types). Legacy credential types already worked this way.
+
+- **EUD-221 — `@ngx-translate/http-loader` aligned to `16.0.1`**: was pinned to `^8.0.0`, resolving `8.0.0`, which publishes `"SEE LICENSE IN LICENSE"` instead of a machine-readable SPDX identifier (SPDX License List / SPDX License Expressions), an auditability gap under NIS2 Art. 21.2(d) and CRA Annex I Part II. `16.0.1` declares `MIT` explicitly and is already the version used by `eudistack-mfe-login`/`eudistack-cgcom-mfe-issuance-portal`, same loader instantiation signature. No application code change, no observable behavior change.
+
+### Added
+
+- **EUD-142 US-07 — runtime UI translation to languages not natively supported** (FR-24, FR-25, FR-26): opt-in, reversible layer over the native language (es/en/ca, US-02) that translates the app's static interface text via the browser's on-device Translator API (Chrome 138+/Edge 148+ desktop) — never a cloud endpoint, never the credential screen. New "Automatic translation" section in Configuración → Idioma: toggle (off by default, hidden entirely when the device has no on-device engine), target-language selector, progress indicator during first preparation, and unavailable/error states with retry.
+  - **Privacy boundary (FR-25/NFR-Pr-03), four independent controls**: (1) provenance — the only input to the engine is the release i18n bundle, never the DOM or credential storage; (2) a nominal-branded `UiTextKey`, producible only by `flattenUiBundle()`, makes it a compile-time error to hand arbitrary text to the engine; (3) a runtime fail-closed guard in `BrowserTranslatorEngineAdapter` aborts the whole batch if any key falls outside the allowed set; (4) an ESLint `no-restricted-imports` rule forbids the translation layer from importing credential/activity/auth code, enforced in CI.
+  - **Credential-content shielding against the browser's own page-translation** (independent of and complementary to the above, AD-4): every DOM surface rendering credential content (`vc-view`, the acceptance modal, the presentation selector, activity detail, the credentials grid) is marked non-translatable via Angular's `[attr.translate]="'no'"` binding — not the plain HTML attribute, which collides with `@ngx-translate`'s own `[translate]` directive selector in this codebase.
+  - Interpolation markers (`{{ param }}`) are masked with MT-resistant sentinels before translation and validated for integrity after — a mismatched marker falls back to the native text for that key, never a broken interpolation (NFR-S-142-06).
+  - Bounded, LRU-evicted translation cache (≤ 3 languages, ≤ 200 KB each) keyed by source+target+content-hash, so a release with different text misses cleanly instead of serving stale translations.
+  - `UserPreferencesService.persist()` now does read-modify-write (rereads `localStorage` immediately before writing) instead of serializing every in-memory signal — a transversal fix so two tabs/instances changing different preference keys no longer clobber each other.
+- **EUD-215 — recognize `eu.europa.ec.eudi.pid.1` as a supported credential type**: the PID schema/profile files were already bundled under `assets/schemas/` but never activated — `CredentialSchemaRegistryService.SUPPORTED_SCHEMAS` excluded the id (so the wallet never loaded its display metadata) and `CREDENTIAL_TYPES_ARRAY` didn't include it either (so it wasn't a valid `CredentialType` at the type-system level). Both fixed, plus the matching `CredentialTypeMap` icon entry and `VerifiableCredentialSubjectDataNormalizer` case (identity normalizer — the PID has flat claims, no `mandate` structure).
+
+### Fixed
+
+- **Wallet session expiry surfaced as a generic "Something went wrong" instead of a clear sign-in prompt**: `authInterceptor` and `HttpErrorInterceptor` independently caught the same expired-session `401` on the way back up the interceptor chain — `authInterceptor` logged the user out and redirected to `/auth/login`, then `HttpErrorInterceptor`, unaware the 401 was already handled, fell through to its generic branch and showed an unrelated duplicate error toast on top of the redirect. New `SessionExpiryMarkerService` (`WeakSet`-backed, keyed by the exact `HttpErrorResponse` instance) lets `authInterceptor` flag the error it already acted on; `HttpErrorInterceptor` now shows one dedicated `errors.session-expired` message instead of duplicating/defaulting. Some EBW key-manager endpoints still report session failures as `403` rather than `401` and are not covered here — treating every `403` as a session expiry risks logging users out on legitimate permission-denied responses, so it needs its own look.
+- **EUD-142 US-07 — post-`/verify` and post-`/code-review` hardening of runtime UI translation**:
+  - **Restore-on-startup (AC-06)**: the persisted preference was only re-applied from `language-selector.page.ts`'s `ngOnInit()`, so a Holder who enabled translation, closed the tab and reopened the app saw the native language until they revisited the language selector. Fixed with a new `main.ts` `APP_INITIALIZER` (`restoreUiTranslation`) that calls `UiTextTranslationService.restoreFromPreference()` at boot, app-wide.
+  - **Deny-list over-exclusion (AC-02/AD-3)**: `RUNTIME_TRANSLATION_EXCLUDED_KEY_PREFIXES` blanket-excluded the whole `vc-fields.`/`verification.` namespaces, which also host pure app chrome (the credential-detail modal title, delete/verify buttons, result banners) — so that chrome silently stayed untranslated. Narrowed to the specific sub-namespaces that are genuinely credential-claim vocabulary.
+  - **Concurrent language-selection bug (EC-07/ES-03)**: `activate()` coalesced *any* concurrent call onto the in-flight operation regardless of target, so picking a second language before the first finished preparing silently discarded the newer choice and persisted the (often accidental) first one. Fixed by tracking `_inFlightTarget` and only coalescing when the target matches; a different target now supersedes the in-flight operation instead.
+  - **User-activation gate for the on-device engine's cold start**: `Translator.create()` requires real user activation the first time a language model needs downloading — an `APP_INITIALIZER` firing on a cold, untouched load never has it, which left login-screen translation stuck on the native language until the Holder interacted with the page. `restoreFromPreference()` now waits for the first `pointerdown`/`keydown` before activating when the page has no activation yet.
+  - **Activity list credential-name shielding (AC-10/NFR-S-142-08)**: `.activity-credential-name`/`.activity-subtitle` in `activity.page.html` rendered credential names without `[attr.translate]="'no'"`, and the credential name leaked into `[attr.aria-label]` too — both fixed.
+  - **Verification-modal shielding (AC-10/NFR-S-142-08, security-auditor full-mode finding)**: the verification modal's content container and its per-check detail span (issuer name, issuance/expiry dates) had no `[attr.translate]="'no'"` — unlike every other credential surface — exposing that data to the browser's own page-translation feature. Both now shielded.
+  - **Verification-verdict integrity (AD-3, security-auditor full-mode finding)**: `verification.result-*`/`detail-*`/`check-issuance`/`check-expiration` were left translatable by the deny-list narrowing above — MT negation-dropping or polarity flips on short declarative strings ("la credencial es válida" vs. "tiene problemas") risked showing the Holder the wrong validity verdict. Re-added to the deny-list.
+  - **Cached-translation text validation (security-auditor full-mode finding)**: a cache-hit record was only validated by key (a legitimate key from a tampered IndexedDB record was accepted with arbitrary text). `doActivate()` now also bounds each cached entry's text against its pristine counterpart (no `<`/`>`, bounded length) via `isSafeTranslatedText()`.
+  - **Unescaped alert sinks (security-auditor full-mode finding)**: `ToastServiceHandler.showErrorAlertByTranslateLabel()`/`showToast()` interpolated translated text directly into an `alertController` HTML message without escaping, unlike the sibling `showInfoToastByTranslateLabel()`. Both now escape via the existing `escapeHtml()` helper.
+  - **Restored-preference validation (security-auditor full-mode finding)**: `UserPreferencesService.load()` spread parsed `localStorage` JSON without validating shape, letting a corrupt/tampered `uiTranslation` value throw at boot or smuggle an arbitrary `targetLanguage` into `documentElement.lang`. `load()` now type-guards the shape; `restoreFromPreference()` also rejects any target outside `RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES`.
+- **EUD-215 — issuer well-known metadata URL now follows OID4VCI 1.0 §12.2.2**: `CredentialIssuerMetadataService` was appending `.well-known/openid-credential-issuer` after the full `credential_issuer` identifier (including its path), which happens to match what the current CloudFront/ALB routing accepts but is not what the spec requires — a compliant client must insert the well-known path between the origin and the issuer's own path instead (e.g. `https://host/tenant` → `https://host/.well-known/openid-credential-issuer/tenant`). Confirmed against the real OIDF conformance suite run: it requests metadata this way and gets a 403 today, since `sandbox`/`dome-marketplace-lcl.org`/`dome-marketplace-sbx.org` routing only forwards paths starting with `/issuer/*`. **Must ship together with the matching CloudFront/ALB routing change in `eudistack-platform-iac`** (adds `/.well-known/openid-credential-issuer/issuer*` and `/.well-known/oauth-authorization-server/issuer*` to all three distributions) — deploying this alone breaks metadata discovery for every real wallet until that routing fix lands too.
+- **TECH-DEBT #1046140 — EBW onboarding on Windows never registered the device, so it never showed up in "My Devices"**:
+  - Root cause: `needsPasskeySetup` in `login.page.ts` decided "register new device" vs. "verify existing passkey" using only the local IndexedDB flag (`PasskeyStoreService`), which is scoped per **browser**, not per **account** — a leftover passkey from a previously onboarded account on the same device/browser made a brand-new account silently skip device registration.
+  - Fix: right after `verifyEmail()` succeeds, `LoginPage` now checks the backend (`GET /api/v1/auth/passkeys`, the same endpoint "My Devices" already uses) for *that account's* registered devices, instead of trusting the local flag.
+  - Fail-safe: if that check fails (network error), `needsPasskeySetup` defaults to `true` — registration is never silently skipped.
+  - `WalletDiscoveryService` (`wallet_mode` discovery/fallback) was investigated and ruled out as the cause.
+- **Revocation status check failed open: a failed status-list request was shown as "not revoked"**: `CredentialVerificationService.isRevoked()`/`checkStatusList()` caught any failure of the HTTP request to the bitstring status list (network down, 5xx, CORS, timeout) and silently collapsed it into "not revoked" — a network error rendered as a successful check, both in the explicit "Verify Credential" modal and in the passive background check in `credentials.page.ts`. Both methods now share a single `checkRevocationStatus()`, which resolves to a tri-state result (`'revoked' | 'not-revoked' | 'unknown'`); a request failure is never reported as `'not-revoked'`. The modal now shows an explicit third state ("Revocation status could not be checked", amber) that neither persists a false `REVOKED` nor gets confused with a confirmed revocation; the background check leaves the cached status untouched under uncertainty. A credential already known locally as `REVOKED` stays `REVOKED` even if the network fails afterwards.
+
+## [3.15.0] - 2026-08-07
+
+### Added
+
+- **EUD-135 US-06 — "About" section and support channels** (FR-19, FR-20, FR-21, FR-23, NFR-T-01): new `/tabs/about` section, identical in browser mode (EUDIW) and server mode (EBW) — no capability is hidden by mode (AC-10). Three blocks:
+  - **Version and build**: `BUILD_INFO` (`src/app/core/constants/build-info.constants.ts`, generated by `scripts/generate-build-info.js` from `package.json` + `git rev-parse --short HEAD`, falling back to `'local'` when there is no `.git`) replaces `environment.appVersion`, which had drifted out of sync (hardcoded `3.7.0` vs. the real `3.14.1`). Shown alongside the wallet type badge (moved here from Settings), as selectable/copyable text.
+  - **Legal**: terms of service, privacy policy, legal notice and open-source licenses. The first three are served as static per-language HTML fragments via `LegalContentService` (`GET assets/legal/<lang>/<docId>.html`, falling back to `es` when the active language has no translation, 5s timeout, cancelled on language change), rendered with `[innerHTML]` and Angular's default sanitizer (no `bypassSecurityTrustHtml`). The doc-id catalogue is closed (`LEGAL_DOCUMENT_IDS`) and validated by `legalDocumentGuard` before the page is ever instantiated — path traversal is impossible by construction.
+    - **Pending from Legal/DPO — paths where the 9 documents must be placed** (this Story ships the container ready to go; once the files land, no code changes are needed, just add them):
+      ```
+      src/assets/legal/es/terms-of-service.html
+      src/assets/legal/es/privacy-policy.html
+      src/assets/legal/es/legal-notice.html
+      src/assets/legal/en/terms-of-service.html
+      src/assets/legal/en/privacy-policy.html
+      src/assets/legal/en/legal-notice.html
+      src/assets/legal/ca/terms-of-service.html
+      src/assets/legal/ca/privacy-policy.html
+      src/assets/legal/ca/legal-notice.html
+      ```
+      HTML fragment (no `<html>`/`<head>`/`<body>`), no `<script>`, `<iframe>`, `<object>`, `<embed>`, `on*` attributes or inline `style` — the sanitizer would neutralize them anyway, but their presence is rejected in code review as a sign of unreviewed content. Until they arrive, those documents show the error state with retry (they do not break the section).
+  - **OSS licenses**: `scripts/generate-oss-licenses.js` (via `license-checker-rseidelsohn`, new devDependency) generates `src/assets/legal/oss-licenses.json` on every build from the actual production dependencies — no hand-maintained list. Tolerant of failures (an unparsable license degrades to `'UNKNOWN'`, never breaks the build); if the artifact is missing, the page degrades to an empty state with a support contact.
+  - **Support**: `SupportChannelService` resolves email/help-center/issue-tracker with tenant (`theme.json`) → default-constant precedence, validating the schema (`https:`/email) before trusting the tenant value. `mailto:` prefilled with only version/build (no PII) plus a visible, copyable address (does not depend on detecting a `mailto:` failure). Reporting an issue shows a blocking warning ("the repository is public, do not include personal data") before redirecting to the issue tracker; cancelling opens nothing and makes no request.
+  - Both generators (`gen:build-info`, `gen:oss-licenses`) chained into `prebuild`/`prestart`/`pretest`/`pretest:ci`.
+- **Settings**: new "About" item (visible in both modes, never gated by `isServerMode`). The wallet-type + version panel is removed from this screen (moved to "About").
+
+### Changed
+
+- **OSS licenses (visual)**: list now lives inside a card with dividers and more breathing room per row (previously cramped/grid-like), license shown as a badge, dependency count in the header.
+
+## [3.14.2] - 2026-08-07
+
+### Fixed
+
+- **EUDISTACK-548 — SSO session cookie never reached the browser on `POST /oid4vp/auth-response`**: the Verifier's `SsoSessionAuthenticationSuccessHandler` sets the SSO session cookie as a `Set-Cookie` header on this response, but the call is cross-origin (`wallet.<tenant>.*` → `verifier.<tenant>.*`). A browser only stores a cross-origin `Set-Cookie` when both sides opt into credentials — `WalletService.postOid4vpAuthorizationResponse()` now sends `withCredentials: true` (paired with the matching `Access-Control-Allow-Credentials: true` fix in `eudistack-core-verifier`). Without it, every SSO establishment silently discarded the cookie, so every later `prompt=none` silent-reuse attempt saw zero cookies regardless of the server-side CORS config.
+
+## [3.14.1] - 2026-07-28
+
+### Changed
+
+- **Camera permission denied is no longer shown as a red error modal**: `CameraService.alertCameraErrorsByErrorName()` routed every camera failure — including a routine, user-recoverable permission denial — through `AlertController` (`custom-alert-error`), a centered red modal that read as "something crashed" when the user just needed to grant a permission and retry. The `NotAllowedError` branch now shows a dismissible, top-anchored notice instead, reusing the existing `.credential-toast` plain-div pattern (`ToastServiceHandler.showInfoToastByTranslateLabel()`) with a new `info` (blue) variant — every other camera error (not-readable, not-found, overconstrained, etc.) keeps the blocking alert, since those still need the user's full attention. Copy is unchanged (`errors.camera.not-allowed`), only the presentation.
+
+## [3.14.0] - 2026-07-24
+
+### Added
+
+- **EUD-141 US-06 — Retrieve and sync the activity history in server mode**: `ActivityService` becomes mode-aware (the `WalletService.isBrowserMode()` pattern), consuming the new EBW backend (`GET`/`POST /api/v1/activity`) in server mode while keeping IndexedDB as a cache — not as the source of truth. `findAll()` in server mode performs a `GET`, overwrites the local cache with the response (server = source of truth, AC-03) and returns it; on a network failure it falls back to the existing cache without throwing or clearing it (AD-4, ES-04). New `syncFromServer()` (no-op in browser mode, ES-05) triggered after login in `login.page.ts`, at the same point where credentials are already synced (`WalletService.syncCredentials()`, called from `syncCredentialsThenNavigate()`/`syncCredentialCache()`) — recovers the history after local deletion or on a new device (AC-01/AC-02). `log()` still always writes to the local cache and, in server mode, also makes a best-effort `append()` to the server (silent on failure — an unsynced event is picked up on the next `syncFromServer()`/`findAll()`, AD-1). New `ServerActivityGateway` gateway (`list()`/`append()` via `HttpClient` + `UrlResolverService.serverUrl() + SERVER_PATH.ACTIVITY`) with an explicit bidirectional mapper between the client model (`'issued' | 'presented' | 'deleted'`) and the EBW backend contract (`ActivityType {ISSUED, PRESENTED, DELETED}`, snake_case JSON `credential_name`/`shared_attributes`/`created_at` — no client-supplied timestamp, the server always assigns `created_at`). No behavior change in browser mode (US-01..US-05 intact, ES-05).
+- **EUD-141 — test coverage**: `server-activity.gateway.spec.ts` (new — `GET`/`POST` HTTP contract + type/field mapping, empty history, idempotency). `activity.service.spec.ts` extended with mode branching: recovery/sync overwriting the cache, offline fallback without mutating the cache on error (ES-04), non-blocking `log()` on `append()` failure (AD-1), and browser-mode guards (no gateway calls, ES-05). `activity.page.spec.ts` extended — read-only view with no manual sync control exposed (AC-07) and correct empty state when the history retrieved from the server is empty (EC-04). `login.page.spec.ts` updated with the `ActivityService` mock, aligned with the `syncCredentialsThenNavigate()` flow (EUD-104/3.13.1).
+## [3.13.2] - 2026-07-24
+
+### Added
+
+- **Calidalia tenant**: added `'calidalia'` to `KNOWN_TENANTS` (`tenants.constants.ts`) so the tenant guard resolves the hostname instead of redirecting to `/tenant-not-found`.
+
+## [3.13.1] - 2026-07-23
+
+### Added
+
+- **EUD-104 — frontend test coverage for associating a second device**: the passkey-setup step (`needsPasskeySetup`, driven purely by local `hasPasskey()` state) already handled the second-device case as part of EUD-103's onboarding flow — the frontend has no way to distinguish a first vs. a second device, since that distinction is entirely server-side (find-or-create). `login.page.spec.ts` extended with an explicit assertion that no navigation happens right after `verifyCode()` detects the absence of a local passkey (EC-01); the editable/default device name (AC-03/EC-02) and the `registerPasskey()` failure path (ES-02) were already covered by EUD-103's own test suite and needed no changes.
+
+### Fixed
+
+- **Credentials tab empty after login + false "no credentials available to login" on VP**: two symptoms with one root cause — the credential list was never reactive and the login-time sync was a non-atomic, fire-and-forget clear-then-refill. `WalletService.syncCredentialsOnLogin()` did `clearAllCredentials()` → fetch → `saveCredential()` per item, so a read landing between the clear and the re-fill saw an empty/partial store; the credentials tab took a one-time IndexedDB snapshot on a lifecycle hook and never self-corrected (had to switch tabs and return), and the OID4VP flow read a `CredentialCacheService` that was only populated on the success path of the old `loadCredentials()`, so a transient load error or an in-flight sync surfaced `errors.no-credentials-available` even when the holder had credentials.
+  - `CredentialCacheService` is now the single **reactive source of truth** built on a `signal<{ status, credentials }>` (`idle`/`loading`/`loaded`/`error`), with `credentials`/`status` derived signals, a synchronous `snapshot()`, and mutators `setLoading`/`setLoaded`/`setError`/`patchStatus`/`remove`. `setError()` deliberately keeps the current list so a transient network failure never blanks the wallet. Matchers and `extractSignedJwt` are unchanged; dead `findCredentialsByType`/`syncFromBackend` removed.
+  - `LocalCredentialStorageService.replaceAllCredentials()` writes clear + all puts in a **single IndexedDB transaction** (atomic swap). `WalletService.syncCredentialsOnLogin()` now fetches from the server **before** touching local storage, then swaps atomically, so IndexedDB is never observed empty mid-sync. New `WalletService.refreshCredentials()` reads the local store, normalizes it, and pushes state to the cache; it always completes (even on error) so callers can gate on it.
+  - `CredentialsPage` renders from the reactive signals (skeleton/empty/list driven by `status`), and `verifiablePresentationFlow` **gates on `refreshCredentials()`**: a load _error_ shows `errors.loading-VCs` while a genuinely empty result shows `errors.no-credentials-available`. The racy constructor trigger was removed; status changes flow through `cache.patchStatus()`.
+  - `LoginPage` marks the store `loading` before navigating and **awaits the sync only when a protocol deep link is pending** (VP / credential offer), so IndexedDB holds the server data before the VP flow runs; a normal login stays non-blocking and the tab fills in reactively.
+- **Test coverage**: new `credential-cache.service.spec.ts` (reactive state + matchers); `wallet.service.spec.ts` updated for the atomic sync and `refreshCredentials` transitions; `credentials.page.spec.ts` covers the VP gate distinguishing load-error from empty; `login.page.spec.ts` covers the deep-link await vs. non-blocking sync.
+
+## [3.13.0] - 2026-07-21
+
+### Added
+
+- **EUD-140 US-05 — Exportar el historial de actividad a CSV**: nuevo `ActivityExportService` (`providedIn: 'root'`) con un serializador CSV puro y sin dependencias — `buildCsv(entries, labels)` mapea un allow-list explícito de 5 columnas (`type` localizado, `credencial`, `contraparte`, `timestamp` en ISO 8601, `detalle`), excluyendo el `id` interno y cualquier otro campo del modelo (minimización, AC-04), sin reordenar columnas ni filas (AD-2/AD-4). Incluye escapado RFC 4180 (comillas dobladas para `,`/`"`/`\r`/`\n`) + BOM UTF-8 + separador `\r\n` (EC-01), neutralización de inyección de fórmulas anteponiendo `'` a valores de `credentialName`/`counterparty`/`details` que empiecen por `=`, `+`, `-`, `@`, TAB o CR (EC-02), y serialización defensiva ante campos vacíos/`type` desconocido o entradas malformadas, sin lanzar excepción ni abortar el resto de filas (EC-04, ES-01). `triggerDownload()` (`Blob` + `URL.createObjectURL` + ancla `download`, con `revokeObjectURL` en `finally`) y `buildFileName()` completan la descarga. `ActivityPage.exportHistory()` consume `entries()` (historial completo, no `filteredEntries()` — AD-1) sin mutar ninguna señal ni el filtro activo (AC-05, AC-06), y ante un fallo de descarga muestra un aviso i18n (`activity.export-error`) sin dejar archivo parcial (ES-03). Nuevo botón "Exportar historial" junto a "Borrar" en `.activity-header`, visible solo con eventos (`entries().length > 0`, ES-02). Nuevas claves i18n (`activity.export`, `activity.csv-header-*`, `activity.export-error`) en `es`/`en`/`ca`.
+- **EUD-140 US-05 — test coverage**: `activity-export.service.spec.ts` (nuevo, 30 tests) cubre el serializador de forma aislada — estructura/cabecera/orden (AC-02), aislamiento/mapeo 1:1 (AC-03), minimización sin `id` (AC-04), RFC 4180 + BOM (EC-01), anti-inyección de fórmulas (EC-02), 200 filas en < 1 s (EC-03), campos opcionales vacíos (EC-04) y eventos malformados/`type` desconocido (ES-01). `activity.page.spec.ts` extendido (+21 tests) con la integración de botón/descarga: invocación de `buildCsv`+`triggerDownload` con el historial completo (AC-01), independencia del filtro activo (AC-05), ausencia de mutación/llamadas a `log()`/`clear()` (AC-06), disponibilidad del botón según haya historial (ES-02), toast de error ante fallo de descarga o de serialización (ES-03) y export de 200 entradas mixtas sin bloquear la interacción (EC-03, component-level).
+- **EUD-139 US-04 — Ver el detalle de un evento de actividad**: `ActivityDetailComponent`, un modal Ionic read-only abierto desde `ActivityPage.openDetail(entry)` al pulsar (click o teclado, con `role="button"`/`aria-label`) cualquier `.activity-card`. Muestra credencial, contraparte (etiqueta según `issued`/`presented`, omitida si está ausente o el tipo no aplica), fecha absoluta y un resultado fijo "Completada". Para eventos `presented` añade una sección de atributos compartidos, con aviso explícito cuando no hay ninguno registrado. Sin controles de escritura — solo cerrar. Tipos de actividad desconocidos degradan a una etiqueta genérica en vez de lanzar excepción. Abrir y cerrar el modal no recarga ni muta `entries()` ni el filtro activo de la lista.
+- **EUD-139 — captura de atributos compartidos en la presentación OID4VP**: `Oid4vpEngineService` deriva los nombres de los claims divulgados de una presentación SD-JWT (`deriveSharedAttributeNames`, vía `SdJwtParserService.reconstructClaims()`), excluyendo los claims registrados (`iss`, `iat`, `exp`, `cnf`, `vct`, `_sd*`), y los adjunta al registro de actividad `'presented'` (`ActivityEntry.sharedAttributes?: string[]`, nuevo parámetro opcional en `ActivityService.log()`). Cambio aditivo y no bloqueante: un fallo de parseo o una credencial no-SD-JWT degradan a "sin atributos" en vez de interrumpir la presentación.
+- Extraídos `formatCounterparty`/`formatAbsoluteTime` de `ActivityPage` a `shared/utils/activity-format.util.ts`, reutilizados tanto por `ActivityPage` como por `ActivityDetailComponent`.
+
+## [3.11.8] - 2026-07-17
+
+### Added
+
+- Accept legacy type "gx:LabelCredential" (added to the credential type list and its icon mapping) to allow displaying this type of credential.
+- Show JWT and "copy" button for legacy "LEARCredentialMachine" and "gx:LabelCredential" credentials.
+
+## [3.11.7] - 2026-07-16
+
+### Fixed
+
+- **Issuer metadata preload broken on custom domains**: after login, `RemoteAuthService` preloaded the OID4VCI issuer metadata from a hardcoded `${window.location.origin}/issuer`. On custom domains `/issuer` is not proxied same-origin (it returns the SPA's `index.html`), so the cache warm-up silently fetched the wrong resource. The issuer base URL is now resolved through `TenantService.resolveIssuerBaseUrl()`, which returns the same-origin `/issuer` on canonical domains and the issuer host declared in `custom-domain.json` on custom domains. The preload stays fire-and-forget and never breaks the login flow.
+
+### Changed
+
+- **Tenant resolution — environment moved to the second hostname segment**: the infrastructure no longer encodes the environment as a suffix of the first segment (`sandbox-stg.eudistack.net`); it now lives in a dedicated second segment (`sandbox.stg.eudistack.net`). `TenantService` no longer strips env suffixes — removed the `ENV_SUFFIXES` constant and the `stripEnvSuffix()` helper. `extractBaseTenantFromHostname()` now takes the first segment verbatim as the tenant id, and `buildFallbackUrl()` replaces only the first segment with the fallback tenant, preserving the environment segment automatically.
+
+### Added - 2026-07-16
+
+## [3.11.6] - 2026-07-16
+
+- **EUD-144 US-02 — Self-revoke: reinforced confirmation, forced logout and re-onboarding**: `DevicesPage.deletePasskey()` now detects when the passkey being revoked belongs to the device currently in use (`isSelfRevoke`, matched against `PasskeyStoreService.getCredentialId()`) and shows a reinforced confirmation message (new i18n key `devices.delete-self-message`) instead of the standard one — a single conditional dialog per AD-1, not two separate flows. On a successful self-revoke, `PasskeyStoreService.clearCredentialId()` runs before `AuthService.forceLogout()`, so the forced logout routes the holder to re-onboarding (`/auth/register`) instead of login. Detection lives solely in the success (`next`) handler — a failed or timed-out revocation never forces a logout or clears local state. If the local credential id can't be resolved, the action fails safe to a regular (non-self) revoke.
+- **EUD-144 US-02 — test coverage for device revocation**: `devices.page.spec.ts` extended with 20 new tests covering the full revoke flow — revoking another device (API call, dialog content, list update, session unaffected), self-revoke (reinforced message, `clearCredentialId` → `forceLogout` order, unresolved credential id fails safe), and error/edge cases (409 last-passkey message, cancelling the dialog, 5xx/timeout leaving the list and session untouched).
+
+## [3.11.5] - 2026-07-16
+
+### Fixed - 2026-07-16
+
+- **OID4VP — holder key not found after page reload in browser mode**: `Oid4vciEngineService` used `crypto.randomUUID()` as the holder-key ID (introduced in 3.11.3 for EUDISTACK-645). In `PasskeyPrfKeyStorageProvider`, `isEphemeral()` matches any bare UUID and routes to `generateEphemeralKey()`, which stores the key only in an in-memory `Map` — never in IndexedDB. On page reload (or next session), `resolveKeyIdByKid()` queries IndexedDB and returns `null` → OID4VP throws `"No local key found for kid=<thumbprint>"`. Fixed by prefixing the holder-key ID with `holder-` so it does not match `UUID_PATTERN` and `generatePrfDerivedKey()` persists the key record to IndexedDB as intended.
+
+## [3.11.4] - 2026-07-15
+
+### Fixed
+
+- **CGCOM — VCT rename `doctorid.sd.1` → `urn:es.cgcom:doctorid:1`**: updated `CredentialType`, `CredentialTypeMap`, and `VerifiableCredentialSubjectDataNormalizer` to use the canonical URN-based VCT, aligning the Wallet with the DoctorID issuer configuration and the CGCOM verifier DCQL profiles.
+
+## [3.11.3] - 2026-07-14
+
+### Fixed
+
+- **EUDISTACK-645 — holder key shared across credentials of the same type**: `Oid4vciEngineService` derived the holder-key id as `${credentialIssuer}:${credentialConfigurationId}` (per credential _type_), so a holder receiving a second credential of the same type collided on the same key — a hard 409 in hybrid mode, a silent shared-key reuse in DB mode. Both violated ADR-021 (one holder key per credential, never shared). Now a `crypto.randomUUID()` is minted once per `performOid4vciFlow` call and used as the key id, restoring 1:1 `credential`:`holder_key`.
+
+## [3.11.2] - 2026-07-10
+
+### Added
+
+- **EUD-137 US-02 — Activity history tests**: `activity.service.spec.ts` and `activity.page.spec.ts`, covering all 13 AC/EC/ES cases (0% → full coverage on both files), merged alongside EUD-138's filter test suite in the same spec file.
+
+### Changed
+
+- **EUD-137 US-02 — Verifier/Issuer legibility**: `formatCounterparty()` reduces URLs to hostname and truncates long `did:key` identifiers (e.g. `did:key:z6Mk…sdvktH`) instead of showing them raw. Wired into EUD-138's card subtitle (`activity.subtitle-issued`/`subtitle-presented`) so the normalized value, not the raw counterparty, is what gets interpolated into the translation.
+- **EUD-137 US-02 — Activity UI polish**: "Clear" button enlarged and switched to the wallet's `color="danger"` convention.
+- **EUD-137 — `ConfirmModalComponent` danger variant**: added `@Input() actionVariant: 'primary' | 'danger'` (`.btn-danger` style) so the "clear activity" confirmation renders its action button in red, matching the wallet's destructive-action convention; `ActivityPage.confirmClear()` passes `actionVariant: 'danger'`.
+
+### Fixed
+
+- **EUD-137 US-02 — Activity list not refreshing**: `ActivityPage` only loaded data on first tab entry; Ionic keeps tab pages alive, so events logged from other tabs (present/issue/delete) needed a manual page reload to show up. Added `ionViewWillEnter()` to reload on every re-entry.
+
+## [3.11.1]
+
+### Added
+
+- **EUD-103 — editable device name during server-mode onboarding**: the passkey/device step of `LoginPage` now shows an editable `ion-input` prefilled with the auto-detected device name (e.g. "Windows PC", "iPhone"), with an associated `aria-label` (WCAG 2.1 AA). The value is trimmed, validated non-empty, and sent as `displayName` when the passkey is registered — before this, the name was fixed and never shown to the user (AC-05, EC-04).
+- **EUD-103 — accessibility for `OtpInputComponent`**: added a translated `aria-label` per digit box ("Digit {i} of {n}") and an `aria-live="assertive"` region announcing verification errors (NFR-A-01).
+- **EUD-103 — i18n**: added `auth.passkey.device-name-label`, `auth.passkey.device-name-placeholder` and `auth.errors.passkey-register-failed` to `en.json`, `es.json` and `ca.json`.
+- **EUD-103 — test coverage for the server-mode onboarding flow**: `login.page.spec.ts` (new) covers the edited/default device name (AC-05/EC-04), resuming with a refresh token but no local passkey (EC-05), and recoverable errors on `register`/`verifyEmail`/passkey registration failures (ES-04/ES-05); `otp-input.component.spec.ts` (new) covers digit entry, paste, backspace/arrows, and the new accessibility attributes. This flow had no frontend test coverage before.
+
+### Fixed
+
+- **EUD-103 — `createPasskeyForDevice()` could leave a device with a local passkey but no server-side record**: it called `navigateHome()` and fired `registerPasskey(...)` in parallel, only logging (`console.warn`) if the server call failed — the user would land on the home screen believing the device was fully registered even when it was not. Reordered to register the passkey server-side first and navigate home only on success; on failure, an error is shown with the option to retry (AD-1, ES-05).
+
+## [3.11.0] - 2026-07-10
+
+### Added
+
+- **EUD-138 US-03 — Activity filter control**: Added an `IonSegment`/`IonSegmentButton` control (scrollable) to `ActivityPage` with four options — "Todas" (default), "Recibidas", "Presentadas", "Eliminadas" — backed by the new `ActivityFilter` type and `ACTIVITY_FILTERS` constant in `activity.model.ts` (AC-01).
+- **EUD-138 US-03 — Client-side filtering**: `ActivityPage` migrated to signals (`entries`, `loading`, `activeFilter`) with a `filteredEntries` computed that selects entries by `activeFilter()`, preserving the most-recent-first order returned by `ActivityService.findAll()`. Filtering is purely client-side and read-only: switching filters never calls `ActivityService.findAll()` again nor `clear()`/`confirmClear()`, and never mutates the `entries()` set (AC-02, AC-04).
+- **EUD-138 US-03 — Contextual empty states**: Added a per-filter empty state (`activity.empty-issued` / `-presented` / `-deleted`) shown when the active filter has no matching events, reusing the existing `.state-container` pattern without error styling; the existing generic empty state (`activity.empty`) still shows when the whole history is empty under "Todas". The three render states (loading, generic empty, contextual empty, list) are mutually exclusive (AC-03, EC-01, EC-02).
+- **EUD-138 US-03 — i18n**: Added `activity.filter-all`, `filter-issued`, `filter-presented`, `filter-deleted`, `empty-issued`, `empty-presented`, `empty-deleted` keys to `es.json`, `en.json`, `ca.json`.
+- **EUD-138 US-03 — Tests**: Added component tests covering the filter control render and default ("Todas"), filtering/round-trip preserving order (AC-02, AC-03), read-only guarantees (AC-04), disjoint empty states (EC-01, EC-02), large datasets (200 entries / `MAX_ENTRIES`) and filter re-selection idempotence (EC-03, EC-04), and resilience to an unknown/missing entry `type` and to `findAll()` resolving `[]` (ES-01, ES-02).
+- **EUD-138 US-03 — `ConfirmModalComponent`**: Replaced the native `AlertController` confirmation for "borrar historial" with a reusable custom modal (`src/app/shared/components/confirm-modal/`), parameterized via `@Input() icon`, `titleKey`, `descriptionKey`, `cancelKey`, `actionKey` so other features can present the same confirm/cancel pattern with their own copy — consumers pass those as `componentProps` to `ModalController.create()`, following the existing `TxCodeModalComponent` convention. Presented via `ModalController`, dismissing with role `confirm`/`cancel`; `ActivityPage.confirmClear()` now only calls `clearAll()` when the modal resolves with role `confirm`. Added `activity.clear-title`, `clear-description`, `clear-cancel`, `clear-action` i18n keys to `es.json`, `en.json`, `ca.json`, and matching styles in `theme/customAlert.scss` (`ion-modal.confirm-modal`).
+- **EUD-138 US-03 — Activity list redesign**: `ActivityPage`'s history list migrated from `ion-list`/`ion-item` rows to a card-based layout (`activity-card` / `activity-card-content`), showing a contextual subtitle with the counterparty (`activity.subtitle-issued`, `subtitle-presented`) for received/presented entries. Added matching i18n keys to `es.json`, `en.json`, `ca.json`.
+
+### Fixed
+
+- **EUD-138 US-03 — `ActivityPage.setFilter` type safety**: `setFilter` now accepts `SegmentValue | undefined` (the type emitted by `IonSegment`'s `ionChange`) and only updates `activeFilter` when the value is a known member of `ACTIVITY_FILTERS`, avoiding an unsafe cast from an untyped segment change event.
+
+## [3.10.2] - 2026-07-06
+
+### Fixed
+
+- **EUD-143 US-01 — Badge/icon invisible on tenants with a light `--primary-color`**: the "This device" badge and the device icon hardcoded `color: white` against a `background: var(--primary-color)`. `--primary-color` is tenant-themed by `ThemeService`; on tenants whose brand primary is white/near-white (e.g. `cgcom`), this rendered white text/icon on a white background. Found in production after merge (worked on `dome`, broken on `cgcom`). Replaced `white` with `var(--primary-contrast-color)`, the contrast token `ThemeService` already sets as a pair with `--primary-color` for every tenant.
+
+## [3.10.1] - 2026-07-03
+
+### Added
+
+- **EUDISTACK-359 US-07:**
+  - Added PRF support detection before starting hybrid onboarding.
+  - Blocked onboarding when the authenticator does not support PRF.
+  - Added onboarding block endpoint integration (`/block`) for unsupported PRF authenticators.
+  - Prevented holder key generation and credential enrollment when PRF support is unavailable.
+  - Added onboarding state handling and unit tests for PRF unsupported and inconclusive scenarios.
+
+### Fixed
+
+- **EUDISTACK-534 US-02 — hybrid key generation was never wired to the SPI**: `HybridKeyStorageProvider.generateKeyPair()` delegated to `ServerKeyStorageProvider` (the DB-only `/api/v1/keys/generate` endpoint), which always 403s for `key_manager=hybrid` tenants. Now delegates to the new `HybridKeyEnrollmentService`, orchestrating init → single PRF ceremony → key generation → inline OID4VCI proof signing → wrap → commit → zeroize, and returns `prebuiltJwsProof` so the OID4VCI engine never needs `sign()` for issuance.
+- **EUDISTACK-534 US-02 — `holder_key_id` overflow**: `generateKeyPair()` returned the OID4VCI engine's `keyId` (`credentialIssuer:credentialConfigurationId`) as the SPI `keyId`, overflowing `wallet_credential.holder_key_id VARCHAR(36)` (`PostgresqlBadGrammarException` 22001). Now returns `context.credentialId` (still round-trips via `resolveKeyIdByKid`); backend column widened to `VARCHAR(512)` (see companion `eudistack-core-wallet-ebw` migration `V5`).
+- **EUDISTACK-534 US-02 — `OnboardingHybridApi` used the wrong base URL**: read `environment.server_url` directly instead of `UrlResolverService`, producing a relative path missing the `/business-wallet` nginx prefix (404) in real deployments where `server_url` is empty by design. Fixed to match the existing `HybridAuditService` pattern. Same latent bug preventively fixed in `SignApi`.
+- **EUDISTACK-534 US-02 — double PRF/WebAuthn prompt per credential**: `HybridKeyEnrollmentService.enroll()` ran `detectPrfSupport()` (a separate dummy-salt probe) before `evaluateForWrap()` (the real ceremony), forcing two passkey prompts. `evaluateForWrap()`'s own `hybrid.error.prfUnavailable` failure is an equally valid "unsupported" signal that still fires before any key material exists — merged into a single ceremony.
+- **EUDISTACK-536 US-04 — `buildPresentationJws()` was never wired to the SPI**: threw `HybridAdapterError` unconditionally. Now delegates to `SignService.sign()`, driving the prepare/PRF-unwrap/sign/submit handshake for OID4VP presentations.
+- **EUDISTACK-536 US-04 — `prepareSign` contract corrected** (architecture.md §6.2, 2026-07-03): `vp_challenge` → `payload`, the full presentation payload assembled by the OID4VP engine, matching the corrected EBW contract. A KB-JWT built from `{nonce, iat}` alone (the old contract) is invalid per RFC 9901 §4.1.2 (missing `aud`/`sd_hash`).
+- **Security (2026-07-06 audit) — signing oracle**: `SignService.sign()` signed the `signing_input` returned by the EBW without verifying it encoded the `payload` actually submitted; a compromised/malicious EBW could substitute different claims and get a valid holder signature over content it chose. Now verifies header (`alg`/`typ`) and payload (order-independent) match before ever running the PRF ceremony.
+- **Security (2026-07-06 audit) — raw PRF output not zeroized**: `HybridKeyEnrollmentService.enroll()` never zeroed the raw PRF output (IKM) after deriving the wrap key. Now zeroed in `finally`, matching `SignService`.
+- **Security (2026-07-06 audit) — PRF zeroize skipped on error path**: `SignService.sign()`'s cache-miss path only zeroed the raw PRF output on success. Now zeroed in `finally`.
+- **Security (2026-07-06 audit) — AES-GCM `usages` cache-reuse bug**: `WrapService.deriveWrapKey()`/`UnwrapService.deriveUnwrapKey()` derived single-purpose keys (`['wrapKey']`/`['unwrapKey']`), but `MemoryService` caches the same key under `credentialId` across both the enrollment (write) and signing (read) flows — a cache-hit cross-use threw `InvalidAccessError`, mislabeled by `UnwrapService.unwrap()`'s catch-all as `wrap_unavailable_on_this_device` ("wrong device"), sending holders down the wrong recovery path for a WebCrypto API bug, not a passkey mismatch. Fixed: both derive with `['wrapKey', 'unwrapKey']`; `unwrap()`'s catch now only maps a genuine `OperationError` (bad GCM tag) to that error code, anything else to `prepare_sign_failed`.
+
+### [3.8.11] - (2026-06-17)
+
+### Added
+
+- **EUDISTACK-534 US-02 — `hybrid-keymanager` feature module**: new `src/app/features/hybrid-keymanager/` module implementing client-side holder key generation, PRF-based wrap, and hybrid onboarding commit.
+- **EUDISTACK-534 US-02 — `MemoryService`**: in-memory `Map<credentialId, CryptoKey>` cache for AES-256-GCM wrap keys. TTL=5 min via `setTimeout`; `SubtleCrypto.deleteKey` called on eviction and `beforeunload`. No write to `localStorage`/`sessionStorage`/IndexedDB (AC-02, EC-01, EC-02).
+- **EUDISTACK-534 US-02 — `PrfClientService`**: thin wrapper over `PasskeyPrfService.getCredentialId()` that evaluates the WebAuthn PRF extension with a server-supplied salt. Returns raw 32-byte PRF output; throws `AppError` if no passkey is registered, assertion is cancelled, or PRF output is absent (AC-01, ES-04).
+- **EUDISTACK-534 US-02 — `WrapService`**: `generateHolderKeyPair` (ECDSA P-256, extractable private key); `deriveWrapKey` (HKDF-SHA-256, `salt=credentialId`, `info="hybrid-wrap-v1"`, L=256); `wrapPrivateKey` (AES-256-GCM, random 12-byte IV, 16-byte tag split from output); `zeroize` (best-effort `deleteKey`). `cnf.jwk` never contains private parameter `d` (AC-02, AC-03, EC-03, NFR-05).
+- **EUDISTACK-534 US-02 — `OnboardingHybridApi`**: typed HTTP client for `POST /api/v1/keys/hybrid/onboarding/init` and `POST /api/v1/keys/hybrid/onboarding/commit`. DTOs aligned with EBW backend contract (AC-03, AC-04).
+- **EUDISTACK-534 US-02 — `OnboardingHybridComponent`**: orchestrates init → PRF ceremony → key generation → HKDF derivation → AES-GCM wrap → commit → zeroize. `try/finally` guarantees private key is always zeroized; wrap key cached on success, zeroized on error. Aborts before commit if PRF ceremony fails (AC-01, AC-02, AC-08, ES-04, ES-05).
+- **EUDISTACK-534 US-02 — Unit tests**: `memory.service.spec` (TTL eviction, `beforeunload`, no-persistence); `prf-client.service.spec` (salt propagation, AppError paths); `wrap.service.spec` (ECDSA P-256, HKDF, AES-GCM, unique IVs, no `d` in JWK, zeroize); `onboarding-hybrid.component.spec` (full flow, commit body public-only, ES-04 abort, ES-05 zeroize invariants).
+
+### Added
+
+- **EUD-143 US-01 — List registered devices**: Added display of `lastUsedAt` (with explicit "Never used" fallback for null values) in the Devices page.
+- **EUD-143 US-01 — Current device identification**: Added "This device" textual badge (WCAG 2.1 AA compliant) to the Devices list, mapping `currentCredentialId` with the passkey's `credentialId`.
+- **EUD-143 US-01 — i18n**: Added `devices.last-used`, `devices.last-used-never` and `devices.this-device` keys to `en.json`, `es.json` and `ca.json`.
+
+### Changed
+
+- **EUD-143 US-01 — Devices list layout**: each device now renders as its own separate card (background, rounded corners, spacing between entries) instead of all devices sharing one continuous card with row separators.
+
+### Fixed
+
+- **EUD-143 US-01 — undefined `--action-primary` CSS variable**: the "This device" badge and the device icon on the Devices page referenced `var(--action-primary)`, a token that does not exist in `theme/variables.scss` (only `--primary-color` is defined). The undefined variable made `background` resolve to nothing, rendering the badge as invisible white text and the device icon as an empty circle. Found during manual QA of AC-03. Replaced both usages with `var(--primary-color)`.
+- **EUD-143 US-01 — Devices page subtitle not centered**: `.devices-subtitle` had no `text-align`, so it rendered left-aligned while the empty/loading/error states below it are centered. Added `text-align: center` for visual consistency. Found during manual QA of AC-05.
+- **EUD-143 US-01 — Duplicate page header leaving a blank bar**: `DevicesPage` was the only screen in the app defining its own `<ion-header>`/`<ion-toolbar>`, rendered as a second, empty bar below the app's shared header (no other page under `/tabs/*` defines one). Removed it; the page no longer shows a blank strip below the header.
+
+## [3.9.2] - 2026-06-29
+
+### Added
+
+- **EUDISTACK-538 US-06 — `HybridOnboardingPage`**: multi-step acceptance wizard shown to holders on hybrid tenants before any key operation. Guard (`hybridOnboardingGuard`) intercepts `tabs` activation when `key_manager=hybrid` and the session flag is absent; inverse guard (`hybridOnboardingRouteGuard`) prevents direct access on non-hybrid tenants. Route: `/hybrid-onboarding`.
+- **EUDISTACK-538 US-06 — `HybridAuditService`**: calls `POST /api/v1/keys/hybrid/constraint-accepted` after the holder taps "accept". Fire-and-forget with `catchError`; navigation to `/tabs` proceeds regardless of backend availability.
+- **EUDISTACK-538 US-06 — `HybridOnboardingService`**: sessionStorage-backed flag (`hybrid-onboarding-accepted`) so the wizard is shown once per session.
+- **EUDISTACK-538 US-06 — `HybridAdapterError`**: typed error class extending `AppError` with codes `wrap_unavailable_on_this_device` | `prepare_sign_failed`. `AppError` union type updated accordingly.
+- **EUDISTACK-538 US-06 — `HybridKeyStorageProvider`**: Angular DI provider for hybrid mode. Key generation delegates to `ServerKeyStorageProvider`; `sign()` is a typed stub pending US-04 (EUDISTACK-536). `key-storage.provider.factory.ts` selects this provider when `mode=server` and `keyManager=hybrid`.
+- **EUDISTACK-538 US-06 — `SignPromptComponent`**: error display component for `wrap_unavailable_on_this_device` failures — shown when the holder attempts to sign from a device that does not hold the PRF-bound key.
+- **EUDISTACK-538 US-06 — i18n**: `hybrid-onboarding.*` and `hybrid-errors.*` keys added to `es.json`, `en.json`, `ca.json`.
+- **`jest.config.js`**: extended `collectCoverageFrom` to include the new hybrid onboarding/signing components and related core services/guards in coverage reporting.
+
+## [3.9.1] - (2026-06-23)
+
+### Changed
+
+- Updated custom-domain.json model.
+
+## [3.9.0] - (2026-06-17)
+
+### Added
+
+- **EUDISTACK-534 US-02 — `hybrid-keymanager` feature module**: new `src/app/features/hybrid-keymanager/` module implementing client-side holder key generation, PRF-based wrap, and hybrid onboarding commit.
+- **EUDISTACK-534 US-02 — `MemoryService`**: in-memory `Map<credentialId, CryptoKey>` cache for AES-256-GCM wrap keys. TTL=5 min via `setTimeout`; `SubtleCrypto.deleteKey` called on eviction and `beforeunload`. No write to `localStorage`/`sessionStorage`/IndexedDB (AC-02, EC-01, EC-02).
+- **EUDISTACK-534 US-02 — `PrfClientService`**: thin wrapper over `PasskeyPrfService.getCredentialId()` that evaluates the WebAuthn PRF extension with a server-supplied salt. Returns raw 32-byte PRF output; throws `AppError` if no passkey is registered, assertion is cancelled, or PRF output is absent (AC-01, ES-04).
+- **EUDISTACK-534 US-02 — `WrapService`**: `generateHolderKeyPair` (ECDSA P-256, extractable private key); `deriveWrapKey` (HKDF-SHA-256, `salt=credentialId`, `info="hybrid-wrap-v1"`, L=256); `wrapPrivateKey` (AES-256-GCM, random 12-byte IV, 16-byte tag split from output); `zeroize` (best-effort `deleteKey`). `cnf.jwk` never contains private parameter `d` (AC-02, AC-03, EC-03, NFR-05).
+- **EUDISTACK-534 US-02 — `OnboardingHybridApi`**: typed HTTP client for `POST /api/v1/keys/hybrid/onboarding/init` and `POST /api/v1/keys/hybrid/onboarding/commit`. DTOs aligned with EBW backend contract (AC-03, AC-04).
+- **EUDISTACK-534 US-02 — `OnboardingHybridComponent`**: orchestrates init → PRF ceremony → key generation → HKDF derivation → AES-GCM wrap → commit → zeroize. `try/finally` guarantees private key is always zeroized; wrap key cached on success, zeroized on error. Aborts before commit if PRF ceremony fails (AC-01, AC-02, AC-08, ES-04, ES-05).
+- **EUDISTACK-534 US-02 — Unit tests**: `memory.service.spec` (TTL eviction, `beforeunload`, no-persistence); `prf-client.service.spec` (salt propagation, AppError paths); `wrap.service.spec` (ECDSA P-256, HKDF, AES-GCM, unique IVs, no `d` in JWK, zeroize); `onboarding-hybrid.component.spec` (full flow, commit body public-only, ES-04 abort, ES-05 zeroize invariants).
+
+## [3.8.11] - 2026-06-19
+
+### Added
+
+- **`IssuerMetadataCacheService.fetchAndCacheIfMissing(issuerUrl)`**: preloads the OID4VCI metadata of the wallet's own issuer right after a successful token exchange in `RemoteAuthService.handleTokenResponse`. Guarantees that credentials presented via OID4VP (including legacy ones migrated from another wallet or restored from backup) can resolve their display metadata (Mandator, Mandatee…) even when they were never accepted through the standard OID4VCI flow.
+
+### Changed
+
+- **`CREDENTIAL_TYPES_ARRAY`**: added `LEARCredentialEmployee` and `LEARCredentialMachine` aliases so the wallet recognises real DOME legacy credentials (which carry the bare semantic type in `type[]` instead of the versioned `learcredential.<role>.w3c.<n>` identifier). Required for display, selection and presentation flows during the DOME sunset window.
+
+### Fixed
+
+- **OID4VP — Holder JWK fallback chain** (`Oid4vpEngineService.resolveHolderJwk`): when the selected credential lacks `cnf.jwk`, the engine now derives the holder public key from `cnf.kid` (legacy SD-JWT format with a `did:key` URI) or from `vc.credentialSubject.mandate.mandatee.id` (W3C VCDM) before bailing out. Aligns the wallet with the same fallback chain used by the verifier's `CryptographicBindingValidator`, enabling presentation of DOME legacy credentials that do not embed the holder JWK explicitly.
+
+## [3.8.10] - 2026-06-18
+
+### Fixed
+
+- **OID4VCI authorization code flow — DOME cross-origin**: revert browser-navigation and popup workarounds (PR #126, #127). The root fix is in `eudistack-core-issuer`: `CorsWebFilter` now runs as a standalone bean at highest precedence, guaranteeing `Access-Control-Allow-Origin` on the 302 response from `/oid4vci/v1/authorize`. The wallet restores the original XHR-based approach (`HttpClient.get` + `response.url`), which works without browser navigation or popups.
+
+## [3.8.7] - 2026-06-18
+
+### Changed
+
+- **URL resolution — removed canonical/non-canonical branching**: `UrlResolverService` no longer checks `isCanonicalDomain()` to pick between `/business-wallet/` and bare-origin paths. `serverUrl()` and `websocketUrl()` always apply the `/business-wallet` prefix (env override via `server_url` / `websocket_url` still wins). `walletDiscoveryPath()` method removed; its value is now the compile-time constant `WALLET_DISCOVERY_PATH` in `api.constants.ts`. All consumers (`authInterceptor`, `HttpErrorInterceptor`, `HttpWalletDiscoveryGateway`) updated accordingly.
+
+## [3.8.5] - 2026-06-18
+
+### Changed
+
+- Remove cross-tenant offer validation
+
+## [3.8.5] - 2026-06-17
+
+### Fixed
+
+- **OID4VP — W3C VC presentation**: `Oid4vpEngineService` now resolves the holder ID from both VCDM 1.1 (`payload.vc.credentialSubject.id`) and VCDM 2.0 (`payload.credentialSubject.id`) JWT structures before falling back to the `sub` claim. Previously, credentials issued in VCDM 2.0 format (no `vc` wrapper) always failed with "Missing holder id in selected credential".
+
+## [3.8.4] - 2026-06-17
+
+### Changed (2026-06-17)
+
+- **Wallet API URL resolution** is resolved with the appropiate canonical or non-canonical URL.
+- Updated custom-domain.json model.
+
+## [3.8.3] - 2026-06-15
+
+### Added (2026-06-15)
+
+- Added `cgcom` to the list of known tenants.
+- **Custom-domain tenant resolution (`TenantService`)**: the app now resolves the active tenant via a two-step lookup — first from the hostname subdomain (existing behaviour), then from `/assets/tenants/custom-domain.json` (a `{ "hostname": "tenantId" }` map) when the subdomain does not match a known tenant. The resolved tenant (or `null` for unknown origins) is stored in a `Signal<string | null>` initialised before theme loading and consumed by `ThemeService`, `tenantGuard` and `TenantNotFoundPage`.
+
+### Changed (2026-06-15)
+
+- **`tenants.constants.ts`**: reduced to data-only (`KNOWN_TENANTS`, `FALLBACK_TENANT`); resolution functions moved to `TenantService` as private methods.
+- **`tenantGuard`**, **`tenantNotFound`**, **`credentialOfferService`**: read the resolved tenant signal from `TenantService` instead of re-deriving it from the hostname on every navigation.
+- **Service Worker cache (`ngsw-config.json`)**: `/assets/tenants/custom-domain.json` added to the `config` freshness group (1 h TTL, maxSize increased to 10).
+
+## [3.8.2] - 2026-06-08
+
+### Fixed
+
+- **Auth interceptor — token expiry**: `authInterceptor` now intercepts 401 responses from the own-backend and calls `forceLogout()`, redirecting the user to the login screen. Previously, an expired access token returned a raw 401 error with no session cleanup — the user saw an error but was never redirected.
+
+## [3.8.1] - 2026-06-03
+
+### Fixed
+
+- **`WalletDiscoveryService`**: changed discovery endpoint from `/.well-known/wallet-config-metadata` to `/business-wallet/.well-known/wallet-config-metadata` to align with EBW base-path and eliminate the need for special nginx/CloudFront routing.
+- **Auth — browser mode register**: `LoginPage` now shows "Create Passkey" button (`LocalAuthService.setupPasskey()`) on `/auth/register` when no passkey exists on the device, instead of incorrectly showing "Sign in with Passkey".
+- **Auth — browser mode titles/subtitles**: corrected per-state titles and subtitles for both login and register states in browser mode.
+- **Auth — server mode step 3b**: passkey setup on a new device (step 3b) now shows "Register your device" title instead of "Welcome back".
+
+## [3.8.0] - 2026-06-02
+
+### Added
+
+- **Server-side wallet mode** (`wallet_mode=server`): `key-storage.provider.factory.ts` dynamically selects `ServerKeyStorageProvider` when the EBW reports server mode, keeping `PasskeyPrfKeyStorageProvider` for browser mode. No change to browser-mode behaviour.
+- **`ServerKeyStorageProvider`**: full implementation — `generateKeyPair` sends OID4VCI context (`format`, `supported_algs`, `issuer_identifier`, `c_nonce`) to `POST /api/v1/keys/generate`; `buildPresentationJws` delegates KB-JWT and VP-envelope signing to `POST /api/v1/keys/{keyId}/sign`; `resolveKeyIdByKid` resolves key IDs from `GET /api/v1/credentials`.
+- **OID4VCI issuance (server mode)**: `oid4vci.engine` passes `OID4VCIKeyGenContext` to `generateKeyPair` and uses the pre-built `jws_proof` returned by the EBW directly — no local signing step.
+- **OID4VP presentation (server mode)**: `oid4vp.engine.signJwt` delegates full JWS construction to `buildPresentationJws` when available, keeping the existing browser-mode path intact.
+- **`FinalizeIssuancePayload`**: new optional fields `holderKeyId` and `holderKid` propagate the EBW key reference through the issuance flow so the credential can be linked server-side.
+
+### Changed
+
+- **Unified auth UI**: both `/auth/login` and `/auth/register` routes now load `LoginPage` (single component). Entry screen title changed to "Register your device"; passkey step title is "Welcome back".
+- **i18n** (`en.json`, `es.json`, `ca.json`): 10 unused `auth.register.*` keys removed; `auth.login.title-welcome` added for the passkey step.
+
+### Fixed
+
+- **`DpopService`**: always uses `PasskeyPrfKeyStorageProvider` for ephemeral DPoP keys regardless of `wallet_mode` — prevents accidental routing to the EBW's holder-key endpoint.
+
+### Removed
+
+- **`RegisterPage`** (`register.page.ts`, `register.page.scss`) — replaced by unified `LoginPage`. 693 lines removed.
 
 ## [3.7.4] - 2026-05-31
 
@@ -30,6 +444,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.7.1] - 2026-05-19
 
 ### Changed
+
 - Accept gx.labelcredential.w3c.2 instead of gx.labelcredential.w3c.1.
 
 ## [3.7.0] - 2026-05-18
@@ -93,6 +508,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.6.4] - 2026-05-13
 
 ### Added
+
 - **VC Selector**: Integrated verifier information display within the `vc-selector` view to improve transparency during credential selection.
 - **Testing**: implemented new test suites for `vc-selector` page specifically targeting metadata rendering and edge cases.
 - Added 5 new tests for single-instance service to cover the new logic for installed PWA and follower notification.
@@ -100,7 +516,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Single-instance:** Ensure installed PWA shows the duplicate-instance UI instead of silently closing; follower now notifies leader and renders a contextual message in standalone mode.
-
 
 ## [3.6.3] - 2026-04-30
 
@@ -133,11 +548,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   4. Tap "Add"
   5. Open Wallet from your home screen
   6. Scan the QR from inside Wallet
-  Step 6 explicitly tells the user to use Wallet's `Escáner QR` / `QR Scan` option — not the iPhone
-  native camera — because scanning from the OS camera reopens Safari and loses the offer due to the
-  Safari ↔ standalone storage isolation. Title and subtitle updated to frame the wizard as the
-  credential activation flow rather than a generic install prompt. i18n keys renumbered `step1`–`step6`
-  in `en.json`, `es.json`, `ca.json`.
+     Step 6 explicitly tells the user to use Wallet's `Escáner QR` / `QR Scan` option — not the iPhone
+     native camera — because scanning from the OS camera reopens Safari and loses the offer due to the
+     Safari ↔ standalone storage isolation. Title and subtitle updated to frame the wizard as the
+     credential activation flow rather than a generic install prompt. i18n keys renumbered `step1`–`step6`
+     in `en.json`, `es.json`, `ca.json`.
 
 - **QR scan support for `authorization_request=` URLs (proximity verifier same-device flow)**
   (`credentials.page.ts`). `qrCodeEmit()` now extracts the inner `openid4vp://` URI from
@@ -158,17 +573,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.5.0] - 2026-04-28
 
 ### Added
+
 - Add tests for single-instance and auth service.
 - Unit tests for `CredentialOfferService` tenant validation.
 
 ### Fixed
+
 - **PasskeyPrf key storage** — wallet always uses `PasskeyPrf` key storage until EUDI-041 (key management) is ready, preventing fallback to weaker storage in server mode.
 - **Passkey handling for device registration** — improved passkey flow and user-facing error states during device registration to avoid dead-ends when the authenticator interaction fails.
 - **OTP input** — removed spurious `completed` event emission that triggered double-submit in some flows.
 - **`settings.page.spec.ts`** — added `ThemeService` stub (null snapshot) to `TestBed`. The spec was failing in CI with `NullInjectorError: No provider for HttpClient` since commit 596f3a0 because `ThemeService` injects `HttpClient` and the spec did not provide it.
 - **OID4VCI `redirect_uri` multi-tenant** — removed the build-time `OID4VCI_REDIRECT_URI` variable. The same bundle is deployed to all tenants and `redirect_uri` is now derived at runtime from `window.location.origin`. Root cause of the reported 504: the hardcoded host (`wallet-stg.altia.eudistack.net`) did not resolve in DNS after EUDI-094.
 - **Multi-tab (Single Instance)** — fixed infinite login redirection loop in the main tab when a second Wallet tab was opened; secondary tab now correctly detects the leader and halts cleanly without corrupting session tokens.
-
 
 ### Changed
 
@@ -179,7 +595,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Wallet API URLs derived from `window.location`** — `server_url` and `websocket_url` are now derived from the origin at runtime. This allows the same bundle to serve all tenants, assuming CloudFront/nginx proxies `/business-wallet/*` to the corresponding tenant's EBW.
 - **Multi-tab single-instance** — simplified single-instance handling: removed unreliable cross-tab focus attempts; duplicate tabs now show a clear "close this tab" UI; deep-links are processed by the already-open tab.
 
-
 ## [3.4.0] - 2026-04-28
 
 ### Added
@@ -188,13 +603,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Session master handling for PRF** — implements session master key derivation to reuse existing PRF material across operations, reducing the number of biometric prompts required per session.
 - **Registration flow `mode` parameter** — registration route accepts a `mode` query param to distinguish device-passkey vs browser flows; UI text updated accordingly for clearer user guidance.
 - **Settings → Wallet type badge** — la página de Ajustes muestra ahora un indicador del modo del wallet (`EUDIW` cuando `wallet_mode === 'browser'`, `Business Wallet` cuando `wallet_mode === 'server'`). Permite al usuario distinguir de un vistazo en qué tipo de wallet está operando, alineado con la documentación pública (`docs.eudistack.net`).
-  - `settings.page.{ts,html}` — nuevo `walletModeKey` y `<ion-badge>` justo encima del item *About*.
+  - `settings.page.{ts,html}` — nuevo `walletModeKey` y `<ion-badge>` justo encima del item _About_.
   - `i18n/{en,es,ca}.json` — claves `settings.wallet-mode-label`, `wallet-mode-eudiw`, `wallet-mode-business`.
 - **Settings → Knowledge base link** — item visible cuando el `theme.json` del tenant define `content.knowledgeBaseUrl`. Todos los tenants EUDIStack ahora apuntan a `https://docs.eudistack.net` (excepto DOME, que mantiene su KB propia).
 
 ### Fixed
 
-- **`appVersion` hardcoded a 3.0.0** — `environment{,.production}.ts` y `package.json` desincronizados desde hace varias releases; *About* siempre mostraba `v3.0.0` independientemente del bundle desplegado. Bumpeado a `3.4.0` en los tres ficheros (follow-up: derivar `appVersion` de `package.json` en build-time para no volver a olvidarlo).
+- **`appVersion` hardcoded a 3.0.0** — `environment{,.production}.ts` y `package.json` desincronizados desde hace varias releases; _About_ siempre mostraba `v3.0.0` independientemente del bundle desplegado. Bumpeado a `3.4.0` en los tres ficheros (follow-up: derivar `appVersion` de `package.json` en build-time para no volver a olvidarlo).
 - **`settings.page.spec.ts`** — añadido stub de `ThemeService` (snapshot null) en el `TestBed`. El spec fallaba en CI con `NullInjectorError: No provider for HttpClient` desde el commit 596f3a0 (knowledge base link), porque `ThemeService` inyecta `HttpClient` y el spec no lo proveía.
 
 ### Changed (Wallet API URLs derived from window.location — multi-tenant)
@@ -264,6 +679,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI and Deploy workflows sparse-checkout `eudistack-platform-dev` as a sibling so the sync step has a real source on every build.
 
 ### Added
+
 - Login and register with Wallet EBS in server mode
 
 ### Fixed
@@ -277,7 +693,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 8 legacy schemas absent from canonical source: `eu.europa.ec.eudi.{employee,pid,por}.1.{json,profile.json}` and orphan `learcredential.{employee,machine}.w3c.1.profile.json`.
 
 ## [3.0.2] - 2026-04-20
+
 ### Changed
+
 - Standardize query parameter detection to `credential_offer_uri` to align with OIDC4VCI standards.
 - Integrate `CredentialOfferService` to correctly parse and decode nested/double-encoded offer URIs.
 
@@ -325,21 +743,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Back the primary color for verify button (it changed the contrast color in the commit 46bfd21).
 - Remove --action-primary CSS variable and its hue/lightness computation function, using --primary-color instead.
 - Remove color variables from theme.service.ts that duplicated values already defined in variables.scss.
-- Add brand-independent neutral color variables	to variables.scss.
+- Add brand-independent neutral color variables to variables.scss.
 
 ### Removed
+
 - Removed several unused dependencies from the repository (cleaned up `package.json` and removed unused libraries):
-	- `@simplewebauthn/browser`
-	- `@zxing/browser`
-	- `wallet-ui`
-	- `@babel/plugin-proposal-decorators`
-	- `jasmine-spec-reporter`
-	- `ng-mocks`
+  - `@simplewebauthn/browser`
+  - `@zxing/browser`
+  - `wallet-ui`
+  - `@babel/plugin-proposal-decorators`
+  - `jasmine-spec-reporter`
+  - `ng-mocks`
 
 ### Fixed
+
 - Clean up mixed/incorrect translations across EN/ES/CA.
 - Fixed popup after vc delete.
-- Fix credential detail modal and verification modal closing incorrectly when the browser back button is pressed. 
+- Fix credential detail modal and verification modal closing incorrectly when the browser back button is pressed.
 - Dark theme.
 - Translate revoke state URL from vc detail modal to verification detail modal.
 - Fix minor spelling issues in es/ca/en.
@@ -359,6 +779,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.0.0] - 2026-03-24
 
 ### Added
+
 - Add `tenantDomain` field to Theme interface and expose it as a public getter in ThemeService.
 - Add per-context color tokens in ThemeService (header, card, button, auth overrides) for tenant-specific theming.
 - Add DoctorID credential type support (`doctorid.sd.1`) with type registry, schema registry, normalizer, and type map.
@@ -368,6 +789,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Align CI/CD workflows: build automatic (with Jest coverage), deploy and release manual.
 
 ### Changed
+
 - Move branding configuration (colors, logo, favicon, default language) from env.js to theme.json for multi-tenant runtime theming.
 - Remove branding variables from env.template.js, env.js, and global.d.ts Window type.
 - Replace hardcoded `action-primary` and `rgba(37,99,235,...)` colors with CSS custom properties across auth, home, tabs, vc-selector, and vc-view SCSS files.
@@ -379,238 +801,344 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Security
+
 - Add hex color validation in ThemeService to prevent CSS injection via theme.json.
 - Add relative path validation for favicon and PWA icon URLs to prevent external URL hijacking.
 - Type `updateCredentialStatus` chain with `LifeCycleStatus` instead of `string`, removing `as any` casts.
 - Remove direct signal input mutation in VcViewComponent; parent now owns state changes.
 
 ## [2.1.1](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.1.1)
+
 ### Changed
+
 - The OID4VCI and OID4VP flows use the Web Crypto API and the Indexed DB for the signature.
 
 ## [2.1.0](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.1.0)
+
 ### Added
+
 - Enable optional OID4VCI flow which generates signature Web Crypto API and stores it in the browser (dev-mode).
 
 ## [2.0.10](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.0.10)
+
 ### Changed
+
 - Make the selected tab bar button color depend on the secondary custom color.
 
 ## [2.0.9](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.0.9)
+
 ### Changed
+
 - Make primary and secondary ionic color variables fully configurable.
 
 ## [2.0.8](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.0.8)
+
 ### Changed
+
 - Configure logo and favicon using the `ASSETS_BASE_URL` environment variable combined with asset-specific paths.
 
 ## [2.0.7](https://github.com/in2workspace/in2-issuer-ui/releases/tag/v2.0.7)
+
 ### Added
+
 - Altia and ISBE favicons.
 
 ### Changed
+
 - Rename DOME favicon.
 
 ## [v2.0.6](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v2.0.6)
+
 ### Fixed
+
 - Add missing translations.
 
 ## [v2.0.5](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v2.0.5)
+
 ### Fixed
+
 - Add missing translations.
 
 ## [v2.0.4](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v2.0.4)
+
 ### Fixed
+
 - Fix "product offering" power action translation.
 
 ## [v2.0.3](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v2.0.3)
+
 ### Fixed
+
 - Add missing translations.
 
 ## [v2.0.2](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v2.0.2)
+
 ### Changed
+
 - Get PIN code description from i18n files, not from API websocket message.
 
 ## [v2.0.1](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v2.0.1)
+
 ### Added
+
 - Get default language from environment.
 
 ### Fixed
+
 - Add missing translations.
 
 ## [v2.0.0](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v2.0.0)
+
 ### Changed
+
 - Changed VC card view.
 - Request signature by credential procedure id.
 - Issuer field can be string or object.
 
 ### Added
+
 - Credential Status
 - Show LEARCredentialMachine mandatee details.
 
 ### Fixed
+
 - Don't show "Credentials not found" message while loading credentials.
 - Don't show error popup when credential signature request fails.
 - Fix error message when trying to login without credentials.
 
 ### Removed
+
 - Scan button in credentials page.
 
 ## [v1.9.9](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.9)
+
 ### Added
+
 - Added loading spinner for async operations.
 
 ### Changed
+
 - Don't close PIN popup on backdrop click.
 - Disable device selector while selected device is being switched.
 
 ### Fixed
+
 - Don't show credentials tab after clicking on scan button.
 - Avoid error when switching devices.
 - Show credentials list when scanner is open and credentials tab button is clicked.
 
 ## [v1.9.8](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.8)
+
 ### Fixed
+
 - Don't redirect to home when navigating right after login.
 
 ## [v1.9.7](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.7)
+
 ### Fixed
+
 - Fix error handling for auth errors
 
 ## [v1.9.6](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.6)
+
 ### Fixed
+
 - Fix delete credential endpoint.
 
 ## [v1.9.5](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.5)
+
 ### Fixed
+
 - In the credentials selector page, show the updated credentials list
 
 ### Changed
+
 - Enhance credentials selector page: show a text indicating to select a credential and show the list in the same order than in credentials page
 
 ## [v1.9.4](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.4)
+
 ### Changed
+
 - Changed env variable name: "WALLET_API_EXTERNAL_URL" > "WALLET_API_INTERNAL_URL"
 
 ## [v1.9.3](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.3)
+
 ### Fixed
+
 - Changed support URL from "-prd.org" to ".eu"
 
 ## [v1.9.2](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.2)
+
 ### Fixed
+
 - Don't show popup for "No internet connection" error
 
 ## [v1.9.1](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.1)
+
 ### Modified
+
 - Modify API env variables names
 
 ### Fixed
+
 - Don't enable logs if LOGS_ENABLED env var is false
 
 ## [v1.9.0](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.9.0)
+
 ### Modified
+
 - Modify configurable variables names, make some of them constants
 - Remove unused images and ebsi references
 
 ## [v1.8.0](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.8.0)
+
 ### Changed
+
 - Unsigned credentials are now automaticly updated if issuer has signed them
 - Added info button when credential is unsigned
 - Minor visual adjustments
+
 ### Fixed
+
 - Minor Fixes
 
 ## [v1.7.0](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.7.0)
+
 ### Added
+
 - Compatibility for LEARCredentialEmployee V2
 
 ## [v1.6.3](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.6.3)
+
 ### Fixed
+
 - Load translations on initialization
 
 ## [v1.6.2](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.6.2)
+
 ### Fixed
+
 - Camera selector
 - Deactivate camera when switching fast between tabs
 
 ## [v1.6.1](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.6.1)
+
 ### Added
+
 - Added customized colors for navbar and logo.
 
 ## [v1.5.0](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.5.0)
+
 ### Added
+
 - New route to execute same-device credential issuance workflow.
 - Timeout counter added to "Enter PIN" popup
 - More informative messages in case of error in the process of sending PIN to get credential
 
 ## [v1.4.0](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.4.0)
+
 ### Changed
+
 - Refactor architecture to standalone.
 - Changed callback page design.
+
 ### Fixed
+
 - Fixed the persistent callback page when state is invalid or other reasons.
 - Fixed routing issues.
 - Fixed some styles.
 
 ## [v1.3.7](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.3.7)
+
 ### Fixed
+
 - Added clean refresh to logout.
 
 ## [v1.3.6](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.3.6)
+
 ### Fixed
+
 - Add expired view for credentials when the credential is expired.
 
 ## [v1.3.5](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.3.5)
+
 ### Fixed
+
 - Successful login and Error messages style.
+
 ### Updated
+
 - Credential added message slyle.
 
 ## [v1.3.4](https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.3.4)
+
 ### Fixed
+
 - Refresh credentials list after deleting credential.
+
 ### Updated
+
 - No credentials and Settings views slyle.
 
 ## [v1.3.3]
+
 ### Fixed
+
 - The Error popup is shown when the user has no credentials.
 
 ## [v1.3.2] - ()
+
 ### Fixed
+
 - The Error popup is shown when the user has no credentials.
 - Expiration messages of credentials view are hidden
 
 ## [v1.3.1] - ()
+
 ### Fixed
+
 - Error popup isn't shown when an already used login QR is used.
 
 ## [v1.3.0] - ()
+
 ### Added
+
 - Pop up error message on unsuccessful login.
+
 ### Updated
+
 - Update an Angular and scanner version.
+
 ### Fixed
+
 - Translations
 - Multiple Vcs send.
 - Camera remains activated when leaving scanner page.
 
 ## [v1.2.0] - (https://github.com/in2workspace/in2-wallet-ui/releases/tag/v1.2.0)
+
 ### Added
+
 - New endpoint for credential retrieval.
 - User alerts for credential status.
 - Pop-up dialogs for user interactions.
 - Improved accessibility for QR components.
+
 ### Fixed
+
 - Error handling for 202 and 204 status codes.
 - Default camera selection issues.
 - Text corrections for better translations.
+
 ### Updated
+
 - Refined page refresh and redirection logic.
 - Enhanced button behavior and UI components.
 
 ## [1.1.0] - (https://github.com/in2workspace/wallet-ui/releases/tag/v1.1.0)
+
 ### Added
+
 - New oidc login connection config.
 - Support for GitHub Actions for CI/CD.
 - Added SonarCloud for code quality.
@@ -618,20 +1146,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Websocket connection.
 - Ebsi implementation.
 - CBOR presentation Credential support.
+
 ### Fixed
+
 - UI/UX issues.
 - SonarCloud issues.
 - Error handling issues.
 - Translation issues.
 - SonarCloud issues.
+
 ### Updated
+
 - Verifiable Credential Interface.
+
 ### Deleted
+
 - Registration
 - User DID management
 
 ## [1.0.0](https://github.com/in2workspace/wallet-ui/releases/tag/v1.0.0) - 2023-11-21
+
 ### Added
+
 - User registration
 - User login
 - User logout

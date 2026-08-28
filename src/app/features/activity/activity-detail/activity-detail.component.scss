@@ -1,0 +1,82 @@
+:host { display: block; }
+
+.modal-toolbar {
+  --background: var(--surface-card, #FFF);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.modal-title {
+  font-size: 18px; font-weight: 600;
+  color: var(--text-primary, #1A1A2E);
+}
+
+.close-icon { font-size: 20px; color: var(--text-primary, #1A1A2E); }
+
+.activity-detail-content {
+  --background: var(--surface-card, #FFF);
+  --padding-bottom: 16px;
+}
+
+.detail-row {
+  display: flex; flex-direction: column;
+  padding: 8px 12px;
+  margin-bottom: 2px;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--surface-muted, #EEF0F4);
+  }
+}
+
+.detail-label {
+  font-size: 12px; font-weight: 500;
+  color: var(--text-secondary, #6B7280);
+  margin-bottom: 2px;
+  text-transform: capitalize;
+}
+
+.detail-value {
+  font-size: 14px; font-weight: 500;
+  color: var(--text-primary, #1A1A2E);
+  word-break: break-word;
+}
+
+.result-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem; font-weight: 600;
+  background: var(--status-success-bg, #E3F6EA);
+  color: var(--status-success, #1F9254);
+}
+
+.shared-attributes-section { margin-top: 20px; }
+
+.section-title {
+  font-size: 14px; font-weight: 600;
+  color: var(--text-primary, #1A1A2E);
+  padding: 8px 12px;
+  margin: 0 0 12px;
+  border-bottom: 2px solid var(--border-strong);
+}
+
+// Natural page scroll only — no virtual scroll (YAGNI, EC-03).
+.shared-attributes-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.shared-attribute-item {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--surface-muted, #F3F4F6);
+  color: var(--text-primary, #1A1A2E);
+  font-size: 0.85rem;
+  font-family: var(--font-monospace, monospace);
+}
+
+.shared-attributes-empty {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #6B7280);
+  font-style: italic;
+  margin: 0;
+}

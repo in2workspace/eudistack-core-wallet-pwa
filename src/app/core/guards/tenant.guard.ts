@@ -1,11 +1,11 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { isKnownTenant } from '../constants/tenants.constants';
+import { TenantService } from '../services/tenant.service';
 
 export const tenantGuard: CanActivateFn = () => {
   const router = inject(Router);
 
-  if (isKnownTenant(window.location.hostname)) {
+  if (inject(TenantService).tenant() !== null) {
     return true;
   }
 

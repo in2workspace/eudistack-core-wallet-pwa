@@ -10,11 +10,14 @@ import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ToastServiceHandler } from '../../shared/services/toast.service';
 import { SERVER_PATH, WALLET_DISCOVERY_PATH } from '../constants/api.constants';
-import { environment } from 'src/environments/environment';
+import { UrlResolverService } from '../services/url-resolver.service';
+import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
 
 @Injectable()
 export class HttpErrorInterceptor implements HttpInterceptor {
   private readonly toastServiceHandler = inject(ToastServiceHandler);
+  private readonly urlResolver = inject(UrlResolverService);
+  private readonly sessionExpiryMarker = inject(SessionExpiryMarkerService);
 
   private logHandledSilentlyErrorMsg(errMsg: string) {
     console.error('Handled silently:', errMsg);
@@ -28,10 +31,20 @@ export class HttpErrorInterceptor implements HttpInterceptor {
 
     return next.handle(request).pipe(
       catchError((errorResp: HttpErrorResponse) => {
+        // authInterceptor already forced a logout for this exact 401 (expired/invalid
+        // session). Show the dedicated message once here instead of falling through
+        // to the generic branch below, which would duplicate it with an unrelated
+        // "Something went wrong" toast (previously: same 401 handled twice by two
+        // uncoordinated interceptors).
+        if (this.sessionExpiryMarker.isSessionExpired(errorResp)) {
+          this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.session-expired').subscribe();
+          return throwError(() => errorResp);
+        }
+
         // Normalize URL to ensure request params are not included in the conditionals below
         const urlObj = new URL(request.url, window.location.origin);
         const href = urlObj.href;
-        const isOwnBackend = href.startsWith(environment.server_url);
+        const isOwnBackend = href.startsWith(this.urlResolver.serverUrl());
         const pathname = urlObj.pathname;
 
         let errMessage =
@@ -58,7 +71,10 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           // REQUEST SIGNATURE endpoint
           pathname.endsWith(SERVER_PATH.CREDENTIALS_SIGNED_BY_ID) ||
           // Auth endpoints
-          pathname.startsWith('/api/v1/auth/');
+          pathname.startsWith('/api/v1/auth/') ||
+          // Hybrid signing endpoints — never toast or expose body (NFR-S-536-03 defense-in-depth)
+          pathname.endsWith(SERVER_PATH.HYBRID_SIGN_PREPARE) ||
+          pathname.endsWith(SERVER_PATH.HYBRID_SIGN_SUBMIT);
 
         if (shouldHandleSilently) {
           this.logHandledSilentlyErrorMsg(errMessage);

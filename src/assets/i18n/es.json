@@ -52,6 +52,17 @@
   "language-selector": {
     "title": "Selector de idioma"
   },
+  "ui-translation": {
+    "title": "¿No encuentras tu idioma?",
+    "description": "Traduce los textos de la interfaz a tu idioma con el traductor de tu propio navegador, sin conexión a internet. Es una ayuda automática, no una traducción profesional: tus credenciales nunca se traducen ni se envían a ningún servicio de traducción.",
+    "toggle-label": "Activar traducción automática",
+    "target-language-label": "Traducir a",
+    "state-preparing": "Preparando la traducción…",
+    "state-unavailable": "No disponible en este dispositivo",
+    "state-unavailable-hint": "Tu navegador no ofrece traducción integrada en el dispositivo. Podrás usar esta función cuando esté disponible.",
+    "state-error": "No se ha podido preparar la traducción",
+    "retry": "Reintentar"
+  },
   "logs-selector": {
     "title": "Ver logs",
     "send": "Enviar logs",
@@ -67,37 +78,31 @@
   "mailto_permission_alert": "Por favor, asegúrate de que tienes los permisos necesarios para enviar correos electrónicos con tu aplicación de correo predeterminada. Si el servicio de correo no se abre, es probable que se deba a restricciones de permisos.",
   "auth": {
     "login": {
-      "title": "Bienvenido",
+      "title": "Registra tu dispositivo",
+      "title-welcome": "Bienvenido",
       "subtitle": "Usa tu passkey para acceder de forma segura",
+      "create-passkey-subtitle": "Tu passkey mantiene tu wallet segura. La usarás para iniciar sesión.",
       "passkey-button": "Iniciar sesión con Passkey",
-      "enter-email": "Introduce tu email para continuar",
+      "enter-email": "Introduce tu email para empezar",
       "verify-passkey": "Verifica tu identidad con tu passkey"
     },
     "register": {
-      "title": "Crear cuenta",
-      "subtitle": "Introduce tu email para empezar",
-      "step-email": "Email",
-      "step-verify": "Verificar",
-      "email": "Email",
       "email-placeholder": "Introduce tu email",
       "send-code": "Enviar código de verificación",
       "code-sent": "Hemos enviado un código de verificación a tu email",
-      "code": "Código de verificación",
-      "code-placeholder": "Introduce el código de 6 dígitos",
       "verify": "Verificar",
       "change-email": "Cambiar email",
-      "passkey-subtitle": "Crea una passkey para configurar tu wallet de forma segura",
-      "create-wallet": "Crear Wallet",
       "install-title": "Instalar la App",
       "install-subtitle": "Para la mejor experiencia y acceso offline, instala la app del wallet en tu dispositivo.",
       "install-button": "Instalar App",
-      "continue-browser": "Continuar en el navegador",
-      "already-registered": "¿Ya tienes una cuenta? Inicia sesión"
+      "continue-browser": "Continuar en el navegador"
     },
     "passkey": {
       "title": "Configurar Passkey",
       "description": "Crea una passkey para iniciar sesión de forma segura sin contraseña. Tu dispositivo usará biometría o un PIN para verificar tu identidad.",
       "register-button": "Crear Passkey",
+      "device-name-label": "Nombre del dispositivo",
+      "device-name-placeholder": "Nombre del dispositivo",
       "email-verified": "Email verificado",
       "success": "¡Passkey registrada correctamente!",
       "status-connecting": "Preparando...",
@@ -110,17 +115,18 @@
     },
     "errors": {
       "too-many-attempts": "Demasiados intentos. Por favor, inténtalo más tarde.",
-      "too-many-attempts-otp": "Demasiados intentos incorrectos. Por favor, solicita un nuevo código."
+      "too-many-attempts-otp": "Demasiados intentos incorrectos. Por favor, solicita un nuevo código.",
+      "passkey-register-failed": "No se ha podido registrar este dispositivo. Inténtalo de nuevo."
     }
+  },
+  "otp-input": {
+    "digit-aria": "Dígito {{index}} de {{length}}"
   },
   "login": {
     "title": "Login",
     "login": "Login",
     "register": "¿No estás registrado? Regístrate",
     "error": "Nombre de usuario o contraseña incorrectos"
-  },
-  "privacy-policy": {
-    "title": "Política de Privacidad"
   },
   "settings": {
     "title": "Configuración",
@@ -135,8 +141,47 @@
     "wallet-mode-eudiw": "EUDIW",
     "wallet-mode-business": "Business Wallet"
   },
-  "terms-of-use": {
-    "title": "Términos de Uso"
+  "about": {
+    "section-info": "Información de la aplicación",
+    "section-legal": "Legal",
+    "section-support": "Soporte",
+    "build": "Build",
+    "opens-new-window": "(se abre en una ventana nueva)",
+    "legal": {
+      "terms-of-service": "Términos de servicio",
+      "privacy-policy": "Política de privacidad",
+      "legal-notice": "Aviso legal",
+      "licenses": "Licencias de software de código abierto"
+    },
+    "support": {
+      "help-center": "Centro de ayuda",
+      "email": "Contactar por email",
+      "email-copy": "Copiar dirección",
+      "email-copied": "Dirección copiada",
+      "report-issue": "Reportar incidencia",
+      "offline": "Sin conexión — esta acción requiere red"
+    },
+    "pii-warning": {
+      "title": "El repositorio de incidencias es público",
+      "description": "No incluyas datos personales ni capturas con información identificable. Al continuar se abrirá el repositorio público en una pestaña nueva.",
+      "cancel": "Cancelar",
+      "confirm": "Continuar"
+    },
+    "legal-document": {
+      "back": "Volver",
+      "loading": "Cargando documento...",
+      "error-title": "No se ha podido cargar el documento",
+      "error-description": "Comprueba tu conexión e inténtalo de nuevo.",
+      "retry": "Reintentar",
+      "fallback-language-notice": "Este documento se muestra en su idioma original (español) porque todavía no está traducido a tu idioma."
+    },
+    "oss-licenses": {
+      "title": "Licencias de software de código abierto",
+      "count-suffix": "dependencias",
+      "empty-title": "Listado no disponible",
+      "empty-description": "No hemos podido cargar el listado de licencias en este momento.",
+      "contact-support": "Contacta con soporte"
+    }
   },
   "vc-selector": {
     "select-cred": "Selecciona una Credencial",
@@ -269,6 +314,7 @@
   },
   "errors": {
     "default": "Algo ha salido mal. Si vuelve a ocurrir, contacta con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
+    "session-expired": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
     "key-storage-unavailable": "Este navegador no puede guardar claves de forma segura. No podrás activar ni usar credenciales en este dispositivo.",
     "key-storage-public-only": "Este navegador no puede guardar claves de forma segura. Puedes añadir credenciales, pero podrían dejar de funcionar al cerrar o recargar la app.",
     "credential-validation-failed": "No hemos podido validar la credencial. Inténtalo de nuevo.",
@@ -331,21 +377,54 @@
       "type": "Error de configuración: la solicitud de la cámara no es válida. Intenta actualizar la página o revisar la configuración de la cámara.",
       "not-supported": "Tu navegador no admite el acceso a la cámara. Considera utilizar un navegador diferente.",
       "default": "Error inesperado. Revisa los permisos de tu navegador y asegúrate de que ninguna otra aplicación esté utilizando la cámara. Intenta actualizar la página."
-    }
+    },
+    "prf-unsupported": "Tu autenticador no soporta PRF. Este tenant requiere una passkey compatible con PRF para completar el proceso de activación. Utiliza otro dispositivo o contacta con tu administrador.",
+    "prf-inconclusive": "No se ha podido verificar si tu autenticador soporta PRF. Inténtalo de nuevo o utiliza otro dispositivo."
   },
   "activity": {
     "title": "Actividad",
+    "filter-all": "Todas",
+    "filter-issued": "Recibidas",
+    "filter-presented": "Presentadas",
+    "filter-deleted": "Eliminadas",
     "empty": "Sin actividad",
     "empty-hint": "La actividad de tus credenciales aparecerá aquí",
+    "empty-issued": "Sin credenciales recibidas",
+    "empty-presented": "Sin credenciales presentadas",
+    "empty-deleted": "Sin credenciales eliminadas",
     "clear": "Borrar",
     "clear-confirm": "¿Borrar toda la actividad?",
+    "clear-title": "¿Borrar tu historial de actividad?",
+    "clear-description": "Esto eliminará permanentemente todos los registros de actividad de tu wallet. Esta acción no se puede deshacer.",
+    "clear-cancel": "Cancelar",
+    "clear-action": "Sí, borrar",
+    "export": "Exportar historial",
+    "csv-header-type": "Tipo",
+    "csv-header-credential": "Credencial",
+    "csv-header-counterparty": "Contraparte",
+    "csv-header-date": "Fecha",
+    "csv-header-details": "Detalle",
+    "export-error": "No se pudo exportar el historial",
     "type-issued": "Credencial recibida",
     "type-presented": "Credencial presentada",
     "type-deleted": "Credencial eliminada",
+    "type-unknown": "Actividad",
+    "subtitle-issued": "Recibido de {{counterparty}}",
+    "subtitle-presented": "Presentado a {{counterparty}}",
     "time-now": "Ahora",
     "time-minutes": "Hace {{count}}min",
     "time-hours": "Hace {{count}}h",
-    "time-days": "Hace {{count}}d"
+    "time-days": "Hace {{count}}d",
+    "detail-close": "Cerrar",
+    "detail-field-credential": "Credencial",
+    "detail-field-counterparty-issued": "Recibido de",
+    "detail-field-counterparty-presented": "Presentado a",
+    "detail-field-date": "Fecha",
+    "detail-field-result": "Resultado",
+    "detail-result-completed": "Completada",
+    "detail-field-details": "Detalles",
+    "detail-shared-attributes-title": "Atributos compartidos",
+    "detail-shared-attributes-empty": "No se registraron atributos compartidos para esta presentación."
   },
   "devices": {
     "settings-link": "Mis Dispositivos",
@@ -357,6 +436,7 @@
     "rename-aria": "Renombrar esta passkey",
     "delete-header": "Eliminar Passkey",
     "delete-message": "¿Estás seguro de que quieres eliminar esta passkey? Si es la passkey de tu dispositivo actual, no podrás iniciar sesión desde este navegador.",
+    "delete-self-message": "Esta es la passkey del dispositivo que estás usando ahora mismo. Revocarla cerrará tu sesión de inmediato y tendrás que volver a completar el registro de dispositivo para acceder de nuevo a tu wallet desde aquí.",
     "delete-confirm": "Eliminar",
     "delete-aria": "Eliminar esta passkey",
     "cancel": "Cancelar",
@@ -365,7 +445,10 @@
     "last-passkey-error": "No puedes eliminar tu última passkey. Registra un nuevo dispositivo primero.",
     "load-error": "No se pudieron cargar tus dispositivos. Inténtalo de nuevo.",
     "retry": "Reintentar",
-    "no-passkeys": "No hay passkeys registradas."
+    "no-passkeys": "No hay passkeys registradas.",
+    "last-used": "Último uso: {{date}}",
+    "last-used-never": "Sin uso registrado",
+    "this-device": "Este dispositivo"
   },
   "verification": {
     "button": "Verificar Credencial",
@@ -375,13 +458,15 @@
     "result-invalid": "La credencial tiene problemas",
     "result-revoked": "Credencial revocada",
     "result-expired": "Credencial caducada",
+    "result-unknown": "Por un problema ajeno a esta aplicación no se ha podido comprobar el estado de revocación. Vuelve a intentarlo dentro de unos minutos.",
     "check-issuer": "Emisor",
     "check-issuance": "Fecha de emisión",
     "check-expiration": "Fecha de expiración",
     "check-status": "Estado de revocación",
     "detail-revoked": "Revocada",
     "detail-no-status-list": "Sin lista de estado",
-    "detail-no-expiry": "Sin fecha de caducidad"
+    "detail-no-expiry": "Sin fecha de caducidad",
+    "detail-check-error": "No se ha podido verificar"
   },
   "confirmation": {
     "header": "¿Enviar Credencial?",
@@ -449,5 +534,22 @@
     "step2-detail": "Busca el icono de compartir (cuadro con una flecha) en la parte inferior de Safari",
     "step1": "Toca los tres puntos en Safari",
     "step1-detail": "Búscalos al lado de la barra de navegación para abrir el menú de opciones"
+  },
+  "hybrid-onboarding": {
+    "title": "Firma desde múltiples dispositivos",
+    "subtitle": "Este tenant usa un gestor de claves híbrido. Las credenciales se firman con una passkey vinculada a este dispositivo. Si intentas firmar desde otro dispositivo, la operación fallará.",
+    "warning-icon-aria": "Advertencia de limitación multi-dispositivo",
+    "bullet-1": "La clave de firma queda vinculada a este dispositivo",
+    "bullet-2": "No podrás presentar credenciales desde otro dispositivo",
+    "bullet-3": "Si cambias de dispositivo, contacta con soporte",
+    "accept": "Entendido, continuar",
+    "learn-more": "¿Por qué esta limitación?",
+    "learn-more-body": "Este tenant usa passkeys con extensión PRF para proteger la clave privada del titular. La passkey solo existe en este dispositivo; por seguridad, no se puede transferir a otro.",
+    "learn-more-close": "Entendido"
+  },
+  "hybrid-errors": {
+    "wrap-unavailable-title": "No se puede firmar en este dispositivo",
+    "wrap-unavailable-body": "La clave de firma fue creada en otro dispositivo y no puede usarse aquí. Usa el dispositivo original para presentar tus credenciales.",
+    "wrap-unavailable-cta": "Cerrar"
   }
 }

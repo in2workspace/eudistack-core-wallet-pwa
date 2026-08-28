@@ -8,6 +8,8 @@
  *  T-auth-4 — /api/v1/auth/passkeys includes Authorization header (exception)
  *  T-auth-5 — external URL passes through without Authorization header
  *  T-auth-6 — /assets/* bypasses AuthService (ThemeService bootstrap timing fix)
+ *  T-auth-7 — 401 response on own-backend triggers forceLogout
+ *  T-auth-8 — 401 response on own-backend marks the error via SessionExpiryMarkerService
  */
 
 import { TestBed } from '@angular/core/testing';
@@ -15,11 +17,11 @@ import {
   HttpTestingController,
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpStatusCode, provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import { AuthService } from '../services/auth.service';
+import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
 import { authInterceptor } from './auth.interceptor';
-import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import { environment } from 'src/environments/environment';
 
 const OWN_BACKEND = environment.server_url || 'http://localhost:8083';
@@ -40,6 +42,7 @@ describe('authInterceptor', () => {
   let httpClient: HttpClient;
   let httpMock: HttpTestingController;
   let mockAuth: MockAuthService;
+  let sessionExpiryMarker: SessionExpiryMarkerService;
 
   beforeEach(() => {
     mockAuth = new MockAuthService();
@@ -54,12 +57,13 @@ describe('authInterceptor', () => {
 
     httpClient = TestBed.inject(HttpClient);
     httpMock = TestBed.inject(HttpTestingController);
+    sessionExpiryMarker = TestBed.inject(SessionExpiryMarkerService);
   });
 
   afterEach(() => httpMock.verify());
 
   it('T-auth-1: well-known endpoint passes through without Authorization header', () => {
-    const url = `${OWN_BACKEND}${WALLET_DISCOVERY_PATH}`;
+    const url = `${OWN_BACKEND}/business-wallet/.well-known/wallet-config-metadata`;
 
     httpClient.get(url).subscribe();
 
@@ -121,5 +125,32 @@ describe('authInterceptor', () => {
     const req = httpMock.expectOne(url);
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({});
+  });
+
+  it('T-auth-7: 401 response on own-backend triggers forceLogout', () => {
+    const forceLogoutSpy = jest.spyOn(mockAuth, 'forceLogout');
+    mockAuth.setToken('expired-jwt');
+    const url = `${OWN_BACKEND}/api/v1/credentials`;
+
+    httpClient.get(url).subscribe({ error: () => {} });
+
+    const req = httpMock.expectOne(url);
+    req.flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
+
+    expect(forceLogoutSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('T-auth-8: 401 response on own-backend marks the error as session-expired', () => {
+    mockAuth.setToken('expired-jwt');
+    const url = `${OWN_BACKEND}/api/v1/credentials`;
+    let capturedError: HttpErrorResponse | undefined;
+
+    httpClient.get(url).subscribe({ error: (e) => { capturedError = e; } });
+
+    const req = httpMock.expectOne(url);
+    req.flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
+
+    expect(capturedError).toBeTruthy();
+    expect(sessionExpiryMarker.isSessionExpired(capturedError as HttpErrorResponse)).toBe(true);
   });
 });

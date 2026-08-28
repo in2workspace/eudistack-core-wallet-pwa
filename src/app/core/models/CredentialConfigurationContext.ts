@@ -5,4 +5,5 @@ export interface CredentialConfigurationContext {
   configuration: CredentialsConfigurationsSuppported;
   format: string;
   isCryptographicBindingSupported: boolean;
+  supportedAlgs: string[];
 }

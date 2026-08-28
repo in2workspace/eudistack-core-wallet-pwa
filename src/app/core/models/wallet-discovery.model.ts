@@ -2,8 +2,8 @@
  * Domain models for wallet mode discovery (EUDISTACK-502).
  *
  * These types are pure domain — no framework imports. They model the result of
- * querying GET /business-wallet/.well-known/wallet-config-metadata (EUDISTACK-412)
- * and the fallback path when that endpoint is unavailable.
+ * querying the wallet-config-metadata well-known endpoint (EUDISTACK-412).
+ * Falls back when that endpoint is unavailable.
  */
 
 /**

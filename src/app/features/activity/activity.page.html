@@ -2,21 +2,33 @@
   <ion-grid class="settings-pages-grid">
     <div class="activity-header">
       <b class="settings-pages-title">{{ "activity.title" | translate }}</b>
-      @if (entries.length > 0) {
-        <ion-button fill="clear" size="small" (click)="confirmClear()" class="clear-btn">
-          <ion-icon name="trash-outline" slot="start"></ion-icon>
-          {{ "activity.clear" | translate }}
-        </ion-button>
+      @if (entries().length > 0) {
+        <div class="activity-header-actions">
+          <ion-button fill="clear" (click)="exportHistory()" class="export-btn">
+            {{ "activity.export" | translate }}
+          </ion-button>
+          <ion-button fill="clear" color="danger" (click)="confirmClear()" class="clear-btn">
+            {{ "activity.clear" | translate }}
+          </ion-button>
+        </div>
       }
     </div>
 
-    @if (loading) {
+    <ion-segment scrollable [value]="activeFilter()" (ionChange)="setFilter($event.detail.value)" class="activity-filter">
+      @for (filter of filters; track filter) {
+        <ion-segment-button [value]="filter">
+          <ion-label>{{ "activity.filter-" + filter | translate }}</ion-label>
+        </ion-segment-button>
+      }
+    </ion-segment>
+
+    @if (loading()) {
       <div class="state-container">
         <ion-spinner name="crescent"></ion-spinner>
       </div>
     }
 
-    @if (!loading && entries.length === 0) {
+    @if (!loading() && entries().length === 0) {
       <div class="state-container">
         <ion-icon name="time-outline" class="empty-icon"></ion-icon>
         <ion-text color="medium">{{ "activity.empty" | translate }}</ion-text>
@@ -24,19 +36,45 @@
       </div>
     }
 
-    @if (!loading && entries.length > 0) {
-      <ion-list class="activity-list">
-        @for (entry of entries; track entry.id) {
-          <ion-item class="activity-item">
-            <span class="activity-dot activity-dot--{{ entry.type }}" slot="start"></span>
-            <ion-label>
+    @if (!loading() && entries().length > 0 && filteredEntries().length === 0 && activeFilter() !== 'all') {
+      <div class="state-container">
+        <ion-icon name="time-outline" class="empty-icon"></ion-icon>
+        <ion-text color="medium">{{ "activity.empty-" + activeFilter() | translate }}</ion-text>
+      </div>
+    }
+
+    @if (!loading() && filteredEntries().length > 0) {
+      <div class="activity-list">
+        @for (entry of filteredEntries(); track entry.id) {
+          <!--
+            EUD-142 (AD-4): credentialName and the counterparty name are
+            credential/requester-provenance content — shielded from the
+            browser's page translation like the detail view. The aria-label
+            deliberately omits credentialName (translatable attributes are
+            translated too) rather than relying on inheritance.
+          -->
+          <div
+            class="activity-card activity-card--{{ entry.type }}"
+            role="button"
+            tabindex="0"
+            [attr.aria-label]="'activity.type-' + entry.type | translate"
+            (click)="openDetail(entry)"
+            (keydown)="onEntryKeydown($event, entry)"
+          >
+            <div class="activity-card-content">
               <h2>{{ "activity.type-" + entry.type | translate }}</h2>
-              <p>{{ entry.credentialName }}{{ entry.counterparty ? ' — ' + entry.counterparty : '' }}</p>
-            </ion-label>
-            <ion-note slot="end" class="activity-time">{{ formatTime(entry.timestamp) }}</ion-note>
-          </ion-item>
+              @let counterparty = formatCounterparty(entry);
+              @if (counterparty && entry.type !== 'deleted') {
+                <p class="activity-subtitle" [attr.translate]="'no'">
+                  {{ "activity.subtitle-" + entry.type | translate: { counterparty: counterparty } }}
+                </p>
+              }
+              <p class="activity-credential-name" [attr.translate]="'no'">{{ entry.credentialName }}</p>
+            </div>
+            <span class="activity-time" [title]="formatAbsoluteTime(entry.timestamp)">{{ formatTime(entry.timestamp) }}</span>
+          </div>
         }
-      </ion-list>
+      </div>
     }
   </ion-grid>
 </ion-content>

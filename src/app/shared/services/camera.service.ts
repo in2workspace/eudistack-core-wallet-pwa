@@ -200,12 +200,18 @@ public async getCameraFromAvailables(): Promise<MediaDeviceInfo|'NO_CAMERA_AVAIL
   }
 
   public alertCameraErrorsByErrorName(errMsg: string) {
+    // Permission denied is user-recoverable (grant it and retry) — a centered
+    // red error modal reads as "something broke". A dismissible top toast is
+    // enough here; every other camera failure keeps the blocking alert.
+    if (errMsg.startsWith('NotAllowedError')) {
+      this.toastService.showInfoToastByTranslateLabel('errors.camera.not-allowed');
+      return;
+    }
+
     let errorLabel = 'errors.camera.default';
-  
+
     if (errMsg.startsWith('NotReadableError')) {
       errorLabel = 'errors.camera.not-readable';
-    } else if (errMsg.startsWith('NotAllowedError')) {
-      errorLabel = 'errors.camera.not-allowed';
     } else if (errMsg.startsWith('NotFoundError') || errMsg.startsWith('CustomNoAvailable')) {
       errorLabel = 'errors.camera.not-found';
     } else if (errMsg.startsWith('OverconstrainedError')) {
