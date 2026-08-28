@@ -68,7 +68,6 @@ export class AuthorizationRequestService {
 
   private parseAuthorizationRequest(jwt: string): AuthorizationRequestOID4VP {
     const payload = this.jwtService.extractJwtPayload(jwt) as Record<string, unknown>;
-
     const scopeRaw = payload['scope'];
     let scope: string[] | undefined;
     if (typeof scopeRaw === 'string') {
@@ -92,6 +91,7 @@ export class AuthorizationRequestService {
       nonce: payload['nonce'] as string,
       responseUri: (payload['response_uri'] ?? payload['redirect_uri']) as string,
       dcqlQuery,
+      clientMetadata: payload['client_metadata'] as any
     };
   }
 }

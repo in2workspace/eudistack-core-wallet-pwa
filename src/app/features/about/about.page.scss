@@ -1,0 +1,208 @@
+@use 'responsive' as *;
+
+// ---------------------------------------------------------------------------
+// About page — reuses the visual patterns already implemented in Settings
+// (settings-group / settings-item / icon-badge / settings-info-panel).
+// ---------------------------------------------------------------------------
+
+:host {
+  --settings-icon-size: 30px;
+  --settings-icon-radius: 7px;
+  --settings-item-height: 48px;
+}
+
+.about-page {
+  --background: var(--surface-page);
+}
+
+.about-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: var(--space-md) var(--space-md) var(--space-xl);
+}
+
+.about-title {
+  @include fluid-type(1.375rem, 1.75rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 12px 4px 20px;
+  line-height: 1.2;
+}
+
+.about-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin: 0 4px 8px;
+}
+
+.about-offline-notice {
+  font-size: 13px;
+  color: var(--status-warning);
+  margin: 0 4px 12px;
+}
+
+.about-selectable {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+// -- Grouped card -------------------------------------------------------------
+
+.settings-group {
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.settings-list {
+  padding: 0;
+  margin: 0;
+  background: transparent;
+
+  --ion-item-background: transparent;
+}
+
+.item-divider {
+  height: 1px;
+  background: var(--border-default);
+  margin-left: clamp(48px, 14vw, 60px);
+  margin-right: 0;
+}
+
+.settings-item {
+  --min-height: var(--settings-item-height);
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --inner-padding-end: 0;
+  --border-width: 0;
+  --inner-border-width: 0;
+  --border-color: transparent;
+  --background-hover: var(--action-secondary);
+  --background-activated: var(--action-secondary-hover);
+  --transition: background-color 0.15s ease;
+
+  cursor: pointer;
+
+  ion-label {
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  &--static {
+    cursor: default;
+  }
+}
+
+.chevron {
+  font-size: 14px;
+  color: var(--text-disabled);
+  margin-inline-start: 4px;
+}
+
+.icon-badge {
+  width: var(--settings-icon-size);
+  height: var(--settings-icon-size);
+  min-width: var(--settings-icon-size);
+  border-radius: var(--settings-icon-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline-end: 14px;
+
+  ion-icon {
+    font-size: 18px;
+    color: var(--neutral-white);
+  }
+
+  &--blue   { background-color: var(--status-info); }
+  &--purple { background-color: #8B5CF6; }
+  &--green  { background-color: var(--status-success); }
+  &--orange { background-color: var(--status-warning); }
+}
+
+.settings-desc {
+  font-size: 12px !important;
+  color: var(--text-secondary) !important;
+  margin-top: 2px;
+}
+
+.settings-info-panel {
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  padding: 0 16px;
+
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 48px;
+  }
+
+  &__divider {
+    height: 1px;
+    background: var(--border-default);
+  }
+
+  &__label {
+    font-size: 16px;
+    color: var(--text-secondary);
+  }
+
+  &__value {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+}
+
+// -- Email item: mailto link + copy button, two independent controls ---------
+
+.about-email-link {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 16px;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+  }
+}
+
+.about-copy-btn {
+  background: transparent;
+  border: none;
+  // No right padding: the icon sits flush at the item's end boundary, exactly where
+  // the plain "chevron" icons on the help-center/report-issue rows sit. The extra
+  // width/height only grows the touch target to the left, never shifting the icon.
+  padding: 8px 0 8px 8px;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-md, 8px);
+
+  &:hover {
+    background: var(--action-secondary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--status-info);
+    outline-offset: 2px;
+  }
+
+  ion-icon {
+    font-size: 18px;
+  }
+}

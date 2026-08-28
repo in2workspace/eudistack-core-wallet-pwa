@@ -39,6 +39,12 @@ ion-alert.custom-alert-error .alert-button.sc-ion-alert-ios {
   color: var(--custom-alert-error-text) !important;
 }
 
+ion-alert .alert-button.danger {
+  color: var(--status-error) !important;
+  font-weight: 600;
+  text-transform: none;
+}
+
 ion-alert.custom-alert-error .alert-message ion-icon {
   width: 55px;
   font-size: 38px;
@@ -139,6 +145,17 @@ ion-modal.credential-confirmation-modal {
   --border-radius: 0;
 }
 
+// Confirm modal — transparent wrapper so the component controls its own backdrop
+ion-modal.confirm-modal {
+  --background: transparent;
+  --box-shadow: none;
+  --width: 100%;
+  --height: 100%;
+  --max-width: 100%;
+  --max-height: 100%;
+  --border-radius: 0;
+}
+
 // Modern credential toast notification
 .credential-toast {
   position: fixed;
@@ -167,6 +184,16 @@ ion-modal.credential-confirmation-modal {
 
   &[data-variant="error"] {
     background: var(--status-error, #DC2626);
+    color: var(--primary-contrast-color, #fff);
+  }
+
+  &[data-variant="warning"] {
+    background: var(--status-warning, #D97706);
+    color: var(--primary-contrast-color, #fff);
+  }
+
+  &[data-variant="info"] {
+    background: var(--status-info, #2563EB);
     color: var(--primary-contrast-color, #fff);
   }
 

@@ -1,0 +1,330 @@
+name: ci-cd
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.github/**'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      # Editing the Trivy allow-list is a policy change, never a deployment
+      - 'config/trivy/**'
+
+env:
+  PROJECT_NAME: eudistack
+  REGION_CODE: ew1
+  SPA_PREFIX: wallet
+
+permissions:
+  contents: write
+  packages: write
+  actions: write
+
+jobs:
+  sonar:
+    name: SonarCloud Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm run test:ci
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: SonarCloud Quality Gate
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  ci:
+    name: Build > Archive artifact
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Get Project Metadata
+        id: metadata
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Check Release Does Not Exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="v${{ env.VERSION }}"
+          if gh release view "${TAG}" --repo "${{ github.repository }}" > /dev/null 2>&1; then
+            echo "::error::Release ${TAG} already exists. Bump the version before merging."
+            exit 1
+          fi
+          echo "Release ${TAG} does not exist — proceeding."
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate CycloneDX SBOM
+        run: npm run sbom
+
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom-v${{ env.VERSION }}
+          path: build/sbom/sbom.json
+          retention-days: 90
+
+      - name: Build
+        run: |
+          npm run build -- \
+            --output-path=./dist/out \
+            --configuration "production" \
+            --base-href=/${SPA_PREFIX}/ \
+            --deploy-url=/${SPA_PREFIX}/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: spa-build-${{ github.sha }}
+          path: dist/out/browser/
+          retention-days: 1
+
+  cd-stg:
+    name: Deploy to Staging
+    needs: ci
+    runs-on: ubuntu-latest
+    environment:
+      name: stg
+    env:
+      ENVIRONMENT: stg
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: spa-build-${{ github.sha }}
+          path: dist/out/browser/
+
+      - name: Generate env.js
+        env:
+          WALLET_MODE: ${{ vars.WALLET_MODE }}
+          PREFERRED_GRANT: ${{ vars.PREFERRED_GRANT }}
+          LOGS_ENABLED: ${{ vars.LOGS_ENABLED }}
+          WIA: ${{ secrets.WIA }}
+          WIA_INSTANCE_KEY_JWK: ${{ secrets.WIA_INSTANCE_KEY_JWK }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y gettext-base
+
+          if [ -f dist/out/browser/assets/env.template.js ]; then
+            envsubst < dist/out/browser/assets/env.template.js > dist/out/browser/assets/env.js
+            echo "Generated env.js for ${ENVIRONMENT}"
+          else
+            echo "::error::env.template.js not found"
+            exit 1
+          fi
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Sync build to S3
+        env:
+          S3_BUCKET: ${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }}-s3-${{ env.REGION_CODE }}-spa
+        run: |
+          set -euo pipefail
+
+          aws s3 sync dist/out/browser/ "s3://${S3_BUCKET}/${SPA_PREFIX}/" \
+            --delete \
+            --exclude "index.html" \
+            --exclude "assets/env.js" \
+            --cache-control "public, max-age=31536000, immutable"
+
+          aws s3 cp dist/out/browser/index.html "s3://${S3_BUCKET}/${SPA_PREFIX}/index.html" \
+            --cache-control "no-store" \
+            --content-type "text/html"
+
+          aws s3 cp dist/out/browser/assets/env.js "s3://${S3_BUCKET}/${SPA_PREFIX}/assets/env.js" \
+            --cache-control "no-store" \
+            --content-type "application/javascript"
+
+      - name: Invalidate CloudFront distributions
+        env:
+          CF_COMMENT_PREFIX: ${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }}-cdn-${{ env.REGION_CODE }}-
+          S3_BUCKET: ${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }}-s3-${{ env.REGION_CODE }}-spa
+        run: |
+          set -euo pipefail
+
+          DIST_IDS=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?starts_with(Comment, '${CF_COMMENT_PREFIX}')].Id" \
+            --output text)
+
+          if [ -z "${DIST_IDS}" ]; then
+            echo "::error::No CloudFront distributions found for prefix '${CF_COMMENT_PREFIX}'"
+            exit 1
+          fi
+
+          echo "### 🚀 Deployed to Staging" >> $GITHUB_STEP_SUMMARY
+          echo "- **Bucket:** s3://${S3_BUCKET}/${SPA_PREFIX}/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Invalidations:**" >> $GITHUB_STEP_SUMMARY
+          for DIST_ID in ${DIST_IDS}; do
+            aws cloudfront create-invalidation \
+              --distribution-id "${DIST_ID}" \
+              --paths "/${SPA_PREFIX}/*" >/dev/null
+            echo "  - ${DIST_ID}" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "### ✅ Staging deployment complete" >> $GITHUB_STEP_SUMMARY
+
+  cd-pro:
+    name: Deploy to Production
+    needs: [ci, cd-stg]
+    runs-on: ubuntu-latest
+    environment:
+      name: pro
+    env:
+      ENVIRONMENT: pro
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: spa-build-${{ github.sha }}
+          path: dist/out/browser/
+
+      - name: Generate env.js
+        env:
+          WALLET_MODE: ${{ vars.WALLET_MODE }}
+          PREFERRED_GRANT: ${{ vars.PREFERRED_GRANT }}
+          LOGS_ENABLED: ${{ vars.LOGS_ENABLED }}
+          WIA: ${{ secrets.WIA }}
+          WIA_INSTANCE_KEY_JWK: ${{ secrets.WIA_INSTANCE_KEY_JWK }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y gettext-base
+
+          if [ -f dist/out/browser/assets/env.template.js ]; then
+            envsubst < dist/out/browser/assets/env.template.js > dist/out/browser/assets/env.js
+            echo "Generated env.js for ${ENVIRONMENT}"
+          else
+            echo "::error::env.template.js not found"
+            exit 1
+          fi
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PRO }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PRO }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Sync build to S3
+        env:
+          S3_BUCKET: ${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }}-s3-${{ env.REGION_CODE }}-spa
+        run: |
+          set -euo pipefail
+
+          aws s3 sync dist/out/browser/ "s3://${S3_BUCKET}/${SPA_PREFIX}/" \
+            --delete \
+            --exclude "index.html" \
+            --exclude "assets/env.js" \
+            --cache-control "public, max-age=31536000, immutable"
+
+          aws s3 cp dist/out/browser/index.html "s3://${S3_BUCKET}/${SPA_PREFIX}/index.html" \
+            --cache-control "no-store" \
+            --content-type "text/html"
+
+          aws s3 cp dist/out/browser/assets/env.js "s3://${S3_BUCKET}/${SPA_PREFIX}/assets/env.js" \
+            --cache-control "no-store" \
+            --content-type "application/javascript"
+
+      - name: Invalidate CloudFront distributions
+        env:
+          CF_COMMENT_PREFIX: ${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }}-cdn-${{ env.REGION_CODE }}-
+          S3_BUCKET: ${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }}-s3-${{ env.REGION_CODE }}-spa
+        run: |
+          set -euo pipefail
+
+          DIST_IDS=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?starts_with(Comment, '${CF_COMMENT_PREFIX}')].Id" \
+            --output text)
+
+          if [ -z "${DIST_IDS}" ]; then
+            echo "::error::No CloudFront distributions found for prefix '${CF_COMMENT_PREFIX}'"
+            exit 1
+          fi
+
+          echo "### 🚀 Deployed to Production" >> $GITHUB_STEP_SUMMARY
+          echo "- **Bucket:** s3://${S3_BUCKET}/${SPA_PREFIX}/" >> $GITHUB_STEP_SUMMARY
+          echo "- **Invalidations:**" >> $GITHUB_STEP_SUMMARY
+          for DIST_ID in ${DIST_IDS}; do
+            aws cloudfront create-invalidation \
+              --distribution-id "${DIST_ID}" \
+              --paths "/${SPA_PREFIX}/*" >/dev/null
+            echo "  - ${DIST_ID}" >> $GITHUB_STEP_SUMMARY
+          done
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
+          sparse-checkout-cone-mode: false
+
+      - name: Download SBOM Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sbom-v${{ needs.ci.outputs.version }}
+          path: build/sbom/
+
+      - name: Validate the published SBOM
+        run: node .github/scripts/license-gate.mjs --sbom-path build/sbom/sbom.json --expect-version ${{ needs.ci.outputs.version }}
+
+      - name: Prepare SBOM Release Asset
+        run: |
+          set -euo pipefail
+          TAG="v${{ needs.ci.outputs.version }}"
+          cp build/sbom/sbom.json "./sbom-${TAG}.cdx.json"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="v${{ needs.ci.outputs.version }}"
+          gh release create "${TAG}" \
+            "./sbom-${TAG}.cdx.json#CycloneDX SBOM (${TAG})" \
+            --repo "${{ github.repository }}" \
+            --title "${TAG}" \
+            --generate-notes
+          echo "### 🏷️ GitHub Release published: ${TAG} with attached SBOM" >> $GITHUB_STEP_SUMMARY

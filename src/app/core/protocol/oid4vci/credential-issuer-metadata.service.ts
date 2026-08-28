@@ -2,8 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CredentialOffer } from '../../models/dto/CredentialOffer';
 import { CredentialIssuerMetadata } from '../../models/dto/CredentialIssuerMetadata';
-import { environment } from 'src/environments/environment';
 import { WalletService } from 'src/app/core/services/wallet.service';
+import { UrlResolverService } from 'src/app/core/services/url-resolver.service';
 import { Oid4vciError } from '../../models/error/Oid4vciError';
 import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message';
 
@@ -13,6 +13,7 @@ import { wrapOid4vciHttpError } from 'src/app/shared/helpers/http-error-message'
 export class CredentialIssuerMetadataService {
 
   private readonly walletService = inject(WalletService);
+  private readonly urlResolver = inject(UrlResolverService);
 
   async getCredentialIssuerMetadataFromCredentialOffer(
   credentialOffer: CredentialOffer
@@ -25,7 +26,7 @@ export class CredentialIssuerMetadataService {
       });
     }
 
-    const credentialIssuerURL = `${issuer}/.well-known/openid-credential-issuer`;
+    const credentialIssuerURL = this.buildWellKnownUrl(issuer);
 
     try {
       const responseText = await this.fetchCredentialIssuerMetadata(credentialIssuerURL);
@@ -38,6 +39,17 @@ export class CredentialIssuerMetadataService {
         translationKey: 'errors.default',
       });
     }
+  }
+
+  /**
+   * Builds the metadata URL per OID4VCI 1.0 §12.2.2: the well-known path is
+   * inserted between the origin and the issuer's own path (not appended
+   * after it), e.g. "https://host/tenant" -> "https://host/.well-known/openid-credential-issuer/tenant".
+   */
+  private buildWellKnownUrl(issuer: string): string {
+    const issuerUrl = new URL(issuer);
+    const issuerPath = issuerUrl.pathname === '/' ? '' : issuerUrl.pathname;
+    return `${issuerUrl.origin}/.well-known/openid-credential-issuer${issuerPath}`;
   }
 
   private async fetchCredentialIssuerMetadata(credentialIssuerURL: string): Promise<string> {
@@ -61,7 +73,7 @@ export class CredentialIssuerMetadataService {
         credentialEndpoint: mapped.credentialEndpoint,
         credentialsSupported: mapped.credentialsSupported,
         deferredCredentialEndpoint: mapped.deferredCredentialEndpoint,
-        authorizationServer: environment.server_url,
+        authorizationServer: this.urlResolver.serverUrl(),
         credentialToken: mapped.credentialToken,
         credential_configurations_supported: mapped.credential_configurations_supported,
       };

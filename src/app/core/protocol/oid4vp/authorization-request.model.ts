@@ -8,6 +8,17 @@ export interface AuthorizationRequestOID4VP {
   nonce: string;
   responseUri: string;
   dcqlQuery?: DcqlQuery;
+  clientMetadata?: ClientMetadata;
+}
+
+export interface ClientMetadata {
+  client_name: string;
+  logo_uri: string;
+  client_uri: string;
+  policy_uri: string;
+  tos_uri: string;
+  contacts: string[];
+  [key: string]: any;
 }
 
 export interface DcqlQuery {

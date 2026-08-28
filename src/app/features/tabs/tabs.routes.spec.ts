@@ -101,6 +101,13 @@ describe('App Routes', () => {
     expect(location.path()).toBe('/language-selector');
   });
 
+  it('should navigate to AboutPage for /about (AC-01)', async () => {
+    await router.navigate(['/about']);
+    const module = await import('../about/about.page');
+    expect(module.AboutPage).toBeTruthy();
+    expect(location.path()).toBe('/about');
+  });
+
   it('should redirect to / for unknown paths', async () => {
     await router.navigate(['tabs/unknown-path']);
     expect(location.path()).toBe('/home');
