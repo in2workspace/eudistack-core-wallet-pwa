@@ -28,12 +28,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: 'npm'
@@ -64,10 +64,10 @@ jobs:
       version: ${{ steps.metadata.outputs.version }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: 'npm'
@@ -92,34 +92,20 @@ jobs:
           fi
           echo "Release ${TAG} does not exist — proceeding."
 
-      - name: Generate CycloneDX SBOM
-        run: |
-          npx --yes @cyclonedx/cyclonedx-npm@6.0.1 \
-            --package-lock-only \
-            --omit dev \
-            --output-format JSON \
-            --output-file sbom.cdx.json \
-            --validate
-
-      - name: Upload SBOM
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom-${{ github.sha }}
-          path: sbom.cdx.json
-          retention-days: 90
-
       - name: Install dependencies
         run: npm ci
 
-      # SCHEMAS_SRC points at dev-tools/schemas/, vendored in this repo from
-      # eudistack-platform-dev's own dev-tools/schemas/ (single source of truth).
-      # This used to be a cross-repo checkout using PLATFORM_DEV_READ_TOKEN, but
-      # that made this repo's deploy pipeline depend on a token/secret owned by
-      # another repo — the wallet should stand on its own. Update the source in
-      # eudistack-platform-dev, then re-copy here.
+      - name: Generate CycloneDX SBOM
+        run: npm run sbom
+
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom-v${{ env.VERSION }}
+          path: build/sbom/sbom.json
+          retention-days: 90
+
       - name: Build
-        env:
-          SCHEMAS_SRC: ${{ github.workspace }}/dev-tools/schemas
         run: |
           npm run build -- \
             --output-path=./dist/out \
@@ -128,7 +114,7 @@ jobs:
             --deploy-url=/${SPA_PREFIX}/
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: spa-build-${{ github.sha }}
           path: dist/out/browser/
@@ -169,7 +155,7 @@ jobs:
           fi
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -257,7 +243,7 @@ jobs:
           fi
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PRO }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PRO }}
@@ -309,10 +295,26 @@ jobs:
             echo "  - ${DIST_ID}" >> $GITHUB_STEP_SUMMARY
           done
 
-      - name: Download SBOM
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+          sparse-checkout-cone-mode: false
+
+      - name: Download SBOM Artifact
         uses: actions/download-artifact@v4
         with:
-          name: sbom-${{ github.sha }}
+          name: sbom-v${{ needs.ci.outputs.version }}
+          path: build/sbom/
+
+      - name: Validate the published SBOM
+        run: node .github/scripts/license-gate.mjs --sbom-path build/sbom/sbom.json --expect-version ${{ needs.ci.outputs.version }}
+
+      - name: Prepare SBOM Release Asset
+        run: |
+          set -euo pipefail
+          TAG="v${{ needs.ci.outputs.version }}"
+          cp build/sbom/sbom.json "./sbom-${TAG}.cdx.json"
 
       - name: Publish GitHub Release
         env:
@@ -321,8 +323,8 @@ jobs:
           set -euo pipefail
           TAG="v${{ needs.ci.outputs.version }}"
           gh release create "${TAG}" \
+            "./sbom-${TAG}.cdx.json#CycloneDX SBOM (${TAG})" \
             --repo "${{ github.repository }}" \
             --title "${TAG}" \
-            --generate-notes \
-            sbom.cdx.json
-          echo "### 🏷️ GitHub Release published: ${TAG}" >> $GITHUB_STEP_SUMMARY
+            --generate-notes
+          echo "### 🏷️ GitHub Release published: ${TAG} with attached SBOM" >> $GITHUB_STEP_SUMMARY
