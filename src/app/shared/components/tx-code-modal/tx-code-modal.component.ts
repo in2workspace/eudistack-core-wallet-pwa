@@ -50,7 +50,7 @@ import { OtpInputComponent } from '../otp-input/otp-input.component';
 
       ion-icon.tx-code-icon {
         font-size: 40px;
-        color: var(--action-primary, #2563EB);
+        color: var(--neutral-medium);
         margin-bottom: 8px;
       }
 
@@ -117,7 +117,7 @@ export class TxCodeModalComponent {
 
   remainingSeconds = 0;
   error = '';
-  private interval: number | undefined;
+  private interval: ReturnType<typeof globalThis.setInterval> | undefined;
 
   constructor(private modalCtrl: ModalController) {}
 

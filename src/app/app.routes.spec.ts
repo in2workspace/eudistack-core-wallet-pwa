@@ -5,7 +5,9 @@ import { routes } from './app.routes';
 import { HttpClientModule } from '@angular/common/http';
 import { logsEnabledGuard } from './core/guards/logs-enabled.guard';
 import { authGuard } from './core/guards/auth.guard';
+import { hybridOnboardingGuard, hybridOnboardingRouteGuard } from './core/guards/hybrid-onboarding.guard';
 import { PasskeyStoreService } from './core/services/passkey-store.service';
+import { TenantService } from './core/services/tenant.service';
 import { PENDING_DEEP_LINK_KEY } from './core/constants/deep-link.constants';
 import { of } from 'rxjs';
 
@@ -14,7 +16,10 @@ describe('App Routing', () => {
 
   const mockLogsEnabledGuard = jest.fn().mockReturnValue(true);
   const mockAuthGuard = jest.fn().mockReturnValue(of(true));
+  const mockHybridOnboardingGuard = jest.fn().mockReturnValue(true);
+  const mockHybridOnboardingRouteGuard = jest.fn().mockReturnValue(true);
   const mockPasskeyStore = { hasPasskey: jest.fn().mockReturnValue(true), getCredentialId: jest.fn() };
+  const mockTenantService = { tenant: () => 'sandbox', resolve: () => Promise.resolve(), buildFallbackUrl: () => '' };
 
   beforeEach(async () => {
     mockPasskeyStore.hasPasskey.mockReturnValue(true);
@@ -25,7 +30,10 @@ describe('App Routing', () => {
       providers: [
         { provide: authGuard, useValue: mockAuthGuard },
         { provide: logsEnabledGuard, useValue: mockLogsEnabledGuard },
+        { provide: hybridOnboardingGuard, useValue: mockHybridOnboardingGuard },
+        { provide: hybridOnboardingRouteGuard, useValue: mockHybridOnboardingRouteGuard },
         { provide: PasskeyStoreService, useValue: mockPasskeyStore },
+        { provide: TenantService, useValue: mockTenantService },
       ],
     }).compileComponents();
 
@@ -69,23 +77,11 @@ describe('App Routing', () => {
   });
 
   it('should save deep link to sessionStorage when pathname is not /', async () => {
-    // The guard reads window.location directly. In jsdom we must override
-    // the property before the guard executes.
-    const originalLocation = window.location;
-    Object.defineProperty(window, 'location', {
-      value: { ...originalLocation, pathname: '/protocol/callback', search: '?code=abc' },
-      writable: true,
-      configurable: true,
-    });
-
-    await router.navigate(['']);
-    expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBe('/protocol/callback?code=abc');
-
-    Object.defineProperty(window, 'location', {
-      value: originalLocation,
-      writable: true,
-      configurable: true,
-    });
+    // The authLandingGuard reads state.url provided by Angular Router.
+    // Navigate to any non-auth path so the wildcard route fires the guard
+    // with state.url set to the actual target URL.
+    await router.navigate(['/protocol/callback/deep-link'], { queryParams: { code: 'abc' } });
+    expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBe('/protocol/callback/deep-link?code=abc');
   });
 
   it('should NOT save deep link to sessionStorage when pathname is /', async () => {
@@ -103,7 +99,7 @@ describe('App Routing', () => {
       expect(loginRoute!.loadComponent).toBeDefined();
     });
 
-    it('should define auth/register route with lazy-loaded RegisterPage', () => {
+    it('should define auth/register route reusing LoginPage component', () => {
       const authRoute = routes.find(r => r.path === 'auth');
       const registerRoute = authRoute!.children!.find((r: any) => r.path === 'register');
       expect(registerRoute).toBeDefined();

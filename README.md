@@ -5,19 +5,19 @@
 <p><p>
 
 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_in2-wallet-ui&metric=alert_status)](https://sonarcloud.io/dashboard?id=in2workspace_in2-wallet-ui)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_eudistack-core-wallet-pwa&metric=alert_status)](https://sonarcloud.io/dashboard?id=in2workspace_eudistack-core-wallet-pwa)
 
-[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_in2-wallet-ui&metric=bugs)](https://sonarcloud.io/summary/new_code?id=in2workspace_in2-wallet-ui)
-[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_in2-wallet-ui&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=in2workspace_in2-wallet-ui)
-[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_in2-wallet-ui&metric=security_rating)](https://sonarcloud.io/dashboard?id=in2workspace_in2-wallet-ui)
-[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_in2-wallet-ui&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=in2workspace_in2-wallet-ui)
-[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_in2-wallet-ui&metric=ncloc)](https://sonarcloud.io/dashboard?id=in2workspace_in2-wallet-ui)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_eudistack-core-wallet-pwa&metric=bugs)](https://sonarcloud.io/summary/new_code?id=in2workspace_eudistack-core-wallet-pwa)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_eudistack-core-wallet-pwa&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=in2workspace_eudistack-core-wallet-pwa)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_eudistack-core-wallet-pwa&metric=security_rating)](https://sonarcloud.io/dashboard?id=in2workspace_eudistack-core-wallet-pwa)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_eudistack-core-wallet-pwa&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=in2workspace_eudistack-core-wallet-pwa)
+[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_eudistack-core-wallet-pwa&metric=ncloc)](https://sonarcloud.io/dashboard?id=in2workspace_eudistack-core-wallet-pwa)
 
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_in2-wallet-ui&metric=coverage)](https://sonarcloud.io/summary/new_code?id=in2workspace_in2-wallet-ui)
-[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_in2-wallet-ui&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=in2workspace_in2-wallet-ui)
-[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_in2-wallet-ui&metric=reliability_rating)](https://sonarcloud.io/dashboard?id=in2workspace_in2-wallet-ui)
-[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_in2-wallet-ui&metric=sqale_rating)](https://sonarcloud.io/dashboard?id=in2workspace_in2-wallet-ui)
-[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_in2-wallet-ui&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=in2workspace_in2-wallet-ui)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_eudistack-core-wallet-pwa&metric=coverage)](https://sonarcloud.io/summary/new_code?id=in2workspace_eudistack-core-wallet-pwa)
+[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_eudistack-core-wallet-pwa&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=in2workspace_eudistack-core-wallet-pwa)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_eudistack-core-wallet-pwa&metric=reliability_rating)](https://sonarcloud.io/dashboard?id=in2workspace_eudistack-core-wallet-pwa)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_eudistack-core-wallet-pwa&metric=sqale_rating)](https://sonarcloud.io/dashboard?id=in2workspace_eudistack-core-wallet-pwa)
+[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=in2workspace_eudistack-core-wallet-pwa&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=in2workspace_eudistack-core-wallet-pwa)
 
 </div>
 

@@ -12,6 +12,21 @@
   padding: 24px 20px 8px;
 }
 
+.header-logo {
+  height: 40px;
+  object-fit: contain;
+  display: block;
+  margin: 14px;
+}
+
+.header-logo-fallback {
+  display: inline-flex;
+  margin: 14px;
+  background: white;
+  padding: 6px;
+  border-radius: 8px;
+}
+
 .header-icon {
   display: inline-flex;
   align-items: center;
@@ -56,6 +71,19 @@
   ion-icon {
     font-size: 16px;
   }
+}
+
+.legal-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.70rem;
+
+  .legal-link {
+    color: var(--text-secondary);
+    text-decoration: underline;
+  }
+  .divider { color: var(--border-color); }
 }
 
 // ── Entrance animation ───────────────────────────────
@@ -139,7 +167,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--action-primary, #2563EB);
+    outline: 2px solid var(--primary-color);
     outline-offset: 3px;
     border-radius: 22px;
   }

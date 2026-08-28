@@ -2,18 +2,25 @@ import { inject, Provider } from '@angular/core';
 import { KeyStorageProvider } from '../spi/key-storage.provider.service';
 import { PasskeyPrfKeyStorageProvider } from './passkey-prf-key-storage.service';
 import { ServerKeyStorageProvider } from './server-key-storage.service';
-import { environment } from 'src/environments/environment';
+import { HybridKeyStorageProvider } from './hybrid-key-storage.provider';
+import { WalletDiscoveryService } from '../services/wallet-discovery.service';
 
 export const KEY_STORAGE_PROVIDERS: Provider[] = [
   PasskeyPrfKeyStorageProvider,
   ServerKeyStorageProvider,
+  HybridKeyStorageProvider,
   {
     provide: KeyStorageProvider,
     useFactory: () => {
-      if ((environment as any).wallet_mode === 'server') {
-        return inject(ServerKeyStorageProvider);
+      const discovery = inject(WalletDiscoveryService);
+      const mode = discovery.mode();
+      const snap = discovery.snapshot()();
+      if (mode === 'server' && snap?.keyManager === 'hybrid') {
+        return inject(HybridKeyStorageProvider);
       }
-      return inject(PasskeyPrfKeyStorageProvider);
+      return mode === 'server'
+        ? inject(ServerKeyStorageProvider)
+        : inject(PasskeyPrfKeyStorageProvider);
     },
   },
 ];

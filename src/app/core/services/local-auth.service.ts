@@ -84,4 +84,6 @@ export class LocalAuthService {
     const hasPasskey = this.hasPasskey();
     this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
   }
+
+  dispose(): void {}
 }
