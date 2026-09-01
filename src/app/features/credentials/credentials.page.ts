@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IonicModule, ViewWillEnter, ViewWillLeave } from '@ionic/angular';
+import { IonicModule, ModalController, ViewWillEnter, ViewWillLeave } from '@ionic/angular';
 import { StorageService } from 'src/app/shared/services/storage.service';
 import { BarcodeScannerComponent } from 'src/app/shared/components/barcode-scanner/barcode-scanner.component';
 import { WalletService } from 'src/app/core/services/wallet.service';
@@ -29,6 +29,7 @@ import { ActivityService } from 'src/app/core/services/activity.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { HapticService } from 'src/app/shared/services/haptic.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
+import { ManualCodeModalComponent } from 'src/app/shared/components/manual-code-modal/manual-code-modal.component';
 import dayjs from 'dayjs';
 //todo restore tests
 
@@ -77,6 +78,7 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
   private readonly activityService = inject(ActivityService);
   private readonly hapticService = inject(HapticService);
   private readonly verificationService = inject(CredentialVerificationService);
+  private readonly modalController = inject(ModalController);
 
   private authorizationRequest = '';
   private revokedCredentialIds = new Set<string>();
@@ -249,6 +251,21 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
     if (value) {
       this.manualQrValue = '';
       this.qrCodeEmit(value);
+    }
+  }
+
+  public async openManualCodeModal(): Promise<void> {
+    const modal = await this.modalController.create({
+      component: ManualCodeModalComponent,
+      cssClass: 'manual-code-modal',
+    });
+
+    await modal.present();
+
+    const { data, role } = await modal.onWillDismiss();
+    if (role === 'confirm' && typeof data === 'string') {
+      this.manualQrValue = data;
+      this.submitManualQr();
     }
   }
 

@@ -3,6 +3,7 @@ import { By } from '@angular/platform-browser';
 import { Router, ActivatedRoute } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { EMPTY, of } from 'rxjs';
+import { ModalController } from '@ionic/angular';
 import { CredentialsPage } from './credentials.page';
 import { VcViewComponent } from 'src/app/shared/components/vc-view/vc-view.component';
 import { AuthorizationRequestService } from 'src/app/core/protocol/oid4vp/authorization-request.service';
@@ -23,6 +24,13 @@ import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engi
 import { StorageService } from 'src/app/shared/services/storage.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { VerifiableCredential } from 'src/app/core/models/verifiable-credential';
+
+const mockModalController = {
+  create: jest.fn().mockResolvedValue({
+    present: jest.fn().mockResolvedValue(undefined),
+    onWillDismiss: jest.fn().mockResolvedValue({ role: 'cancel', data: null }),
+  }),
+};
 
 describe('CredentialsPage - verifiablePresentationFlow', () => {
   let component: CredentialsPage;
@@ -90,6 +98,10 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       showErrorAlert: jest.fn().mockReturnValue(of(undefined)),
     };
 
+    TestBed.overrideComponent(CredentialsPage, {
+      add: { providers: [{ provide: ModalController, useValue: mockModalController }] },
+    });
+
     await TestBed.configureTestingModule({
       // TranslateModule.forRoot() only needed once the translate="no" shielding tests
       // below render app-vc-view, which transitively injects TranslateService — every
@@ -115,6 +127,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
         { provide: HapticService, useValue: { notification: jest.fn() } },
         { provide: CredentialVerificationService, useValue: { isRevoked: jest.fn().mockResolvedValue(false) } },
         { provide: Oid4vciEngineService, useValue: { performOid4vciFlow: jest.fn() } },
+        { provide: ModalController, useValue: mockModalController },
         // privacyBlur() is only exercised by the translate="no" shielding tests below,
         // which render the card-grid (app-vc-view needs it for [blurred]) — every other
         // test in this spec never renders the template.
