@@ -164,11 +164,10 @@
           rel="noopener noreferrer"
           [attr.aria-label]="('about.support.help-center' | translate) + ' ' + ('about.opens-new-window' | translate)"
         >
-          <span class="icon-badge icon-badge--blue">
-            <ion-icon name="help-circle-outline" aria-hidden="true"></ion-icon>
-          </span>
           <span class="about-row__label">{{ "about.support.help-center" | translate }}</span>
-          <ion-icon name="open-outline" class="about-row__action-icon" aria-hidden="true"></ion-icon>
+          <span class="about-row__action-icon" aria-hidden="true">
+            <ion-icon name="open-outline"></ion-icon>
+          </span>
         </a>
       }
 
@@ -181,9 +180,6 @@
             aria-controls="about-panel-contact-support"
             (click)="togglePanel('contact-support')"
           >
-            <span class="icon-badge icon-badge--green">
-              <ion-icon name="mail-outline" aria-hidden="true"></ion-icon>
-            </span>
             <span class="about-row__label">{{ "about.support.email" | translate }}</span>
             <span class="about-row__toggle" aria-hidden="true">
               <ion-icon [name]="isExpanded('contact-support') ? 'remove' : 'add'"></ion-icon>
@@ -218,11 +214,10 @@
         (keydown.enter)="reportIssue()"
         (keydown.space)="reportIssue()"
       >
-        <span class="icon-badge icon-badge--orange">
-          <ion-icon name="bug-outline" aria-hidden="true"></ion-icon>
-        </span>
         <span class="about-row__label">{{ "about.support.report-issue" | translate }}</span>
-        <ion-icon name="open-outline" class="about-row__action-icon" aria-hidden="true"></ion-icon>
+        <span class="about-row__action-icon" aria-hidden="true">
+          <ion-icon name="open-outline"></ion-icon>
+        </span>
       </button>
     </div>
 

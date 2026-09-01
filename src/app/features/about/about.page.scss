@@ -2,8 +2,7 @@
 
 
 :host {
-  --settings-icon-size: 30px;
-  --settings-icon-radius: 7px;
+  --about-trailing-size: 28px;
 }
 
 .about-page {
@@ -197,14 +196,17 @@
   color: var(--text-primary);
 }
 
-// The +/− affordance on every collapsible row.
-.about-row__toggle {
+.about-row__toggle,
+.about-row__action-icon {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: var(--about-trailing-size);
+  height: var(--about-trailing-size);
+}
+
+.about-row__toggle {
   border-radius: 8px;
   background: var(--surface-muted, #E8ECF1);
   color: var(--primary-color);
@@ -220,9 +222,11 @@
 }
 
 .about-row__action-icon {
-  flex-shrink: 0;
-  font-size: 16px;
   color: var(--text-secondary);
+
+  ion-icon {
+    font-size: 16px;
+  }
 }
 
 .about-row__panel {
@@ -359,26 +363,6 @@
 }
 
 // -- Support: contact panel ---------------------------------------------------
-
-.icon-badge {
-  width: var(--settings-icon-size);
-  height: var(--settings-icon-size);
-  min-width: var(--settings-icon-size);
-  border-radius: var(--settings-icon-radius);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  ion-icon {
-    font-size: 18px;
-    color: var(--neutral-white);
-  }
-
-  &--blue   { background-color: var(--status-info); }
-  &--purple { background-color: #8B5CF6; }
-  &--green  { background-color: var(--status-success); }
-  &--orange { background-color: var(--status-warning); }
-}
 
 .about-email {
   display: flex;
