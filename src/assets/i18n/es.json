@@ -276,10 +276,17 @@
     "lifecycle-expired": "Caducada"
   },
   "scanner": {
-    "initializing": "Inicializando escáner...",
-    "manualInput": "O pega el contenido del QR manualmente:",
-    "manualInputPlaceholder": "Pega aquí el contenido del código QR...",
-    "send": "Enviar"
+    "title": "Escanea tu código QR",
+    "subtitle": "Usa la cámara de tu dispositivo para escanear el código QR",
+    "manual-hint": "¿No puedes escanear el código QR?",
+    "manual-link": "Introduce el código manualmente",
+    "manual-title": "Introduce el código manualmente",
+    "manual-description": "Si no puedes escanear el código QR, introduce el código de activación que te han facilitado.",
+    "manual-label": "Código de acceso",
+    "manual-placeholder": "Introduce el código de acceso",
+    "manual-back": "Volver a escanear el código QR",
+    "manual-continue": "Continuar",
+    "initializing": "Inicializando escáner..."
   },
   "vc-fields": {
     "delete": "Eliminar credencial",
@@ -530,11 +537,14 @@
     "row-revocation": "Estado de revocación"
   },
   "confirmation": {
+    "decline": "Rechazar",
+    "accept-credential": "Aceptar credencial",
+    "review-within": "Revisa y confirma antes de {{time}}",
     "header": "¿Enviar Credencial?",
     "ok": "Ok",
     "cancel": "Cancelar",
     "new-credential": "¿Deseas aceptar esta credencial?",
-    "new-credential-title": "Nueva credencial",
+    "new-credential-title": "Verifica los datos de tu nueva credencial",
     "accept": "Aceptar",
     "pin": "Introduce el PIN",
     "description": "Se ha enviado un código PIN a tu email. Revísalo e introduce el PIN.",

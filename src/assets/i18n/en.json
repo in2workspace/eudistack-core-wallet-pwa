@@ -18,10 +18,17 @@
     "wallet": "Wallet"
   },
   "scanner": {
-    "initializing": "Initializing scanner... Please wait.",
-    "manualInput": "Or paste QR content manually:",
-    "manualInputPlaceholder": "Paste QR code content here...",
-    "send": "Send"
+    "title": "Scan your QR code",
+    "subtitle": "Use your device camera to scan the QR code",
+    "manual-hint": "Can't scan the QR code?",
+    "manual-link": "Enter code manually",
+    "manual-title": "Enter code manually",
+    "manual-description": "If you're unable to scan the QR code, enter the activation code provided to you.",
+    "manual-label": "Access code",
+    "manual-placeholder": "Enter the access code",
+    "manual-back": "Back to Scan your QR code",
+    "manual-continue": "Continue",
+    "initializing": "Initializing scanner... Please wait."
   },
   "camera-selector": {
     "title": "Selected camera",
@@ -534,11 +541,14 @@
     "row-revocation": "Revocation status"
   },
   "confirmation": {
+    "decline": "Decline",
+    "accept-credential": "Accept credential",
+    "review-within": "Review and confirm within {{time}}",
     "header": "Send credential?",
     "ok": "Ok",
     "cancel": "Cancel",
     "new-credential": "Do you want to accept this credential?",
-    "new-credential-title": "New Credential",
+    "new-credential-title": "Verify the details of your new credential",
     "accept": "Accept",
     "pin": "Enter PIN",
     "description": "A PIN has been sent to your email. Check your inbox. Enter your PIN Code.",

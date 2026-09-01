@@ -341,10 +341,17 @@
     "lifecycle-expired": "Caducada"
   },
   "scanner": {
-    "initializing": "Inicialitzant escàner...",
-    "manualInput": "O enganxa el contingut del QR manualment:",
-    "manualInputPlaceholder": "Enganxa aquí el contingut del codi QR...",
-    "send": "Enviar"
+    "title": "Escaneja el teu codi QR",
+    "subtitle": "Utilitza la càmera del teu dispositiu per escanejar el codi QR",
+    "manual-hint": "No pots escanejar el codi QR?",
+    "manual-link": "Introdueix el codi manualment",
+    "manual-title": "Introdueix el codi manualment",
+    "manual-description": "Si no pots escanejar el codi QR, introdueix el codi d'activació que t'han facilitat.",
+    "manual-label": "Codi d'accés",
+    "manual-placeholder": "Introdueix el codi d'accés",
+    "manual-back": "Torna a escanejar el codi QR",
+    "manual-continue": "Continua",
+    "initializing": "Inicialitzant escàner..."
   },
   "vc-fields": {
     "delete": "Eliminar credencial",
@@ -526,11 +533,14 @@
     "row-revocation": "Estat de revocació"
   },
   "confirmation": {
+    "decline": "Rebutja",
+    "accept-credential": "Accepta la credencial",
+    "review-within": "Revisa i confirma abans de {{time}}",
     "header": "Enviar credencial?",
     "ok": "Ok",
     "cancel": "Cancel·lar",
     "new-credential": "Vols acceptar aquesta credencial?",
-    "new-credential-title": "Nova credencial",
+    "new-credential-title": "Verifica les dades de la teva nova credencial",
     "accept": "Acceptar",
     "pin": "Introdueix el PIN",
     "description": "S'ha enviat un codi PIN al teu email. Revisa'l i introdueix el PIN.",
