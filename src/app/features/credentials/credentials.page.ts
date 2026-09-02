@@ -29,7 +29,6 @@ import { HapticService } from 'src/app/shared/services/haptic.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
 import dayjs from 'dayjs';
-//todo restore tests
 
 @Component({
     selector: 'app-credentials',
