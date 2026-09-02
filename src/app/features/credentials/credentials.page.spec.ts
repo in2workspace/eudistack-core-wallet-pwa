@@ -150,52 +150,6 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     mockHaptic = TestBed.inject(HapticService);
   });
 
-  describe('CredentialsPage - qrCodeEmit', () => {
-    it('should show error and return if QR content is not supported', () => {
-      const invalidQr = 'not-supported-content';
-      const toastSpy = mockToastServiceHandler.showErrorAlertByTranslateLabel;
-
-      component.qrCodeEmit(invalidQr);
-
-      expect(mockHaptic.notification).toHaveBeenCalled();
-      expect(toastSpy).toHaveBeenCalledWith('errors.invalid-qr');
-    });
-
-    it('should handle Credential Offer (VCI) from a URL and extract the URI', () => {
-      const complexQr = 'https://issuer.com/api?credential_offer_uri=openid-credential-offer://encoded-data';
-      const closeViewSpy = jest.spyOn(component, 'closeScannerViewAndScanner');
-      const flowSpy = jest.spyOn(component as any, 'credentialActivationFlow').mockImplementation();
-
-      component.qrCodeEmit(complexQr);
-
-      expect(closeViewSpy).toHaveBeenCalled();
-      expect(flowSpy).toHaveBeenCalledWith('openid-credential-offer://encoded-data');
-    });
-
-    it('should handle direct Credential Offer (VCI) string', () => {
-      const directQr = 'credential_offer_uri=direct-vci-data';
-      const closeViewSpy = jest.spyOn(component, 'closeScannerViewAndScanner');
-      const flowSpy = jest.spyOn(component as any, 'credentialActivationFlow').mockImplementation();
-
-      component.qrCodeEmit(directQr);
-
-      expect(closeViewSpy).toHaveBeenCalled();
-      expect(flowSpy).toHaveBeenCalledWith(directQr);
-    });
-
-    it('should handle Verifiable Presentation (VP) flow', () => {
-      const vpQr = 'openid4vp://authorize?request_uri=https://verifier.com';
-      const closeScannerSpy = jest.spyOn(component, 'closeScanner');
-      const flowSpy = jest.spyOn(component as any, 'verifiablePresentationFlow').mockImplementation();
-
-      component.qrCodeEmit(vpQr);
-
-      expect(closeScannerSpy).toHaveBeenCalled();
-      // En VP no se cierra la vista completa (showScannerView), solo el scanner
-      expect(flowSpy).toHaveBeenCalledWith(vpQr);
-    });
-  });
-
   describe('when no valid VCs are found (selectableVcList.length === 0 after filter)', () => {
     beforeEach(() => {
       // Only REVOKED VC → after filter, selectableVcList.length === 0
@@ -203,14 +157,14 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     });
 
     it('should navigate to /tabs/credentials', fakeAsync(() => {
-      component.qrCodeEmit(vpQrCode);
+      (component as any).verifiablePresentationFlow(vpQrCode);
       tick();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
     }));
 
     it('should show error alert after navigation completes', fakeAsync(() => {
-      component.qrCodeEmit(vpQrCode);
+      (component as any).verifiablePresentationFlow(vpQrCode);
       tick();
 
       expect(mockToastServiceHandler.showErrorAlertByTranslateLabel)
@@ -218,7 +172,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     }));
 
     it('should not navigate to /tabs/vc-selector', fakeAsync(() => {
-      component.qrCodeEmit(vpQrCode);
+      (component as any).verifiablePresentationFlow(vpQrCode);
       tick();
 
       expect(mockRouter.navigate).not.toHaveBeenCalledWith(
@@ -235,7 +189,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     });
 
     it('should navigate to /tabs/vc-selector', fakeAsync(() => {
-      component.qrCodeEmit(vpQrCode);
+      (component as any).verifiablePresentationFlow(vpQrCode);
       tick();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(
@@ -253,7 +207,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     });
 
     it('should show a load error, NOT "no credentials available"', fakeAsync(() => {
-      component.qrCodeEmit(vpQrCode);
+      (component as any).verifiablePresentationFlow(vpQrCode);
       tick();
 
       expect(mockToastServiceHandler.showErrorAlertByTranslateLabel)
@@ -263,7 +217,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     }));
 
     it('should not attempt to filter credentials or navigate to vc-selector', fakeAsync(() => {
-      component.qrCodeEmit(vpQrCode);
+      (component as any).verifiablePresentationFlow(vpQrCode);
       tick();
 
       expect(mockAuthorizationRequestService.parseAuthorizationRequestFromQr).not.toHaveBeenCalled();

@@ -49,9 +49,9 @@ describe('App Routing', () => {
     expect(router.url).toBe('/auth/login');
   });
 
-  it('should lazy load tabs module for /tabs/home', async () => {
+  it('should lazy load tabs module for /tabs/credentials', async () => {
     await router.navigate(['/tabs']);
-    expect(router.url).toBe('/tabs/home');
+    expect(router.url).toBe('/tabs/credentials');
   });
 
   it('should load login page for /auth/login', async () => {

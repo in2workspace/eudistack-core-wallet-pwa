@@ -54,9 +54,9 @@ describe('App Routes', () => {
     router.initialNavigation();
   });
 
-  it('should navigate to HomePage for the default path', async () => {
+  it('should navigate to CredentialsPage for the default path', async () => {
     await router.navigate(['']);
-    expect(location.path()).toBe('/home');
+    expect(location.path()).toBe('/credentials');
   });
 
   it('should navigate to CredentialsPage for /credentials', async () => {
@@ -110,7 +110,7 @@ describe('App Routes', () => {
 
   it('should redirect to / for unknown paths', async () => {
     await router.navigate(['tabs/unknown-path']);
-    expect(location.path()).toBe('/home');
+    expect(location.path()).toBe('/credentials');
   });
 
   it('should apply authGuard on /', async () => {
@@ -122,11 +122,11 @@ describe('App Routes', () => {
   it('should call authGuard when navigating between child routes', async () => {
     const authService = TestBed.inject(AuthService);
 
-    await router.navigate(['/home']);
-    const callsAfterHome = (authService.isInitialized$ as jest.Mock).mock.calls.length;
+    await router.navigate(['/scan']);
+    const callsAfterScan = (authService.isInitialized$ as jest.Mock).mock.calls.length;
 
     await router.navigate(['/credentials']);
-    expect((authService.isInitialized$ as jest.Mock).mock.calls.length).toBeGreaterThan(callsAfterHome);
+    expect((authService.isInitialized$ as jest.Mock).mock.calls.length).toBeGreaterThan(callsAfterScan);
   });
 
   it('should have logsEnabledGuard on /logs route', () => {

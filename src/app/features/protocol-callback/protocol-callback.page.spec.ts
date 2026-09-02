@@ -73,10 +73,10 @@ describe('ProtocolCallbackPage', () => {
     });
   });
 
-  it('should navigate to /tabs/home when no recognized query param is present', () => {
+  it('should navigate to /tabs/credentials when no recognized query param is present', () => {
     queryParamsSubject.next({});
     fixture.detectChanges();
 
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/home']);
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
   });
 });
