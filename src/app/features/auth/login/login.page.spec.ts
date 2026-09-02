@@ -29,7 +29,7 @@ describe('LoginPage (server mode)', () => {
     getCredentialId: jest.Mock;
   };
   let mockPasskeyStore: { getCredentialId: jest.Mock; hasPasskey: jest.Mock };
-  let mockPasskeyApi: { registerPasskey: jest.Mock };
+  let mockPasskeyApi: { registerPasskey: jest.Mock; listPasskeys: jest.Mock };
   let mockRouter: { navigateByUrl: jest.Mock };
   let mockWalletService: { syncCredentials: jest.Mock };
   let mockActivityService: { syncFromServer: jest.Mock };
@@ -65,6 +65,7 @@ describe('LoginPage (server mode)', () => {
     };
     mockPasskeyApi = {
       registerPasskey: jest.fn().mockReturnValue(of({ id: 'p1', credentialId: 'cred-local-1', displayName: 'device' })),
+      listPasskeys: jest.fn().mockReturnValue(of([])),
     };
     mockRouter = { navigateByUrl: jest.fn() };
     mockWalletService = { syncCredentials: jest.fn().mockReturnValue(of(undefined)) };
@@ -176,6 +177,75 @@ describe('LoginPage (server mode)', () => {
 
       expect(component.step()).toBe('email');
       expect(component.needsPasskeySetup).toBe(false);
+    });
+  });
+
+  describe('TECH-DEBT #1046140: needsPasskeySetup must not trust a stale local flag from another account', () => {
+    it('forces device registration when the account has no server-side passkeys, even if the browser has a local one', () => {
+      mockPrfService.hasPasskey.mockReturnValue(true);
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([]));
+      component.email = 'new-account@example.com';
+      component.otpValue = '123456';
+
+      component.verifyCode();
+
+      expect(mockPasskeyApi.listPasskeys).toHaveBeenCalled();
+      expect(component.needsPasskeySetup).toBe(true);
+      expect(component.step()).toBe('passkey');
+      expect(component.deviceName).toBeTruthy();
+    });
+
+    it('does not force setup when this device\'s local credentialId matches one of the account\'s server-side passkeys', () => {
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([
+        { id: 'p1', credentialId: 'cred-local-1', displayName: 'This Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
+      ]));
+      component.email = 'existing-account@example.com';
+      component.otpValue = '123456';
+
+      component.verifyCode();
+
+      expect(component.needsPasskeySetup).toBe(false);
+      expect(component.step()).toBe('passkey');
+    });
+
+    it('forces setup when the account has other passkeys but none match this device\'s local credentialId', () => {
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([
+        { id: 'p1', credentialId: 'cred-on-phone', displayName: 'Phone', createdAt: '', lastUsedAt: null, activeSessions: 1 }
+      ]));
+      component.email = 'existing-account@example.com';
+      component.otpValue = '123456';
+
+      component.verifyCode();
+
+      expect(component.needsPasskeySetup).toBe(true);
+      expect(component.step()).toBe('passkey');
+      expect(component.deviceName).toBeTruthy();
+    });
+
+    it('forces setup when this device has no local credentialId at all, even if the account has server-side passkeys', () => {
+      mockPrfService.getCredentialId.mockReturnValue(null);
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([
+        { id: 'p1', credentialId: 'cred-on-phone', displayName: 'Phone', createdAt: '', lastUsedAt: null, activeSessions: 1 }
+      ]));
+      component.email = 'existing-account@example.com';
+      component.otpValue = '123456';
+
+      component.verifyCode();
+
+      expect(component.needsPasskeySetup).toBe(true);
+      expect(component.step()).toBe('passkey');
+    });
+
+    it('fails safe to needsPasskeySetup=true when listPasskeys() errors', () => {
+      mockPasskeyApi.listPasskeys.mockReturnValue(throwError(() => ({ status: 500 })));
+      component.email = 'user@example.com';
+      component.otpValue = '123456';
+
+      component.verifyCode();
+
+      expect(component.needsPasskeySetup).toBe(true);
+      expect(component.step()).toBe('passkey');
+      expect(component.loading).toBe(false);
     });
   });
 

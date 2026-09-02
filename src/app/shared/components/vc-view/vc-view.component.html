@@ -161,7 +161,8 @@
             } @else {
               <ion-icon
                 class="verify-shield"
-                [class.verify-shield--invalid]="verifyOverall !== 'valid'"
+                [class.verify-shield--invalid]="verifyOverall === 'invalid'"
+                [class.verify-shield--unknown]="verifyOverall === 'unknown'"
                 [src]="verifyOverall === 'valid' ? 'assets/svg/shield-checkmark.svg' : 'assets/svg/shield.svg'"
                 aria-hidden="true"
               ></ion-icon>

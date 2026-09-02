@@ -79,3 +79,6 @@ src/assets/schemas/*.json
 /src/assets/legal/oss-licenses.json
 /.claude/
 /docs/
+
+# Generated inventory (CycloneDX SBOM) — built in CI, never committed
+/build/sbom
