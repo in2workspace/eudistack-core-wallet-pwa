@@ -135,14 +135,54 @@ ion-alert.custom-alert-credential .cred-value {
 }
 
 // Credential confirmation modal — transparent wrapper so the component controls its own backdrop
+// Issuance confirmation — same side-drawer geometry as the credential detail
+// drawer (`.credential-detail-modal` in vc-view.component.scss): full screen on
+// phones, anchored right from tablet up. The component fills it with
+// ion-header / ion-content / ion-footer, so Ionic owns the scrolling.
 ion-modal.credential-confirmation-modal {
-  --background: transparent;
-  --box-shadow: none;
   --width: 100%;
   --height: 100%;
-  --max-width: 100%;
-  --max-height: 100%;
   --border-radius: 0;
+}
+
+@media (min-width: 768px) {
+  ion-modal.credential-confirmation-modal {
+    --width: min(560px, 92vw);
+    --box-shadow: -8px 0 24px rgb(0 0 0 / 0.15);
+    justify-content: flex-end;
+    align-items: stretch;
+  }
+}
+
+ion-modal.manual-code-modal {
+  --manual-code-modal-max-height: 88vh;
+  --width: min(92vw, 520px);
+  --height: auto;
+  --max-height: var(--manual-code-modal-max-height);
+  --background: transparent;
+  --box-shadow: none;
+}
+
+ion-modal.manual-code-modal::part(content) {
+  position: relative;
+  display: block;
+  contain: content;
+}
+
+ion-modal.manual-code-modal .ion-page {
+  position: relative;
+  display: block;
+  contain: content;
+  max-height: var(--manual-code-modal-max-height);
+  overflow: auto;
+}
+
+@media (max-width: 767px) {
+  ion-modal.manual-code-modal {
+    --manual-code-modal-max-height: 90vh;
+    align-items: flex-end;
+    --width: 100%;
+  }
 }
 
 // Confirm modal — transparent wrapper so the component controls its own backdrop
@@ -154,6 +194,33 @@ ion-modal.confirm-modal {
   --max-width: 100%;
   --max-height: 100%;
   --border-radius: 0;
+}
+
+ion-modal.confirm-modal--wide .modal-content {
+  max-width: 460px;
+  padding: 32px 32px 24px;
+}
+
+// Activity detail — full-screen sheet on phones, right-side drawer from tablet
+// up, mirroring the credential detail drawer (`.credential-detail-modal` in
+// vc-view.component.scss). Global because the modal is created by the
+// ModalController, not declared in a component template.
+ion-modal.activity-detail-modal {
+  --width: 100%;
+  --height: 100%;
+  --border-radius: 0;
+}
+
+// 768px = the `lg` breakpoint of theme/_responsive.scss (this file is @imported
+// into global.scss, so it cannot @use the mixin module).
+@media (min-width: 768px) {
+  ion-modal.activity-detail-modal {
+    --width: min(520px, 92vw);
+    --height: 100%;
+    --box-shadow: -8px 0 24px rgb(0 0 0 / 0.15);
+    justify-content: flex-end;
+    align-items: stretch;
+  }
 }
 
 // Modern credential toast notification
