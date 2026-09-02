@@ -248,7 +248,8 @@ input[type="number"] {
 // The `html` prefix is deliberate: the component rule compiles to
 // `.powers[_ngcontent]`, also (0,2,0), and component styles are injected after
 // this sheet — a plain `.dark-theme .powers` would tie and lose.
-html.dark-theme .powers {
+html.dark-theme .powers,
+html.dark-theme .field-row--structured {
   background: #33436B;
 }
 

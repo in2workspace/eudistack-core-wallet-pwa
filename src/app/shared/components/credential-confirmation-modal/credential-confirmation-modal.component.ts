@@ -232,7 +232,7 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
     }
     .btn-link {
       background: transparent;
-      color: var(--primary-color);
+      color: var(--status-error, #DC2626);
     }
     .btn-primary {
       background: var(--primary-color);
