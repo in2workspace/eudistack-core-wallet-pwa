@@ -1,0 +1,121 @@
+@use 'responsive' as *;
+
+.scan-content {
+  --ion-background-color: var(--surface-page);
+}
+
+.scanner-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  max-width: 900px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: var(--space-lg) clamp(12px, 4vw, 20px) var(--space-xl);
+}
+
+.scanner-header {
+  width: 100%;
+  text-align: center;
+}
+
+.scanner-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.scanner-subtitle {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.scanner-viewport {
+  position: relative;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 220px;
+  max-height: 640px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--neutral-medium, #6B7280);
+
+  app-barcode-scanner {
+    position: absolute;
+    inset: 0;
+  }
+}
+
+.viewfinder {
+  position: absolute;
+  inset: clamp(24px, 12%, 72px);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.vf-corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: var(--neutral-strong, #333);
+  border-style: solid;
+  border-width: 0;
+}
+
+.vf-tl {
+  top: 0; left: 0;
+  border-top-width: 3px;
+  border-left-width: 3px;
+  border-top-left-radius: 12px;
+}
+
+.vf-tr {
+  top: 0; right: 0;
+  border-top-width: 3px;
+  border-right-width: 3px;
+  border-top-right-radius: 12px;
+}
+
+.vf-bl {
+  bottom: 0; left: 0;
+  border-bottom-width: 3px;
+  border-left-width: 3px;
+  border-bottom-left-radius: 12px;
+}
+
+.vf-br {
+  bottom: 0; right: 0;
+  border-bottom-width: 3px;
+  border-right-width: 3px;
+  border-bottom-right-radius: 12px;
+}
+
+// ── Manual code entry ────────────────────────────
+
+.manual-hint {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.manual-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-color);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--ui-focus-ring);
+    outline-offset: 2px;
+  }
+}
+
