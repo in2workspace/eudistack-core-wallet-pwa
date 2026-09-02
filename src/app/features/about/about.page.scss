@@ -3,6 +3,10 @@
 
 :host {
   --about-trailing-size: 28px;
+  --about-toggle-bg: var(--surface-muted, #E8ECF1);
+  --about-toggle-fg: var(--text-primary);
+  --about-toggle-open-bg: var(--text-primary);
+  --about-toggle-open-fg: var(--surface-card);
 }
 
 .about-page {
@@ -208,8 +212,8 @@
 
 .about-row__toggle {
   border-radius: 8px;
-  background: var(--surface-muted, #E8ECF1);
-  color: var(--primary-color);
+  background: var(--about-toggle-bg);
+  color: var(--about-toggle-fg);
 
   ion-icon {
     font-size: 18px;
@@ -217,8 +221,8 @@
 }
 
 .about-row--open .about-row__toggle {
-  background: var(--primary-color);
-  color: var(--primary-contrast-color);
+  background: var(--about-toggle-open-bg);
+  color: var(--about-toggle-open-fg);
 }
 
 .about-row__action-icon {
