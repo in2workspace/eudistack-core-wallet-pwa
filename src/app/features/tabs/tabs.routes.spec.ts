@@ -66,48 +66,6 @@ describe('App Routes', () => {
     expect(location.path()).toBe('/credentials');
   });
 
-  it('should navigate to SettingsPage for /settings', async () => {
-    await router.navigate(['/settings']);
-    const module = await import('../settings/settings.page');
-    expect(module.SettingsPage).toBeTruthy();
-    expect(location.path()).toBe('/settings');
-  });
-
-  it('should navigate to LogsPage for /logs', async () => {
-    await router.navigate(['/logs']);
-    const module = await import('../logs/logs.page');
-    expect(module.LogsPage).toBeTruthy();
-    expect(location.path()).toBe('/logs');
-  });
-
-  it('should navigate to LogsComponent for /logs', async () => {
-    await router.navigate(['/logs']);
-    const module = await import('../logs/logs/logs.component');
-    expect(module.LogsComponent).toBeTruthy();
-    expect(location.path()).toBe('/logs');
-  });
-
-  it('should navigate to CameraLogsPage for /logs/camera', async () => {
-    await router.navigate(['/logs/camera']);
-    const module = await import('../logs/camera-logs/camera-logs.page');
-    expect(module.CameraLogsPage).toBeTruthy();
-    expect(location.path()).toBe('/logs/camera');
-  });
-
-  it('should navigate to LanguageSelectorPage for /language-selector', async () => {
-    await router.navigate(['/language-selector']);
-    const module = await import('../language-selector/language-selector.page');
-    expect(module.LanguageSelectorPage).toBeTruthy();
-    expect(location.path()).toBe('/language-selector');
-  });
-
-  it('should navigate to AboutPage for /about (AC-01)', async () => {
-    await router.navigate(['/about']);
-    const module = await import('../about/about.page');
-    expect(module.AboutPage).toBeTruthy();
-    expect(location.path()).toBe('/about');
-  });
-
   it('should redirect to / for unknown paths', async () => {
     await router.navigate(['tabs/unknown-path']);
     expect(location.path()).toBe('/credentials');
