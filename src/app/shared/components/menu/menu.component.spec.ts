@@ -60,7 +60,7 @@ describe('MenuComponent', () => {
   describe('navigation items', () => {
     const navigationItems = [
       { label: 'menu.activity', route: '/tabs/activity' },
-      { label: 'menu.language', route: '/tabs/language-selector' },
+      { label: 'menu.settings', route: '/tabs/settings' },
       { label: 'menu.connected-devices', route: '/tabs/devices' },
     ];
 

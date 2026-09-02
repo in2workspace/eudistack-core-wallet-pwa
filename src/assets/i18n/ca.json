@@ -7,8 +7,11 @@
     "terms-of-user": "Termes d'Ús",
     "privacy-policy": "Política de Privacitat",
     "faqs": "FAQs",
-    "settings": "Configuració",
     "signed-in-as": "Sessió iniciada com a",
+    "activity": "Activitat",
+    "connected-devices": "Dispositius connectats",
+    "settings": "Configuració",
+    "about": "Sobre",
     "logout": "Tancar sessió",
     "install": "Instal·lar app",
     "wallet": "Cartera"
@@ -241,6 +244,7 @@
     "prf-inconclusive": "No s'ha pogut verificar si el teu autenticador és compatible amb PRF. Torna-ho a intentar o utilitza un altre dispositiu."
   },
   "settings": {
+    "theme": "Tema",
     "title": "Configuració",
     "privacy-blur": "Desenfocament de privacitat",
     "privacy-blur-desc": "Desenfoca les dades de les credencials",

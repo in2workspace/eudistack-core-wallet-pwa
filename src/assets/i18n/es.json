@@ -7,8 +7,11 @@
     "terms-of-user": "Términos de Uso",
     "privacy-policy": "Política de Privacidad",
     "faqs": "FAQs",
-    "settings": "Ajustes",
     "signed-in-as": "Sesión iniciada como",
+    "activity": "Actividad",
+    "connected-devices": "Dispositivos conectados",
+    "settings": "Ajustes",
+    "about": "Acerca de",
     "logout": "Cerrar sesión",
     "install": "Instalar app",
     "wallet": "Cartera"
@@ -177,6 +180,7 @@
     "error": "Nombre de usuario o contraseña incorrectos"
   },
   "settings": {
+    "theme": "Tema",
     "title": "Configuración",
     "privacy-blur": "Desenfoque de privacidad",
     "privacy-blur-desc": "Desenfoca los datos de las credenciales",

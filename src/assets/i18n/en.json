@@ -7,11 +7,10 @@
     "terms-of-user": "Terms of Use",
     "privacy-policy": "Privacy Policy",
     "faqs": "FAQs",
-    "settings": "Settings",
     "signed-in-as": "Signed in as",
     "activity": "Activity",
-    "language": "Language",
     "connected-devices": "Connected Devices",
+    "settings": "Settings",
     "about": "About",
     "logout": "Logout",
     "install": "Install App",
@@ -187,6 +186,7 @@
     "error": "Username or password incorrect"
   },
   "settings": {
+    "theme": "Theme",
     "title": "Settings",
     "privacy-blur": "Privacy blur",
     "privacy-blur-desc": "Blur credential details",
