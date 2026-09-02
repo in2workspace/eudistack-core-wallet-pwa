@@ -212,6 +212,23 @@
   --padding-end: 8px;
 }
 
+.settings-toggle {
+  --track-background: var(--border-default);
+  --track-background-checked: var(--neutral-medium);
+  --handle-background: var(--neutral-white);
+  --handle-background-checked: var(--neutral-white);
+}
+
+.translation-state--progress {
+  width: 100%;
+
+  ion-progress-bar {
+    width: 100%;
+    --background: var(--border-default);
+    --progress-background: var(--text-primary);
+  }
+}
+
 .theme-toggle-item h3 {
   margin: 0 0 2px;
   font-size: 15px;
