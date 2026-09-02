@@ -16,7 +16,7 @@ export interface VerifiableCredential {
   credentialFormat?: string;
 }
 
-// Must match credential_configuration_id in assets/schemas/*.json
+// Must match credential_configuration_id / vct advertised by the issuer metadata endpoint
 export const CREDENTIAL_TYPES_ARRAY = [
   'LEARCredentialEmployee',
   'LEARCredentialMachine',

@@ -125,7 +125,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
         { provide: IssuerMetadataCacheService, useValue: { registerIssuance: jest.fn().mockResolvedValue(undefined) } },
         { provide: ActivityService, useValue: { log: jest.fn() } },
         { provide: HapticService, useValue: { notification: jest.fn() } },
-        { provide: CredentialVerificationService, useValue: { isRevoked: jest.fn().mockResolvedValue(false) } },
+        { provide: CredentialVerificationService, useValue: { isRevoked: jest.fn().mockResolvedValue('not-revoked') } },
         { provide: Oid4vciEngineService, useValue: { performOid4vciFlow: jest.fn() } },
         { provide: ModalController, useValue: mockModalController },
         // privacyBlur() is only exercised by the translate="no" shielding tests below,
@@ -292,6 +292,66 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       component.ionViewWillEnter();
 
       expect(refreshSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('checkCredentialStatuses — background revocation check', () => {
+    const validVcWithStatusList: VerifiableCredential = {
+      ...mockValidVc,
+      credentialStatus: {
+        id: 'status-1',
+        type: 'BitstringStatusListEntry',
+        statusPurpose: 'revocation',
+        statusListIndex: '3',
+        statusListCredential: 'https://issuer.example.com/status-list/1',
+      },
+    } as any;
+
+    let verificationService: { isRevoked: jest.Mock };
+
+    beforeEach(() => {
+      verificationService = TestBed.inject(CredentialVerificationService) as unknown as { isRevoked: jest.Mock };
+      mockCredentialCacheService.snapshot.mockReturnValue({
+        status: 'loaded',
+        credentials: [validVcWithStatusList],
+      });
+    });
+
+    it('should patch the credential to REVOKED when the check confirms revocation', async () => {
+      // Arrange
+      verificationService.isRevoked.mockResolvedValue('revoked');
+
+      // Act
+      await (component as unknown as { checkCredentialStatuses: () => Promise<void> }).checkCredentialStatuses();
+
+      // Assert
+      expect(mockCredentialCacheService.patchStatus).toHaveBeenCalledWith('vc-valid', 'REVOKED');
+      expect(mockWalletService.updateCredentialStatus).toHaveBeenCalledWith('vc-valid', 'REVOKED');
+    });
+
+    it('should NOT change the cached status when the check cannot be completed (fail-closed, not fail-open)', async () => {
+      // Arrange
+      verificationService.isRevoked.mockResolvedValue('unknown');
+
+      // Act
+      await (component as unknown as { checkCredentialStatuses: () => Promise<void> }).checkCredentialStatuses();
+
+      // Assert — this is the fail-open regression guard: a network failure must
+      // never be silently treated as a confirmed "not revoked" credential.
+      expect(mockCredentialCacheService.patchStatus).not.toHaveBeenCalled();
+      expect(mockWalletService.updateCredentialStatus).not.toHaveBeenCalled();
+    });
+
+    it('should NOT change the cached status when the check confirms the credential is not revoked', async () => {
+      // Arrange
+      verificationService.isRevoked.mockResolvedValue('not-revoked');
+
+      // Act
+      await (component as unknown as { checkCredentialStatuses: () => Promise<void> }).checkCredentialStatuses();
+
+      // Assert
+      expect(mockCredentialCacheService.patchStatus).not.toHaveBeenCalled();
+      expect(mockWalletService.updateCredentialStatus).not.toHaveBeenCalled();
     });
   });
 });
