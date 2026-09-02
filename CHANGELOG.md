@@ -24,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Login**: device-name field restored on the passkey step (lost in an earlier redesign pass), plus spacing and layout fixes.
   - **Header menu**: new "Signed in as" block showing the signed-in email.
   - `ion-button` no longer uppercases its label app-wide (Ionic's Material default), replacing four per-page overrides.
+- **Scanner extracted into its own tab, plus the modals and drawers around it** — presentation and navigation only; the OID4VCI/OID4VP flows themselves are untouched.
+  - **Scan page**: the scanner is now `/tabs/scan`, its own page, instead of a query-param mode of the credentials page (`showScannerView`/`showScanner`) reached through an intermediate screen with a "start scan" button — the tab opens the camera directly. On a valid code it hands the URI to `/tabs/credentials` via the same query params the deep-link path already used, so issuance and presentation keep running where they did. QR classification moved out to `QrContentService`.
+  - **Manual code entry**: the textarea under the viewfinder is replaced by a `manual-code-modal` dialog opened from a link, sized to its content (bottom sheet on phones, centred card from tablet up).
+  - **Credential acceptance modal**: countdown, structured-claim (powers) band and footer reworked; Decline now uses the error colour instead of the primary, and the powers band gets the same dark-mode treatment as the detail drawer.
+  - **Tab bar**: two tabs (Scan, Credentials). Buttons span the full width, the active tab is filled with a neutral tone, and a top shadow plus a slightly taller bar separate it from the body.
+  - **Credentials page**: scanner markup and styles removed, PWA install banner moved here from the old home screen, and `/tabs/credentials` becomes the app's landing route — login, protocol callbacks and the presentation selector now return there instead of `/tabs/home`.
 - **EUD-221 — `@ngx-translate/http-loader` aligned to `16.0.1`**: was pinned to `^8.0.0`, resolving `8.0.0`, which publishes `"SEE LICENSE IN LICENSE"` instead of a machine-readable SPDX identifier (SPDX License List / SPDX License Expressions), an auditability gap under NIS2 Art. 21.2(d) and CRA Annex I Part II. `16.0.1` declares `MIT` explicitly and is already the version used by `eudistack-mfe-login`/`eudistack-cgcom-mfe-issuance-portal`, same loader instantiation signature. No application code change, no observable behavior change.
 
 ### Added
