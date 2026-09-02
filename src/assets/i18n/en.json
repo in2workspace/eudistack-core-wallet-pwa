@@ -23,6 +23,7 @@
     "send": "Send"
   },
   "camera-selector": {
+    "device-label": "Camera",
     "title": "Selected camera",
     "settings": "Camera settings",
     "no-device": "No device",

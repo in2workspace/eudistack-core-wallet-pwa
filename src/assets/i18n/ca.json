@@ -17,6 +17,7 @@
     "wallet": "Cartera"
   },
   "camera-selector": {
+    "device-label": "Càmera",
     "title": "Càmera seleccionada",
     "settings": "Configuració de la càmera",
     "no-device": "Sense dispositiu",
