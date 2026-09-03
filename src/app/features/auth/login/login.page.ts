@@ -449,7 +449,7 @@ export class LoginPage implements OnDestroy {
   private navigateHome(): void {
     const pendingLink = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
     sessionStorage.removeItem(PENDING_DEEP_LINK_KEY);
-    this.router.navigateByUrl(pendingLink || '/tabs/home');
+    this.router.navigateByUrl(pendingLink || '/tabs/credentials');
   }
 
   private getDeviceName(): string {

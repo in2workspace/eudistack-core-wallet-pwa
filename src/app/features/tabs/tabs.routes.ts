@@ -10,9 +10,9 @@ const routes: Routes = [
       import('./tabs.page').then((m) => m.TabsPage),
     children: [
       {
-        path: 'home',
+        path: 'scan',
         loadComponent: () =>
-          import('../home/home.page').then((m) => m.HomePage),
+          import('../scan/scan.page').then((m) => m.ScanPage),
       },
       {
         path: 'credentials',
@@ -82,7 +82,7 @@ const routes: Routes = [
       },
       {
         path: '',
-        redirectTo: 'home',
+        redirectTo: 'credentials',
         pathMatch: 'full',
       },
       {

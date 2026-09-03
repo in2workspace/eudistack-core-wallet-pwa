@@ -1,0 +1,132 @@
+@use 'responsive' as *;
+
+:host { display: block; }
+
+.modal-content {
+  position: relative;
+  padding: 28px 28px 24px;
+  border-radius: 16px;
+  background: var(--surface-card, #FFF);
+  max-height: 100%;
+  overflow-y: auto;
+
+  @include respond-below(lg) {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.close-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary, #1A1A2E);
+
+  ion-icon { font-size: 22px; }
+}
+
+h2 {
+  margin: 0 0 8px;
+  padding-right: 32px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary, #1A1A2E);
+}
+
+.description {
+  margin: 0 0 20px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-secondary, #6B7280);
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #1A1A2E);
+}
+
+.field-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default, #D1D5DB);
+  border-radius: 8px;
+  background: var(--surface-card, #FFF);
+  color: var(--text-primary, #1A1A2E);
+  font: inherit;
+  font-size: 14px;
+
+  &::placeholder {
+    color: var(--text-disabled, #9CA3AF);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgb(var(--ui-focus-ring-rgb, 37 99 235) / 0.15);
+  }
+}
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 28px;
+
+  @include respond-below(lg) {
+    flex-direction: column;
+  }
+}
+
+.btn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+
+  @include respond-below(lg) {
+    width: 100%;
+  }
+}
+
+.btn-link {
+  background: transparent;
+  color: var(--primary-color);
+
+  &:hover { text-decoration: underline; }
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: var(--primary-contrast-color);
+
+  &:disabled {
+    background: var(--action-secondary, #F3F4F6);
+    color: var(--text-disabled, #9CA3AF);
+    cursor: default;
+  }
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}

@@ -1,0 +1,35 @@
+<div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="manual-code-title">
+    <button
+      type="button"
+      class="close-btn"
+      (click)="cancel()"
+      [attr.aria-label]="'scanner.manual-back' | translate"
+    >
+      <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+    </button>
+
+    <h2 id="manual-code-title">{{ "scanner.manual-title" | translate }}</h2>
+    <p class="description">{{ "scanner.manual-description" | translate }}</p>
+
+    <label class="field-label" for="manual-code-input">{{ "scanner.manual-label" | translate }}</label>
+    <input
+      id="manual-code-input"
+      class="field-input"
+      type="text"
+      autocomplete="off"
+      spellcheck="false"
+      [placeholder]="'scanner.manual-placeholder' | translate"
+      [ngModel]="code()"
+      (ngModelChange)="onInput($event)"
+      (keydown.enter)="submit()"
+    />
+
+    <div class="modal-actions">
+      <button type="button" class="btn btn-link" (click)="cancel()">
+        {{ "scanner.manual-back" | translate }}
+      </button>
+      <button type="button" class="btn btn-primary" [disabled]="!trimmedCode" (click)="submit()">
+        {{ "scanner.manual-continue" | translate }}
+      </button>
+    </div>
+</div>
