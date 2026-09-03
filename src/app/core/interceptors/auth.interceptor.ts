@@ -4,6 +4,7 @@ import { throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 import { UrlResolverService } from '../services/url-resolver.service';
+import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
 import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
@@ -39,6 +40,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   // Only inject AuthService here — all bootstrap requests have already returned above.
   // At this point APP_INITIALIZER has resolved and _snapshot is set (AD-1).
   const authService = inject(AuthService);
+  const sessionExpiryMarker = inject(SessionExpiryMarkerService);
   const token = authService.getToken();
 
   const authorizedReq = token
@@ -48,6 +50,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(authorizedReq).pipe(
     catchError((err: HttpErrorResponse) => {
       if (err.status === 401) {
+        // Mark before forceLogout()/rethrow so HttpErrorInterceptor — which sees
+        // this same error next on the way back up the chain — knows the session
+        // was already handled and shows one dedicated message, not its generic one.
+        sessionExpiryMarker.markSessionExpired(err);
         authService.forceLogout();
       }
       return throwError(() => err);

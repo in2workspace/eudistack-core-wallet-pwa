@@ -1,9 +1,7 @@
 import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { IonicModule, ViewWillEnter, ViewWillLeave } from '@ionic/angular';
+import { IonicModule, ViewWillEnter } from '@ionic/angular';
 import { StorageService } from 'src/app/shared/services/storage.service';
-import { BarcodeScannerComponent } from 'src/app/shared/components/barcode-scanner/barcode-scanner.component';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { VcViewComponent } from '../../shared/components/vc-view/vc-view.component';
 import { TranslateModule } from '@ngx-translate/core';
@@ -28,11 +26,9 @@ import { IssuerMetadataCacheService } from 'src/app/core/services/issuer-metadat
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { HapticService } from 'src/app/shared/services/haptic.service';
+import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
 import dayjs from 'dayjs';
-//todo restore tests
-
-// TODO separate scan in another component/ page
 
 @Component({
     selector: 'app-credentials',
@@ -42,20 +38,16 @@ import dayjs from 'dayjs';
     imports: [
         IonicModule,
         CommonModule,
-        FormsModule,
         VcViewComponent,
         TranslateModule,
-        BarcodeScannerComponent,
         SkeletonComponent
     ]
 })
 
 // eslint-disable-next-line @angular-eslint/component-class-suffix
-export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
-  public showScannerView = false;
-  public showScanner = false;
+export class CredentialsPage implements OnInit, ViewWillEnter {
   public credentialOfferUri = '';
-  public manualQrValue = '';
+  public bannerDismissed = false;
   readonly prefs = inject(UserPreferencesService);
   public selectedCredentialId: string | null = null;
 
@@ -77,6 +69,9 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
   private readonly activityService = inject(ActivityService);
   private readonly hapticService = inject(HapticService);
   private readonly verificationService = inject(CredentialVerificationService);
+  private readonly pwaInstallService = inject(PwaInstallService);
+
+  public readonly canInstall$ = this.pwaInstallService.installable$;
 
   private authorizationRequest = '';
   private revokedCredentialIds = new Set<string>();
@@ -92,8 +87,6 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
     this.route.queryParams
       .pipe(takeUntilDestroyed())
       .subscribe((params) => {
-        this.showScannerView = params['showScannerView'] === 'true';
-        this.showScanner = params['showScanner']     === 'true';
         this.credentialOfferUri = params['credentialOfferUri'] || params['credential_offer_uri'];
         this.authorizationRequest = params['authorizationRequest'] ?? '';
         this.selectedCredentialId = params['id'] ?? null;
@@ -107,6 +100,20 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
           this.runPendingProtocolFlow();
         }
       });
+  }
+
+  public async installApp(): Promise<void> {
+    await this.pwaInstallService.promptInstall();
+  }
+
+  public dismissInstallBanner(): void {
+    this.bannerDismissed = true;
+  }
+
+  public startScan(): void {
+    this.hapticService.impact();
+    this.router.navigate(['/tabs/scan'])
+      .catch(() => this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.navigation').subscribe());
   }
 
   public ngOnInit(): void {
@@ -156,68 +163,12 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
     this.requestPendingSignatures();
   }
 
-  //this is needed to ensure the scanner is destroyed when leaving page. Ionic
-  //caches the component (it isn't destroyed when leaving route), so ngOnDestroy won't work
-  //here we don't use the navigation to update he view to avoid circularity
-  public ionViewWillLeave(): void{
-    this.showScannerView = false;
-    this.showScanner = false;
-    this.cdr.detectChanges();
-  }
-
-  // Opens the scanner view with the camera already running.
-  public async startScan(): Promise<void> {
-    this.hapticService.impact();
-    try {
-      await this.router.navigate([], {
-        relativeTo: this.route,
-        queryParams: {
-          showScannerView: true,
-          showScanner: true
-        },
-        queryParamsHandling: 'merge'
-      });
-    } catch {
-      this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.navigation').subscribe();
-    }
-  }
 
   public onPrivacyModeChange(event: CustomEvent<{ value?: string | number }>): void {
     const shouldBlur = event.detail.value === 'hide';
     if (this.prefs.privacyBlur() !== shouldBlur) {
       this.prefs.togglePrivacyBlur();
     }
-  }
-
-  public openScannerViewWithoutScanner(): void {
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: {
-        showScannerView: true
-      },
-      queryParamsHandling: 'merge'
-    });
-  }
-
-  public closeScannerViewAndScanner(): void{
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: {
-        showScannerView: false,
-        showScanner: false
-      },
-      queryParamsHandling: 'merge'
-    });
-  }
-
-  public closeScanner(): void{
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: {
-        showScanner: false
-      },
-      queryParamsHandling: 'merge'
-    });
   }
 
   public onCredentialStatusChanged(event: { id: string; status: LifeCycleStatus }): void {
@@ -244,13 +195,6 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
     .subscribe();
   }
 
-  public submitManualQr(): void {
-    const value = this.manualQrValue?.trim();
-    if (value) {
-      this.manualQrValue = '';
-      this.qrCodeEmit(value);
-    }
-  }
 
   public handleRefresh(event: { target: { complete: () => void } }): void {
     this.walletService.refreshCredentials()
@@ -264,53 +208,6 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
       });
   }
 
-  public qrCodeEmit(qrCode: string): void {
-    this.hapticService.notification();
-    if (!this.isSupportedQrContent(qrCode)) {
-      this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.invalid-qr').pipe(take(1)).subscribe();
-      return;
-    }
-
-    let uriToProcess = qrCode;
-
-    if (qrCode.toLowerCase().startsWith('http')) {
-      try {
-        const url = new URL(qrCode);
-        const credentialOfferUri = url.searchParams.get('credential_offer_uri');
-        const authorizationRequest = url.searchParams.get('authorization_request');
-        if (credentialOfferUri) {
-          uriToProcess = credentialOfferUri;
-        } else if (authorizationRequest) {
-          uriToProcess = authorizationRequest;
-        }
-      } catch (e) {
-        console.warn('Could not parse as URL; attempting to process the original string.');
-      }
-    }
-
-    const isCredentialOffer = qrCode.includes('credential_offer_uri');
-    if(isCredentialOffer){
-      //CROSS-DEVICE VC OFFER
-      //show VCs list
-      this.closeScannerViewAndScanner();
-      console.info('Requesting Credential Offer via cross-device flow.');
-      this.credentialActivationFlow(uriToProcess);
-    }else{
-      // VERIFIABLE PRESENTATION
-      // hide scanner but don't show VCs list
-      this.closeScanner();
-      console.info('Processing QR code for verifiable presentation.');
-      this.verifiablePresentationFlow(uriToProcess);
-      }
-  }
-
-  private isSupportedQrContent(qrCode: string): boolean {
-    return qrCode.includes('credential_offer_uri')
-      || qrCode.startsWith('openid4vp://')
-      || qrCode.includes('request_uri=')
-      || qrCode.includes('request=')
-      || qrCode.includes('authorization_request=');
-  }
 
   private sameDeviceVcActivationFlow(credentialOfferUri: string): void {
     console.info('Requesting Credential Offer via same-device flow.')
@@ -525,16 +422,18 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
     if (candidates.length > 0) {
       const checks = await Promise.allSettled(
         candidates.map(async (cred) => {
-          const revoked = await this.verificationService.isRevoked(cred);
-          return { cred, revoked };
+          const result = await this.verificationService.isRevoked(cred);
+          return { cred, result };
         })
       );
 
-      for (const result of checks) {
-        if (result.status === 'fulfilled' && result.value.revoked) {
-          this.revokedCredentialIds.add(result.value.cred.id);
-          this.credentialCacheService.patchStatus(result.value.cred.id, 'REVOKED');
-          this.walletService.updateCredentialStatus(result.value.cred.id, 'REVOKED').subscribe();
+      // 'unknown' (status list unreachable) intentionally leaves the credential's
+      // cached status untouched — never treated as a confirmed non-revoked result.
+      for (const settled of checks) {
+        if (settled.status === 'fulfilled' && settled.value.result === 'revoked') {
+          this.revokedCredentialIds.add(settled.value.cred.id);
+          this.credentialCacheService.patchStatus(settled.value.cred.id, 'REVOKED');
+          this.walletService.updateCredentialStatus(settled.value.cred.id, 'REVOKED').subscribe();
         }
       }
     }
@@ -601,7 +500,7 @@ export class CredentialsPage implements OnInit, ViewWillEnter, ViewWillLeave {
       .subscribe();
 
     setTimeout(()=>{
-      this.router.navigate(['/tabs/home'])
+      this.router.navigate(['/tabs/credentials'])
     }, 1000);
   }
 

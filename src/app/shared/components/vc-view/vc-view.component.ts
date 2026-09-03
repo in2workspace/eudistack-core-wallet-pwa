@@ -174,13 +174,11 @@ export class VcViewComponent implements OnDestroy {
     return (field.value?.length ?? 0) > 24;
   }
 
-  /**
-   * Placeholder: the mock shows an Execute action per power but the behaviour
-   * is not specified yet, so this only surfaces a notice.
-   */
-  public executePower(item: DisplayFieldItem): void {
-    console.warn('Power execution not implemented yet', item);
-    this.toastService.showErrorAlertByTranslateLabel('vc-fields.execute-unavailable').subscribe();
+  public powerActions(item: DisplayFieldItem): string[] {
+    return (item.value ?? '')
+      .split(',')
+      .map(action => action.trim())
+      .filter(Boolean);
   }
 
   private subjectName(cred: VerifiableCredential): string {
@@ -264,7 +262,7 @@ export class VcViewComponent implements OnDestroy {
   private verifyCooldownTimer: ReturnType<typeof setTimeout> | null = null;
   private verifyResultTimer: ReturnType<typeof setTimeout> | null = null;
   public verificationChecks: VerificationCheck[] = [];
-  public verifyOverall: 'pending' | 'valid' | 'invalid' = 'pending';
+  public verifyOverall: 'pending' | 'valid' | 'invalid' | 'unknown' = 'pending';
   public verifyResultKey: string = 'verification.result-invalid';
 
   public async openDetailModal(): Promise<void> {
@@ -326,14 +324,15 @@ export class VcViewComponent implements OnDestroy {
       }
       
       await this.delay(400);
-      const allPassed = this.verificationChecks.every(c => c.status === 'passed');
-      this.verifyOverall = allPassed ? 'valid' : 'invalid';
-  
-      if (!allPassed) {
+      const hasFailed = this.verificationChecks.some(c => c.status === 'failed');
+      const hasError = this.verificationChecks.some(c => c.status === 'error');
+
+      if (hasFailed) {
+        this.verifyOverall = 'invalid';
         const statusCheck = this.verificationChecks.find(c => c.key === 'status');
         const expirationCheck = this.verificationChecks.find(c => c.key === 'expiration');
-  
-        if (statusCheck?.status === 'failed' && statusCheck?.detail === 'revoked') {
+
+        if (statusCheck?.status === 'failed' && statusCheck?.detail === 'verification.detail-revoked') {
           this.verifyResultKey = 'verification.result-revoked';
           this.updateLifeCycleStatus('REVOKED');
         } else if (expirationCheck?.status === 'failed') {
@@ -342,6 +341,16 @@ export class VcViewComponent implements OnDestroy {
         } else {
           this.verifyResultKey = 'verification.result-invalid';
         }
+      } else if (hasError) {
+        this.verifyOverall = 'unknown';
+        // A check could not be completed (e.g. status list unreachable) — never
+        // reported as valid nor as a confirmed failure (fail-closed on uncertainty).
+        // Delivered as a top notification, consistent with the rest of the app's
+        // transient messages, instead of the in-modal result banner (used for
+        // confirmed outcomes only).
+        this.toastService.showInfoToastByTranslateLabel('verification.result-unknown', 5000, 'warning');
+      } else {
+        this.verifyOverall = 'valid';
       }
     } catch {
       // TODO: Review behavior in case of error

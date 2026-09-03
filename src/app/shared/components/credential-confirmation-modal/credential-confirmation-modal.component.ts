@@ -16,205 +16,232 @@ import { CredentialPreview } from '../../../core/models/credential-preview';
       this attribute, treating "no" as an i18n key instead of the platform's translate mode.
       See Tech Debt ticket referenced in technical-design.md §3.2 gap note.
     -->
-    <div class="modal-backdrop">
-      <div class="modal-content" [attr.translate]="'no'" [class.enter]="animateIn">
+    <ion-header class="drawer-topbar">
+          <button
+            type="button"
+            class="drawer-close"
+            (click)="onReject()"
+            [attr.aria-label]="'confirmation.decline' | translate"
+          >
+            <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+          </button>
 
-        <div class="modal-header">
-          <div class="icon-wrapper" [class.icon-enter]="animateIn">
-            <ion-icon name="shield-checkmark-outline"></ion-icon>
-          </div>
           <h2>{{ 'confirmation.new-credential-title' | translate }}</h2>
-          <p class="subtitle">{{ 'confirmation.new-credential' | translate }}</p>
-        </div>
 
-        <div class="credential-card" [class.card-enter]="animateIn">
-          <div class="card-header">
+          <div class="countdown-section" *ngIf="remainingSeconds > 0">
+            <div class="countdown-bar-track">
+              <div class="countdown-bar-fill" [style.width.%]="countdownPercent"></div>
+            </div>
+            <span class="countdown-text">
+              {{ 'confirmation.review-within' | translate: { time: formattedRemaining } }}
+            </span>
+          </div>
+    </ion-header>
+
+    <ion-content class="drawer-body modal-content" [attr.translate]="'no'">
+      <div class="credential-head">
             <span class="credential-name" [attr.translate]="'no'">{{ preview.displayName }}</span>
             <span class="format-badge" *ngIf="preview.format">{{ formatLabel }}</span>
           </div>
 
-          <div class="card-divider"></div>
-
-          <div class="card-sections">
-            <div class="section-block" *ngFor="let section of preview.sections">
-              <span class="section-title" [attr.translate]="'no'">{{ section.section }}</span>
-              <div class="section-fields">
-                <ng-container *ngFor="let field of section.fields">
-                  <!-- Structured field (array of objects like powers) -->
-                  <div class="field-row" *ngIf="field.structured?.length; else simpleField">
-                    <span class="field-label" [attr.translate]="'no'">{{ field.label }}</span>
-                    <div class="structured-list">
-                      <div class="structured-item" *ngFor="let item of field.structured">
-                        <span class="structured-entry">
-                          <span class="structured-key" [attr.translate]="'no'">{{ item.label }}</span>
-                          <span class="structured-val" [attr.translate]="'no'">{{ item.value }}</span>
-                        </span>
-                      </div>
+          <section class="section-block" *ngFor="let section of preview.sections">
+            <h3 class="section-title" [attr.translate]="'no'">{{ section.section }}</h3>
+            <div class="section-fields">
+              <ng-container *ngFor="let field of section.fields">
+                <!-- Structured field (array of objects like powers) -->
+                <div class="field-row field-row--structured" *ngIf="field.structured?.length; else simpleField">
+                  <span class="field-label" [attr.translate]="'no'">{{ field.label }}</span>
+                  <div class="structured-list">
+                    <div class="structured-item" *ngFor="let item of field.structured">
+                      <span class="structured-entry">
+                        <span class="structured-key" [attr.translate]="'no'">{{ item.label }}</span>
+                        <span class="structured-val" [attr.translate]="'no'">{{ item.value }}</span>
+                      </span>
                     </div>
                   </div>
-                  <!-- Simple text field -->
-                  <ng-template #simpleField>
-                    <div class="field-row">
-                      <span class="field-label" [attr.translate]="'no'">{{ field.label }}</span>
-                      <span class="field-value" [attr.translate]="'no'">{{ field.value }}</span>
-                    </div>
-                  </ng-template>
-                </ng-container>
-              </div>
+                </div>
+                <!-- Simple text field -->
+                <ng-template #simpleField>
+                  <div class="field-row">
+                    <span class="field-label" [attr.translate]="'no'">{{ field.label }}</span>
+                    <span class="field-value" [attr.translate]="'no'">{{ field.value }}</span>
+                  </div>
+                </ng-template>
+              </ng-container>
             </div>
-          </div>
+          </section>
 
-          <div class="card-expiration" *ngIf="preview.expirationDate">
-            <div class="card-divider"></div>
-            <div class="expiration-row">
-              <ion-icon name="calendar-outline"></ion-icon>
-              <span>{{ 'confirmation.expiration' | translate }}{{ formattedExpiration }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="countdown-section" *ngIf="remainingSeconds > 0">
-          <div class="countdown-bar-track">
-            <div class="countdown-bar-fill" [style.width.%]="countdownPercent"></div>
-          </div>
-          <span class="countdown-text">
-            {{ 'confirmation.time-remaining' | translate }}: <strong>{{ remainingSeconds }}s</strong>
-          </span>
-        </div>
-
-        <div class="modal-actions">
-          <button class="btn btn-outline" (click)="onReject()">
-            {{ 'confirmation.cancel' | translate }}
-          </button>
-          <button class="btn btn-primary" (click)="onAccept()">
-            {{ 'confirmation.accept' | translate }}
-          </button>
-        </div>
+      <div class="expiration-row" *ngIf="preview.expirationDate">
+        <ion-icon name="calendar-outline" aria-hidden="true"></ion-icon>
+        <span>{{ 'confirmation.expiration' | translate }}{{ formattedExpiration }}</span>
       </div>
-    </div>
+    </ion-content>
+
+    <ion-footer class="drawer-footer">
+      <button type="button" class="btn btn-link" (click)="onReject()">
+        {{ 'confirmation.decline' | translate }}
+      </button>
+      <button type="button" class="btn btn-primary" (click)="onAccept()">
+        {{ 'confirmation.accept-credential' | translate }}
+      </button>
+    </ion-footer>
   `,
   styles: [`
-    :host { display: block; height: 100%; }
+    .drawer-topbar {
+      position: relative;
+      padding: 20px 24px 16px;
+      text-align: center;
+      background: var(--surface-card, #FFF);
+      border-bottom: 1px solid var(--border-default, #D1D5DB);
 
-    .modal-backdrop {
-      display: flex; align-items: center; justify-content: center;
-      min-height: 100%; padding: 16px;
-      background: rgba(15,15,30,0.6); backdrop-filter: blur(4px);
+      &::after { display: none; }
     }
-    .modal-content {
-      width: 100%; max-width: 420px; max-height: 90vh;
-      overflow-y: auto; scrollbar-width: none; background: var(--surface-page, #F5F7FA);
-      border-radius: 16px; padding: 32px 24px 24px;
-      border: 1px solid var(--surface-card, #FFF);
-      opacity: 0; transform: translateY(24px);
-      &.enter { animation: fadeIn 0.4s ease-out forwards; }
-      &::-webkit-scrollbar { display: none; }
+
+    .drawer-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px; height: 32px;
+      border: 0; background: none; cursor: pointer;
+      color: var(--text-primary, #1A1A2E);
+      ion-icon { font-size: 22px; }
     }
-    @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
 
-    .modal-header { text-align: center; margin-bottom: 24px; }
-
-    .icon-wrapper {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 64px; height: 64px; border-radius: 50%;
-      background: var(--primary-color);
-      border: 1px solid var(--primary-contrast-color);
-      box-sizing: content-box;
-      margin-bottom: 16px; opacity: 0; transform: scale(0.5);
-      ion-icon { 
-        font-size: 32px; 
-        color: var(--primary-contrast-color);
-      }
-      &.icon-enter { animation: pop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.15s forwards; }
+    .drawer-topbar h2 {
+      margin: 0;
+      padding-inline: 36px;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--text-primary, #1A1A2E);
     }
-    @keyframes pop { to { opacity: 1; transform: scale(1); } }
-    .modal-header h2 { font-size: 1.35rem; font-weight: 700; color: var(--text-primary, #1A1A2E); margin: 0 0 6px; }
-    .subtitle { font-size: 0.9rem; color: var(--text-secondary, #6B7280); margin: 0; line-height: 1.4; }
 
-    .credential-card {
-      background: var(--surface-card, #FFF); border-radius: 8px;
-      border: 1px solid var(--border-default, #D1D5DB);
-      box-shadow: 0 4px 6px rgba(0,0,0,0.07);
-      padding: 20px; margin-bottom: 20px;
-      opacity: 0; transform: scale(0.95) translateY(12px);
-      &.card-enter { animation: reveal 0.5s ease-out 0.25s forwards; }
+    .countdown-section { margin-top: 12px; }
+    .countdown-bar-track {
+      height: 4px; border-radius: 2px;
+      background: var(--surface-muted, #E8ECF1);
+      overflow: hidden; margin-bottom: 6px;
     }
-    @keyframes reveal { to { opacity: 1; transform: scale(1) translateY(0); } }
+    .countdown-bar-fill {
+      height: 100%; border-radius: 2px;
+      background: var(--status-success, #059669);
+      transition: width 1s linear;
+    }
+    .countdown-text { font-size: 12px; color: var(--text-secondary, #6B7280); }
 
-    .card-header {
+    /* ── Body ────────────────────────────────────────── */
+
+    .drawer-body {
+      --background: var(--surface-card, #FFF);
+      --padding-start: 24px;
+      --padding-end: 24px;
+      --padding-top: 20px;
+      --padding-bottom: 20px;
+    }
+
+    .credential-head {
       display: flex; align-items: center;
-      justify-content: space-between;
-      gap: 10px; flex-wrap: wrap;
+      justify-content: space-between; gap: 10px; flex-wrap: wrap;
+      margin-bottom: 20px;
     }
-    .credential-name { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); }
+    .credential-name { font-size: 17px; font-weight: 700; color: var(--text-primary); }
     .format-badge {
-      font-size: 0.65rem;
-      font-weight: 600; 
-      text-transform: uppercase;
-      padding: 3px 8px; 
-      border-radius: 4px;
-      background: var(--primary-color); 
-      color: var(--primary-contrast-color);
-      border: 1px solid var(--primary-contrast-color);
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      padding: 3px 8px; border-radius: 6px;
+      background: var(--surface-muted, #E8ECF1); color: var(--text-primary);
     }
-    .card-divider { height: 1px; background: var(--border-default, #D1D5DB); margin: 14px 0; opacity: 0.6; }
 
-    .card-sections { display: flex; flex-direction: column; gap: 16px; }
-    .section-block { display: flex; flex-direction: column; gap: 8px; }
+    .section-block { margin-bottom: 22px; }
     .section-title {
-      font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.05em; color: var(--text-primary);
-      padding-bottom: 4px; border-bottom: 1px solid var(--border-default, #D1D5DB);
+      margin: 0 0 10px;
+      font-size: 15px; font-weight: 700;
+      color: var(--text-primary);
     }
-    .section-fields { display: flex; flex-direction: column; gap: 8px; }
-    .field-row { display: flex; flex-direction: column; gap: 2px; }
+
+    .section-fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px 16px;
+    }
+    .field-row { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
     .field-label {
-      font-size: 0.75rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.03em;
+      font-size: 12px; font-weight: 600;
       color: var(--text-secondary, #6B7280);
     }
     .field-value {
-      font-size: 0.9rem; color: var(--text-primary, #1A1A2E);
-      line-height: 1.4; word-break: break-word;
+      padding: 9px 12px;
+      border: 1px solid var(--border-default, #D1D5DB);
+      border-radius: 8px;
+      background: var(--surface-muted, #E8ECF1);
+      font-size: 14px; color: var(--text-primary, #1A1A2E);
+      line-height: 1.35; word-break: break-word;
     }
 
-    .structured-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+    .field-row--structured {
+      grid-column: 1 / -1;
+      margin: 0 -24px;
+      padding: 16px 24px;
+      background: #C8D6F0;
+    }
+
+    .structured-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
     .structured-item {
       display: flex; flex-wrap: wrap; gap: 6px;
-      padding: 8px 10px; background: var(--surface-muted, #E8ECF1); border-radius: 4px;
+      padding: 9px 12px;
+      border: 1px solid var(--border-default, #D1D5DB);
+      border-radius: 8px;
+      background: var(--surface-card, #FFF);
     }
-    .structured-entry { display: inline-flex; gap: 4px; font-size: 0.85rem; }
+    .structured-entry { display: inline-flex; gap: 4px; font-size: 14px; }
     .structured-key { color: var(--text-secondary); font-weight: 500; }
     .structured-key::after { content: ':'; }
     .structured-val { color: var(--text-primary); }
 
     .expiration-row {
       display: flex; align-items: center; gap: 8px;
-      font-size: 0.85rem; color: var(--text-secondary, #6B7280);
+      font-size: 13px; color: var(--text-secondary, #6B7280);
       ion-icon { font-size: 18px; flex-shrink: 0; }
     }
 
-    .countdown-section { margin-bottom: 20px; text-align: center; }
-    .countdown-bar-track { height: 4px; border-radius: 2px; background: var(--surface-muted, #E8ECF1); overflow: hidden; margin-bottom: 8px; }
-    .countdown-bar-fill { height: 100%; border-radius: 2px; background: var(--neutral-medium); transition: width 1s linear; }
-    .countdown-text { font-size: 0.8rem; color: var(--text-secondary); }
+    /* ── Footer ──────────────────────────────────────── */
 
-    .modal-actions { display: flex; gap: 12px; }
+    .drawer-footer {
+      display: flex; align-items: center; justify-content: center;
+      gap: 12px;
+      padding: 12px 24px;
+      padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      background: var(--surface-card, #FFF);
+      border-top: 1px solid var(--border-default, #D1D5DB);
+
+      &::before { display: none; }
+    }
     .btn {
-      flex: 1; padding: 14px 20px; border-radius: 8px;
-      font-size: 0.95rem; font-weight: 600;
-      cursor: pointer; border: none; outline: none;
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 44px; padding: 12px 20px;
+      border-radius: 8px; border: none; outline: none;
+      font: inherit; font-size: 15px; font-weight: 600;
+      text-align: center;
+      cursor: pointer;
       transition: background 0.2s, transform 0.1s;
       &:active { transform: scale(0.97); }
+      &:focus-visible { outline: 2px solid var(--ui-focus-ring); outline-offset: 2px; }
     }
-    .btn-outline {
-      background: var(--surface-card, #FFF); color: #374151;
-      border: 1px solid var(--border-default, #D1D5DB);
+    .btn-link {
+      background: transparent;
+      color: var(--status-error, #DC2626);
     }
-    .btn-primary { 
+    .btn-primary {
       background: var(--primary-color);
       color: var(--primary-contrast-color);
-      border: 1px solid var(--border-default, #D1D5DB);
+    }
+
+    @media (max-width: 767px) {
+      .drawer-footer { flex-direction: column; }
+      .btn { width: 100%; }
     }
   `],
 })
@@ -238,6 +265,13 @@ export class CredentialConfirmationModalComponent {
   get countdownPercent(): number {
     if (this.timeoutSeconds <= 0) return 0;
     return (this.remainingSeconds / this.timeoutSeconds) * 100;
+  }
+
+  get formattedRemaining(): string {
+    const total = Math.max(0, this.remainingSeconds);
+    const minutes = Math.floor(total / 60);
+    const seconds = total % 60;
+    return `${`${minutes}`.padStart(2, '0')}:${`${seconds}`.padStart(2, '0')}`;
   }
 
   ionViewDidEnter(): void {

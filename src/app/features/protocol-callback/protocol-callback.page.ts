@@ -41,7 +41,7 @@ export class ProtocolCallbackPage implements OnInit {
           return;
         }
 
-        this.router.navigate(['/tabs/home']);
+        this.router.navigate(['/tabs/credentials']);
       });
   }
 }

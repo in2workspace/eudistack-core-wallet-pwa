@@ -112,6 +112,28 @@
   white-space: nowrap;
 }
 
+@include respond-below(lg) {
+  .card-preview {
+    flex-direction: column;
+  }
+
+  .card-preview__cell {
+    padding: 12px 0;
+    border-left: 0;
+    border-top: 1px solid var(--border-default, #D1D5DB);
+
+    &:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+  }
+
+  .card-preview__value {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
 .card-unsigned {
   align-self: flex-start;
   display: inline-flex;
@@ -462,17 +484,24 @@
   }
 }
 
-.powers__execute {
+.powers__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
   flex-shrink: 0;
+  max-width: 50%;
+}
+
+.powers__action {
   padding: 4px 8px;
   border: 1px solid var(--border-default, #D1D5DB);
   border-radius: 8px;
   background: var(--surface-card, #fff);
-  cursor: pointer;
-  font: inherit;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 // ── Footer ───────────────────────────────────────────

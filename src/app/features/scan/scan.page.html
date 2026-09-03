@@ -1,0 +1,27 @@
+<ion-content [fullscreen]="true" class="scan-content">
+  <div class="scanner-wrapper">
+    <header class="scanner-header">
+      <h1 class="scanner-title">{{ "scanner.title" | translate }}</h1>
+      <p class="scanner-subtitle">{{ "scanner.subtitle" | translate }}</p>
+    </header>
+
+    @if (showScanner) {
+      <div class="scanner-viewport">
+        <app-barcode-scanner (qrCode)="qrCodeEmit($event)"></app-barcode-scanner>
+        <div class="viewfinder">
+          <span class="vf-corner vf-tl"></span>
+          <span class="vf-corner vf-tr"></span>
+          <span class="vf-corner vf-bl"></span>
+          <span class="vf-corner vf-br"></span>
+        </div>
+      </div>
+    }
+
+    <p class="manual-hint">
+      {{ "scanner.manual-hint" | translate }}
+      <button type="button" class="manual-link" (click)="openManualCodeModal()">
+        {{ "scanner.manual-link" | translate }}
+      </button>
+    </p>
+  </div>
+</ion-content>

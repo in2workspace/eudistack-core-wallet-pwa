@@ -62,7 +62,7 @@ function restoreUiTranslation(): Promise<void> {
 }
 
 disableTouchScrollOnPaths(
-  ['/tabs/home']
+  ['/tabs/credentials']
 );
 
 if (environment.production) {

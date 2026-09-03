@@ -518,6 +518,98 @@ describe('VcViewComponent', () => {
     });
   });
 
+  describe('verifyCredential', () => {
+    let verificationService: CredentialVerificationServiceMock;
+
+    beforeEach(() => {
+      verificationService = TestBed.inject(CredentialVerificationService) as unknown as CredentialVerificationServiceMock;
+      // Skip the artificial UI pacing delays so the checks resolve immediately.
+      jest.spyOn(component as any, 'delay').mockResolvedValue(undefined);
+    });
+
+    it('should end as "unknown", notify via toast (not the in-modal banner), and NOT persist REVOKED when the status check could not be completed', async () => {
+      // Arrange
+      verificationService.getCheckKeys.mockReturnValue(['status']);
+      verificationService.runCheck.mockResolvedValue({
+        key: 'status',
+        status: 'error',
+        detail: 'verification.detail-check-error',
+      });
+      const updateStatusSpy = jest.spyOn(walletService, 'updateCredentialStatus');
+      const toastSpy = jest.spyOn((component as any).toastService, 'showInfoToastByTranslateLabel').mockImplementation(() => {});
+
+      // Act
+      await component.verifyCredential();
+
+      // Assert — fail-closed on uncertainty: never shown as valid, never persisted as revoked;
+      // the explanation is delivered as a top notification, consistent with the rest of the
+      // app's messages, not the in-modal result banner (reserved for confirmed outcomes).
+      expect(component.verifyOverall).toBe('unknown');
+      expect(toastSpy).toHaveBeenCalledWith('verification.result-unknown', 5000, 'warning');
+      expect(updateStatusSpy).not.toHaveBeenCalled();
+    });
+
+    it('should end as "invalid" and persist REVOKED when the status check confirms revocation', async () => {
+      // Arrange
+      verificationService.getCheckKeys.mockReturnValue(['status']);
+      verificationService.runCheck.mockResolvedValue({
+        key: 'status',
+        status: 'failed',
+        detail: 'verification.detail-revoked',
+      });
+
+      // Act
+      await component.verifyCredential();
+
+      // Assert
+      expect(component.verifyOverall).toBe('invalid');
+      expect(component.verifyResultKey).toBe('verification.result-revoked');
+      expect(walletService.updateCredentialStatus).toHaveBeenCalledWith('testId', 'REVOKED');
+    });
+
+    it('should end as "invalid" with the generic message when a check fails for a reason other than revocation or expiration', async () => {
+      // Arrange
+      verificationService.getCheckKeys.mockReturnValue(['issuer']);
+      verificationService.runCheck.mockResolvedValue({ key: 'issuer', status: 'failed' });
+
+      // Act
+      await component.verifyCredential();
+
+      // Assert
+      expect(component.verifyOverall).toBe('invalid');
+      expect(component.verifyResultKey).toBe('verification.result-invalid');
+      expect(walletService.updateCredentialStatus).not.toHaveBeenCalled();
+    });
+
+    it('should end as "valid" when every check passes', async () => {
+      // Arrange
+      verificationService.getCheckKeys.mockReturnValue(['issuer', 'status']);
+      verificationService.runCheck.mockImplementation(async (key: string) => ({ key, status: 'passed' as const }));
+
+      // Act
+      await component.verifyCredential();
+
+      // Assert
+      expect(component.verifyOverall).toBe('valid');
+    });
+
+    it('should prioritize a confirmed failure over an unrelated check error', async () => {
+      // Arrange — expiration genuinely failed while the status list happened to be unreachable
+      verificationService.getCheckKeys.mockReturnValue(['expiration', 'status']);
+      verificationService.runCheck.mockImplementation(async (key: string) => {
+        if (key === 'expiration') return { key, status: 'failed' as const };
+        return { key, status: 'error' as const, detail: 'verification.detail-check-error' };
+      });
+
+      // Act
+      await component.verifyCredential();
+
+      // Assert — a known, confirmed problem must never be masked by an unrelated network error
+      expect(component.verifyOverall).toBe('invalid');
+      expect(component.verifyResultKey).toBe('verification.result-expired');
+    });
+  });
+
   // AC-10 / NFR-S-142-08: credential content must never be handed to a page
   // translation engine, regardless of whether the EUD-142 runtime translation
   // feature is enabled or even available on the device (AD-4). Double marking
@@ -584,7 +676,8 @@ describe('VcViewComponent', () => {
         ['drawer issuer name', '{{ issuedBy }}'],
         ['drawer content container', 'class="drawer-content"'],
         ['verification row value (issuer/dates)', '{{ row.value }}'],
-        ['power value', '{{ item.value || item.label }}'],
+        ['power name', '{{ item.label }}'],
+        ['power action', '{{ action }}'],
         ['claim field value', '[title]="field.value"'],
       ])('%s carries [attr.translate]="\'no\'"', (_name, needle) => {
         expect(openingTagContaining(needle)).toContain('[attr.translate]="\'no\'"');

@@ -397,7 +397,7 @@ describe('VcSelectorPage', () => {
     //   await component.sendCred(mockCred);
 
     //   expect(errorMessageSpy).toHaveBeenCalledWith(500);
-    //   expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/home']);
+    //   expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
     //   expect(component.selCredList).toEqual([]);
     // });
 

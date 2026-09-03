@@ -215,7 +215,11 @@ export class AuthorizationCodeTokenService {
 
     if (params.profile === 'haip') {
       const dpopProof = await this.dpopService.issueProof('POST', tokenEndpoint);
-      headers = headers.set('DPoP', dpopProof.jwt);
+      const attestation = await this.wiaService.fetchAttestationHeaders(params.metadata.issuer ?? tokenEndpoint);
+      headers = headers
+        .set('DPoP', dpopProof.jwt)
+        .set('OAuth-Client-Attestation', attestation.wia)
+        .set('OAuth-Client-Attestation-PoP', attestation.pop);
     }
 
     try {

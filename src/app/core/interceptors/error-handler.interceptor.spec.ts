@@ -1,14 +1,19 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { HTTP_INTERCEPTORS, HttpClient } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, HttpClient, HttpErrorResponse, HttpHandler, HttpRequest } from '@angular/common/http';
+import { of, throwError } from 'rxjs';
 import { ToastServiceHandler } from '../../shared/services/toast.service';
 import { HttpErrorInterceptor } from './error-handler.interceptor';
 import { AuthService } from '../services/auth.service';
+import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
+import { UrlResolverService } from '../services/url-resolver.service';
 import { SERVER_PATH } from '../constants/api.constants';
 import { environment } from 'src/environments/environment';
 
 class MockToastServiceHandler {
   showErrorAlert(message: string) {
+  }
+  showErrorAlertByTranslateLabel(message: string) {
   }
 }
 
@@ -364,4 +369,73 @@ it('wallet discovery 404 → handled silently (no toast, no console.error) [M1 f
   req.flush({ message: 'Not Found' }, { status: 404, statusText: 'Not Found' });
 });
 
+});
+
+/**
+ * Coverage for the session-expiry-marker coordination between authInterceptor
+ * and HttpErrorInterceptor (previously untested — see auth.interceptor.spec.ts
+ * T-auth-7's comment history: each interceptor was only unit-tested in
+ * isolation, so the double-handling of the same 401 was never caught).
+ */
+describe('HttpErrorInterceptor — session-expiry marker coordination', () => {
+  let interceptor: HttpErrorInterceptor;
+  let mockToastServiceHandler: MockToastServiceHandler;
+  let sessionExpiryMarker: SessionExpiryMarkerService;
+
+  beforeEach(() => {
+    mockToastServiceHandler = new MockToastServiceHandler();
+    sessionExpiryMarker = new SessionExpiryMarkerService();
+
+    TestBed.configureTestingModule({
+      providers: [
+        HttpErrorInterceptor,
+        { provide: ToastServiceHandler, useValue: mockToastServiceHandler },
+        { provide: UrlResolverService, useValue: { serverUrl: () => 'http://localhost' } },
+        { provide: SessionExpiryMarkerService, useValue: sessionExpiryMarker },
+      ],
+    });
+
+    interceptor = TestBed.inject(HttpErrorInterceptor);
+  });
+
+  it('shows the dedicated session-expired message and skips the generic toast when authInterceptor already marked the error', (done) => {
+    const markedError = new HttpErrorResponse({ status: 401, url: 'http://localhost/api/v1/credentials' });
+    sessionExpiryMarker.markSessionExpired(markedError);
+
+    const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
+    const dedicatedSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlertByTranslateLabel').mockReturnValue(of(undefined) as any);
+
+    const fakeNext: HttpHandler = { handle: () => throwError(() => markedError) };
+    const req = new HttpRequest('GET', 'http://localhost/api/v1/credentials');
+
+    interceptor.intercept(req, fakeNext).subscribe({
+      error: () => {
+        expect(dedicatedSpy).toHaveBeenCalledWith('errors.session-expired');
+        expect(toastSpy).not.toHaveBeenCalled();
+        done();
+      },
+    });
+  });
+
+  it('falls through to the generic toast when the 401 was NOT marked by authInterceptor', (done) => {
+    const unmarkedError = new HttpErrorResponse({
+      status: 401,
+      url: 'http://localhost/api/v1/credentials',
+      error: { message: 'Unauthorized' },
+    });
+
+    const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
+    const dedicatedSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlertByTranslateLabel');
+
+    const fakeNext: HttpHandler = { handle: () => throwError(() => unmarkedError) };
+    const req = new HttpRequest('GET', 'http://localhost/api/v1/credentials');
+
+    interceptor.intercept(req, fakeNext).subscribe({
+      error: () => {
+        expect(toastSpy).toHaveBeenCalledWith('Unauthorized');
+        expect(dedicatedSpy).not.toHaveBeenCalled();
+        done();
+      },
+    });
+  });
 });

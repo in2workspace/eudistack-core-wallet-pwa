@@ -17,10 +17,17 @@
     "wallet": "Wallet"
   },
   "scanner": {
-    "initializing": "Initializing scanner... Please wait.",
-    "manualInput": "Or paste QR content manually:",
-    "manualInputPlaceholder": "Paste QR code content here...",
-    "send": "Send"
+    "title": "Scan your QR code",
+    "subtitle": "Use your device camera to scan the QR code",
+    "manual-hint": "Can't scan the QR code?",
+    "manual-link": "Enter code manually",
+    "manual-title": "Enter code manually",
+    "manual-description": "If you're unable to scan the QR code, enter the activation code provided to you.",
+    "manual-label": "Access code",
+    "manual-placeholder": "Enter the access code",
+    "manual-back": "Back to Scan your QR code",
+    "manual-continue": "Continue",
+    "initializing": "Initializing scanner... Please wait."
   },
   "camera-selector": {
     "device-label": "Camera",
@@ -378,12 +385,11 @@
       "attest": "Attest",
       "upload": "Upload"
     },
-    "issued-by": "Issued by",
-    "execute": "Execute",
-    "execute-unavailable": "This action is not available yet."
+    "issued-by": "Issued by"
   },
   "errors": {
     "default": "Something went wrong. If it keeps happening, please contact the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
+    "session-expired": "Your session has expired. Please sign in again.",
     "key-storage-unavailable": "This browser can’t securely store keys. You won’t be able to activate or use credentials on this device.",
     "key-storage-public-only": "This browser can’t securely store keys. You can add credentials, but they may stop working after you close or reload the app.",
     "credential-validation-failed": "We couldn’t validate the credential. Please try again.",
@@ -542,6 +548,7 @@
     "result-invalid": "Credential has issues",
     "result-revoked": "Credential revoked",
     "result-expired": "Credential expired",
+    "result-unknown": "Due to a problem outside this app, we couldn't check the revocation status. Please try again in a few minutes.",
     "check-issuer": "Issuer",
     "check-issuance": "Issuance date",
     "check-expiration": "Expiration date",
@@ -549,6 +556,7 @@
     "detail-revoked": "Revoked",
     "detail-no-status-list": "No status list",
     "detail-no-expiry": "No expiry",
+    "detail-check-error": "Could not be verified",
     "card-title": "Credential Verification",
     "row-issuance": "Issuance date",
     "row-expiration": "Expiration date",
@@ -556,11 +564,14 @@
     "row-revocation": "Revocation status"
   },
   "confirmation": {
+    "decline": "Decline",
+    "accept-credential": "Accept credential",
+    "review-within": "Review and confirm within {{time}}",
     "header": "Send credential?",
     "ok": "Ok",
     "cancel": "Cancel",
     "new-credential": "Do you want to accept this credential?",
-    "new-credential-title": "New Credential",
+    "new-credential-title": "Verify the details of your new credential",
     "accept": "Accept",
     "pin": "Enter PIN",
     "description": "A PIN has been sent to your email. Check your inbox. Enter your PIN Code.",

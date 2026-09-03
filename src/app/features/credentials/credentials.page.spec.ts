@@ -3,6 +3,7 @@ import { By } from '@angular/platform-browser';
 import { Router, ActivatedRoute } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { EMPTY, of } from 'rxjs';
+import { ModalController } from '@ionic/angular';
 import { CredentialsPage } from './credentials.page';
 import { VcViewComponent } from 'src/app/shared/components/vc-view/vc-view.component';
 import { AuthorizationRequestService } from 'src/app/core/protocol/oid4vp/authorization-request.service';
@@ -23,6 +24,13 @@ import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engi
 import { StorageService } from 'src/app/shared/services/storage.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { VerifiableCredential } from 'src/app/core/models/verifiable-credential';
+
+const mockModalController = {
+  create: jest.fn().mockResolvedValue({
+    present: jest.fn().mockResolvedValue(undefined),
+    onWillDismiss: jest.fn().mockResolvedValue({ role: 'cancel', data: null }),
+  }),
+};
 
 describe('CredentialsPage - verifiablePresentationFlow', () => {
   let component: CredentialsPage;
@@ -90,6 +98,10 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       showErrorAlert: jest.fn().mockReturnValue(of(undefined)),
     };
 
+    TestBed.overrideComponent(CredentialsPage, {
+      add: { providers: [{ provide: ModalController, useValue: mockModalController }] },
+    });
+
     await TestBed.configureTestingModule({
       // TranslateModule.forRoot() only needed once the translate="no" shielding tests
       // below render app-vc-view, which transitively injects TranslateService — every
@@ -113,8 +125,9 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
         { provide: IssuerMetadataCacheService, useValue: { registerIssuance: jest.fn().mockResolvedValue(undefined) } },
         { provide: ActivityService, useValue: { log: jest.fn() } },
         { provide: HapticService, useValue: { notification: jest.fn() } },
-        { provide: CredentialVerificationService, useValue: { isRevoked: jest.fn().mockResolvedValue(false) } },
+        { provide: CredentialVerificationService, useValue: { isRevoked: jest.fn().mockResolvedValue('not-revoked') } },
         { provide: Oid4vciEngineService, useValue: { performOid4vciFlow: jest.fn() } },
+        { provide: ModalController, useValue: mockModalController },
         // privacyBlur() is only exercised by the translate="no" shielding tests below,
         // which render the card-grid (app-vc-view needs it for [blurred]) — every other
         // test in this spec never renders the template.
@@ -137,52 +150,6 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     mockHaptic = TestBed.inject(HapticService);
   });
 
-  describe('CredentialsPage - qrCodeEmit', () => {
-    it('should show error and return if QR content is not supported', () => {
-      const invalidQr = 'not-supported-content';
-      const toastSpy = mockToastServiceHandler.showErrorAlertByTranslateLabel;
-
-      component.qrCodeEmit(invalidQr);
-
-      expect(mockHaptic.notification).toHaveBeenCalled();
-      expect(toastSpy).toHaveBeenCalledWith('errors.invalid-qr');
-    });
-
-    it('should handle Credential Offer (VCI) from a URL and extract the URI', () => {
-      const complexQr = 'https://issuer.com/api?credential_offer_uri=openid-credential-offer://encoded-data';
-      const closeViewSpy = jest.spyOn(component, 'closeScannerViewAndScanner');
-      const flowSpy = jest.spyOn(component as any, 'credentialActivationFlow').mockImplementation();
-
-      component.qrCodeEmit(complexQr);
-
-      expect(closeViewSpy).toHaveBeenCalled();
-      expect(flowSpy).toHaveBeenCalledWith('openid-credential-offer://encoded-data');
-    });
-
-    it('should handle direct Credential Offer (VCI) string', () => {
-      const directQr = 'credential_offer_uri=direct-vci-data';
-      const closeViewSpy = jest.spyOn(component, 'closeScannerViewAndScanner');
-      const flowSpy = jest.spyOn(component as any, 'credentialActivationFlow').mockImplementation();
-
-      component.qrCodeEmit(directQr);
-
-      expect(closeViewSpy).toHaveBeenCalled();
-      expect(flowSpy).toHaveBeenCalledWith(directQr);
-    });
-
-    it('should handle Verifiable Presentation (VP) flow', () => {
-      const vpQr = 'openid4vp://authorize?request_uri=https://verifier.com';
-      const closeScannerSpy = jest.spyOn(component, 'closeScanner');
-      const flowSpy = jest.spyOn(component as any, 'verifiablePresentationFlow').mockImplementation();
-
-      component.qrCodeEmit(vpQr);
-
-      expect(closeScannerSpy).toHaveBeenCalled();
-      // En VP no se cierra la vista completa (showScannerView), solo el scanner
-      expect(flowSpy).toHaveBeenCalledWith(vpQr);
-    });
-  });
-
   describe('when no valid VCs are found (selectableVcList.length === 0 after filter)', () => {
     beforeEach(() => {
       // Only REVOKED VC → after filter, selectableVcList.length === 0
@@ -190,14 +157,14 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     });
 
     it('should navigate to /tabs/credentials', fakeAsync(() => {
-      component.qrCodeEmit(vpQrCode);
+      (component as any).verifiablePresentationFlow(vpQrCode);
       tick();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
     }));
 
     it('should show error alert after navigation completes', fakeAsync(() => {
-      component.qrCodeEmit(vpQrCode);
+      (component as any).verifiablePresentationFlow(vpQrCode);
       tick();
 
       expect(mockToastServiceHandler.showErrorAlertByTranslateLabel)
@@ -205,7 +172,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     }));
 
     it('should not navigate to /tabs/vc-selector', fakeAsync(() => {
-      component.qrCodeEmit(vpQrCode);
+      (component as any).verifiablePresentationFlow(vpQrCode);
       tick();
 
       expect(mockRouter.navigate).not.toHaveBeenCalledWith(
@@ -222,7 +189,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     });
 
     it('should navigate to /tabs/vc-selector', fakeAsync(() => {
-      component.qrCodeEmit(vpQrCode);
+      (component as any).verifiablePresentationFlow(vpQrCode);
       tick();
 
       expect(mockRouter.navigate).toHaveBeenCalledWith(
@@ -240,7 +207,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     });
 
     it('should show a load error, NOT "no credentials available"', fakeAsync(() => {
-      component.qrCodeEmit(vpQrCode);
+      (component as any).verifiablePresentationFlow(vpQrCode);
       tick();
 
       expect(mockToastServiceHandler.showErrorAlertByTranslateLabel)
@@ -250,7 +217,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     }));
 
     it('should not attempt to filter credentials or navigate to vc-selector', fakeAsync(() => {
-      component.qrCodeEmit(vpQrCode);
+      (component as any).verifiablePresentationFlow(vpQrCode);
       tick();
 
       expect(mockAuthorizationRequestService.parseAuthorizationRequestFromQr).not.toHaveBeenCalled();
@@ -325,6 +292,66 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       component.ionViewWillEnter();
 
       expect(refreshSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('checkCredentialStatuses — background revocation check', () => {
+    const validVcWithStatusList: VerifiableCredential = {
+      ...mockValidVc,
+      credentialStatus: {
+        id: 'status-1',
+        type: 'BitstringStatusListEntry',
+        statusPurpose: 'revocation',
+        statusListIndex: '3',
+        statusListCredential: 'https://issuer.example.com/status-list/1',
+      },
+    } as any;
+
+    let verificationService: { isRevoked: jest.Mock };
+
+    beforeEach(() => {
+      verificationService = TestBed.inject(CredentialVerificationService) as unknown as { isRevoked: jest.Mock };
+      mockCredentialCacheService.snapshot.mockReturnValue({
+        status: 'loaded',
+        credentials: [validVcWithStatusList],
+      });
+    });
+
+    it('should patch the credential to REVOKED when the check confirms revocation', async () => {
+      // Arrange
+      verificationService.isRevoked.mockResolvedValue('revoked');
+
+      // Act
+      await (component as unknown as { checkCredentialStatuses: () => Promise<void> }).checkCredentialStatuses();
+
+      // Assert
+      expect(mockCredentialCacheService.patchStatus).toHaveBeenCalledWith('vc-valid', 'REVOKED');
+      expect(mockWalletService.updateCredentialStatus).toHaveBeenCalledWith('vc-valid', 'REVOKED');
+    });
+
+    it('should NOT change the cached status when the check cannot be completed (fail-closed, not fail-open)', async () => {
+      // Arrange
+      verificationService.isRevoked.mockResolvedValue('unknown');
+
+      // Act
+      await (component as unknown as { checkCredentialStatuses: () => Promise<void> }).checkCredentialStatuses();
+
+      // Assert — this is the fail-open regression guard: a network failure must
+      // never be silently treated as a confirmed "not revoked" credential.
+      expect(mockCredentialCacheService.patchStatus).not.toHaveBeenCalled();
+      expect(mockWalletService.updateCredentialStatus).not.toHaveBeenCalled();
+    });
+
+    it('should NOT change the cached status when the check confirms the credential is not revoked', async () => {
+      // Arrange
+      verificationService.isRevoked.mockResolvedValue('not-revoked');
+
+      // Act
+      await (component as unknown as { checkCredentialStatuses: () => Promise<void> }).checkCredentialStatuses();
+
+      // Assert
+      expect(mockCredentialCacheService.patchStatus).not.toHaveBeenCalled();
+      expect(mockWalletService.updateCredentialStatus).not.toHaveBeenCalled();
     });
   });
 });

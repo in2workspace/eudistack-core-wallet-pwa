@@ -178,6 +178,7 @@
   },
   "errors": {
     "default": "Alguna cosa ha anat malament. Si et torna a passar, contacta amb l’<a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equip de suport</a>.",
+    "session-expired": "La teva sessió ha caducat. Torna a iniciar sessió.",
     "key-storage-unavailable": "Aquest navegador no pot desar claus de manera segura. No podràs activar ni fer servir credencials en aquest dispositiu.",
     "key-storage-public-only": "Aquest navegador no pot desar claus de manera segura. Pots afegir credencials, però podrien deixar de funcionar en tancar o recarregar l’app.",
     "credential-validation-failed": "No hem pogut validar la credencial. Torna-ho a provar.",
@@ -350,10 +351,17 @@
     "lifecycle-expired": "Caducada"
   },
   "scanner": {
-    "initializing": "Inicialitzant escàner...",
-    "manualInput": "O enganxa el contingut del QR manualment:",
-    "manualInputPlaceholder": "Enganxa aquí el contingut del codi QR...",
-    "send": "Enviar"
+    "title": "Escaneja el teu codi QR",
+    "subtitle": "Utilitza la càmera del teu dispositiu per escanejar el codi QR",
+    "manual-hint": "No pots escanejar el codi QR?",
+    "manual-link": "Introdueix el codi manualment",
+    "manual-title": "Introdueix el codi manualment",
+    "manual-description": "Si no pots escanejar el codi QR, introdueix el codi d'activació que t'han facilitat.",
+    "manual-label": "Codi d'accés",
+    "manual-placeholder": "Introdueix el codi d'accés",
+    "manual-back": "Torna a escanejar el codi QR",
+    "manual-continue": "Continua",
+    "initializing": "Inicialitzant escàner..."
   },
   "vc-fields": {
     "delete": "Eliminar credencial",
@@ -442,9 +450,7 @@
       "attest": "Acreditar",
       "upload": "Pujar"
     },
-    "issued-by": "Emesa per",
-    "execute": "Executar",
-    "execute-unavailable": "Aquesta acció encara no està disponible."
+    "issued-by": "Emesa per"
   },
   "activity": {
     "title": "Activitat",
@@ -538,6 +544,7 @@
     "result-invalid": "La credencial té problemes",
     "result-revoked": "Credencial revocada",
     "result-expired": "Credencial caducada",
+    "result-unknown": "Per un problema aliè a aquesta aplicació no s'ha pogut comprovar l'estat de revocació. Torna-ho a provar d'aquí a uns minuts.",
     "check-issuer": "Emissor",
     "check-issuance": "Data d'emissió",
     "check-expiration": "Data d'expiració",
@@ -545,6 +552,7 @@
     "detail-revoked": "Revocada",
     "detail-no-status-list": "Sense llista d'estat",
     "detail-no-expiry": "Sense data de caducitat",
+    "detail-check-error": "No s'ha pogut verificar",
     "card-title": "Verificació de la credencial",
     "row-issuance": "Data d'emissió",
     "row-expiration": "Data de caducitat",
@@ -552,11 +560,14 @@
     "row-revocation": "Estat de revocació"
   },
   "confirmation": {
+    "decline": "Rebutja",
+    "accept-credential": "Accepta la credencial",
+    "review-within": "Revisa i confirma abans de {{time}}",
     "header": "Enviar credencial?",
     "ok": "Ok",
     "cancel": "Cancel·lar",
     "new-credential": "Vols acceptar aquesta credencial?",
-    "new-credential-title": "Nova credencial",
+    "new-credential-title": "Verifica les dades de la teva nova credencial",
     "accept": "Acceptar",
     "pin": "Introdueix el PIN",
     "description": "S'ha enviat un codi PIN al teu email. Revisa'l i introdueix el PIN.",

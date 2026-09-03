@@ -86,8 +86,9 @@ export class Oid4vciEngineService {
       this.loader.addLoadingProcess();
       const cfg = this.findCredentialConfigurationContext(credentialOffer, credentialIssuerMetadata);
 
-      const nonceEndpoint = credentialIssuerMetadata.nonceEndpoint
-        ?? authorisationServerMetadata.nonceEndpoint;
+      // OID4VCI 1.0 Final section 12.2.4: the Nonce Endpoint is published in the
+      // Credential Issuer metadata.
+      const nonceEndpoint = credentialIssuerMetadata.nonceEndpoint;
 
       const nonce = nonceEndpoint
         ? await this.nonceService.fetchNonce(nonceEndpoint)
@@ -120,7 +121,7 @@ export class Oid4vciEngineService {
       // GET CREDENTIAL (with DPoP proof if token is DPoP-bound)
       let credentialDpopJwt: string | undefined;
       if (tokenResponse.token_type?.toLowerCase() === 'dpop' && credentialIssuerMetadata.credentialEndpoint) {
-        const dpopProof = await this.dpopService.issueProof('POST', credentialIssuerMetadata.credentialEndpoint);
+        const dpopProof = await this.dpopService.issueProof('POST', credentialIssuerMetadata.credentialEndpoint, tokenResponse.access_token);
         credentialDpopJwt = dpopProof.jwt;
       }
 

@@ -161,7 +161,8 @@
             } @else {
               <ion-icon
                 class="verify-shield"
-                [class.verify-shield--invalid]="verifyOverall !== 'valid'"
+                [class.verify-shield--invalid]="verifyOverall === 'invalid'"
+                [class.verify-shield--unknown]="verifyOverall === 'unknown'"
                 [src]="verifyOverall === 'valid' ? 'assets/svg/shield-checkmark.svg' : 'assets/svg/shield.svg'"
                 aria-hidden="true"
               ></ion-icon>
@@ -178,10 +179,12 @@
             @for(field of section.fields; track field.label) {
               @for(item of field.structured; track item.label) {
                 <div class="powers__row">
-                  <span class="field-box" [attr.translate]="'no'">{{ item.value || item.label }}</span>
-                  <button type="button" class="powers__execute" (click)="executePower(item)">
-                    {{ "vc-fields.execute" | translate }}
-                  </button>
+                  <span class="field-box" [attr.translate]="'no'">{{ item.label }}</span>
+                  <div class="powers__actions">
+                    @for(action of powerActions(item); track action) {
+                      <span class="powers__action" [attr.translate]="'no'">{{ action }}</span>
+                    }
+                  </div>
                 </div>
               }
             }

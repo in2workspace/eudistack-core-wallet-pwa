@@ -1,15 +1,14 @@
 {
   "name": "eudistack-core-wallet-pwa",
-  "version": "3.16.0",
+  "version": "3.16.4",
   "author": "EUDIStack",
   "homepage": "https://ionicframework.com/",
   "scripts": {
     "ng": "ng",
-    "sync-schemas": "node scripts/sync-schemas.js",
     "gen:build-info": "node scripts/generate-build-info.js",
     "gen:oss-licenses": "node scripts/generate-oss-licenses.js",
-    "prestart": "npm run sync-schemas && npm run gen:build-info && npm run gen:oss-licenses",
-    "prebuild": "npm run sync-schemas && npm run gen:build-info && npm run gen:oss-licenses",
+    "prestart": "npm run gen:build-info && npm run gen:oss-licenses",
+    "prebuild": "npm run gen:build-info && npm run gen:oss-licenses",
     "pretest": "npm run gen:build-info && npm run gen:oss-licenses",
     "pretest:ci": "npm run gen:build-info && npm run gen:oss-licenses",
     "prelint": "npm run gen:build-info",
@@ -19,7 +18,8 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci",
     "lint": "ng lint",
-    "eje": "copy customTheme customTheme2"
+    "eje": "copy customTheme customTheme2",
+    "sbom": "cyclonedx-npm --spec-version 1.6 --output-format JSON --output-file build/sbom/sbom.json --package-lock-only --output-reproducible"
   },
   "private": true,
   "dependencies": {
@@ -39,7 +39,7 @@
     "@ionic/storage-angular": "^4.0.0",
     "@ngx-translate/core": "^16.0.4",
     "@ngx-translate/http-loader": "^16.0.1",
-    "@noble/curves": "^2.0.1",
+    "@noble/curves": "^2.2.0",
     "@zxing/library": "^0.21.3",
     "@zxing/ngx-scanner": "^19.0.0",
     "angularx-qrcode": "^19.0.0",
@@ -60,6 +60,7 @@
     "@angular/compiler-cli": "^19.2.19",
     "@angular/language-service": "^19.2.19",
     "@capacitor/cli": "6.1.2",
+    "@cyclonedx/cyclonedx-npm": "6.0.1",
     "@ionic/angular-toolkit": "^12.1.1",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.5.3",

@@ -12,6 +12,7 @@
     "connected-devices": "Dispositivos conectados",
     "settings": "Ajustes",
     "about": "Acerca de",
+    "signed-in-as": "Sesión iniciada como",
     "logout": "Cerrar sesión",
     "install": "Instalar app",
     "wallet": "Cartera"
@@ -286,10 +287,17 @@
     "lifecycle-expired": "Caducada"
   },
   "scanner": {
-    "initializing": "Inicializando escáner...",
-    "manualInput": "O pega el contenido del QR manualmente:",
-    "manualInputPlaceholder": "Pega aquí el contenido del código QR...",
-    "send": "Enviar"
+    "title": "Escanea tu código QR",
+    "subtitle": "Usa la cámara de tu dispositivo para escanear el código QR",
+    "manual-hint": "¿No puedes escanear el código QR?",
+    "manual-link": "Introduce el código manualmente",
+    "manual-title": "Introduce el código manualmente",
+    "manual-description": "Si no puedes escanear el código QR, introduce el código de activación que te han facilitado.",
+    "manual-label": "Código de acceso",
+    "manual-placeholder": "Introduce el código de acceso",
+    "manual-back": "Volver a escanear el código QR",
+    "manual-continue": "Continuar",
+    "initializing": "Inicializando escáner..."
   },
   "vc-fields": {
     "delete": "Eliminar credencial",
@@ -378,12 +386,11 @@
       "attest": "Acreditar",
       "upload": "Subir"
     },
-    "issued-by": "Emitida por",
-    "execute": "Ejecutar",
-    "execute-unavailable": "Esta acción todavía no está disponible."
+    "issued-by": "Emitida por"
   },
   "errors": {
     "default": "Algo ha salido mal. Si vuelve a ocurrir, contacta con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
+    "session-expired": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
     "key-storage-unavailable": "Este navegador no puede guardar claves de forma segura. No podrás activar ni usar credenciales en este dispositivo.",
     "key-storage-public-only": "Este navegador no puede guardar claves de forma segura. Puedes añadir credenciales, pero podrían dejar de funcionar al cerrar o recargar la app.",
     "credential-validation-failed": "No hemos podido validar la credencial. Inténtalo de nuevo.",
@@ -542,6 +549,7 @@
     "result-invalid": "La credencial tiene problemas",
     "result-revoked": "Credencial revocada",
     "result-expired": "Credencial caducada",
+    "result-unknown": "Por un problema ajeno a esta aplicación no se ha podido comprobar el estado de revocación. Vuelve a intentarlo dentro de unos minutos.",
     "check-issuer": "Emisor",
     "check-issuance": "Fecha de emisión",
     "check-expiration": "Fecha de expiración",
@@ -549,6 +557,7 @@
     "detail-revoked": "Revocada",
     "detail-no-status-list": "Sin lista de estado",
     "detail-no-expiry": "Sin fecha de caducidad",
+    "detail-check-error": "No se ha podido verificar",
     "card-title": "Verificación de la credencial",
     "row-issuance": "Fecha de emisión",
     "row-expiration": "Fecha de caducidad",
@@ -556,11 +565,14 @@
     "row-revocation": "Estado de revocación"
   },
   "confirmation": {
+    "decline": "Rechazar",
+    "accept-credential": "Aceptar credencial",
+    "review-within": "Revisa y confirma antes de {{time}}",
     "header": "¿Enviar Credencial?",
     "ok": "Ok",
     "cancel": "Cancelar",
     "new-credential": "¿Deseas aceptar esta credencial?",
-    "new-credential-title": "Nueva credencial",
+    "new-credential-title": "Verifica los datos de tu nueva credencial",
     "accept": "Aceptar",
     "pin": "Introduce el PIN",
     "description": "Se ha enviado un código PIN a tu email. Revísalo e introduce el PIN.",
@@ -575,15 +587,15 @@
   },
   "single-instance": {
     "type-window": "ventana",
-    "type-tab": "pesta\u00f1a",
+    "type-tab": "pestaña",
     "title-deep-link": "Credencial enviada a EUDI Wallet",
-    "title-already-open": "EUDI Wallet ya est\u00e1 abierto",
+    "title-already-open": "EUDI Wallet ya está abierto",
     "subtitle-deep-link": "La credencial se ha enviado a la {{type}} activa de EUDI Wallet. Puedes cerrar esta {{type}}.",
     "subtitle-already-open": "Ya tienes EUDI Wallet abierto en otra {{type}}. Puedes cerrar esta.",
     "hint-standalone": "Vuelve a la otra ventana de EUDI Wallet.",
-    "hint-tab": "Usa Ctrl+Tab para volver a la pesta\u00f1a activa.",
+    "hint-tab": "Usa Ctrl+Tab para volver a la pestaña activa.",
     "close-fallback-standalone": "Cierra esta ventana manualmente",
-    "close-fallback-tab": "Cierra esta pesta\u00f1a con Ctrl+W (\u2318+W en Mac)",
+    "close-fallback-tab": "Cierra esta pestaña con Ctrl+W (⌘+W en Mac)",
     "close-button": "Cerrar esta {{type}}"
   },
   "tenantNotFound": {
