@@ -305,34 +305,33 @@ describe('ToastServiceHandler', () => {
     }, TIME_IN_MS);
   });
 
-  // describe('markup in the translated message', () => {
-  //   it('showErrorAlertByTranslateLabel preserves the bundle markup so the dialog renders it', fakeAsync(() => {
-  //     const bundleText = "We couldn't process the QR code.<br>Report it to the "
-  //       + "<a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.";
-  //     translateService.get.mockImplementationOnce(() => of(bundleText));
-  //     const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+  describe('HTML escaping of translated text (security-auditor full-mode review, EUD-142 F2)', () => {
+    it('showErrorAlertByTranslateLabel escapes markup in the translated message before it reaches alertController', fakeAsync(() => {
+      translateService.get.mockImplementationOnce(() => of('<img src=x onerror=alert(1)>'));
+      const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
 
-  //     service.showErrorAlertByTranslateLabel('errors.failed-qr-process').subscribe(() => {});
-  //     tick();
+      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
+      tick();
 
-  //     const [call] = toastCtrlSpy.mock.calls;
-  //     const { message } = call[0] as { message: string };
-  //     expect(message).toContain('<br>');
-  //     expect(message).toContain("<a href='https://ticketing.dome-marketplace.eu/'");
-  //     expect(message).not.toContain('&lt;');
-  //   }));
+      expect(toastCtrlSpy).toHaveBeenCalledWith(expect.objectContaining({
+        message: expect.stringContaining('&lt;img src=x onerror=alert(1)&gt;'),
+      }));
+      const [call] = toastCtrlSpy.mock.calls;
+      expect((call[0] as { message: string }).message).not.toContain('<img');
+    }));
 
-  //   it('showInfoToastByTranslateLabel still escapes — its strings are plain text', fakeAsync(() => {
-  //     translateService.get.mockImplementationOnce(() => of('<img src=x onerror=alert(1)>'));
+    it('showToast escapes markup in the translated message before it reaches alertController', fakeAsync(() => {
+      translateService.instant.mockReturnValueOnce('<script>alert(1)</script>');
+      const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
 
-  //     service.showInfoToastByTranslateLabel('errors.camera.not-allowed');
-  //     tick();
+      service.showToast('toast.success');
+      tick();
 
-  //     const toast = document.querySelector('.credential-toast');
-  //     expect(toast?.innerHTML).toContain('&lt;img src=x onerror=alert(1)&gt;');
-  //     expect(toast?.querySelector('img')).toBeNull();
-  //   }));
-  // });
+      const [call] = toastCtrlSpy.mock.calls;
+      expect((call[0] as { message: string }).message).not.toContain('<script>');
+      expect((call[0] as { message: string }).message).toContain('&lt;script&gt;');
+    }));
+  });
 
   it('should create, present, and dismiss a toast after duration', fakeAsync(async () => {
     const duration = 1500;
