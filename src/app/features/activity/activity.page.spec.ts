@@ -532,9 +532,7 @@ describe('ActivityPage (EUD-137)', () => {
     expect(cta).toBeTruthy();
     cta.dispatchEvent(new MouseEvent('click'));
 
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials'], {
-      queryParams: { showScannerView: true, showScanner: true },
-    });
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/scan']);
   });
 
   it('EC-01: export stays visible but disabled while the history is empty', async () => {

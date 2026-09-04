@@ -116,9 +116,7 @@ export class ActivityPage implements OnInit, ViewWillEnter {
   }
 
   addCredential(): void {
-    void this.router.navigate(['/tabs/credentials'], {
-      queryParams: { showScannerView: true, showScanner: true },
-    });
+    void this.router.navigate(['/tabs/scan']);
   }
 
 
