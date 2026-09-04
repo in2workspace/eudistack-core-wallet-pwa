@@ -84,7 +84,13 @@
       "create-passkey-subtitle": "Tu passkey mantiene tu wallet segura. La usarás para iniciar sesión.",
       "passkey-button": "Iniciar sesión con Passkey",
       "enter-email": "Introduce tu email para empezar",
-      "verify-passkey": "Verifica tu identidad con tu passkey"
+      "verify-passkey": "Verifica tu identidad con tu passkey",
+      "initializing": "Preparando tu wallet…",
+      "initializing-slow": "Esto está tardando más de lo habitual…",
+      "init-error-title": "No se ha podido cargar tu wallet",
+      "init-error-subtitle": "Ha ocurrido un problema al preparar la aplicación. Puedes reintentar o recargar la página.",
+      "retry": "Reintentar",
+      "reload-app": "Recargar la aplicación"
     },
     "register": {
       "email-placeholder": "Introduce tu email",

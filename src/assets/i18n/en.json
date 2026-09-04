@@ -90,7 +90,13 @@
       "create-passkey-subtitle": "Your passkey keeps your wallet secure. You'll use it to sign in.",
       "passkey-button": "Sign in with Passkey",
       "enter-email": "Enter your email to get started",
-      "verify-passkey": "Verify your identity with your passkey"
+      "verify-passkey": "Verify your identity with your passkey",
+      "initializing": "Setting up your wallet…",
+      "initializing-slow": "This is taking longer than expected…",
+      "init-error-title": "We couldn't load your wallet",
+      "init-error-subtitle": "Something went wrong while preparing the app. You can try again or reload the page.",
+      "retry": "Try again",
+      "reload-app": "Reload the app"
     },
     "register": {
       "email-placeholder": "Enter your email",

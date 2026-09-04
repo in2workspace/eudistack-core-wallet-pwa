@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, ViewChild } from '@angular/core';
+import { Component, DestroyRef, inject, signal, ViewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -6,7 +6,7 @@ import { AsyncPipe } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, take } from 'rxjs';
 import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.service';
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
 import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
@@ -21,6 +21,12 @@ import { WalletService } from 'src/app/core/services/wallet.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 
+// Reassures the user that initialization is still progressing.
+const INIT_SLOW_THRESHOLD_MS = 3000;
+// Above PwaInstallService's own hard ceiling (INSTALL_DECISION_HARD_TIMEOUT_MS):
+// a safety net in case something other than installDecision$ hangs.
+const INIT_FAIL_THRESHOLD_MS = 8000;
+
 @Component({
     selector: 'app-login',
     template: `
@@ -31,10 +37,27 @@ import { CredentialCacheService } from 'src/app/shared/services/credential-cache
             <img [src]="logoSrc" alt="Logo" class="logo-img" />
           </div>
 
+          @if (initFailed()) {
+            <div class="auth-checking init-error">
+              <ion-icon name="cloud-offline-outline" class="init-error-icon"></ion-icon>
+              <h2 class="auth-title">{{ 'auth.login.init-error-title' | translate }}</h2>
+              <p class="auth-subtitle">{{ 'auth.login.init-error-subtitle' | translate }}</p>
+
+              <ion-button expand="block" (click)="retryInit()" class="auth-button">
+                {{ 'auth.login.retry' | translate }}
+              </ion-button>
+
+              <ion-button expand="block" fill="clear" (click)="reloadApp()" class="secondary-button">
+                {{ 'auth.login.reload-app' | translate }}
+              </ion-button>
+            </div>
+          } @else {
+
           <!-- Pending install decision -->
           @if ((pwaInstall.installDecision$ | async) === null) {
             <div class="auth-checking">
               <ion-spinner name="crescent"></ion-spinner>
+              <p class="init-status">{{ (initTakingLong() ? 'auth.login.initializing-slow' : 'auth.login.initializing') | translate }}</p>
             </div>
           }
 
@@ -216,6 +239,7 @@ import { CredentialCacheService } from 'src/app/shared/services/credential-cache
                 <span>{{ errorMessage }}</span>
               </div>
             }
+          }
         </div>
       </div>
     </ion-content>
@@ -233,6 +257,11 @@ export class LoginPage {
   loading = false;
   errorMessage = '';
   showInstallScreen = !this.pwaInstall.isStandalone;
+
+  readonly initTakingLong = signal(false);
+  readonly initFailed = signal(false);
+  private slowInitTimer: ReturnType<typeof setTimeout> | null = null;
+  private failInitTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Server mode: multi-step flow
   email = '';
@@ -259,6 +288,7 @@ export class LoginPage {
   ionViewWillEnter(): void {
     this.loading = false;
     this.errorMessage = '';
+    this.startInitWatchdog();
 
     if (!this.isBrowserMode && localStorage.getItem('wallet_refresh_token')) {
       this.step = 'passkey';
@@ -281,6 +311,43 @@ export class LoginPage {
 
   skipInstall(): void {
     this.showInstallScreen = false;
+  }
+
+  // --- Initialization watchdog ---
+
+  /**
+   * Guards against installDecision$ (or any future init dependency) never
+   * settling: escalates the spinner to a "taking longer" message and, past
+   * INIT_FAIL_THRESHOLD_MS, to a friendly error screen with a way out that
+   * doesn't require a manual browser refresh.
+   */
+  private startInitWatchdog(): void {
+    this.clearInitWatchdog();
+    this.initTakingLong.set(false);
+    this.initFailed.set(false);
+
+    this.slowInitTimer = setTimeout(() => this.initTakingLong.set(true), INIT_SLOW_THRESHOLD_MS);
+    this.failInitTimer = setTimeout(() => this.initFailed.set(true), INIT_FAIL_THRESHOLD_MS);
+
+    this.pwaInstall.installDecision$.pipe(
+      take(1),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.clearInitWatchdog());
+  }
+
+  private clearInitWatchdog(): void {
+    if (this.slowInitTimer) clearTimeout(this.slowInitTimer);
+    if (this.failInitTimer) clearTimeout(this.failInitTimer);
+    this.slowInitTimer = null;
+    this.failInitTimer = null;
+  }
+
+  retryInit(): void {
+    this.startInitWatchdog();
+  }
+
+  reloadApp(): void {
+    window.location.reload();
   }
 
   // --- Browser mode: single-step passkey login ---

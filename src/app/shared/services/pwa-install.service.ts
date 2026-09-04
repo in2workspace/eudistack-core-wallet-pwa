@@ -10,6 +10,10 @@ interface BeforeInstallPromptEvent extends Event {
 // Grace period after SW activation: lets Chrome evaluate the manifest before resolving false.
 const SW_READY_GRACE_MS = 500;
 
+// Absolute ceiling: guarantees installDecision$ always settles even if the SW never
+// takes control (registration blocked/failed) and beforeinstallprompt never fires.
+export const INSTALL_DECISION_HARD_TIMEOUT_MS = 4000;
+
 function isIosPlatform(): boolean {
   const ua = navigator.userAgent;
   return /iP(hone|ad)/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1);
@@ -67,7 +71,14 @@ export class PwaInstallService {
       map(() => false),
     );
 
-    return race(promptArrived$, swReadyThenGrace$).pipe(take(1));
+    // Hard ceiling: if the SW never claims this page and no prompt ever fires
+    // (e.g. registration blocked/failed in this environment), fall back to
+    // "no install screen" instead of hanging installDecision$ forever.
+    const hardTimeout$: Observable<boolean> = timer(INSTALL_DECISION_HARD_TIMEOUT_MS).pipe(
+      map(() => false),
+    );
+
+    return race(promptArrived$, swReadyThenGrace$, hardTimeout$).pipe(take(1));
   }
 
   async promptInstall(): Promise<boolean> {
