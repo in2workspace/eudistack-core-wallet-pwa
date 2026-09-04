@@ -25,20 +25,6 @@ const routes: Routes = [
           import('../settings/settings.page').then((m) => m.SettingsPage),
       },
       {
-        path: 'language-selector',
-        loadComponent: () =>
-          import('../language-selector/language-selector.page').then(
-            (m) => m.LanguageSelectorPage
-          ),
-      },
-      {
-        path: 'camera-selector',
-        loadComponent: () =>
-          import('../camera-selector/camera-selector.page').then(
-            (m) => m.CameraSelectorPage
-          ),
-      },
-      {
         path: 'activity',
         loadComponent: () =>
           import('../activity/activity.page').then((m) => m.ActivityPage),
