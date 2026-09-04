@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { EventEmitter } from '@angular/core';
 import { LangChangeEvent, TranslateModule, TranslateService } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import { Router } from '@angular/router';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { ActivityExportService } from 'src/app/core/services/activity-export.service';
 import { ActivityEntry, ActivityFilter, ActivityType } from 'src/app/core/models/activity.model';
@@ -51,6 +52,10 @@ const mockToastController = {
   }),
 };
 
+const mockRouter = {
+  navigate: jest.fn().mockResolvedValue(true),
+};
+
 /** Entries as returned by the service: most-recent-first (id-4 is newest). */
 const ENTRIES: ActivityEntry[] = [
   { id: '4', type: 'deleted', credentialName: 'Cred D', counterparty: 'Issuer D', timestamp: 4000 },
@@ -93,6 +98,7 @@ async function createModule(): Promise<ComponentFixture<ActivityPage>> {
       { provide: ModalController, useValue: mockModalController },
       { provide: ToastController, useValue: mockToastController },
       { provide: TranslateService, useValue: translateServiceMock },
+      { provide: Router, useValue: mockRouter },
     ],
   }).compileComponents();
 
@@ -436,35 +442,21 @@ describe('ActivityPage (EUD-137)', () => {
     expect(credentialNames(fixture)).toEqual(['Empleado ACME', 'Certificado viejo']);
   });
 
-  it('AC-04: formatTime returns a relative label for timestamps under 7 days', async () => {
+  it('AC-04: formatTime labels today\'s entries with the "Today · hh:mm" form', async () => {
     const fixture = await createModule();
     const component = fixture.componentInstance;
-    const twoDaysAgo = Date.now() - 2 * 86_400_000;
+    const todayAt0922 = new Date();
+    todayAt0922.setHours(9, 22, 0, 0);
 
-    expect(component.formatTime(twoDaysAgo)).toBe('activity.time-days');
+    expect(component.formatTime(todayAt0922.getTime())).toBe('activity.date-today · 09:22 am');
   });
 
-  it('AC-04: formatTime returns "time-now" for timestamps under a minute old', async () => {
+  it('AC-04: formatTime renders older entries as "DD Mon YYYY · hh:mm"', async () => {
     const fixture = await createModule();
     const component = fixture.componentInstance;
+    const past = new Date(2026, 5, 5, 9, 12, 0, 0); // 05 Jun 2026, 09:12
 
-    expect(component.formatTime(Date.now())).toBe('activity.time-now');
-  });
-
-  it('AC-04: formatTime returns "time-minutes" for timestamps under an hour old', async () => {
-    const fixture = await createModule();
-    const component = fixture.componentInstance;
-    const tenMinutesAgo = Date.now() - 10 * 60_000;
-
-    expect(component.formatTime(tenMinutesAgo)).toBe('activity.time-minutes');
-  });
-
-  it('AC-04: formatTime returns "time-hours" for timestamps under a day old', async () => {
-    const fixture = await createModule();
-    const component = fixture.componentInstance;
-    const threeHoursAgo = Date.now() - 3 * 3_600_000;
-
-    expect(component.formatTime(threeHoursAgo)).toBe('activity.time-hours');
+    expect(component.formatTime(past.getTime())).toBe('05 Jun 2026 · 09:12 am');
   });
 
   // --- AC-06 -----------------------------------------------------------
@@ -504,7 +496,7 @@ describe('ActivityPage (EUD-137)', () => {
     expect(component.entries().length).toBe(1);
   });
 
-  it('confirmClear() opens the confirm modal with a "Sí, limpiar"-style danger action', async () => {
+  it('confirmClear() opens the confirm modal with the "Clear history" action drawn in the mock', async () => {
     const fixture = await createModule();
     const component = fixture.componentInstance;
 
@@ -514,7 +506,7 @@ describe('ActivityPage (EUD-137)', () => {
       expect.objectContaining({
         componentProps: expect.objectContaining({
           actionKey: 'activity.clear-action',
-          actionVariant: 'danger',
+          actionVariant: 'primary',
         }),
       })
     );
@@ -532,6 +524,59 @@ describe('ActivityPage (EUD-137)', () => {
     expect(el.querySelector('.activity-list')).toBeFalsy();
   });
 
+  it('EC-01: the empty state offers the "Add credential" CTA, which opens the scanner', async () => {
+    mockActivityService.findAll.mockResolvedValue([]);
+    const fixture = await createModule();
+    const cta: HTMLElement = fixture.nativeElement.querySelector('.empty-cta');
+
+    expect(cta).toBeTruthy();
+    cta.dispatchEvent(new MouseEvent('click'));
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/scan']);
+  });
+
+  it('EC-01: export stays visible but disabled while the history is empty', async () => {
+    mockActivityService.findAll.mockResolvedValue([]);
+    const fixture = await createModule();
+    const el: HTMLElement = fixture.nativeElement;
+
+    expect(el.querySelector<HTMLButtonElement>('.export-btn')!.disabled).toBe(true);
+  });
+
+  // Product has not decided whether the wallet keeps this action, so the button
+  // is hidden behind `clearHistoryEnabled` while the flow itself stays wired.
+  it('does not render the clear-history button while the feature flag is off', async () => {
+    const fixture = await createModule();
+
+    expect(fixture.componentInstance.clearHistoryEnabled).toBe(false);
+    expect(fixture.nativeElement.querySelector('.clear-btn')).toBeFalsy();
+  });
+
+  it('renders the clear-history button when the feature flag is on', async () => {
+    mockActivityService.findAll.mockResolvedValue(ENTRIES);
+    const fixture = await createModule();
+    (fixture.componentInstance as { clearHistoryEnabled: boolean }).clearHistoryEnabled = true;
+    fixture.detectChanges();
+
+    const clear: HTMLElement = fixture.nativeElement.querySelector('.clear-btn');
+    expect(clear).toBeTruthy();
+
+    clear.dispatchEvent(new MouseEvent('click'));
+    await fixture.whenStable();
+
+    expect(mockModalController.create).toHaveBeenCalled();
+  });
+
+  it('the header back link returns to the credential list', async () => {
+    const fixture = await createModule();
+    const back: HTMLElement = fixture.nativeElement.querySelector('.back-link');
+
+    expect(back).toBeTruthy();
+    back.dispatchEvent(new MouseEvent('click'));
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
+  });
+
   // --- EC-02 -----------------------------------------------------------
 
   it('EC-02: renders no subtitle line when counterparty is empty (no dangling separator)', async () => {
@@ -546,12 +591,13 @@ describe('ActivityPage (EUD-137)', () => {
 
   // --- EC-03 -----------------------------------------------------------
 
-  it('EC-03: formatTime falls back to toLocaleDateString for timestamps >= 7 days', async () => {
+  it('EC-03: formatTime keeps the absolute date form for entries older than today', async () => {
     const fixture = await createModule();
     const component = fixture.componentInstance;
-    const eightDaysAgo = Date.now() - 8 * 86_400_000;
+    const eightDaysAgo = new Date(Date.now() - 8 * 86_400_000);
 
-    expect(component.formatTime(eightDaysAgo)).toBe(new Date(eightDaysAgo).toLocaleDateString());
+    expect(component.formatTime(eightDaysAgo.getTime())).not.toContain('activity.date-today');
+    expect(component.formatTime(eightDaysAgo.getTime())).toMatch(/^\d{2} \w+ \d{4} · /);
   });
 
   // --- ionViewWillEnter (Ionic keeps tab pages alive; ngOnInit only runs once) ---
@@ -835,18 +881,18 @@ describe('ActivityPage — exportar historial: disponibilidad y resiliencia (EUD
 
   // --- ES-02 ---------------------------------------------------------------
 
-  it('ES-02: the "Exportar historial" button is absent when the history is empty', async () => {
+  it('ES-02: the "Exportar historial" button is disabled when the history is empty', async () => {
     mockActivityService.findAll.mockResolvedValue([]);
     const fixture = await createModule();
 
-    expect(exportButton(fixture)).toBeFalsy();
+    expect((exportButton(fixture) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('ES-02: the button appears once entries are present', async () => {
+  it('ES-02: the button becomes enabled once entries are present', async () => {
     mockActivityService.findAll.mockResolvedValue(ENTRIES);
     const fixture = await createModule();
 
-    expect(exportButton(fixture)).toBeTruthy();
+    expect((exportButton(fixture) as HTMLButtonElement).disabled).toBe(false);
   });
 
   // --- ES-03 ---------------------------------------------------------------

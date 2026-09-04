@@ -7,11 +7,10 @@
     "terms-of-user": "Terms of Use",
     "privacy-policy": "Privacy Policy",
     "faqs": "FAQs",
-    "settings": "Settings",
     "signed-in-as": "Signed in as",
     "activity": "Activity",
-    "language": "Language",
     "connected-devices": "Connected Devices",
+    "settings": "Settings",
     "about": "About",
     "logout": "Logout",
     "install": "Install App",
@@ -31,6 +30,7 @@
     "initializing": "Initializing scanner... Please wait."
   },
   "camera-selector": {
+    "device-label": "Camera",
     "title": "Selected camera",
     "settings": "Camera settings",
     "no-device": "No device",
@@ -88,7 +88,9 @@
     "retry": "Retry"
   },
   "language-selector": {
-    "title": "Select language"
+    "title": "Language",
+    "subtitle": "Choose your preferred language for the wallet interface.",
+    "back-to-wallet": "Back to wallet"
   },
   "logs-selector": {
     "title": "View logs",
@@ -192,6 +194,7 @@
     "error": "Username or password incorrect"
   },
   "settings": {
+    "theme": "Theme",
     "title": "Settings",
     "privacy-blur": "Privacy blur",
     "privacy-blur-desc": "Blur credential details",
@@ -205,7 +208,10 @@
     "wallet-mode-business": "Business Wallet"
   },
   "about": {
-    "section-info": "Application information",
+    "subtitle": "Learn more about the wallet, access support resources, and review legal information.",
+    "back-to-wallet": "Back to wallet",
+    "section-provider": "Wallet provider",
+    "section-info": "App information",
     "section-legal": "Legal",
     "section-support": "Support",
     "build": "Build",
@@ -218,7 +224,7 @@
     },
     "support": {
       "help-center": "Help center",
-      "email": "Contact by email",
+      "email": "Contact support",
       "email-copy": "Copy address",
       "email-copied": "Address copied",
       "report-issue": "Report an issue",
@@ -452,22 +458,24 @@
   },
   "activity": {
     "title": "Activity",
-    "filter-all": "All",
+    "back-to-wallet": "Back to wallet",
+    "filter-all": "All activity",
     "filter-issued": "Received",
     "filter-presented": "Presented",
     "filter-deleted": "Deleted",
     "empty": "No activity yet",
-    "empty-hint": "Your credential activity will appear here",
+    "empty-hint": "Your recent wallet actions will appear here.",
+    "empty-cta": "Add credential",
     "empty-issued": "No credentials received",
     "empty-presented": "No credentials presented",
     "empty-deleted": "No credentials deleted",
-    "clear": "Clear",
+    "clear": "Clear history",
     "clear-confirm": "Clear all activity?",
     "clear-title": "Delete your activity history?",
     "clear-description": "This will permanently remove all activity records from your wallet. This action cannot be undone.",
     "clear-cancel": "Cancel",
-    "clear-action": "Yes, clear",
-    "export": "Export history",
+    "clear-action": "Clear history",
+    "export": "Export activity history",
     "csv-header-type": "Type",
     "csv-header-credential": "Credential",
     "csv-header-counterparty": "Counterparty",
@@ -480,7 +488,9 @@
     "type-unknown": "Activity",
     "subtitle-issued": "Received from {{counterparty}}",
     "subtitle-presented": "Presented to {{counterparty}}",
+    "subtitle-deleted": "Issued by {{counterparty}}",
     "time-now": "Just now",
+    "date-today": "Today",
     "time-minutes": "{{count}}m ago",
     "time-hours": "{{count}}h ago",
     "time-days": "{{count}}d ago",
@@ -496,9 +506,20 @@
     "detail-shared-attributes-empty": "No shared attributes were recorded for this presentation."
   },
   "devices": {
+    "back-to-wallet": "Back to wallet",
+    "section-current": "Current device",
+    "section-others": "Other connected devices",
+    "last-active": "Last active",
+    "added-on": "Added on",
+    "remove-device": "Remove device",
+    "close-sessions": "Close sessions",
+    "no-other-devices-title": "No other devices connected",
+    "no-other-devices-hint": "Your wallet is currently available only on this device.",
+    "no-current-device-title": "This device is not registered",
+    "no-current-device-hint": "We could not match this browser with any registered device. Sign in again from here to register it.",
     "settings-link": "My Devices",
-    "title": "My Devices",
-    "subtitle": "Manage the passkeys registered to your account",
+    "title": "Connected devices",
+    "subtitle": "Manage the devices linked to your wallet and revoke access when needed.",
     "rename-header": "Rename Passkey",
     "rename-placeholder": "Enter new name",
     "rename-confirm": "Rename",

@@ -1,153 +1,197 @@
 <ion-content [fullscreen]="true" class="settings-page">
   <div class="settings-container">
+    <button type="button" class="back-link" (click)="backToWallet()">
+      <ion-icon name="chevron-back-outline" aria-hidden="true"></ion-icon>
+      <span>{{ "about.back-to-wallet" | translate }}</span>
+    </button>
 
-    <h1 class="settings-title">{{"menu.settings" | translate}}</h1>
+    <header class="settings-header">
+      <h1 class="settings-title">{{ "menu.settings" | translate }}</h1>
+    </header>
 
-    <!-- General section -->
-    <div class="settings-group">
-      <ion-list lines="none" class="settings-list">
-        <ion-item [routerLink]="['/tabs/activity']" detail="false" class="settings-item">
-          <div class="icon-badge icon-badge--blue" slot="start">
-            <ion-icon name="time-outline"></ion-icon>
-          </div>
-          <ion-label>{{"activity.title" | translate}}</ion-label>
-          <ion-icon name="chevron-forward-outline" slot="end" class="chevron"></ion-icon>
-        </ion-item>
+    <div class="settings-rows">
+      <article class="settings-row" [class.settings-row--open]="isExpanded('language')">
+        <h2 class="settings-row__heading">
+          <button
+            type="button"
+            class="settings-row__header"
+            [attr.aria-expanded]="isExpanded('language')"
+            aria-controls="settings-panel-language"
+            (click)="togglePanel('language')"
+          >
+            <span class="settings-row__label">{{ "language-selector.title" | translate }}</span>
+            <span class="settings-row__toggle" aria-hidden="true">
+              <ion-icon [name]="isExpanded('language') ? 'remove' : 'add'"></ion-icon>
+            </span>
+          </button>
+        </h2>
 
-        <div class="item-divider"></div>
+        @if (isExpanded('language')) {
+          <div class="settings-row__panel" id="settings-panel-language" role="region">
+            @let currentLanguage = languageSelected | async;
 
-        <ion-item [routerLink]="['/tabs/camera-selector']" detail="false" class="settings-item">
-          <div class="icon-badge icon-badge--purple" slot="start">
-            <ion-icon name="camera"></ion-icon>
-          </div>
-          <ion-label>{{"camera-selector.title" | translate}}</ion-label>
-          <ion-icon name="chevron-forward-outline" slot="end" class="chevron"></ion-icon>
-        </ion-item>
-
-        <div class="item-divider"></div>
-
-        <ion-item [routerLink]="['/tabs/language-selector']" detail="false" class="settings-item">
-          <div class="icon-badge icon-badge--green" slot="start">
-            <ion-icon name="globe-outline"></ion-icon>
-          </div>
-          <ion-label>{{"language-selector.title" | translate}}</ion-label>
-          <ion-icon name="chevron-forward-outline" slot="end" class="chevron"></ion-icon>
-        </ion-item>
-
-        <div class="item-divider"></div>
-
-        <!-- AC-01/AC-10 (EUD-135): visible in both EUDIW and EBW modes, never gated by isServerMode -->
-        <ion-item [routerLink]="['/tabs/about']" detail="false" class="settings-item">
-          <div class="icon-badge icon-badge--gray" slot="start">
-            <ion-icon name="information-circle-outline"></ion-icon>
-          </div>
-          <ion-label>{{"settings.about" | translate}}</ion-label>
-          <ion-icon name="chevron-forward-outline" slot="end" class="chevron"></ion-icon>
-        </ion-item>
-      </ion-list>
-    </div>
-
-    <!-- Devices section (only in server mode) -->
-    @if(isServerMode) {
-      <div class="settings-group">
-        <ion-list lines="none" class="settings-list">
-          <ion-item [routerLink]="['/tabs/devices']" detail="false" class="settings-item">
-            <div class="icon-badge icon-badge--indigo" slot="start">
-              <ion-icon name="key-outline"></ion-icon>
+            <div class="language-options" role="radiogroup" [attr.aria-label]="'language-selector.title' | translate">
+              @for (language of languageList; track language.code) {
+                <button
+                  type="button"
+                  role="radio"
+                  class="language-card"
+                  [class.language-card--selected]="currentLanguage === language.code"
+                  [attr.aria-checked]="currentLanguage === language.code"
+                  (click)="languageChange(language.code)"
+                >
+                  {{ language.name }}
+                </button>
+              }
             </div>
-            <ion-label>{{ 'devices.settings-link' | translate }}</ion-label>
-            <ion-icon name="chevron-forward-outline" slot="end" class="chevron"></ion-icon>
-          </ion-item>
-        </ion-list>
-      </div>
-    }
 
-    <!-- Preferences section -->
-    <div class="settings-group">
-      <h2 class="sr-only">{{"settings.section-preferences" | translate}}</h2>
-      <ion-list lines="none" class="settings-list">
-        <ion-item detail="false" class="settings-item">
-          <div class="icon-badge icon-badge--indigo" slot="start">
-            <ion-icon name="eye-off-outline"></ion-icon>
+            <section class="translation-box">
+              <h3 class="translation-box__title">{{ "ui-translation.title" | translate }}</h3>
+              <p class="settings-desc">{{ "ui-translation.description" | translate }}</p>
+
+              @if (translationStatus() === 'unavailable') {
+                <output class="translation-state translation-state--unavailable">
+                  <p>{{ "ui-translation.state-unavailable" | translate }}</p>
+                  <p class="settings-desc">{{ "ui-translation.state-unavailable-hint" | translate }}</p>
+                </output>
+              } @else {
+                <ion-item class="translation-toggle-item" lines="none">
+                  <ion-label>{{ "ui-translation.toggle-label" | translate }}</ion-label>
+                  <ion-toggle
+                    slot="end"
+                    class="settings-toggle"
+                    [checked]="translationEnabled()"
+                    [disabled]="translationControlDisabled()"
+                    [attr.aria-label]="'ui-translation.toggle-label' | translate"
+                    (ionChange)="onTranslationToggle($event.detail.checked)"
+                  ></ion-toggle>
+                </ion-item>
+
+                @if (availableTargets().length > 0) {
+                  <ion-item class="translation-target-item" lines="none">
+                    <ion-select
+                      class="translation-target-select"
+                      [label]="'ui-translation.target-language-label' | translate"
+                      labelPlacement="start"
+                      interface="popover"
+                      [disabled]="translationControlDisabled()"
+                      [value]="selectedTargetLanguage"
+                      [attr.aria-label]="'ui-translation.target-language-label' | translate"
+                      (ionChange)="onTargetLanguageChange($event.detail.value)"
+                    >
+                      @for (code of availableTargets(); track code) {
+                        <ion-select-option [value]="code">{{ targetLanguageName(code) }}</ion-select-option>
+                      }
+                    </ion-select>
+                  </ion-item>
+                }
+
+                @if (translationStatus() === 'preparing') {
+                  <output class="translation-state translation-state--progress">
+                    <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+                    <p>{{ "ui-translation.state-preparing" | translate }}</p>
+                    @if (translationProgress(); as progress) {
+                      <ion-progress-bar [value]="progress.total > 0 ? progress.done / progress.total : 0"></ion-progress-bar>
+                    }
+                  </output>
+                }
+
+                @if (translationStatus() === 'error') {
+                  <div class="translation-state translation-state--error" role="alert">
+                    <p>{{ "ui-translation.state-error" | translate }}</p>
+                    <ion-button fill="outline" size="small" (keydown)="retryTranslation()" (click)="retryTranslation()">
+                      {{ "ui-translation.retry" | translate }}
+                    </ion-button>
+                  </div>
+                }
+              }
+            </section>
           </div>
-          <ion-label>
-            <h3>{{"settings.privacy-blur" | translate}}</h3>
-            <p class="settings-desc">{{"settings.privacy-blur-desc" | translate}}</p>
-          </ion-label>
-          <ion-toggle slot="end" [checked]="prefs.privacyBlur()" (ionChange)="prefs.togglePrivacyBlur()" class="settings-toggle"></ion-toggle>
-        </ion-item>
+        }
+      </article>
 
-        <div class="item-divider"></div>
+      <article class="settings-row" [class.settings-row--open]="isExpanded('theme')">
+        <h2 class="settings-row__heading">
+          <button
+            type="button"
+            class="settings-row__header"
+            [attr.aria-expanded]="isExpanded('theme')"
+            aria-controls="settings-panel-theme"
+            (click)="togglePanel('theme')"
+          >
+            <span class="settings-row__label">{{ "settings.theme" | translate }}</span>
+            <span class="settings-row__toggle" aria-hidden="true">
+              <ion-icon [name]="isExpanded('theme') ? 'remove' : 'add'"></ion-icon>
+            </span>
+          </button>
+        </h2>
 
-        <ion-item detail="false" class="settings-item">
-          <div class="icon-badge icon-badge--dark" slot="start">
-            <ion-icon name="moon-outline"></ion-icon>
-          </div>
-          <ion-label>
-            <h3>{{"settings.dark-mode" | translate}}</h3>
-            <p class="settings-desc">{{"settings.dark-mode-desc" | translate}}</p>
-          </ion-label>
-          <ion-toggle slot="end" [checked]="prefs.darkMode()" (ionChange)="prefs.toggleDarkMode()" class="settings-toggle"></ion-toggle>
-        </ion-item>
-      </ion-list>
-    </div>
-
-    <!-- App section (conditional items) -->
-    @if((canInstall$ | async) || featureLogsEnabled) {
-      <div class="settings-group">
-        <ion-list lines="none" class="settings-list">
-          @if(canInstall$ | async) {
-            <ion-item button detail="false" class="settings-item"
-              (click)="installApp()" (keydown.enter)="installApp()" (keydown.space)="installApp()">
-              <div class="icon-badge icon-badge--orange" slot="start">
-                <ion-icon name="download-outline"></ion-icon>
-              </div>
-              <ion-label>{{"menu.install" | translate}}</ion-label>
+        @if (isExpanded('theme')) {
+          <div class="settings-row__panel" id="settings-panel-theme" role="region">
+            <ion-item class="theme-toggle-item" lines="none">
+              <ion-label>
+                <h3>{{ "settings.dark-mode" | translate }}</h3>
+                <p class="settings-desc">{{ "settings.dark-mode-desc" | translate }}</p>
+              </ion-label>
+              <ion-toggle
+                slot="end"
+                class="settings-toggle"
+                [checked]="prefs.darkMode()"
+                [attr.aria-label]="'settings.dark-mode' | translate"
+                (ionChange)="prefs.toggleDarkMode()"
+              ></ion-toggle>
             </ion-item>
-          }
+          </div>
+        }
+      </article>
 
-          @if(featureLogsEnabled) {
-            @if(canInstall$ | async) {
-              <div class="item-divider"></div>
+      <article class="settings-row" [class.settings-row--open]="isExpanded('camera')">
+        <h2 class="settings-row__heading">
+          <button
+            type="button"
+            class="settings-row__header"
+            [attr.aria-expanded]="isExpanded('camera')"
+            aria-controls="settings-panel-camera"
+            (click)="togglePanel('camera')"
+          >
+            <span class="settings-row__label">{{ "camera-selector.title" | translate }}</span>
+            <span class="settings-row__toggle" aria-hidden="true">
+              <ion-icon [name]="isExpanded('camera') ? 'remove' : 'add'"></ion-icon>
+            </span>
+          </button>
+        </h2>
+
+        @if (isExpanded('camera')) {
+          <div class="settings-row__panel" id="settings-panel-camera" role="region">
+            <ion-item class="camera-select-item" lines="none">
+              <ion-select
+                class="camera-select"
+                [label]="'camera-selector.device-label' | translate"
+                labelPlacement="start"
+                interface="popover"
+                [disabled]="isChangingDevice"
+                [value]="selectedDevice$()?.deviceId"
+                [attr.aria-label]="'camera-selector.device-label' | translate"
+                (ionChange)="onDeviceSelectChange($event.detail.value)"
+              >
+                @if (availableDevices$().length < 1) {
+                  <ion-select-option value="">{{ "camera-selector.no-device" | translate }}</ion-select-option>
+                }
+                @for (camera of availableDevices$(); track camera.deviceId) {
+                  <ion-select-option [value]="camera.deviceId">{{ camera.label }}</ion-select-option>
+                }
+              </ion-select>
+            </ion-item>
+
+            @if (isChangingDevice) {
+              <div class="camera-switching" role="status">
+                <ion-spinner name="lines" aria-hidden="true"></ion-spinner>
+                <span>{{ "camera-selector.changing-device" | translate }}</span>
+              </div>
             }
-
-            <ion-item [routerLink]="['/tabs/logs']" detail="false" class="settings-item">
-              <div class="icon-badge icon-badge--gray" slot="start">
-                <ion-icon name="document-text-outline"></ion-icon>
-              </div>
-              <ion-label>{{"logs-selector.title" | translate}}</ion-label>
-              <ion-icon name="chevron-forward-outline" slot="end" class="chevron"></ion-icon>
-            </ion-item>
-
-            <div class="item-divider"></div>
-
-            <ion-item button detail="false" class="settings-item"
-              (click)="sendCameraLogs()" (keydown.enter)="sendCameraLogs()" (keydown.space)="sendCameraLogs()">
-              <div class="icon-badge icon-badge--gray" slot="start">
-                <ion-icon name="paper-plane-outline"></ion-icon>
-              </div>
-              <ion-label>{{"logs-selector.send" | translate}}</ion-label>
-            </ion-item>
-          }
-        </ion-list>
-      </div>
-    }
-
-    <!-- Help section -->
-    @if(knowledgeBaseUrl) {
-      <div class="settings-group">
-        <ion-list lines="none" class="settings-list">
-          <ion-item button detail="false" class="settings-item"
-            [href]="knowledgeBaseUrl" target="_blank" rel="noopener noreferrer">
-            <div class="icon-badge icon-badge--blue" slot="start">
-              <ion-icon name="help-circle-outline"></ion-icon>
-            </div>
-            <ion-label>{{"settings.knowledge-base" | translate}}</ion-label>
-            <ion-icon name="open-outline" slot="end" class="chevron"></ion-icon>
-          </ion-item>
-        </ion-list>
-      </div>
-    }
-
+          </div>
+        }
+      </article>
+    </div>
   </div>
 </ion-content>

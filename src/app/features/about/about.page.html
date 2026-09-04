@@ -1,10 +1,18 @@
 <ion-content [fullscreen]="true" class="about-page">
   <div class="about-container">
+    <button type="button" class="back-link" (click)="backToWallet()">
+      <ion-icon name="chevron-back-outline" aria-hidden="true"></ion-icon>
+      <span>{{ "about.back-to-wallet" | translate }}</span>
+    </button>
 
-    <h1 class="about-title">{{ "settings.about" | translate }}</h1>
+    <header class="about-header">
+      <h1 class="about-title">{{ "settings.about" | translate }}</h1>
+      <p class="about-subtitle">{{ "about.subtitle" | translate }}</p>
+    </header>
 
     <!-- Info panel (non-interactive: wallet type + version + build) -->
-    <div class="settings-info-panel">
+    <section class="settings-info-panel">
+      <h2 class="settings-info-panel__title">{{ "about.section-info" | translate }}</h2>
       <div class="settings-info-panel__row">
         <span class="settings-info-panel__label">{{ "settings.wallet-mode-label" | translate }}</span>
         <ion-badge [color]="isServerMode ? 'tertiary' : 'primary'">
@@ -21,30 +29,123 @@
         <span class="settings-info-panel__label">{{ "about.build" | translate }}</span>
         <span class="settings-info-panel__value about-selectable">{{ buildInfo.buildId }}</span>
       </div>
-    </div>
+    </section>
 
     <!-- Legal block -->
     <h2 class="about-section-title">{{ "about.section-legal" | translate }}</h2>
-    <div class="settings-group">
-      <ion-list lines="none" class="settings-list">
-        @for (docId of legalDocuments; track docId) {
-          <ion-item [routerLink]="['/tabs/about/legal', docId]" detail="false" class="settings-item">
-            <div class="icon-badge icon-badge--blue" slot="start">
-              <ion-icon name="document-text-outline"></ion-icon>
+    <div class="about-rows">
+      @for (docId of legalDocuments; track docId) {
+        <article class="about-row" [class.about-row--open]="isExpanded(docId)">
+          <h3 class="about-row__heading">
+            <button
+              type="button"
+              class="about-row__header"
+              [attr.aria-expanded]="isExpanded(docId)"
+              [attr.aria-controls]="'about-panel-' + docId"
+              (click)="togglePanel(docId)"
+            >
+              <span class="about-row__label">{{ ("about.legal." + docId) | translate }}</span>
+              <span class="about-row__toggle" aria-hidden="true">
+                <ion-icon [name]="isExpanded(docId) ? 'remove' : 'add'"></ion-icon>
+              </span>
+            </button>
+          </h3>
+
+          @if (isExpanded(docId)) {
+            <div class="about-row__panel" [id]="'about-panel-' + docId" role="region">
+              @switch (legalState()) {
+                @case ('loading') {
+                  <div class="about-panel-status" role="status" aria-live="polite">
+                    <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+                    <p>{{ "about.legal-document.loading" | translate }}</p>
+                  </div>
+                }
+                @case ('ready') {
+                  @if (legalDocument()?.isFallbackLanguage) {
+                    <p class="about-panel-notice" role="status">
+                      {{ "about.legal-document.fallback-language-notice" | translate }}
+                    </p>
+                  }
+                  <div class="about-legal-content" [innerHTML]="legalDocument()?.html"></div>
+                }
+                @case ('error') {
+                  <div class="about-panel-status about-panel-status--error" role="alert">
+                    <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+                    <p class="about-panel-status__title">{{ "about.legal-document.error-title" | translate }}</p>
+                    <p>{{ "about.legal-document.error-description" | translate }}</p>
+                    <button type="button" class="about-panel-retry" (click)="retryLegalDocument()">
+                      {{ "about.legal-document.retry" | translate }}
+                    </button>
+                  </div>
+                }
+              }
             </div>
-            <ion-label>{{ ('about.legal.' + docId) | translate }}</ion-label>
-            <ion-icon name="chevron-forward-outline" slot="end" class="chevron"></ion-icon>
-          </ion-item>
-          <div class="item-divider"></div>
-        }
-        <ion-item [routerLink]="['/tabs/about/licenses']" detail="false" class="settings-item">
-          <div class="icon-badge icon-badge--purple" slot="start">
-            <ion-icon name="code-slash-outline"></ion-icon>
+          }
+        </article>
+      }
+
+      <article class="about-row" [class.about-row--open]="isExpanded('licenses')">
+        <h3 class="about-row__heading">
+          <button
+            type="button"
+            class="about-row__header"
+            [attr.aria-expanded]="isExpanded('licenses')"
+            aria-controls="about-panel-licenses"
+            (click)="togglePanel('licenses')"
+          >
+            <span class="about-row__label">{{ "about.legal.licenses" | translate }}</span>
+            <span class="about-row__toggle" aria-hidden="true">
+              <ion-icon [name]="isExpanded('licenses') ? 'remove' : 'add'"></ion-icon>
+            </span>
+          </button>
+        </h3>
+
+        @if (isExpanded('licenses')) {
+          <div class="about-row__panel" id="about-panel-licenses" role="region">
+            @switch (licensesState()) {
+              @case ('loading') {
+                <div class="about-panel-status" role="status" aria-live="polite">
+                  <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+                </div>
+              }
+              @case ('ready') {
+                <p class="about-licenses-count">
+                  {{ licenses().length }} {{ "about.oss-licenses.count-suffix" | translate }}
+                </p>
+                <ul class="about-licenses-list">
+                  @for (license of licenses(); track license.name + '@' + license.version) {
+                    <li class="about-license">
+                      <div class="about-license__info">
+                        <span class="about-license__name">{{ license.name }}</span>
+                        <span class="about-license__meta">
+                          v{{ license.version }} · {{ license.license }}
+                        </span>
+                      </div>
+                      @if (license.repository) {
+                        <a
+                          [href]="license.repository"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="about-license__link"
+                          [attr.aria-label]="license.name + ' ' + ('about.opens-new-window' | translate)"
+                        >
+                          <ion-icon name="open-outline" aria-hidden="true"></ion-icon>
+                        </a>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
+              @case ('error') {
+                <div class="about-panel-status about-panel-status--error" role="status">
+                  <p class="about-panel-status__title">{{ "about.oss-licenses.empty-title" | translate }}</p>
+                  <p>{{ "about.oss-licenses.empty-description" | translate }}</p>
+                </div>
+              }
+            }
           </div>
-          <ion-label>{{ "about.legal.licenses" | translate }}</ion-label>
-          <ion-icon name="chevron-forward-outline" slot="end" class="chevron"></ion-icon>
-        </ion-item>
-      </ion-list>
+        }
+      </article>
     </div>
 
     <!-- Support block -->
@@ -54,64 +155,75 @@
       <p class="about-offline-notice" role="status">{{ "about.support.offline" | translate }}</p>
     }
 
-    <div class="settings-group">
-      <ion-list lines="none" class="settings-list">
-        @if (channels.helpCenterUrl) {
-          <ion-item
-            button
-            detail="false"
-            class="settings-item"
-            [href]="channels.helpCenterUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            [attr.aria-label]="('about.support.help-center' | translate) + ' ' + ('about.opens-new-window' | translate)"
-          >
-            <div class="icon-badge icon-badge--blue" slot="start">
-              <ion-icon name="help-circle-outline"></ion-icon>
-            </div>
-            <ion-label>{{ "about.support.help-center" | translate }}</ion-label>
-            <ion-icon name="open-outline" slot="end" class="chevron" aria-hidden="true"></ion-icon>
-          </ion-item>
-          <div class="item-divider"></div>
-        }
+    <div class="about-rows">
+      @if (channels.helpCenterUrl) {
+        <a
+          class="about-row about-row--action"
+          [href]="channels.helpCenterUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          [attr.aria-label]="('about.support.help-center' | translate) + ' ' + ('about.opens-new-window' | translate)"
+        >
+          <span class="about-row__label">{{ "about.support.help-center" | translate }}</span>
+          <span class="about-row__action-icon" aria-hidden="true">
+            <ion-icon name="open-outline"></ion-icon>
+          </span>
+        </a>
+      }
 
-        <ion-item detail="false" lines="none" class="settings-item settings-item--static">
-          <div class="icon-badge icon-badge--green" slot="start">
-            <ion-icon name="mail-outline"></ion-icon>
-          </div>
-          <ion-label>
-            <a class="about-email-link" [href]="supportMailto">{{ "about.support.email" | translate }}</a>
-            <p class="settings-desc about-selectable">{{ channels.email }}</p>
-          </ion-label>
+      <article class="about-row" [class.about-row--open]="isExpanded('contact-support')">
+        <h3 class="about-row__heading">
           <button
             type="button"
-            class="about-copy-btn"
-            slot="end"
-            (click)="copySupportEmail()"
-            [attr.aria-label]="'about.support.email-copy' | translate"
+            class="about-row__header"
+            [attr.aria-expanded]="isExpanded('contact-support')"
+            aria-controls="about-panel-contact-support"
+            (click)="togglePanel('contact-support')"
           >
-            <ion-icon name="copy-outline" aria-hidden="true"></ion-icon>
+            <span class="about-row__label">{{ "about.support.email" | translate }}</span>
+            <span class="about-row__toggle" aria-hidden="true">
+              <ion-icon [name]="isExpanded('contact-support') ? 'remove' : 'add'"></ion-icon>
+            </span>
           </button>
-        </ion-item>
+        </h3>
 
-        <div class="item-divider"></div>
-
-        <ion-item
-          button
-          detail="false"
-          class="settings-item"
-          (click)="reportIssue()"
-          (keydown.enter)="reportIssue()"
-          (keydown.space)="reportIssue()"
-        >
-          <div class="icon-badge icon-badge--orange" slot="start">
-            <ion-icon name="bug-outline"></ion-icon>
+        @if (isExpanded('contact-support')) {
+          <div class="about-row__panel" id="about-panel-contact-support" role="region">
+            <div class="about-email">
+              <a class="about-email-link about-selectable" [href]="supportMailto">{{ channels.email }}</a>
+              <button
+                type="button"
+                class="about-copy-btn"
+                (click)="copySupportEmail()"
+                [attr.aria-label]="'about.support.email-copy' | translate"
+              >
+                <ion-icon name="copy-outline" aria-hidden="true"></ion-icon>
+              </button>
+            </div>
+            @if (emailCopied()) {
+              <p class="about-email-copied" role="status">{{ "about.support.email-copied" | translate }}</p>
+            }
           </div>
-          <ion-label>{{ "about.support.report-issue" | translate }}</ion-label>
-          <ion-icon name="open-outline" slot="end" class="chevron" aria-hidden="true"></ion-icon>
-        </ion-item>
-      </ion-list>
+        }
+      </article>
+
+      <button
+        type="button"
+        class="about-row about-row--action"
+        (click)="reportIssue()"
+        (keydown.enter)="reportIssue()"
+        (keydown.space)="reportIssue()"
+      >
+        <span class="about-row__label">{{ "about.support.report-issue" | translate }}</span>
+        <span class="about-row__action-icon" aria-hidden="true">
+          <ion-icon name="open-outline"></ion-icon>
+        </span>
+      </button>
     </div>
 
+    @if (providerName) {
+      <h2 class="about-section-title">{{ "about.section-provider" | translate }}</h2>
+      <p class="about-provider" [attr.translate]="'no'">{{ providerName }}</p>
+    }
   </div>
 </ion-content>

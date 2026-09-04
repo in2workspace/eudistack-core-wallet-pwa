@@ -1,14 +1,12 @@
 @use 'responsive' as *;
 
-// ---------------------------------------------------------------------------
-// About page — reuses the visual patterns already implemented in Settings
-// (settings-group / settings-item / icon-badge / settings-info-panel).
-// ---------------------------------------------------------------------------
 
 :host {
-  --settings-icon-size: 30px;
-  --settings-icon-radius: 7px;
-  --settings-item-height: 48px;
+  --about-trailing-size: 28px;
+  --about-toggle-bg: var(--surface-muted, #E8ECF1);
+  --about-toggle-fg: var(--text-primary);
+  --about-toggle-open-bg: var(--text-primary);
+  --about-toggle-open-fg: var(--surface-card);
 }
 
 .about-page {
@@ -16,32 +14,76 @@
 }
 
 .about-container {
-  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  max-width: 900px;
   margin: 0 auto;
   padding: var(--space-md) var(--space-md) var(--space-xl);
 }
 
-.about-title {
-  @include fluid-type(1.375rem, 1.75rem);
-  font-weight: 700;
+@include respond-to(lg) {
+  .about-container {
+    padding-inline: var(--space-lg);
+  }
+}
+
+// -- Header -------------------------------------------------------------------
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 2px;
+  min-height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 0;
   color: var(--text-primary);
-  margin: 12px 4px 20px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+
+  ion-icon {
+    font-size: 20px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ui-focus-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+.about-header {
+  padding: var(--space-sm) 0 var(--space-lg);
+}
+
+.about-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
   line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.about-subtitle {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text-secondary);
 }
 
 .about-section-title {
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-secondary);
-  margin: 0 4px 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 12px;
 }
 
 .about-offline-notice {
   font-size: 13px;
   color: var(--status-warning);
-  margin: 0 4px 12px;
+  margin: 0 0 12px;
 }
 
 .about-selectable {
@@ -49,103 +91,29 @@
   -webkit-user-select: text;
 }
 
-// -- Grouped card -------------------------------------------------------------
-
-.settings-group {
-  background: var(--surface-card);
-  border-radius: var(--radius-lg);
-  margin-bottom: 24px;
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-}
-
-.settings-list {
-  padding: 0;
-  margin: 0;
-  background: transparent;
-
-  --ion-item-background: transparent;
-}
-
-.item-divider {
-  height: 1px;
-  background: var(--border-default);
-  margin-left: clamp(48px, 14vw, 60px);
-  margin-right: 0;
-}
-
-.settings-item {
-  --min-height: var(--settings-item-height);
-  --padding-start: 16px;
-  --padding-end: 16px;
-  --inner-padding-end: 0;
-  --border-width: 0;
-  --inner-border-width: 0;
-  --border-color: transparent;
-  --background-hover: var(--action-secondary);
-  --background-activated: var(--action-secondary-hover);
-  --transition: background-color 0.15s ease;
-
-  cursor: pointer;
-
-  ion-label {
-    font-size: 16px;
-    font-weight: 400;
-    color: var(--text-primary);
-    margin: 0;
-  }
-
-  &--static {
-    cursor: default;
-  }
-}
-
-.chevron {
-  font-size: 14px;
-  color: var(--text-disabled);
-  margin-inline-start: 4px;
-}
-
-.icon-badge {
-  width: var(--settings-icon-size);
-  height: var(--settings-icon-size);
-  min-width: var(--settings-icon-size);
-  border-radius: var(--settings-icon-radius);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-inline-end: 14px;
-
-  ion-icon {
-    font-size: 18px;
-    color: var(--neutral-white);
-  }
-
-  &--blue   { background-color: var(--status-info); }
-  &--purple { background-color: #8B5CF6; }
-  &--green  { background-color: var(--status-success); }
-  &--orange { background-color: var(--status-warning); }
-}
-
-.settings-desc {
-  font-size: 12px !important;
-  color: var(--text-secondary) !important;
-  margin-top: 2px;
-}
+// -- App information card -----------------------------------------------------
 
 .settings-info-panel {
   background: var(--surface-card);
-  border-radius: var(--radius-lg);
-  margin-bottom: 24px;
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-  padding: 0 16px;
+  border: 1px solid var(--border-default, #D1D5DB);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+  margin-bottom: 28px;
+  padding: 16px 20px;
+
+  &__title {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
 
   &__row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    height: 48px;
+    gap: var(--space-md);
+    min-height: 44px;
   }
 
   &__divider {
@@ -154,8 +122,9 @@
   }
 
   &__label {
-    font-size: 16px;
-    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
   }
 
   &__value {
@@ -164,12 +133,253 @@
   }
 }
 
-// -- Email item: mailto link + copy button, two independent controls ---------
+// -- Accordion / action rows --------------------------------------------------
+
+.about-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.about-row {
+  background: var(--surface-card, #fff);
+  border: 1px solid var(--border-default, #D1D5DB);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover,
+  &:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 10px rgb(0 0 0 / 0.10);
+  }
+
+  &--open {
+    border-color: var(--primary-color);
+  }
+}
+
+.about-row__heading {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.about-row__header,
+.about-row--action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 16px;
+  font: inherit;
+  color: var(--text-primary);
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--ui-focus-ring);
+    outline-offset: -2px;
+  }
+}
+
+.about-row__header {
+  background: transparent;
+  border: 0;
+}
+
+.about-row__label {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.about-row__toggle,
+.about-row__action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--about-trailing-size);
+  height: var(--about-trailing-size);
+}
+
+.about-row__toggle {
+  border-radius: 8px;
+  background: var(--about-toggle-bg);
+  color: var(--about-toggle-fg);
+
+  ion-icon {
+    font-size: 18px;
+  }
+}
+
+.about-row--open .about-row__toggle {
+  background: var(--about-toggle-open-bg);
+  color: var(--about-toggle-open-fg);
+}
+
+.about-row__action-icon {
+  color: var(--text-secondary);
+
+  ion-icon {
+    font-size: 16px;
+  }
+}
+
+.about-row__panel {
+  padding: 0 16px 16px;
+}
+
+// -- Panel content ------------------------------------------------------------
+
+.about-panel-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+
+  p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+
+  &__title {
+    font-weight: 600;
+    color: var(--text-primary) !important;
+  }
+
+  &--error ion-icon {
+    font-size: 22px;
+    color: var(--status-error);
+  }
+}
+
+.about-panel-retry {
+  margin-top: 4px;
+  padding: 8px 16px;
+  border: 1px solid var(--primary-color);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--primary-color);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.about-panel-notice {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.about-legal-content {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  user-select: text;
+  -webkit-user-select: text;
+
+  :where(h1, h2, h3, h4) {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 16px 0 6px;
+  }
+
+  :where(p, ul, ol) {
+    margin: 0 0 12px;
+  }
+
+  a {
+    color: var(--primary-color);
+    overflow-wrap: anywhere;
+  }
+}
+
+// -- Licenses list ------------------------------------------------------------
+
+.about-licenses-count {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.about-licenses-list {
+  max-height: 340px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about-license {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--border-default);
+  }
+}
+
+.about-license__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.about-license__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.about-license__meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.about-license__link {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--text-secondary);
+
+  ion-icon {
+    font-size: 16px;
+  }
+}
+
+// -- Support: contact panel ---------------------------------------------------
+
+.about-email {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 
 .about-email-link {
   color: var(--text-primary);
   text-decoration: none;
-  font-size: 16px;
+  font-size: 15px;
+  overflow-wrap: anywhere;
 
   &:hover,
   &:focus-visible {
@@ -178,31 +388,43 @@
 }
 
 .about-copy-btn {
-  background: transparent;
-  border: none;
-  // No right padding: the icon sits flush at the item's end boundary, exactly where
-  // the plain "chevron" icons on the help-center/report-issue rows sit. The extra
-  // width/height only grows the touch target to the left, never shifting the icon.
-  padding: 8px 0 8px 8px;
-  min-width: 44px;
-  min-height: 44px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md, 8px);
   color: var(--text-secondary);
   cursor: pointer;
-  border-radius: var(--radius-md, 8px);
 
   &:hover {
     background: var(--action-secondary);
   }
 
   &:focus-visible {
-    outline: 2px solid var(--status-info);
+    outline: 2px solid var(--ui-focus-ring);
     outline-offset: 2px;
   }
 
   ion-icon {
     font-size: 18px;
   }
+}
+
+.about-email-copied {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--status-success);
+}
+
+// -- Wallet provider ----------------------------------------------------------
+
+.about-provider {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
 }

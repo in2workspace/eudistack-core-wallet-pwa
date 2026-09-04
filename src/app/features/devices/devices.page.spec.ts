@@ -752,3 +752,96 @@ describe('EUD-144 T10: DevicesPage > revoke device — error/edge scenarios', ()
     expect(mockAuthService.forceLogout).not.toHaveBeenCalled();
   });
 });
+
+const LAPTOP: PasskeyInfo = {
+  id: '1',
+  credentialId: 'current-cred-id',
+  displayName: 'MacBook Pro - Chrome',
+  createdAt: '2024-01-15T10:00:00Z',
+  lastUsedAt: '2024-06-01T08:30:00Z',
+  activeSessions: 0,
+};
+
+const PHONE: PasskeyInfo = {
+  id: '2',
+  credentialId: 'cred-phone',
+  displayName: 'iPhone 16 Pro',
+  createdAt: '2024-02-10T10:00:00Z',
+  lastUsedAt: null,
+  activeSessions: 0,
+};
+
+const TABLET: PasskeyInfo = {
+  id: '3',
+  credentialId: 'cred-tablet',
+  displayName: 'iPad 11',
+  createdAt: '2024-03-10T10:00:00Z',
+  lastUsedAt: null,
+  activeSessions: 0,
+};
+
+describe('DevicesPage > current/other split and device icons', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([]));
+    mockPasskeyStore.getCredentialId.mockReturnValue('current-cred-id');
+  });
+
+  afterEach(() => {
+    TestBed.resetTestingModule();
+  });
+
+  it('separates the device in use from the rest', async () => {
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([LAPTOP, PHONE, TABLET]));
+    const fixture = await createModule('server');
+    const component = fixture.componentInstance;
+
+    expect(component.currentDevice()?.id).toBe(LAPTOP.id);
+    expect(component.otherDevices().map((d) => d.id)).toEqual([PHONE.id, TABLET.id]);
+    expect(fixture.nativeElement.querySelectorAll('.device-card').length).toBe(3);
+    expect(fixture.nativeElement.querySelectorAll('.this-device-badge').length).toBe(1);
+  });
+
+  it('picks the ionicon that matches each device type, defaulting to desktop', async () => {
+    const fixture = await createModule('server');
+    const component = fixture.componentInstance;
+
+    expect(component.deviceIcon(PHONE)).toBe('phone-portrait-outline');
+    expect(component.deviceIcon(TABLET)).toBe('tablet-portrait-outline');
+    expect(component.deviceIcon(LAPTOP)).toBe('desktop-outline');
+    expect(component.deviceIcon({ ...LAPTOP, displayName: '' })).toBe('desktop-outline');
+  });
+
+  it('shows the "no other devices" state while only this device is connected', async () => {
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([LAPTOP]));
+    const fixture = await createModule('server');
+    const el: HTMLElement = fixture.nativeElement;
+
+    expect(el.querySelectorAll('.device-card').length).toBe(1);
+    expect(el.textContent).toContain('devices.no-other-devices-title');
+    expect(el.textContent).toContain('devices.no-other-devices-hint');
+    expect(el.querySelectorAll('.device-empty__icons ion-icon').length).toBe(3);
+  });
+
+  it('EC-03: explains the situation instead of guessing when the current device is unknown', async () => {
+    mockPasskeyStore.getCredentialId.mockReturnValue(null);
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([LAPTOP, PHONE]));
+    const fixture = await createModule('server');
+    const el: HTMLElement = fixture.nativeElement;
+
+    expect(fixture.componentInstance.currentDevice()).toBeNull();
+    expect(el.querySelector('.this-device-badge')).toBeFalsy();
+    expect(el.textContent).toContain('devices.no-current-device-title');
+    expect(fixture.componentInstance.otherDevices().length).toBe(2);
+  });
+
+  it('the header back link returns to the credential list', async () => {
+    const fixture = await createModule('server');
+    const router = TestBed.inject(Router);
+    (router.navigate as jest.Mock).mockClear();
+
+    fixture.nativeElement.querySelector('.back-link').dispatchEvent(new MouseEvent('click'));
+
+    expect(router.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
+  });
+});
