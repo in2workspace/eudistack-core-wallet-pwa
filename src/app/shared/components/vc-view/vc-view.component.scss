@@ -537,6 +537,7 @@
 .drawer-footer__close {
   background: var(--primary-color);
   color: var(--primary-contrast-color);
+  box-shadow: var(--shadow-md);
 }
 
 @include respond-below(lg) {

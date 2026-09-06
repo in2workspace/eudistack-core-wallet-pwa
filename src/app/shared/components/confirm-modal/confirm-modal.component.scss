@@ -65,6 +65,7 @@ h2 {
 .btn-primary {
   background: var(--primary-color);
   color: var(--primary-contrast-color);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-danger {

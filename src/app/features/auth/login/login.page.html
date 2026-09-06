@@ -119,6 +119,7 @@
                 [error]="!!errorMessage"
                 [errorMessage]="errorMessage"
                 (changed)="otpValue = $event; errorMessage = ''"
+                (completed)="verifyCode()"
               ></app-otp-input>
             </div>
 

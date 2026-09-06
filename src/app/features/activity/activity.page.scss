@@ -175,7 +175,7 @@
   background-image: linear-gradient(to right, var(--activity-accent) 5px, transparent 5px);
   background-repeat: no-repeat;
   background-clip: padding-box, border-box;
-  border: 1px solid color-mix(in srgb, var(--primary-color) 18%, #fff);
+  border: 1px solid var(--border-default, #D1D5DB);
   border-radius: var(--radius-md);
   padding: 14px 16px 14px 21px;
   cursor: pointer;

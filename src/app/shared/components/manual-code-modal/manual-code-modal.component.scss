@@ -73,7 +73,7 @@ h2 {
 
   &:focus {
     outline: none;
-    border-color: var(--primary-color);
+    border-color: var(--text-primary);
     box-shadow: 0 0 0 3px rgb(var(--ui-focus-ring-rgb, 37 99 235) / 0.15);
   }
 }
@@ -110,14 +110,13 @@ h2 {
 
 .btn-link {
   background: transparent;
-  color: var(--primary-color);
-
-  &:hover { text-decoration: underline; }
+  color: var(--text-secondary);
 }
 
 .btn-primary {
   background: var(--primary-color);
   color: var(--primary-contrast-color);
+  box-shadow: var(--shadow-md);
 
   &:disabled {
     background: var(--action-secondary, #F3F4F6);
