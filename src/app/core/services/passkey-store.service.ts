@@ -7,6 +7,7 @@ const DB_VERSION = 1;
 
 const KEY_CREDENTIAL_ID = 'credential_id';
 const KEY_HAS_PASSKEY = 'has_passkey';
+const KEY_WEBAUTHN_USER_ID_PREFIX = 'webauthn_user_id:';
 
 /**
  * Persists passkey metadata (credential ID and presence flag) in IndexedDB.
@@ -31,6 +32,18 @@ export class PasskeyStoreService {
     return (this.cache.get(KEY_CREDENTIAL_ID) as string) ?? null;
   }
 
+  /**
+   * Stable WebAuthn `user.id` handle for one account (`accountKey`, e.g. its email).
+   * Kept per-account, not per-browser: reusing it lets a retry after a failed
+   * registration replace the same resident credential instead of creating another,
+   * but a *different* account on the same profile must get its own handle or the
+   * authenticator would overwrite the first account's credential (EUD-8). Kept
+   * across `clear()`/`clearCredentialId()` so a same-account re-onboard reuses it.
+   */
+  getWebAuthnUserId(accountKey: string): string | null {
+    return (this.cache.get(KEY_WEBAUTHN_USER_ID_PREFIX + accountKey) as string) ?? null;
+  }
+
   // --- Async writes (persist to IndexedDB + update cache) ---
 
   async setCredentialId(credentialId: string): Promise<void> {
@@ -47,13 +60,27 @@ export class PasskeyStoreService {
     await this.put({ key: KEY_HAS_PASSKEY, value });
   }
 
+  async setWebAuthnUserId(accountKey: string, id: string): Promise<void> {
+    this.cache.set(KEY_WEBAUTHN_USER_ID_PREFIX + accountKey, id);
+    await this.put({ key: KEY_WEBAUTHN_USER_ID_PREFIX + accountKey, value: id });
+  }
+
+  /**
+   * Clears credential_id/has_passkey only — deliberately leaves the per-account
+   * `webauthn_user_id:<accountKey>` entries in place, on disk and in cache, so a
+   * later passkey registration by the same account (self-revoke re-onboarding, or
+   * a retry after a failed registration via `clearCredentialId()`) reuses that
+   * account's WebAuthn user handle.
+   */
   async clear(): Promise<void> {
     this.cache.delete(KEY_CREDENTIAL_ID);
     this.cache.delete(KEY_HAS_PASSKEY);
     const db = await this.openDatabase();
     try {
       const tx = db.transaction(STORE_NAME, 'readwrite');
-      tx.objectStore(STORE_NAME).clear();
+      const store = tx.objectStore(STORE_NAME);
+      store.delete(KEY_CREDENTIAL_ID);
+      store.delete(KEY_HAS_PASSKEY);
       await this.awaitTx(tx);
     } finally {
       db.close();
