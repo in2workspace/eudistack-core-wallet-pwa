@@ -11,4 +11,4 @@ permissions:
 
 jobs:
   analyze:
-    uses: in2workspace/eudistack-devops-workflows/.github/workflows/common-codeql-javascript.yml@6dead093a3a5aba68940eda4958afd4f3a6a3702
+    uses: in2workspace/eudistack-devops-workflows/.github/workflows/common-codeql-javascript.yml@12ed6fa9090ebd4564c6541b67111ed4466a61b1
