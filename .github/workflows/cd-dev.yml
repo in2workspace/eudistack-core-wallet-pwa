@@ -19,10 +19,10 @@ permissions:
 
 jobs:
   analyze:
-    uses: in2workspace/eudistack-devops-workflows/.github/workflows/common-codeql-javascript.yml@12ed6fa9090ebd4564c6541b67111ed4466a61b1
+    uses: in2workspace/eudistack-devops-workflows/.github/workflows/common-codeql-javascript.yml@5f949958c1932739d0763fd7d733b6b1a634eba2
 
   deploy:
-    uses: in2workspace/eudistack-devops-workflows/.github/workflows/spa-cd-dev.yml@12ed6fa9090ebd4564c6541b67111ed4466a61b1
+    uses: in2workspace/eudistack-devops-workflows/.github/workflows/spa-cd-dev.yml@5f949958c1932739d0763fd7d733b6b1a634eba2
     with:
       project_name: eudistack
       region_code: ew1
@@ -33,4 +33,5 @@ jobs:
         npm run build -- --configuration production --output-path=./dist/out
         --base-href=/wallet/ --deploy-url=/wallet/
       build_output: dist/out/browser
+      runtime_required_variables: LOGS_ENABLED,WALLET_MODE,PREFERRED_GRANT,WIA,WIA_INSTANCE_KEY_JWK
     secrets: inherit
