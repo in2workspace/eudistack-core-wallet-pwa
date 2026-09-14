@@ -25,7 +25,10 @@ const SUPPORT_LINK_PLACEHOLDER = '{{supportLink}}';
  * (`expiresIn - 120s`). Purely visual: `RemoteAuthService`'s own timers are
  * what actually decide the deadline.
  */
-const SESSION_WARNING_TOTAL_SECONDS = 120;
+// Must match the gap between the warning and refresh timers in RemoteAuthService.scheduleTokenRefresh
+// (exp-120s vs exp-60s = 60s apart, always). If the user never responds, the pre-existing silent
+// background refresh takes over and dismisses this alert exactly when the bar would hit zero.
+const SESSION_WARNING_TOTAL_SECONDS = 60;
 
 const ERROR_TRANSLATION_MAP: Record<string, string> = {
   'The received QR content cannot be processed': 'errors.invalid-qr',
@@ -98,15 +101,19 @@ export class ToastServiceHandler {
    */
   public async showSessionExpiryWarning(onContinue: () => void): Promise<HTMLIonAlertElement> {
     const continueLabel = this.escapeHtml(this.translate.instant('errors.session-warning-continue'));
-    const dismissLabel = this.escapeHtml(this.translate.instant('errors.session-warning-dismiss'));
 
     const alert = await this.alertController.create({
       message: this.buildSessionWarningMessage(SESSION_WARNING_TOTAL_SECONDS),
       buttons: [
-        { text: dismissLabel, role: 'cancel', cssClass: 'centered-button' },
         { text: continueLabel, role: 'confirm', cssClass: 'centered-button', handler: () => onContinue() },
       ],
-      cssClass: 'custom-alert-ok',
+      // Force an active choice — no tap-outside dismissal, matching the
+      // Issuer UI's disableClose:true on its equivalent dialog.
+      backdropDismiss: false,
+      // Dedicated class, NOT custom-alert-ok — that one is styled as a green
+      // "success" alert, which reads wrong for a session-about-to-expire
+      // warning. This matches the Issuer UI's neutral Material dialog look.
+      cssClass: 'custom-alert-session-warning',
     });
 
     await alert.present();
@@ -143,11 +150,8 @@ export class ToastServiceHandler {
     const percentage = (remainingSeconds / SESSION_WARNING_TOTAL_SECONDS) * 100;
 
     return `
-      <div style="display: flex; flex-direction: column; gap: 12px;">
-        <div style="display: flex; align-items: center; gap: 50px;">
-          <ion-icon name="time-outline"></ion-icon>
-          <span>${message}</span>
-        </div>
+      <div class="session-warning-body">
+        <p class="session-warning-text">${message}</p>
         <div class="countdown-section" role="timer" aria-label="${remainingLabel}">
           <div class="countdown-bar-track">
             <div class="countdown-bar-fill" style="width: ${percentage}%;"></div>

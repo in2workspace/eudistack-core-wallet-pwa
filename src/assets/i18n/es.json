@@ -401,7 +401,6 @@
     "session-expired": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
     "session-warning-message": "Tu sesión está a punto de caducar. ¿Quieres continuar?",
     "session-warning-continue": "Continuar",
-    "session-warning-dismiss": "Descartar",
     "session-warning-remaining": "{{seconds}} segundos restantes",
     "key-storage-unavailable": "Este navegador no puede guardar claves de forma segura. No podrás activar ni usar credenciales en este dispositivo.",
     "key-storage-public-only": "Este navegador no puede guardar claves de forma segura. Puedes añadir credenciales, pero podrían dejar de funcionar al cerrar o recargar la app.",

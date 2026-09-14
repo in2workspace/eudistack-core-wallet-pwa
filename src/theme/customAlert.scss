@@ -72,26 +72,75 @@ ion-alert.custom-alert-ok .alert-message ion-icon {
   color: var(--custom-alert-ok-text);
 }
 
-// Session-expiry countdown bar (RemoteAuthService.showSessionExpiryWarning) —
-// mirrors the same countdown already used by the Verifier's own login page
-// (eudistack-mfe-login LoginComponent) for QR session expiry.
+// Session-expiry warning (RemoteAuthService.showSessionExpiryWarning) — a
+// neutral, non-tinted wrapper (unlike custom-alert-ok's green "success"
+// background) matching the Issuer UI's plain Material dialog for the
+// equivalent popup.
+ion-alert.custom-alert-session-warning .alert-wrapper {
+  background-color: var(--surface-card) !important;
+  color: var(--text-primary, #1a1a1a) !important;
+  border-radius: var(--radius-md);
+}
+
+ion-alert.custom-alert-session-warning .alert-message {
+  color: var(--text-primary, #1a1a1a) !important;
+}
+
+// Single "Continuar" button: .alert-button-role-confirm is globally styled
+// red (delete-confirmation semantics elsewhere in the app) and the button
+// group is globally space-between (built for a 2-button layout) — both wrong
+// for this single, non-destructive action.
+ion-alert.custom-alert-session-warning .alert-button-role-confirm {
+  color: var(--primary-color, #001e8c) !important;
+}
+
+ion-alert.custom-alert-session-warning .alert-button-group {
+  justify-content: center !important;
+}
+
+// The outer message wrapper and the countdown bar's own divs must opt out of
+// the generic "ion-alert .alert-message div" rule below (built for the old
+// icon+text row layout) with explicit, higher-specificity display values —
+// otherwise that rule turns the track/fill divs into flex rows and the bar
+// never renders as an actual bar.
+ion-alert .alert-message .session-warning-body {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+
+ion-alert .alert-message .session-warning-text {
+  display: block;
+  margin: 0;
+}
+
+// Countdown bar — mirrors the same countdown already used by the Verifier's
+// own login page (eudistack-mfe-login LoginComponent) for QR session expiry,
+// and the Issuer UI's equivalent session-warning dialog (same primary-color
+// fill, so the two apps look consistent).
 ion-alert .alert-message .countdown-section {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   width: 100%;
   text-align: center;
 }
 
 ion-alert .alert-message .countdown-bar-track {
+  display: block;
   height: 4px;
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.15);
   overflow: hidden;
-  margin-bottom: 8px;
 }
 
 ion-alert .alert-message .countdown-bar-fill {
+  display: block;
   height: 100%;
   border-radius: 2px;
-  background: var(--status-warning, #d97706);
+  background: var(--primary-color, #001e8c);
   transition: width 1s linear;
 }
 

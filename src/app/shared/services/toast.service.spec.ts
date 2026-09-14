@@ -462,7 +462,7 @@ describe('ToastServiceHandler', () => {
   }));
 
   describe('showSessionExpiryWarning', () => {
-    it('presents an alert with the translated message and both buttons', async () => {
+    it('presents an alert with the translated message, only the confirm button, and no backdrop dismissal', async () => {
       const onContinue = jest.fn();
 
       const alertRef = await service.showSessionExpiryWarning(onContinue);
@@ -470,9 +470,9 @@ describe('ToastServiceHandler', () => {
       expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining({
         message: expect.stringContaining('errors.session-warning-message'),
         buttons: [
-          expect.objectContaining({ text: 'errors.session-warning-dismiss', role: 'cancel' }),
           expect.objectContaining({ text: 'errors.session-warning-continue', role: 'confirm' }),
         ],
+        backdropDismiss: false,
       }));
       expect(alertRef.present).toHaveBeenCalled();
     });
@@ -519,9 +519,9 @@ describe('ToastServiceHandler', () => {
       expect(tickCallback).toBeDefined();
 
       tickCallback!();
-      expect(extractBarWidth(alertMock.message)).toBeCloseTo((119 / 120) * 100);
+      expect(extractBarWidth(alertMock.message)).toBeCloseTo((59 / 60) * 100);
 
-      for (let i = 0; i < 59; i++) {
+      for (let i = 0; i < 29; i++) {
         tickCallback!();
       }
       expect(extractBarWidth(alertMock.message)).toBeCloseTo(50);
@@ -547,7 +547,7 @@ describe('ToastServiceHandler', () => {
 
       await service.showSessionExpiryWarning(jest.fn());
 
-      for (let i = 0; i < 120; i++) {
+      for (let i = 0; i < 60; i++) {
         tickCallback!();
       }
 

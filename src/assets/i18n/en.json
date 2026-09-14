@@ -400,7 +400,6 @@
     "session-expired": "Your session has expired. Please sign in again.",
     "session-warning-message": "Your session is about to expire. Do you want to continue?",
     "session-warning-continue": "Continue",
-    "session-warning-dismiss": "Dismiss",
     "session-warning-remaining": "{{seconds}} seconds remaining",
     "key-storage-unavailable": "This browser can’t securely store keys. You won’t be able to activate or use credentials on this device.",
     "key-storage-public-only": "This browser can’t securely store keys. You can add credentials, but they may stop working after you close or reload the app.",

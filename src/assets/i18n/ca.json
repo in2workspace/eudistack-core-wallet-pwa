@@ -189,7 +189,6 @@
     "session-expired": "La teva sessió ha caducat. Torna a iniciar sessió.",
     "session-warning-message": "La teva sessió està a punt de caducar. Vols continuar?",
     "session-warning-continue": "Continuar",
-    "session-warning-dismiss": "Descartar",
     "session-warning-remaining": "{{seconds}} segons restants",
     "key-storage-unavailable": "Aquest navegador no pot desar claus de manera segura. No podràs activar ni fer servir credencials en aquest dispositiu.",
     "key-storage-public-only": "Aquest navegador no pot desar claus de manera segura. Pots afegir credencials, però podrien deixar de funcionar en tancar o recarregar l’app.",
