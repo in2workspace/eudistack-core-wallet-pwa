@@ -17,7 +17,7 @@ export interface HybridEnrollmentResult {
 /**
  * Orchestrates per-credential holder key generation for `key_manager=hybrid` tenants:
  *   init -> PRF ceremony -> key generation -> OID4VCI proof signing
- *   -> HKDF wrap-key derivation -> AES-256-GCM wrap -> commit -> zeroize.
+ *   -> HKDF wrap-key derivation -> AES-256-GCM wrap -> commit -> zeroize
  *
  * The holder private key is signed with exactly once (the OID4VCI proof) before
  * it is wrapped and zeroized. It never leaves this service and never persists
