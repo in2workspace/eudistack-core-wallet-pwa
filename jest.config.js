@@ -70,6 +70,8 @@ module.exports = {
     "src/app/core/services/credential-decision.service.ts",
     "src/app/core/services/issuer-notification.service.ts",
     "src/app/core/services/passkey-prf.service.ts",
+    "src/app/shared/services/toast.service.ts",
+    "src/app/shared/components/menu/menu.component.ts",
     "src/app/shared/components/manual-code-modal/manual-code-modal.component.ts",
     "src/app/shared/components/credential-confirmation-modal/credential-confirmation-modal.component.ts",
   ],

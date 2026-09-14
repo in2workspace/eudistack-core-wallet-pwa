@@ -5,6 +5,7 @@ import { TranslateService, TranslateModule, TranslateLoader } from '@ngx-transla
 import { TranslateFakeLoader } from '@ngx-translate/core';
 import { fakeAsync, tick } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { DomSanitizer } from '@angular/platform-browser';
 const TIME_IN_MS = 5000;
 
 jest.useFakeTimers();
@@ -364,6 +365,26 @@ describe('ToastServiceHandler', () => {
       expect(message).toContain('target="_blank"');
       expect(message).toContain('>equipo de soporte</a>');
       expect(message).not.toContain('&lt;a');
+    }));
+
+    it('renders an empty message instead of crashing when the translation is missing', fakeAsync(() => {
+      translateService.get.mockImplementationOnce(() => of(undefined));
+      const spy = jest.spyOn(alertCtrl, 'create');
+
+      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
+      tick();
+
+      expect(messageOf(spy)).toContain('<span></span>');
+    }));
+
+    it('falls back to an empty message when the sanitizer rejects the content outright', fakeAsync(() => {
+      jest.spyOn(TestBed.inject(DomSanitizer), 'sanitize').mockReturnValue(null);
+      const spy = jest.spyOn(alertCtrl, 'create');
+
+      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
+      tick();
+
+      expect(messageOf(spy)).toContain('<span></span>');
     }));
 
     it('showToast drops script tags from the translated message', fakeAsync(() => {
