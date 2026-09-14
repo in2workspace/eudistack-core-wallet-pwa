@@ -58,8 +58,6 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         const href = urlObj.href;
         const isOwnBackend = href.startsWith(this.urlResolver.serverUrl());
         const pathname = urlObj.pathname;
-        // eslint-disable-next-line no-console
-        console.log('[TEMP DEBUG]', { href, serverUrl: this.urlResolver.serverUrl(), isOwnBackend, pathname });
 
         let errMessage =
           errorResp.error?.message || errorResp.message || 'Unknown Http error';
