@@ -41,7 +41,7 @@ permissions:
 
 jobs:
   deploy:
-    uses: in2workspace/eudistack-devops-workflows/.github/workflows/spa-deploy-pro.yml@6dead093a3a5aba68940eda4958afd4f3a6a3702
+    uses: in2workspace/eudistack-devops-workflows/.github/workflows/spa-deploy-pro.yml@12ed6fa9090ebd4564c6541b67111ed4466a61b1
     with:
       version: ${{ inputs.version }}
       base_artifact_digest: ${{ inputs.base_artifact_digest }}
@@ -56,7 +56,4 @@ jobs:
       production_smoke_url: https://sandbox.eudistack.net/wallet/
       allow_downgrade: ${{ inputs.allow_downgrade }}
       downgrade_reason: ${{ inputs.downgrade_reason }}
-    secrets:
-      AWS_ACCESS_KEY_ID_PRO: ${{ secrets.AWS_ACCESS_KEY_ID_PRO }}
-      AWS_SECRET_ACCESS_KEY_PRO: ${{ secrets.AWS_SECRET_ACCESS_KEY_PRO }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
+    secrets: inherit
