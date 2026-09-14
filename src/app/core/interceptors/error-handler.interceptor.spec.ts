@@ -12,8 +12,10 @@ import { environment } from 'src/environments/environment';
 
 class MockToastServiceHandler {
   showErrorAlert(message: string) {
+    return of(undefined);
   }
   showErrorAlertByTranslateLabel(message: string) {
+    return of(undefined);
   }
 }
 

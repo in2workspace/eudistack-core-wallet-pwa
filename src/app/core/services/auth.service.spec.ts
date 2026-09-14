@@ -17,6 +17,9 @@ import { environment } from 'src/environments/environment';
 class MockToastServiceHandler {
   showErrorAlert(_message: string) { return of(undefined); }
   showErrorAlertByTranslateLabel(_message: string) { return of(undefined); }
+  showSessionExpiryWarning(_onContinue: () => void) {
+    return Promise.resolve({ dismiss: () => Promise.resolve(true) } as unknown as HTMLIonAlertElement);
+  }
 }
 
 /**
@@ -544,6 +547,59 @@ describe('RemoteAuthService', () => {
       // refreshAccessToken()'s own catchError is the single source of forceLogout() —
       // the timer's error callback used to call it a second time on the same failure.
       expect(forceLogoutSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows the session-expiry warning 2 minutes before the silent refresh point', () => {
+      jest.useFakeTimers();
+      const warningSpy = jest.spyOn(toastServiceHandlerMock, 'showSessionExpiryWarning');
+
+      (service as any).scheduleTokenRefresh(180); // warning @ 60s, silent refresh @ 120s
+
+      jest.advanceTimersByTime(59_000);
+      expect(warningSpy).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(1_000);
+      expect(warningSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('"Continuar" on the warning triggers an immediate refresh and extends the session', () => {
+      jest.useFakeTimers();
+      (service as any).refreshTokenValue = 'refresh-abc';
+      let capturedOnContinue: (() => void) | undefined;
+      jest.spyOn(toastServiceHandlerMock, 'showSessionExpiryWarning').mockImplementation((onContinue: unknown) => {
+        capturedOnContinue = onContinue as () => void;
+        return Promise.resolve({ dismiss: () => Promise.resolve(true) } as unknown as HTMLIonAlertElement);
+      });
+
+      (service as any).scheduleTokenRefresh(180);
+      jest.advanceTimersByTime(60_000);
+
+      expect(capturedOnContinue).toBeDefined();
+      capturedOnContinue!();
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
+      const newToken = 'h.' + btoa(JSON.stringify({ email: 'continued@example.com' })) + '.s';
+      req.flush({ accessToken: newToken, refreshToken: 'refresh-new', expiresIn: 900 });
+
+      expect(service.getToken()).toBe(newToken);
+    });
+
+    it('scheduling a new refresh cycle dismisses a still-pending warning from the previous one', async () => {
+      jest.useFakeTimers();
+      const dismissSpy = jest.fn().mockResolvedValue(true);
+      jest.spyOn(toastServiceHandlerMock, 'showSessionExpiryWarning')
+        .mockResolvedValue({ dismiss: dismissSpy } as unknown as HTMLIonAlertElement);
+
+      (service as any).scheduleTokenRefresh(180);
+      jest.advanceTimersByTime(60_000); // warning fires and is showing
+      await Promise.resolve();
+
+      // A fresh cycle starts (e.g. a successful login/refresh elsewhere) before
+      // the open warning was ever answered.
+      (service as any).scheduleTokenRefresh(900);
+      await Promise.resolve();
+
+      expect(dismissSpy).toHaveBeenCalled();
     });
   });
 });

@@ -460,4 +460,143 @@ describe('ToastServiceHandler', () => {
     tick(1000);
     el.dispatchEvent(new Event('animationend'));
   }));
+
+  describe('showSessionExpiryWarning', () => {
+    it('presents an alert with the translated message and both buttons', async () => {
+      const onContinue = jest.fn();
+
+      const alertRef = await service.showSessionExpiryWarning(onContinue);
+
+      expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining({
+        message: expect.stringContaining('errors.session-warning-message'),
+        buttons: [
+          expect.objectContaining({ text: 'errors.session-warning-dismiss', role: 'cancel' }),
+          expect.objectContaining({ text: 'errors.session-warning-continue', role: 'confirm' }),
+        ],
+      }));
+      expect(alertRef.present).toHaveBeenCalled();
+    });
+
+    it('invokes onContinue when the confirm button handler runs', async () => {
+      const onContinue = jest.fn();
+
+      await service.showSessionExpiryWarning(onContinue);
+
+      const [createArgs] = alertCtrl.create.mock.calls[alertCtrl.create.mock.calls.length - 1];
+      const confirmButton = createArgs.buttons.find((b: { role: string }) => b.role === 'confirm');
+      confirmButton.handler();
+
+      expect(onContinue).toHaveBeenCalled();
+    });
+
+    it('starts the countdown bar at 100% width', async () => {
+      await service.showSessionExpiryWarning(jest.fn());
+
+      const [createArgs] = alertCtrl.create.mock.calls[alertCtrl.create.mock.calls.length - 1];
+      expect(extractBarWidth(createArgs.message)).toBe(100);
+    });
+
+    it('shrinks the bar and updates the remaining-time text once per second', async () => {
+      const neverDismissed = new Promise<void>(() => { /* not dismissed during this test */ });
+      const alertMock = {
+        present: jest.fn().mockResolvedValue(undefined),
+        dismiss: jest.fn().mockResolvedValue(undefined),
+        onDidDismiss: jest.fn().mockReturnValue(neverDismissed),
+        message: '',
+      };
+      alertCtrl.create.mockResolvedValueOnce(alertMock);
+
+      // Invoking the captured setInterval callback directly, rather than
+      // advancing a fake clock, sidesteps a known bad interaction in this
+      // file between the module-level jest.useFakeTimers() and Angular's
+      // zone-based fakeAsync/tick() — the two virtual clocks don't drive
+      // each other's setInterval callbacks reliably.
+      let tickCallback: (() => void) | undefined;
+      const setIntervalSpy = jest.spyOn(globalThis, 'setInterval')
+        .mockImplementation((fn: TimerHandler) => { tickCallback = fn as () => void; return 0 as unknown as ReturnType<typeof setInterval>; });
+
+      await service.showSessionExpiryWarning(jest.fn());
+      expect(tickCallback).toBeDefined();
+
+      tickCallback!();
+      expect(extractBarWidth(alertMock.message)).toBeCloseTo((119 / 120) * 100);
+
+      for (let i = 0; i < 59; i++) {
+        tickCallback!();
+      }
+      expect(extractBarWidth(alertMock.message)).toBeCloseTo(50);
+
+      setIntervalSpy.mockRestore();
+    });
+
+    it('clears the interval on its own once the countdown reaches zero, without waiting for dismiss', async () => {
+      const neverDismissed = new Promise<void>(() => { /* not dismissed during this test */ });
+      const fakeIntervalId = 7 as unknown as ReturnType<typeof setInterval>;
+      const alertMock = {
+        present: jest.fn().mockResolvedValue(undefined),
+        dismiss: jest.fn().mockResolvedValue(undefined),
+        onDidDismiss: jest.fn().mockReturnValue(neverDismissed),
+        message: '',
+      };
+      alertCtrl.create.mockResolvedValueOnce(alertMock);
+
+      let tickCallback: (() => void) | undefined;
+      const setIntervalSpy = jest.spyOn(globalThis, 'setInterval')
+        .mockImplementation((fn: TimerHandler) => { tickCallback = fn as () => void; return fakeIntervalId; });
+      const clearIntervalSpy = jest.spyOn(globalThis, 'clearInterval');
+
+      await service.showSessionExpiryWarning(jest.fn());
+
+      for (let i = 0; i < 120; i++) {
+        tickCallback!();
+      }
+
+      expect(extractBarWidth(alertMock.message)).toBe(0);
+      expect(clearIntervalSpy).toHaveBeenCalledWith(fakeIntervalId);
+
+      setIntervalSpy.mockRestore();
+      clearIntervalSpy.mockRestore();
+    });
+
+    it('stops ticking once the alert is dismissed', async () => {
+      let resolveDismiss!: () => void;
+      const dismissed = new Promise<void>((resolve) => { resolveDismiss = resolve; });
+      const alertMock = {
+        present: jest.fn().mockResolvedValue(undefined),
+        dismiss: jest.fn().mockResolvedValue(undefined),
+        onDidDismiss: jest.fn().mockReturnValue(dismissed),
+        message: '',
+      };
+      alertCtrl.create.mockResolvedValueOnce(alertMock);
+
+      let tickCallback: (() => void) | undefined;
+      const fakeIntervalId = 42 as unknown as ReturnType<typeof setInterval>;
+      const setIntervalSpy = jest.spyOn(globalThis, 'setInterval')
+        .mockImplementation((fn: TimerHandler) => { tickCallback = fn as () => void; return fakeIntervalId; });
+      const clearIntervalSpy = jest.spyOn(globalThis, 'clearInterval');
+
+      await service.showSessionExpiryWarning(jest.fn());
+      tickCallback!();
+      tickCallback!();
+      const messageAtDismiss = alertMock.message;
+      expect(messageAtDismiss).not.toBe('');
+
+      resolveDismiss();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(clearIntervalSpy).toHaveBeenCalledWith(fakeIntervalId);
+
+      setIntervalSpy.mockRestore();
+      clearIntervalSpy.mockRestore();
+    });
+  });
 });
+
+function extractBarWidth(message: string): number {
+  const match = message.match(/width:\s*([\d.]+)%/);
+  if (!match) {
+    throw new Error(`No countdown bar width found in message: ${message}`);
+  }
+  return Number(match[1]);
+}

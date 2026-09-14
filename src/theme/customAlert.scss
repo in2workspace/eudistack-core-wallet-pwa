@@ -72,6 +72,35 @@ ion-alert.custom-alert-ok .alert-message ion-icon {
   color: var(--custom-alert-ok-text);
 }
 
+// Session-expiry countdown bar (RemoteAuthService.showSessionExpiryWarning) —
+// mirrors the same countdown already used by the Verifier's own login page
+// (eudistack-mfe-login LoginComponent) for QR session expiry.
+ion-alert .alert-message .countdown-section {
+  width: 100%;
+  text-align: center;
+}
+
+ion-alert .alert-message .countdown-bar-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+ion-alert .alert-message .countdown-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--status-warning, #d97706);
+  transition: width 1s linear;
+}
+
+ion-alert .alert-message .countdown-text {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
 ion-alert .alert-message div {
   display: flex;
   align-items: center;
