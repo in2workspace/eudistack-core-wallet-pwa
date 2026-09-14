@@ -28,7 +28,7 @@ export class ActivityPage implements OnInit, ViewWillEnter {
   /**
    * Hides the "clear history" action while product decides whether the wallet
    * keeps it at all. The flow behind it (confirmClear → ConfirmModalComponent →
-   * ActivityService.clear) stays wired and tested; flip this to re-expose it.
+   * ActivityService.clear) stays wired and tested. Flip this to re-expose it.
    */
   readonly clearHistoryEnabled = false;
 
