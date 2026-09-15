@@ -165,7 +165,8 @@
       "verified-title": "Email verificat!",
       "setup-title": "Configura una passkey",
       "verified-subtitle": "El teu email s'ha verificat correctament.",
-      "setup-subtitle": "Configura una passkey per completar l'accés en aquest dispositiu."
+      "setup-subtitle": "Configura una passkey per completar l'accés en aquest dispositiu.",
+      "edge-windows-hint": "A Microsoft Edge veuràs el PIN de Windows Hello per verificar la teva identitat. Si prefereixes fer servir el mòbil com a clau d'accés, obre aquesta pàgina a Google Chrome."
     },
     "errors": {
       "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",

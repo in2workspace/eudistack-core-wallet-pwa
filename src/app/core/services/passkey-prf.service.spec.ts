@@ -3,6 +3,7 @@ import { PasskeyPrfService } from './passkey-prf.service';
 import { PasskeyStoreService } from './passkey-store.service';
 import { AppError } from '../models/error/AppError';
 import { base64UrlEncode } from '../utils/base64url';
+import { WEBAUTHN_HINTS } from '../constants/webauthn.constants';
 
 describe('PasskeyPrfService', () => {
   let service: PasskeyPrfService;
@@ -104,6 +105,11 @@ describe('PasskeyPrfService', () => {
       const expectedId = base64UrlEncode(new Uint8Array(mockCredential.rawId));
       expect(result).toBe(expectedId);
       expect(storeSpy.setCredentialId).toHaveBeenCalledWith(expectedId);
+
+      // EUD bug: Chrome/Edge showed different authenticator pickers because no
+      // `hints` was ever sent — assert the standardized hint set is present.
+      const call = (navigator.credentials.create as jest.Mock).mock.calls[0][0];
+      expect(call.publicKey.hints).toEqual(WEBAUTHN_HINTS);
     });
 
     it('should throw AppError if creation fails', async () => {
@@ -146,6 +152,9 @@ describe('PasskeyPrfService', () => {
       expect(navigator.credentials.get).toHaveBeenCalled();
       expect(result.privateKey).toBe(mockPrivateKey);
       expect(result.publicKeyJwk).toBeDefined();
+
+      const call = (navigator.credentials.get as jest.Mock).mock.calls[0][0];
+      expect(call.publicKey.hints).toEqual(WEBAUTHN_HINTS);
     });
 
     it('should throw AppError if PRF results are missing', async () => {

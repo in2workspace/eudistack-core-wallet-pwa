@@ -13,6 +13,7 @@ import { WalletService } from 'src/app/core/services/wallet.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
+import { WEBAUTHN_HINTS } from 'src/app/core/constants/webauthn.constants';
 
 describe('LoginPage (server mode)', () => {
   let component: LoginPage;
@@ -363,6 +364,10 @@ describe('LoginPage (server mode)', () => {
 
       expect(mockCredentialsGet).toHaveBeenCalled();
       expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+
+      // EUD bug: standardized `hints` must be present on the login assertion too.
+      const call = mockCredentialsGet.mock.calls[0][0];
+      expect(call.publicKey.hints).toEqual(WEBAUTHN_HINTS);
     });
   });
 
@@ -554,6 +559,32 @@ describe('LoginPage (server mode)', () => {
       setUA('Android'); expect(component['getDeviceName']()).toBe('Android Device');
       setUA('Windows'); expect(component['getDeviceName']()).toBe('Windows PC');
       setUA('Unknown'); expect(component['getDeviceName']()).toBe('Unknown Device');
+
+      setUA(originalUA);
+    });
+
+    it('shows the Edge/Windows passkey hint only for that exact browser+OS combination', async () => {
+      const originalUA = navigator.userAgent;
+      const setUA = (ua: string) => {
+        Object.defineProperty(navigator, 'userAgent', { value: ua, configurable: true });
+      };
+      const createComponentWithUA = async (ua: string): Promise<LoginPage> => {
+        setUA(ua);
+        TestBed.resetTestingModule();
+        await TestBed.configureTestingModule({
+          imports: [LoginPage, TranslateModule.forRoot()],
+          providers: baseProviders,
+        }).compileComponents();
+        return TestBed.createComponent(LoginPage).componentInstance;
+      };
+
+      const EDGE_WINDOWS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0';
+      const CHROME_WINDOWS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+      const EDGE_MAC_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0';
+
+      expect((await createComponentWithUA(EDGE_WINDOWS_UA)).showEdgeWindowsPasskeyHint).toBe(true);
+      expect((await createComponentWithUA(CHROME_WINDOWS_UA)).showEdgeWindowsPasskeyHint).toBe(false);
+      expect((await createComponentWithUA(EDGE_MAC_UA)).showEdgeWindowsPasskeyHint).toBe(false);
 
       setUA(originalUA);
     });

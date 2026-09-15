@@ -178,7 +178,8 @@
       "verified-title": "Email verified!",
       "setup-title": "Set up a passkey",
       "verified-subtitle": "Your email has been successfully verified.",
-      "setup-subtitle": "Set up a passkey to complete access on this device."
+      "setup-subtitle": "Set up a passkey to complete access on this device.",
+      "edge-windows-hint": "In Microsoft Edge you'll see the Windows Hello PIN to verify your identity. If you'd rather use your phone as your security key, open this page in Google Chrome."
     },
     "reauth": {
       "subtitle": "Verify your email to restore your session",

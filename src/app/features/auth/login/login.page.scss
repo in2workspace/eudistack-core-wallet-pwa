@@ -147,6 +147,14 @@
   }
 }
 
+.auth-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--auth-ink-muted);
+  max-width: var(--auth-text-width);
+  margin: 12px auto 0;
+}
+
 .auth-field {
   width: 100%;
   max-width: var(--auth-control-width);

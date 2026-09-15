@@ -19,6 +19,7 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
+import { WEBAUTHN_HINTS } from 'src/app/core/constants/webauthn.constants';
 
 const RESEND_COOLDOWN_SECONDS = 180;
 
@@ -99,6 +100,15 @@ export class LoginPage implements OnDestroy {
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
   readonly hasExistingPasskey = this.prfService.hasPasskey();
+
+  // EUD bug: Edge on Windows takes a request with no `authenticatorAttachment`
+  // straight to the Windows Hello PIN prompt and never offers the cross-device
+  // (QR) option that Chrome's account chooser shows for the same request. The
+  // `hints` sent with every WebAuthn call (see webauthn.constants.ts) narrow
+  // that gap, but Edge's native picker is outside our control — so on that
+  // specific combination we tell the user what to expect up front instead of
+  // letting them read a Windows-only PIN prompt as the app being broken.
+  readonly showEdgeWindowsPasskeyHint = /Windows/.test(navigator.userAgent) && /Edg\//.test(navigator.userAgent);
 
   readonly brandName = computed(() => {
     const name = this.theme()?.branding?.name?.trim();
@@ -517,6 +527,8 @@ export class LoginPage implements OnDestroy {
         }],
         userVerification: 'required',
         timeout: 60_000,
+        // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialRequestOptions (WebAuthn L3)
+        hints: WEBAUTHN_HINTS,
       },
     });
 

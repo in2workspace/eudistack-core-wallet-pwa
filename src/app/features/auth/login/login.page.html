@@ -85,6 +85,10 @@
                 {{ 'auth.passkey.register-button' | translate }}
               </button>
             }
+
+            @if (showEdgeWindowsPasskeyHint) {
+              <p class="auth-hint">{{ 'auth.passkey.edge-windows-hint' | translate }}</p>
+            }
           }
 
           <!-- Step 2: Email -->
@@ -197,6 +201,10 @@
               >
                 {{ 'auth.passkey.register-button' | translate }}
               </button>
+
+              @if (showEdgeWindowsPasskeyHint) {
+                <p class="auth-hint">{{ 'auth.passkey.edge-windows-hint' | translate }}</p>
+              }
             } @else {
               <h1 class="auth-title">{{ 'auth.login.title-welcome' | translate }}</h1>
               <p class="auth-subtitle">{{ 'auth.login.verify-passkey' | translate }}</p>
@@ -204,6 +212,10 @@
               <button type="button" class="auth-button" [disabled]="loading" (click)="verifyPasskey()">
                 {{ 'auth.login.passkey-button' | translate }}
               </button>
+
+              @if (showEdgeWindowsPasskeyHint) {
+                <p class="auth-hint">{{ 'auth.passkey.edge-windows-hint' | translate }}</p>
+              }
             }
           }
         }
