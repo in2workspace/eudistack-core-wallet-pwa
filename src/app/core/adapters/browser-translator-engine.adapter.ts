@@ -12,7 +12,7 @@ import { TelemetryService } from '../services/telemetry.service';
  * `Translator` API** — every other translation-layer file talks to the port,
  * never to this global directly. That concentration is what makes the
  * spoofing mitigation in `technical-design.md` §3.4.1 (STRIDE) meaningful:
- * a code reviewer only has one file to audit for engine selection.
+ * a code reviewer only has one file to audit for engine selection
  */
 @Injectable()
 export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
