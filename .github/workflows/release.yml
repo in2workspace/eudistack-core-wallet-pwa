@@ -4,11 +4,6 @@ on:
   push:
     branches:
       - 'release/v*.*.*'
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'LICENSE'
-      - '.gitignore'
 
 permissions:
   actions: read
