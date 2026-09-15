@@ -308,6 +308,7 @@
   "vc-fields": {
     "delete": "Delete credential",
     "copy-success": "Copied to clipboard",
+    "copy": "Copy",
     "modal-title": "Credential Details",
     "title": "Credential Info",
     "credentialInfo": {
@@ -540,6 +541,7 @@
     "ok": "OK",
     "error-header": "Cannot Delete",
     "last-passkey-error": "You cannot delete your last passkey. Register a new device first.",
+    "unavailable": "Connected devices are only available when the wallet uses a server account.",
     "load-error": "Could not load your devices. Please try again.",
     "retry": "Retry",
     "no-passkeys": "No passkeys registered.",

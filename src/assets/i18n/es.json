@@ -309,6 +309,7 @@
   "vc-fields": {
     "delete": "Eliminar credencial",
     "copy-success": "Copiado al portapapeles",
+    "copy": "Copiar",
     "modal-title": "Detalles de credencial",
     "title": "Información de credenciales",
     "credentialInfo": {
@@ -541,6 +542,7 @@
     "ok": "OK",
     "error-header": "No se puede eliminar",
     "last-passkey-error": "No puedes eliminar tu última passkey. Registra un nuevo dispositivo primero.",
+    "unavailable": "Los dispositivos conectados solo están disponibles cuando el wallet usa una cuenta de servidor.",
     "load-error": "No se pudieron cargar tus dispositivos. Inténtalo de nuevo.",
     "retry": "Reintentar",
     "no-passkeys": "No hay passkeys registradas.",

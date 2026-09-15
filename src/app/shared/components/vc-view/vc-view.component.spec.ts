@@ -333,7 +333,7 @@ describe('VcViewComponent', () => {
       (navigator as any).clipboard = {
         writeText: jest.fn().mockResolvedValue(undefined),
       };
-      showToastSpy = jest.spyOn((component as any).toastService, 'showToast').mockImplementation(() => {});
+      showToastSpy = jest.spyOn((component as any).toastService, 'showInfoToastByTranslateLabel').mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -346,7 +346,7 @@ describe('VcViewComponent', () => {
       const text = 'test text';
       await component.copyToClipboard(text);
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(text);
-      expect(showToastSpy).toHaveBeenCalledWith('vc-fields.copy-success');
+      expect(showToastSpy).toHaveBeenCalledWith('vc-fields.copy-success', 2000);
     });
   });
 
