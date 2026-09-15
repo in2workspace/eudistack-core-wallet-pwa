@@ -45,6 +45,7 @@ module.exports = {
     "src/app/core/constants/support.constants.ts",
     "src/app/core/services/credential-verification.service.ts",
     "src/app/shared/components/vc-view/vc-view.component.ts",
+    "src/app/shared/services/toast.service.ts",
     "src/app/features/credentials/credentials.page.ts",
     "src/app/features/auth/login/login.page.ts",
     // --- EUD-142: runtime UI translation ---

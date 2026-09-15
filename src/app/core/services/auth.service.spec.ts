@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
+import { of } from 'rxjs';
 import { AuthService, AUTH_SERVICE_PROVIDER, RemoteAuthService, TokenPairResponse } from './auth.service';
 import { PasskeyStoreService } from './passkey-store.service';
 import { PasskeyPrfService } from './passkey-prf.service';
@@ -10,7 +11,16 @@ import { WALLET_DISCOVERY_GATEWAY } from '../gateways/wallet-discovery.gateway';
 import { LocalAuthService } from './local-auth.service';
 import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
 import { TenantService } from './tenant.service';
+import { ToastServiceHandler } from '../../shared/services/toast.service';
 import { environment } from 'src/environments/environment';
+
+class MockToastServiceHandler {
+  showErrorAlert(_message: string) { return of(undefined); }
+  showErrorAlertByTranslateLabel(_message: string) { return of(undefined); }
+  showSessionExpiryWarning(_onContinue: () => void) {
+    return Promise.resolve({ dismiss: () => Promise.resolve(true) } as unknown as HTMLIonAlertElement);
+  }
+}
 
 /**
  * Minimal stub for IssuerMetadataCacheService. RemoteAuthService schedules a
@@ -48,6 +58,7 @@ describe('RemoteAuthService', () => {
   let httpMock: HttpTestingController;
   let routerMock: jest.Mocked<Router>;
   let passkeyStoreMock: jest.Mocked<Pick<PasskeyStoreService, 'hasPasskey'>>;
+  let toastServiceHandlerMock: MockToastServiceHandler;
 
   beforeAll(() => {
     (globalThis as any).BroadcastChannel = BroadcastChannelMock;
@@ -64,6 +75,8 @@ describe('RemoteAuthService', () => {
       hasPasskey: jest.fn().mockReturnValue(false),
     };
 
+    toastServiceHandlerMock = new MockToastServiceHandler();
+
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [
@@ -72,6 +85,7 @@ describe('RemoteAuthService', () => {
         { provide: PasskeyStoreService, useValue: passkeyStoreMock },
         { provide: IssuerMetadataCacheService, useValue: issuerMetadataCacheStub() },
         { provide: TenantService, useValue: tenantServiceStub() },
+        { provide: ToastServiceHandler, useValue: toastServiceHandlerMock },
       ],
     });
 
@@ -80,6 +94,7 @@ describe('RemoteAuthService', () => {
   });
 
   afterEach(() => {
+    jest.useRealTimers();
     httpMock.verify();
     localStorage.clear();
   });
@@ -514,6 +529,115 @@ describe('RemoteAuthService', () => {
       });
     });
   });
+
+  describe('scheduleTokenRefresh', () => {
+    it('E-02: background refresh failure shows the session-expired toast exactly once and does not double-call forceLogout', () => {
+      jest.useFakeTimers();
+      const toastSpy = jest.spyOn(toastServiceHandlerMock, 'showErrorAlertByTranslateLabel').mockReturnValue(of(undefined) as any);
+      const forceLogoutSpy = jest.spyOn(service, 'forceLogout');
+      (service as any).refreshTokenValue = 'refresh-abc';
+
+      (service as any).scheduleTokenRefresh(65);
+      jest.advanceTimersByTime(5_000);
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
+      req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+
+      expect(toastSpy).toHaveBeenCalledWith('errors.session-expired');
+      // refreshAccessToken()'s own catchError is the single source of forceLogout() —
+      // the timer's error callback used to call it a second time on the same failure.
+      expect(forceLogoutSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows the session-expiry warning 2 minutes before the silent refresh point', () => {
+      jest.useFakeTimers();
+      const warningSpy = jest.spyOn(toastServiceHandlerMock, 'showSessionExpiryWarning');
+
+      (service as any).scheduleTokenRefresh(180); // warning @ 60s, silent refresh @ 120s
+
+      jest.advanceTimersByTime(59_000);
+      expect(warningSpy).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(1_000);
+      expect(warningSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('"Continuar" on the warning triggers an immediate refresh and extends the session', () => {
+      jest.useFakeTimers();
+      (service as any).refreshTokenValue = 'refresh-abc';
+      let capturedOnContinue: (() => void) | undefined;
+      jest.spyOn(toastServiceHandlerMock, 'showSessionExpiryWarning').mockImplementation((onContinue: unknown) => {
+        capturedOnContinue = onContinue as () => void;
+        return Promise.resolve({ dismiss: () => Promise.resolve(true) } as unknown as HTMLIonAlertElement);
+      });
+
+      (service as any).scheduleTokenRefresh(180);
+      jest.advanceTimersByTime(60_000);
+
+      expect(capturedOnContinue).toBeDefined();
+      capturedOnContinue!();
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
+      const newToken = 'h.' + btoa(JSON.stringify({ email: 'continued@example.com' })) + '.s';
+      req.flush({ accessToken: newToken, refreshToken: 'refresh-new', expiresIn: 900 });
+
+      expect(service.getToken()).toBe(newToken);
+    });
+
+    it('"Continuar" cancels the still-pending automatic refresh, avoiding a one-time-use refresh-token race', () => {
+      // Regression guard: the backend rotates refresh tokens on use (one-time use). Before
+      // this fix, clicking "Continuar" left the automatic refreshTimer armed — if both fired
+      // close together, whichever lost the race got an "invalid token" error and the user was
+      // shown "session expired" right after confirming they wanted to stay logged in.
+      jest.useFakeTimers();
+      (service as any).refreshTokenValue = 'refresh-abc';
+      const expiredToastSpy = jest.spyOn(toastServiceHandlerMock, 'showErrorAlertByTranslateLabel').mockReturnValue(of(undefined) as any);
+      let capturedOnContinue: (() => void) | undefined;
+      jest.spyOn(toastServiceHandlerMock, 'showSessionExpiryWarning').mockImplementation((onContinue: unknown) => {
+        capturedOnContinue = onContinue as () => void;
+        return Promise.resolve({ dismiss: () => Promise.resolve(true) } as unknown as HTMLIonAlertElement);
+      });
+
+      (service as any).scheduleTokenRefresh(180); // warning @ 60s, automatic silent refresh @ 120s
+      jest.advanceTimersByTime(60_000);
+
+      expect(capturedOnContinue).toBeDefined();
+      capturedOnContinue!();
+
+      // The manual refresh is now in flight — deliberately left unflushed so the natural
+      // reschedule-on-success path (which would also clear the old timer) can't mask the bug:
+      // this only proves the fix if refreshTimer was cancelled synchronously at click-time.
+      const manualReq = httpMock.expectOne(`${AUTH_BASE}/refresh`);
+
+      // Advance to when the automatic refreshTimer would have fired if it hadn't been
+      // cancelled — without the fix, this creates a second, racing /refresh request here.
+      jest.advanceTimersByTime(60_000);
+      httpMock.expectNone(`${AUTH_BASE}/refresh`);
+
+      const newToken = 'h.' + btoa(JSON.stringify({ email: 'continued@example.com' })) + '.s';
+      manualReq.flush({ accessToken: newToken, refreshToken: 'refresh-new', expiresIn: 900 });
+
+      expect(expiredToastSpy).not.toHaveBeenCalledWith('errors.session-expired');
+    });
+
+    it('scheduling a new refresh cycle dismisses a still-pending warning from the previous one', async () => {
+      jest.useFakeTimers();
+      const dismissSpy = jest.fn().mockResolvedValue(true);
+      jest.spyOn(toastServiceHandlerMock, 'showSessionExpiryWarning')
+        .mockResolvedValue({ dismiss: dismissSpy } as unknown as HTMLIonAlertElement);
+
+      (service as any).scheduleTokenRefresh(180);
+      jest.advanceTimersByTime(60_000); // warning fires and is showing
+      await Promise.resolve();
+
+      // A fresh cycle starts (e.g. a successful login/refresh elsewhere) before
+      // the open warning was ever answered.
+      (service as any).scheduleTokenRefresh(900);
+      await Promise.resolve();
+
+      expect(dismissSpy).toHaveBeenCalled();
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -553,6 +677,7 @@ describe('AUTH_SERVICE_PROVIDER', () => {
         { provide: PasskeyPrfService, useValue: {} },
         { provide: IssuerMetadataCacheService, useValue: issuerMetadataCacheStub() },
         { provide: TenantService, useValue: tenantServiceStub() },
+        { provide: ToastServiceHandler, useValue: new MockToastServiceHandler() },
       ],
     });
   }
