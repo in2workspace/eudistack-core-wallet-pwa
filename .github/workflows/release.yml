@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   release:
-    uses: in2workspace/eudistack-devops-workflows/.github/workflows/spa-release.yml@5f949958c1932739d0763fd7d733b6b1a634eba2
+    uses: in2workspace/eudistack-devops-workflows/.github/workflows/spa-release.yml@c2061f16b4fcacb12d8a4439899ed73c6d3a17cd
     with:
       project_name: eudistack
       region_code: ew1
