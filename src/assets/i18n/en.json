@@ -308,6 +308,7 @@
   "vc-fields": {
     "delete": "Delete credential",
     "copy-success": "Copied to clipboard",
+    "copy": "Copy",
     "modal-title": "Credential Details",
     "title": "Credential Info",
     "credentialInfo": {

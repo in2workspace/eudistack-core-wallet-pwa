@@ -456,6 +456,37 @@
   white-space: nowrap;
 }
 
+.copy-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.copy-row__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.copy-row__button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--border-default, #D1D5DB);
+  border-radius: 8px;
+  background: var(--surface-page);
+  color: var(--text-primary);
+  cursor: pointer;
+
+  ion-icon {
+    font-size: 18px;
+  }
+}
+
 // ── Permissions / Powers ─────────────────────────────
 
 .powers {

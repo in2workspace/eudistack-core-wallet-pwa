@@ -309,6 +309,7 @@
   "vc-fields": {
     "delete": "Eliminar credencial",
     "copy-success": "Copiado al portapapeles",
+    "copy": "Copiar",
     "modal-title": "Detalles de credencial",
     "title": "Información de credenciales",
     "credentialInfo": {

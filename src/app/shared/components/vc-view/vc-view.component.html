@@ -196,7 +196,16 @@
               @for(field of section.fields; track field.label) {
                 <div class="field-grid__cell" [class.field-grid__cell--wide]="isWideField(field)">
                   <span class="field-label">{{ field.label | translate }}</span>
-                  <span class="field-box" [attr.translate]="'no'" [title]="field.value">{{ field.value }}</span>
+                  @if(field.label === 'vc-fields.credentialEncoded') {
+                    <div class="copy-row">
+                      <span class="field-box copy-row__text" [attr.translate]="'no'" [title]="field.value">{{ field.value }}</span>
+                      <button type="button" class="copy-row__button" (click)="copyToClipboard(field.value)" [attr.aria-label]="'vc-fields.copy' | translate">
+                        <ion-icon name="copy-outline" aria-hidden="true"></ion-icon>
+                      </button>
+                    </div>
+                  } @else {
+                    <span class="field-box" [attr.translate]="'no'" [title]="field.value">{{ field.value }}</span>
+                  }
                 </div>
               }
             </div>
