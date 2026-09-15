@@ -223,6 +223,14 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     this.warningTimer = setTimeout(() => {
       if (this.disposed) return;
       this.pendingWarningAlert = this.toastServiceHandler.showSessionExpiryWarning(() => {
+        // Cancel the still-pending automatic refresh first: the backend rotates refresh
+        // tokens on use (one-time use), so if both this manual call and the automatic one
+        // reached it, whichever loses the race would get an "invalid token" error and
+        // surface a spurious session-expired message right after the user clicked Continue.
+        if (this.refreshTimer) {
+          clearTimeout(this.refreshTimer);
+          this.refreshTimer = null;
+        }
         this.refreshAccessToken().subscribe({
           error: () => {
             if (!this.disposed) {

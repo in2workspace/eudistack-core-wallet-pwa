@@ -584,6 +584,42 @@ describe('RemoteAuthService', () => {
       expect(service.getToken()).toBe(newToken);
     });
 
+    it('"Continuar" cancels the still-pending automatic refresh, avoiding a one-time-use refresh-token race', () => {
+      // Regression guard: the backend rotates refresh tokens on use (one-time use). Before
+      // this fix, clicking "Continuar" left the automatic refreshTimer armed — if both fired
+      // close together, whichever lost the race got an "invalid token" error and the user was
+      // shown "session expired" right after confirming they wanted to stay logged in.
+      jest.useFakeTimers();
+      (service as any).refreshTokenValue = 'refresh-abc';
+      const expiredToastSpy = jest.spyOn(toastServiceHandlerMock, 'showErrorAlertByTranslateLabel').mockReturnValue(of(undefined) as any);
+      let capturedOnContinue: (() => void) | undefined;
+      jest.spyOn(toastServiceHandlerMock, 'showSessionExpiryWarning').mockImplementation((onContinue: unknown) => {
+        capturedOnContinue = onContinue as () => void;
+        return Promise.resolve({ dismiss: () => Promise.resolve(true) } as unknown as HTMLIonAlertElement);
+      });
+
+      (service as any).scheduleTokenRefresh(180); // warning @ 60s, automatic silent refresh @ 120s
+      jest.advanceTimersByTime(60_000);
+
+      expect(capturedOnContinue).toBeDefined();
+      capturedOnContinue!();
+
+      // The manual refresh is now in flight — deliberately left unflushed so the natural
+      // reschedule-on-success path (which would also clear the old timer) can't mask the bug:
+      // this only proves the fix if refreshTimer was cancelled synchronously at click-time.
+      const manualReq = httpMock.expectOne(`${AUTH_BASE}/refresh`);
+
+      // Advance to when the automatic refreshTimer would have fired if it hadn't been
+      // cancelled — without the fix, this creates a second, racing /refresh request here.
+      jest.advanceTimersByTime(60_000);
+      httpMock.expectNone(`${AUTH_BASE}/refresh`);
+
+      const newToken = 'h.' + btoa(JSON.stringify({ email: 'continued@example.com' })) + '.s';
+      manualReq.flush({ accessToken: newToken, refreshToken: 'refresh-new', expiresIn: 900 });
+
+      expect(expiredToastSpy).not.toHaveBeenCalledWith('errors.session-expired');
+    });
+
     it('scheduling a new refresh cycle dismisses a still-pending warning from the previous one', async () => {
       jest.useFakeTimers();
       const dismissSpy = jest.fn().mockResolvedValue(true);
