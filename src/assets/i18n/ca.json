@@ -111,7 +111,14 @@
         "q3": "Puc continuar sense instal·lar el Wallet?",
         "a3": "Sí. Pots continuar al navegador, tot i que algunes funcionalitats poden estar limitades.",
         "close": "Tancar"
-      }
+      },
+      "mac-modal-title": "Instal·lar el Wallet al teu Mac",
+      "mac-steps-intro": "Per instal·lar-la al teu Mac:",
+      "mac-steps-aria": "Passos per instal·lar Wallet a macOS",
+      "mac-step-1": "Obre el menú Arxiu de Safari.",
+      "mac-step-2": "Tria «Afegir al Dock…» i confirma el nom.",
+      "mac-step-3": "Obre l'app des del Dock per continuar.",
+      "mac-reauth-notice": "Si instal·les l'app més endavant, pot ser que hagis de tornar a iniciar la sessió."
     },
     "login": {
       "title": "Registra el teu dispositiu",

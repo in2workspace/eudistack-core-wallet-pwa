@@ -60,6 +60,7 @@ export class LoginPage implements OnDestroy {
   errorMessage = '';
   readonly showInstallScreen = signal(!this.pwaInstall.isStandalone);
   showHelpModal = false;
+  showMacStepsModal = false;
 
   readonly helpFaqs = [
     { question: 'auth.access.help.q1', answer: 'auth.access.help.a1' },
@@ -101,6 +102,8 @@ export class LoginPage implements OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
+  readonly isMacSafari = this.pwaInstall.isMacSafari;
+  readonly macInstallSteps = ['step-1', 'step-2', 'step-3'] as const;
   readonly hasExistingPasskey = this.prfService.hasPasskey();
 
   // EUD bug: Edge on Windows takes a request with no `authenticatorAttachment`
@@ -214,6 +217,14 @@ export class LoginPage implements OnDestroy {
 
   closeHelp(): void {
     this.showHelpModal = false;
+  }
+
+  openMacSteps(): void {
+    this.showMacStepsModal = true;
+  }
+
+  closeMacSteps(): void {
+    this.showMacStepsModal = false;
   }
 
   // --- Initialization watchdog ---

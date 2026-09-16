@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Install guidance for macOS Safari**: Safari fires no `beforeinstallprompt` on any platform, so the install screen never appeared on a Mac, and the manual guide at `/ios-install` is scoped to iOS devices by design (AC-008.6) — a Mac user had no way to install the wallet. The access screen now also shows on macOS Safari, where its primary button opens a modal with the manual "File → Add to Dock" steps instead of triggering a prompt that cannot exist; the screen keeps both options ("install" and "continue in browser") side by side, as on every other platform. Other browsers are untouched and keep the native prompt. The modal also notes that installing later may require signing in again.
+
 ### Fixed
 
 - **Inconsistent WebAuthn authenticator picker between Chrome and Edge on Windows during passkey login/registration**: with no explicit `hints` on `navigator.credentials.create()`/`.get()`, Chrome's account chooser surfaced every option (this device, phone/tablet via hybrid/QR, roaming security key) while Edge defaulted straight to the Windows Hello PIN prompt and never offered cross-device sign-in — the two browsers were reading different, undocumented heuristics off the same request. Added `WEBAUTHN_HINTS = ['hybrid', 'security-key', 'client-device']` (WebAuthn Level 3 `hints`) to the three call sites (`PasskeyPrfService.createPasskey`/`authenticateWithPasskey`, `LoginPage.verifyPasskey`) to standardize the request instead of relying on each browser's default heuristic. Since `hints` is only advisory and Edge's native picker still isn't fully under the app's control, `LoginPage` also shows a dedicated hint (`auth.passkey.edge-windows-hint`, es/en/ca) on the exact Edge+Windows combination, telling the user to expect the Windows Hello PIN and pointing to Chrome if they'd rather use their phone as the passkey. Tests: `passkey-prf.service.spec.ts` (hints present on both the `create` and `get` calls), `login.page.spec.ts` (hints on the login assertion; hint text shown only for Edge+Windows, not Chrome/Windows or Edge/Mac).

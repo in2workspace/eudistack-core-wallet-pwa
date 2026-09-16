@@ -107,14 +107,18 @@ describe('LoginPage (server mode)', () => {
     component = fixture.componentInstance;
   });
 
-  async function rebuildWithInstallDecision(decision: boolean, isStandalone = false): Promise<void> {
+  async function rebuildWithInstallDecision(
+    decision: boolean,
+    isStandalone = false,
+    isMacSafari = false
+  ): Promise<void> {
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [LoginPage, TranslateModule.forRoot()],
       providers: baseProviders.map(provider => provider.provide === PwaInstallService
         ? {
             provide: PwaInstallService,
-            useValue: { installDecision$: of(decision), isStandalone, promptInstall: jest.fn() },
+            useValue: { installDecision$: of(decision), isStandalone, isMacSafari, promptInstall: jest.fn() },
           }
         : provider),
     }).compileComponents();
@@ -122,6 +126,44 @@ describe('LoginPage (server mode)', () => {
     fixture = TestBed.createComponent(LoginPage);
     component = fixture.componentInstance;
   }
+
+  describe('macOS Safari install guidance (access screen)', () => {
+    const accessScreen = (): HTMLElement => {
+      fixture.detectChanges();
+      return fixture.nativeElement as HTMLElement;
+    };
+
+    it('keeps both options side by side, so install and continue-in-browser read as parallel choices', async () => {
+      await rebuildWithInstallDecision(true, false, true);
+      const el = accessScreen();
+
+      expect(el.querySelector('.auth-link-button')!.textContent).toContain('auth.register.continue-browser');
+      expect(el.querySelector('.auth-button--access')!.textContent).toContain('auth.access.continue-wallet');
+    });
+
+    it('keeps the steps out of the main screen until the user asks to install', async () => {
+      await rebuildWithInstallDecision(true, false, true);
+
+      expect(component.showMacStepsModal).toBe(false);
+      expect(accessScreen().querySelectorAll('.auth-steps__item')).toHaveLength(0);
+    });
+
+    it('opens the steps instead of a prompt Safari cannot show', async () => {
+      await rebuildWithInstallDecision(true, false, true);
+      accessScreen().querySelector<HTMLButtonElement>('.auth-button--access')!.click();
+
+      expect(component.showMacStepsModal).toBe(true);
+    });
+
+    it('still triggers the native prompt on browsers that do fire beforeinstallprompt', async () => {
+      await rebuildWithInstallDecision(true, false, false);
+      const promptInstall = TestBed.inject(PwaInstallService).promptInstall as jest.Mock;
+      accessScreen().querySelector<HTMLButtonElement>('.auth-button--access')!.click();
+
+      expect(promptInstall).toHaveBeenCalled();
+      expect(component.showMacStepsModal).toBe(false);
+    });
+  });
 
   it('should create in server mode', () => {
     expect(component.isBrowserMode).toBe(false);

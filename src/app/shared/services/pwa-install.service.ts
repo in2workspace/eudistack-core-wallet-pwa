@@ -19,6 +19,13 @@ function isIosPlatform(): boolean {
   return /iP(hone|ad)/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1);
 }
 
+function isMacSafariDesktop(): boolean {
+  const ua = navigator.userAgent;
+  const isMac = ua.includes('Macintosh') && navigator.maxTouchPoints === 0;
+  const isSafari = /Safari/.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR/.test(ua);
+  return isMac && isSafari;
+}
+
 @Injectable({ providedIn: 'root' })
 export class PwaInstallService {
   private deferredPrompt: BeforeInstallPromptEvent | null = null;
@@ -54,6 +61,7 @@ export class PwaInstallService {
   private buildInstallDecision$(): Observable<boolean> {
     if (this.isStandalone) return of(false);
     if (isIosPlatform()) return of(false);
+    if (this.isMacSafari) return of(true);
 
     const promptArrived$ = this.canInstall$.pipe(filter(Boolean), take(1));
 
@@ -88,6 +96,10 @@ export class PwaInstallService {
     this.deferredPrompt = null;
     this.canInstall$.next(false);
     return outcome === 'accepted';
+  }
+
+  get isMacSafari(): boolean {
+    return isMacSafariDesktop() && !this.isStandalone;
   }
 
   get isStandalone(): boolean {

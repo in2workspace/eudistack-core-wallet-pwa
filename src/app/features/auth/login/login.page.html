@@ -54,7 +54,11 @@
               {{ 'auth.register.continue-browser' | translate }}
             </button>
 
-            <button type="button" class="auth-button auth-button--access" (click)="installApp()">
+            <button
+              type="button"
+              class="auth-button auth-button--access"
+              (click)="isMacSafari ? openMacSteps() : installApp()"
+            >
               {{ 'auth.access.continue-wallet' | translate: { brand: brandName() } }}
             </button>
 
@@ -238,6 +242,34 @@
   }
 
   <!-- "Need help?" modal-->
+  <ion-modal class="auth-help-modal" [isOpen]="showMacStepsModal" (didDismiss)="closeMacSteps()">
+    <ng-template>
+      <div class="help-modal">
+        <button type="button" class="help-modal__close" (click)="closeMacSteps()" [attr.aria-label]="'auth.access.help.close' | translate">
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+
+        <h2 class="help-modal__title">{{ 'auth.access.mac-modal-title' | translate }}</h2>
+        <p class="help-modal__intro">{{ 'auth.access.mac-steps-intro' | translate }}</p>
+
+        <ol class="auth-steps" [attr.aria-label]="'auth.access.mac-steps-aria' | translate">
+          @for (step of macInstallSteps; track step; let i = $index) {
+            <li class="auth-steps__item">
+              <span class="auth-steps__number" aria-hidden="true">{{ i + 1 }}</span>
+              <span class="auth-steps__text">{{ 'auth.access.mac-' + step | translate }}</span>
+            </li>
+          }
+        </ol>
+
+        <p class="auth-steps__caution">{{ 'auth.access.mac-reauth-notice' | translate }}</p>
+
+        <button type="button" class="auth-button" (click)="closeMacSteps()">
+          {{ 'auth.access.help.close' | translate }}
+        </button>
+      </div>
+    </ng-template>
+  </ion-modal>
+
   <ion-modal class="auth-help-modal" [isOpen]="showHelpModal" (didDismiss)="closeHelp()">
     <ng-template>
       <div class="help-modal">
