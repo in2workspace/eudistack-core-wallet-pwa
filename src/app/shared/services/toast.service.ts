@@ -4,6 +4,22 @@ import { map, Observable, take } from 'rxjs';
 import { AlertController } from '@ionic/angular';
 import { DomSanitizer } from '@angular/platform-browser';
 
+/**
+ * Fixed destination for the "contact support" link embedded in some error
+ * messages. Kept out of the translated strings themselves — see
+ * SUPPORT_LINK_PLACEHOLDER.
+ */
+const SUPPORT_URL = 'https://ticketing.dome-marketplace.eu/';
+
+/**
+ * Token a translated message can contain to ask for the support link to be
+ * inlined. Swapped for a real anchor tag *after* escaping (see
+ * `renderMessage`), so the anchor itself — built in code, not translator
+ * content — is the only markup that ever reaches the DOM. Translator-authored
+ * prose stays escaped, preserving the EUD-142 (F2) XSS hardening.
+ */
+const SUPPORT_LINK_PLACEHOLDER = '{{supportLink}}';
+
 const ERROR_TRANSLATION_MAP: Record<string, string> = {
   'The received QR content cannot be processed': 'errors.invalid-qr',
   'There are no credentials available to login': 'errors.no-credentials-available',
@@ -46,7 +62,7 @@ export class ToastServiceHandler {
         const alert = await this.alertController.create({
           message: `
             <div style="display: flex; align-items: center; gap: 50px;">
-              <span>${this.sanitizeHtml(translatedMessage)}</span>
+              <span>${this.renderMessage(translatedMessage)}</span>
             </div>
           `,
           buttons: [
@@ -104,6 +120,26 @@ export class ToastServiceHandler {
         setTimeout(() => el.remove(), 500);
       }, durationMs);
     });
+  }
+
+  /**
+   * Sanitizes the translated message (stripping scripts/event handlers/unsafe
+   * URLs but keeping safe markup — DomSanitizer, same primitive as the rest
+   * of this file), then — only if present — swaps SUPPORT_LINK_PLACEHOLDER
+   * for a real anchor. href/target/rel and the anchor's own label translation
+   * are all code-controlled, so the placeholder can only ever resolve to the
+   * one fixed support URL, regardless of what a translation string contains.
+   */
+  private renderMessage(translatedMessage: string): string {
+    const sanitized = this.sanitizeHtml(translatedMessage);
+    if (!sanitized.includes(SUPPORT_LINK_PLACEHOLDER)) {
+      return sanitized;
+    }
+
+    const label = this.sanitizeHtml(this.translate.instant('errors.support-team-label'));
+    const link = `<a href="${SUPPORT_URL}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+
+    return sanitized.split(SUPPORT_LINK_PLACEHOLDER).join(link);
   }
 
   private sanitizeHtml(value: string): string {

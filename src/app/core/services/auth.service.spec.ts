@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
+import { of } from 'rxjs';
 import { AuthService, AUTH_SERVICE_PROVIDER, RemoteAuthService, TokenPairResponse } from './auth.service';
 import { PasskeyStoreService } from './passkey-store.service';
 import { PasskeyPrfService } from './passkey-prf.service';
@@ -10,7 +11,13 @@ import { WALLET_DISCOVERY_GATEWAY } from '../gateways/wallet-discovery.gateway';
 import { LocalAuthService } from './local-auth.service';
 import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
 import { TenantService } from './tenant.service';
+import { ToastServiceHandler } from '../../shared/services/toast.service';
 import { environment } from 'src/environments/environment';
+
+class MockToastServiceHandler {
+  showErrorAlert(_message: string) { return of(undefined); }
+  showErrorAlertByTranslateLabel(_message: string) { return of(undefined); }
+}
 
 /**
  * Minimal stub for IssuerMetadataCacheService. RemoteAuthService schedules a
@@ -48,6 +55,7 @@ describe('RemoteAuthService', () => {
   let httpMock: HttpTestingController;
   let routerMock: jest.Mocked<Router>;
   let passkeyStoreMock: jest.Mocked<Pick<PasskeyStoreService, 'hasPasskey'>>;
+  let toastServiceHandlerMock: MockToastServiceHandler;
 
   beforeAll(() => {
     (globalThis as any).BroadcastChannel = BroadcastChannelMock;
@@ -64,6 +72,8 @@ describe('RemoteAuthService', () => {
       hasPasskey: jest.fn().mockReturnValue(false),
     };
 
+    toastServiceHandlerMock = new MockToastServiceHandler();
+
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [
@@ -72,6 +82,7 @@ describe('RemoteAuthService', () => {
         { provide: PasskeyStoreService, useValue: passkeyStoreMock },
         { provide: IssuerMetadataCacheService, useValue: issuerMetadataCacheStub() },
         { provide: TenantService, useValue: tenantServiceStub() },
+        { provide: ToastServiceHandler, useValue: toastServiceHandlerMock },
       ],
     });
 
@@ -80,6 +91,7 @@ describe('RemoteAuthService', () => {
   });
 
   afterEach(() => {
+    jest.useRealTimers();
     httpMock.verify();
     localStorage.clear();
   });
@@ -514,6 +526,27 @@ describe('RemoteAuthService', () => {
       });
     });
   });
+
+  describe('scheduleTokenRefresh', () => {
+    it('E-02: background refresh failure shows the session-expired toast exactly once and does not double-call forceLogout', () => {
+      jest.useFakeTimers();
+      const toastSpy = jest.spyOn(toastServiceHandlerMock, 'showErrorAlertByTranslateLabel').mockReturnValue(of(undefined) as any);
+      const forceLogoutSpy = jest.spyOn(service, 'forceLogout');
+      (service as any).refreshTokenValue = 'refresh-abc';
+
+      (service as any).scheduleTokenRefresh(65);
+      jest.advanceTimersByTime(5_000);
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
+      req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+
+      expect(toastSpy).toHaveBeenCalledWith('errors.session-expired');
+      // refreshAccessToken()'s own catchError is the single source of forceLogout() —
+      // the timer's error callback used to call it a second time on the same failure.
+      expect(forceLogoutSpy).toHaveBeenCalledTimes(1);
+    });
+
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -553,6 +586,7 @@ describe('AUTH_SERVICE_PROVIDER', () => {
         { provide: PasskeyPrfService, useValue: {} },
         { provide: IssuerMetadataCacheService, useValue: issuerMetadataCacheStub() },
         { provide: TenantService, useValue: tenantServiceStub() },
+        { provide: ToastServiceHandler, useValue: new MockToastServiceHandler() },
       ],
     });
   }
