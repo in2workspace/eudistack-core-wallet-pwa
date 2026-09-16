@@ -12,7 +12,6 @@
     "connected-devices": "Dispositivos conectados",
     "settings": "Ajustes",
     "about": "Acerca de",
-    "signed-in-as": "Sesión iniciada como",
     "logout": "Cerrar sesión",
     "install": "Instalar app",
     "wallet": "Cartera"
@@ -112,7 +111,14 @@
         "q3": "¿Puedo continuar sin instalar el Wallet?",
         "a3": "Sí. Puedes continuar en el navegador, aunque algunas funcionalidades pueden estar limitadas.",
         "close": "Cerrar"
-      }
+      },
+      "mac-modal-title": "Instalar el Wallet en tu Mac",
+      "mac-steps-intro": "Para instalarla en tu Mac:",
+      "mac-steps-aria": "Pasos para instalar Wallet en macOS",
+      "mac-step-1": "Abre el menú Archivo de Safari.",
+      "mac-step-2": "Elige «Añadir al Dock…» y confirma el nombre.",
+      "mac-step-3": "Abre la app desde el Dock para continuar.",
+      "mac-reauth-notice": "Si instalas la app más adelante, es posible que tengas que volver a iniciar sesión."
     },
     "login": {
       "title": "Registra tu dispositivo",
