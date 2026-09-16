@@ -4,11 +4,6 @@ on:
   push:
     branches:
       - 'release/v*.*.*'
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'LICENSE'
-      - '.gitignore'
 
 permissions:
   actions: read
@@ -18,7 +13,7 @@ permissions:
 
 jobs:
   release:
-    uses: in2workspace/eudistack-devops-workflows/.github/workflows/spa-release.yml@12ed6fa9090ebd4564c6541b67111ed4466a61b1
+    uses: in2workspace/eudistack-devops-workflows/.github/workflows/spa-release.yml@c2061f16b4fcacb12d8a4439899ed73c6d3a17cd
     with:
       project_name: eudistack
       region_code: ew1
@@ -31,4 +26,5 @@ jobs:
         npm run build -- --configuration production --output-path=./dist/out
         --base-href=/wallet/ --deploy-url=/wallet/
       build_output: dist/out/browser
+      runtime_required_variables: LOGS_ENABLED,WALLET_MODE,PREFERRED_GRANT,WIA,WIA_INSTANCE_KEY_JWK
     secrets: inherit

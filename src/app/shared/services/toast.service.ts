@@ -1,7 +1,8 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, SecurityContext, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { map, Observable, take } from 'rxjs';
 import { AlertController } from '@ionic/angular';
+import { DomSanitizer } from '@angular/platform-browser';
 
 const ERROR_TRANSLATION_MAP: Record<string, string> = {
   'The received QR content cannot be processed': 'errors.invalid-qr',
@@ -26,6 +27,7 @@ const ERROR_TRANSLATION_MAP: Record<string, string> = {
 export class ToastServiceHandler {
   private readonly translate = inject(TranslateService);
   private readonly alertController = inject(AlertController);
+  private readonly sanitizer = inject(DomSanitizer);
 
   public showErrorAlert(message: string): Observable<unknown> {
     const translationKey = Object.keys(ERROR_TRANSLATION_MAP)
@@ -44,7 +46,7 @@ export class ToastServiceHandler {
         const alert = await this.alertController.create({
           message: `
             <div style="display: flex; align-items: center; gap: 50px;">
-              <span>${this.escapeHtml(translatedMessage)}</span>
+              <span>${this.sanitizeHtml(translatedMessage)}</span>
             </div>
           `,
           buttons: [
@@ -88,7 +90,7 @@ export class ToastServiceHandler {
       el.dataset['variant'] = variant;
       el.innerHTML = `
         <ion-icon name="${icon}"></ion-icon>
-        <span>${this.escapeHtml(translatedMessage)}</span>
+        <span>${this.sanitizeHtml(translatedMessage)}</span>
       `;
 
       document.body.appendChild(el);
@@ -104,12 +106,8 @@ export class ToastServiceHandler {
     });
   }
 
-  private escapeHtml(value: string): string {
-    return String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+  private sanitizeHtml(value: string): string {
+    return this.sanitizer.sanitize(SecurityContext.HTML, String(value ?? '')) ?? '';
   }
 
   public showToast(messageKey: string, duration: number = 2000): void {
@@ -117,7 +115,7 @@ export class ToastServiceHandler {
       message: `
         <div style="display: flex; align-items: center; gap: 50px;">
           <ion-icon name="checkmark-circle"></ion-icon>
-          <span>${this.escapeHtml(this.translate.instant(messageKey))}</span>
+          <span>${this.sanitizeHtml(this.translate.instant(messageKey))}</span>
         </div>
       `,
       cssClass: 'custom-alert-ok',
