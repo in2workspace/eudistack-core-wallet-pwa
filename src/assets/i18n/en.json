@@ -124,7 +124,14 @@
         "q3": "Can I continue without installing the Wallet?",
         "a3": "Yes. You can continue in your browser, although some features may be limited.",
         "close": "Close"
-      }
+      },
+      "mac-modal-title": "Install the Wallet on your Mac",
+      "mac-steps-intro": "To install it on your Mac:",
+      "mac-steps-aria": "Steps to install Wallet on macOS",
+      "mac-step-1": "Open Safari's File menu.",
+      "mac-step-2": "Choose “Add to Dock…” and confirm the name.",
+      "mac-step-3": "Open the app from the Dock to continue.",
+      "mac-reauth-notice": "If you install the app later, you may need to sign in again."
     },
     "login": {
       "title": "Register your device",
