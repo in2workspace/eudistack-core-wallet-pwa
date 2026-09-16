@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Install guidance for macOS Safari**: Safari fires no `beforeinstallprompt` on any platform, so the install screen never appeared on a Mac, and the manual guide at `/ios-install` is scoped to iOS devices by design (AC-008.6) — a Mac user had no way to install the wallet. The access screen now also shows on macOS Safari, where its primary button opens a modal with the manual "File → Add to Dock" steps instead of triggering a prompt that cannot exist; the screen keeps both options ("install" and "continue in browser") side by side, as on every other platform. Other browsers are untouched and keep the native prompt. The modal also notes that installing later may require signing in again.
+
 ### Fixed
 
 - **Error pop-ups showed their own HTML markup as visible text**: several `errors.*` keys deliberately embed a support link, but `ToastServiceHandler` escaped the whole translated string before injecting it into the alert, so users saw `<a href='...'>` mid-sentence and the link was unusable. The escape came from the EUD-142 security review — runtime-translated text reaches an `innerHTML` sink — so it was replaced with real sanitization (`DomSanitizer`) rather than removed: authored markup renders, while `<script>`, event handlers and `javascript:` hrefs are stripped. Applies to the three alert/toast paths; the F2 regression tests were updated to assert removal instead of escaping.
