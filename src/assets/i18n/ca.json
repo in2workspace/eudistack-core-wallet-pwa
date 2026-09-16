@@ -374,6 +374,7 @@
   "vc-fields": {
     "delete": "Eliminar credencial",
     "copy-success": "S'ha copiat al porta-retalls",
+    "copy": "Copiar",
     "modal-title": "Detalls de credencial",
     "title": "Informació de credencials",
     "credentialInfo": {
@@ -537,6 +538,7 @@
     "ok": "OK",
     "error-header": "No es pot eliminar",
     "last-passkey-error": "No pots eliminar la teva última passkey. Registra un nou dispositiu primer.",
+    "unavailable": "Els dispositius connectats només estan disponibles quan el wallet fa servir un compte de servidor.",
     "load-error": "No s'han pogut carregar els teus dispositius. Torna-ho a provar.",
     "retry": "Tornar a provar",
     "no-passkeys": "No hi ha passkeys registrades.",

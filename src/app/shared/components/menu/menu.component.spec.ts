@@ -1,5 +1,5 @@
 import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
-import { DebugElement } from '@angular/core';
+import { DebugElement, signal } from '@angular/core';
 import { By } from '@angular/platform-browser';
 import { MenuComponent } from './menu.component';
 import { IonicModule, PopoverController } from '@ionic/angular';
@@ -7,6 +7,8 @@ import { AuthService } from 'src/app/core/services/auth.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { of, Subject } from 'rxjs';
 import { TranslateModule } from '@ngx-translate/core';
+import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
+import { WalletDiscoverySnapshot } from 'src/app/core/models/wallet-discovery.model';
 
 describe('MenuComponent', () => {
   let component: MenuComponent;
@@ -28,6 +30,14 @@ describe('MenuComponent', () => {
     events: new Subject<unknown>(),
   };
 
+  const discoverySnapshot = signal<WalletDiscoverySnapshot | null>(null);
+  const mockDiscovery = { snapshot: () => discoverySnapshot };
+
+  const setSnapshot = (snapshot: WalletDiscoverySnapshot | null): void => {
+    discoverySnapshot.set(snapshot);
+    fixture.detectChanges();
+  };
+
   const menuItemByLabel = (key: string): DebugElement | undefined =>
     fixture.debugElement
       .queryAll(By.css('ion-item'))
@@ -35,6 +45,7 @@ describe('MenuComponent', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    discoverySnapshot.set(null);
 
     await TestBed.configureTestingModule({
       imports: [MenuComponent, IonicModule.forRoot(), TranslateModule.forRoot() ],
@@ -42,6 +53,7 @@ describe('MenuComponent', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: Router, useValue: mockRouter },
         { provide: ActivatedRoute, useValue: {} },
+        { provide: WalletDiscoveryService, useValue: mockDiscovery },
       ],
     })
     .overrideProvider(PopoverController, { useValue: popoverController })
@@ -55,6 +67,37 @@ describe('MenuComponent', () => {
 
   it('should create the component', () => {
     expect(component).toBeTruthy();
+  });
+
+  describe('connected devices entry (fail open towards showing it)', () => {
+    const snapshotOf = (
+      mode: 'browser' | 'server',
+      source: 'discovery' | 'fallback'
+    ): WalletDiscoverySnapshot => ({ mode, source, keyManager: null, resolvedAt: 0 });
+
+    it('hides the entry only when discovery positively reports browser mode', () => {
+      setSnapshot(snapshotOf('browser', 'discovery'));
+
+      expect(menuItemByLabel('menu.connected-devices')).toBeFalsy();
+    });
+
+    it('shows the entry for a server-mode tenant', () => {
+      setSnapshot(snapshotOf('server', 'discovery'));
+
+      expect(menuItemByLabel('menu.connected-devices')).toBeTruthy();
+    });
+
+    it('shows the entry when the mode was guessed by fallback, never hiding it from a server tenant on a failed probe', () => {
+      setSnapshot({ ...snapshotOf('browser', 'fallback'), fallbackReason: 'timeout' });
+
+      expect(menuItemByLabel('menu.connected-devices')).toBeTruthy();
+    });
+
+    it('shows the entry while discovery has not resolved yet', () => {
+      setSnapshot(null);
+
+      expect(menuItemByLabel('menu.connected-devices')).toBeTruthy();
+    });
   });
 
   describe('navigation items', () => {
