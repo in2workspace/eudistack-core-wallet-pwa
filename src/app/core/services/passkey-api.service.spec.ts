@@ -62,6 +62,15 @@ describe('PasskeyApiService', () => {
       expect(req.request.body).toEqual(request);
       req.flush(mockPasskey);
     });
+
+    it('should forward the optional refreshToken in the request body', () => {
+      service.registerPasskey({ credentialId: 'cred-123', displayName: 'My Device', refreshToken: 'r1' })
+        .subscribe();
+
+      const req = httpMock.expectOne(`${mockAuthBase}/passkeys`);
+      expect(req.request.body).toEqual({ credentialId: 'cred-123', displayName: 'My Device', refreshToken: 'r1' });
+      req.flush(mockPasskey);
+    });
   });
 
   describe('listPasskeys', () => {
@@ -115,6 +124,19 @@ describe('PasskeyApiService', () => {
       const req = httpMock.expectOne(`${mockAuthBase}/passkeys/1/revoke-sessions`);
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({});
+      req.flush(null);
+    });
+  });
+
+  describe('confirmSession', () => {
+    it('should POST the refresh token to /passkeys/{id}/confirm-session', () => {
+      service.confirmSession('1', 'refresh-abc').subscribe(response => {
+        expect(response).toBeNull();
+      });
+
+      const req = httpMock.expectOne(`${mockAuthBase}/passkeys/1/confirm-session`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ refreshToken: 'refresh-abc' });
       req.flush(null);
     });
   });

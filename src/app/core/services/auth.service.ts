@@ -9,6 +9,7 @@ import { WalletDiscoveryService } from './wallet-discovery.service';
 import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
 import { UrlResolverService } from './url-resolver.service';
 import { TenantService } from './tenant.service';
+import { ToastServiceHandler } from '../../shared/services/toast.service';
 
 export type AuthFailureMode = 'force-logout' | 'clear-only';
 
@@ -77,6 +78,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
   private readonly urlResolver = inject(UrlResolverService);
   private readonly tenantService = inject(TenantService);
+  private readonly toastServiceHandler = inject(ToastServiceHandler);
 
   private get authBase(): string { return `${this.urlResolver.serverUrl()}/api/v1/auth`; }
 
@@ -210,10 +212,20 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
     }
+
     const refreshInMs = Math.max((expiresInSeconds - 60) * 1000, 0);
+
     this.refreshTimer = setTimeout(() => {
+      // refreshAccessToken() already calls forceLogout() from its own catchError
+      // before rethrowing — this is the background/silent path (no user action
+      // involved), so the only thing left to do here is let the user know why
+      // they just got bounced to login (E-02: silent session expiry).
       this.refreshAccessToken().subscribe({
-        error: () => { if (!this.disposed) { this.forceLogout(); } }
+        error: () => {
+          if (!this.disposed) {
+            this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.session-expired').subscribe();
+          }
+        }
       });
     }, refreshInMs);
   }

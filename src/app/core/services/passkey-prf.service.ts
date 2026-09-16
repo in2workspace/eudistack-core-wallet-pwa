@@ -44,10 +44,21 @@ export class PasskeyPrfService {
    * Create a new discoverable passkey (client-side only, no backend).
    * The challenge is generated locally — the attestation is not verified.
    * Returns the base64url-encoded credential ID.
+   *
+   * `accountKey` scopes the reused WebAuthn user handle to one account (defaults
+   * to `displayName`, which is the account email in server mode). A retry by the
+   * same account reuses its handle; a different account gets a fresh one so the
+   * authenticator never overwrites the first account's resident credential.
    */
-  async createPasskey(displayName: string): Promise<string> {
+  async createPasskey(displayName: string, accountKey: string = displayName): Promise<string> {
     const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32));
-    const userId = globalThis.crypto.getRandomValues(new Uint8Array(16));
+
+    let userIdB64 = this.store.getWebAuthnUserId(accountKey);
+    if (!userIdB64) {
+      userIdB64 = base64UrlEncode(globalThis.crypto.getRandomValues(new Uint8Array(16)));
+      await this.store.setWebAuthnUserId(accountKey, userIdB64);
+    }
+    const userId = base64UrlDecode(userIdB64);
 
     const options: PublicKeyCredentialCreationOptions = {
       rp: { name: document.title || 'EUDI Wallet' },

@@ -12,12 +12,14 @@ import { ToastServiceHandler } from '../../shared/services/toast.service';
 import { SERVER_PATH, WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import { UrlResolverService } from '../services/url-resolver.service';
 import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
+import { AuthService } from '../services/auth.service';
 
 @Injectable()
 export class HttpErrorInterceptor implements HttpInterceptor {
   private readonly toastServiceHandler = inject(ToastServiceHandler);
   private readonly urlResolver = inject(UrlResolverService);
   private readonly sessionExpiryMarker = inject(SessionExpiryMarkerService);
+  private readonly authService = inject(AuthService);
 
   private logHandledSilentlyErrorMsg(errMsg: string) {
     console.error('Handled silently:', errMsg);
@@ -38,6 +40,16 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         // uncoordinated interceptors).
         if (this.sessionExpiryMarker.isSessionExpired(errorResp)) {
           this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.session-expired').subscribe();
+          return throwError(() => errorResp);
+        }
+
+        // The session is already gone by the time this error arrived (e.g. a request
+        // racing the scheduled background refresh that just called forceLogout()) —
+        // the user has already seen, or is about to see, the dedicated session-expired
+        // notice from that path. A second, unrelated "something went wrong" toast here
+        // would just be noise stacked on top of it.
+        if (!this.authService.isLoggedIn()) {
+          this.logHandledSilentlyErrorMsg(errorResp.error?.message || errorResp.message || 'Unknown Http error');
           return throwError(() => errorResp);
         }
 
