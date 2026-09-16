@@ -10,7 +10,15 @@
       <p class="devices-subtitle">{{ 'devices.subtitle' | translate }}</p>
     </header>
 
-    @if (loading()) {
+    @if (unavailable()) {
+      <div class="unavailable-state">
+        <ion-icon name="information-circle-outline"></ion-icon>
+        <p>{{ 'devices.unavailable' | translate }}</p>
+        <ion-button fill="outline" (click)="backToWallet()">
+          {{ 'devices.back-to-wallet' | translate }}
+        </ion-button>
+      </div>
+    } @else if (loading()) {
       <div class="loading-state">
         <ion-spinner name="crescent"></ion-spinner>
       </div>

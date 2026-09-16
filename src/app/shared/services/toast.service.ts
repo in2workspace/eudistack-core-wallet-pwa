@@ -1,7 +1,8 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, SecurityContext, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { map, Observable, take } from 'rxjs';
 import { AlertController } from '@ionic/angular';
+import { DomSanitizer } from '@angular/platform-browser';
 
 /**
  * Fixed destination for the "contact support" link embedded in some error
@@ -42,6 +43,7 @@ const ERROR_TRANSLATION_MAP: Record<string, string> = {
 export class ToastServiceHandler {
   private readonly translate = inject(TranslateService);
   private readonly alertController = inject(AlertController);
+  private readonly sanitizer = inject(DomSanitizer);
 
   public showErrorAlert(message: string): Observable<unknown> {
     const translationKey = Object.keys(ERROR_TRANSLATION_MAP)
@@ -104,7 +106,7 @@ export class ToastServiceHandler {
       el.dataset['variant'] = variant;
       el.innerHTML = `
         <ion-icon name="${icon}"></ion-icon>
-        <span>${this.escapeHtml(translatedMessage)}</span>
+        <span>${this.sanitizeHtml(translatedMessage)}</span>
       `;
 
       document.body.appendChild(el);
@@ -121,30 +123,27 @@ export class ToastServiceHandler {
   }
 
   /**
-   * Escapes the translated message, then — only if present — swaps
-   * SUPPORT_LINK_PLACEHOLDER for a real anchor. href/target/rel and the
-   * anchor's own label translation are all code-controlled, so the only
-   * markup this can ever emit is the fixed support link; everything else
-   * from the translated string stays escaped.
+   * Sanitizes the translated message (stripping scripts/event handlers/unsafe
+   * URLs but keeping safe markup — DomSanitizer, same primitive as the rest
+   * of this file), then — only if present — swaps SUPPORT_LINK_PLACEHOLDER
+   * for a real anchor. href/target/rel and the anchor's own label translation
+   * are all code-controlled, so the placeholder can only ever resolve to the
+   * one fixed support URL, regardless of what a translation string contains.
    */
   private renderMessage(translatedMessage: string): string {
-    const escaped = this.escapeHtml(translatedMessage);
-    if (!escaped.includes(SUPPORT_LINK_PLACEHOLDER)) {
-      return escaped;
+    const sanitized = this.sanitizeHtml(translatedMessage);
+    if (!sanitized.includes(SUPPORT_LINK_PLACEHOLDER)) {
+      return sanitized;
     }
 
-    const label = this.escapeHtml(this.translate.instant('errors.support-team-label'));
+    const label = this.sanitizeHtml(this.translate.instant('errors.support-team-label'));
     const link = `<a href="${SUPPORT_URL}" target="_blank" rel="noopener noreferrer">${label}</a>`;
 
-    return escaped.split(SUPPORT_LINK_PLACEHOLDER).join(link);
+    return sanitized.split(SUPPORT_LINK_PLACEHOLDER).join(link);
   }
 
-  private escapeHtml(value: string): string {
-    return String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+  private sanitizeHtml(value: string): string {
+    return this.sanitizer.sanitize(SecurityContext.HTML, String(value ?? '')) ?? '';
   }
 
   public showToast(messageKey: string, duration: number = 2000): void {
@@ -152,7 +151,7 @@ export class ToastServiceHandler {
       message: `
         <div style="display: flex; align-items: center; gap: 50px;">
           <ion-icon name="checkmark-circle"></ion-icon>
-          <span>${this.escapeHtml(this.translate.instant(messageKey))}</span>
+          <span>${this.sanitizeHtml(this.translate.instant(messageKey))}</span>
         </div>
       `,
       cssClass: 'custom-alert-ok',

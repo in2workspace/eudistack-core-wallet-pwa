@@ -5,6 +5,7 @@ import { TranslateService, TranslateModule, TranslateLoader } from '@ngx-transla
 import { TranslateFakeLoader } from '@ngx-translate/core';
 import { fakeAsync, tick } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { DomSanitizer } from '@angular/platform-browser';
 const TIME_IN_MS = 5000;
 
 jest.useFakeTimers();
@@ -317,31 +318,83 @@ describe('ToastServiceHandler', () => {
     }, TIME_IN_MS);
   });
 
-  describe('HTML escaping of translated text (security-auditor full-mode review, EUD-142 F2)', () => {
-    it('showErrorAlertByTranslateLabel escapes markup in the translated message before it reaches alertController', fakeAsync(() => {
+  describe('HTML sanitization of translated text (security-auditor full-mode review, EUD-142 F2)', () => {
+    const messageOf = (spy: jest.SpyInstance) => (spy.mock.calls[0][0] as { message: string }).message;
+
+    it('showErrorAlertByTranslateLabel strips event handlers from the translated message', fakeAsync(() => {
       translateService.get.mockImplementationOnce(() => of('<img src=x onerror=alert(1)>'));
-      const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+      const spy = jest.spyOn(alertCtrl, 'create');
 
       service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
       tick();
 
-      expect(toastCtrlSpy).toHaveBeenCalledWith(expect.objectContaining({
-        message: expect.stringContaining('&lt;img src=x onerror=alert(1)&gt;'),
-      }));
-      const [call] = toastCtrlSpy.mock.calls;
-      expect((call[0] as { message: string }).message).not.toContain('<img');
+      expect(messageOf(spy)).not.toContain('onerror');
     }));
 
-    it('showToast escapes markup in the translated message before it reaches alertController', fakeAsync(() => {
+    it('showErrorAlertByTranslateLabel drops script tags from the translated message', fakeAsync(() => {
+      translateService.get.mockImplementationOnce(() => of('<script>alert(1)</script>ok'));
+      const spy = jest.spyOn(alertCtrl, 'create');
+
+      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
+      tick();
+
+      expect(messageOf(spy)).not.toContain('<script');
+      expect(messageOf(spy)).toContain('ok');
+    }));
+
+    it('showErrorAlertByTranslateLabel neutralises javascript: hrefs', fakeAsync(() => {
+      translateService.get.mockImplementationOnce(() => of("<a href='javascript:alert(1)'>x</a>"));
+      const spy = jest.spyOn(alertCtrl, 'create');
+
+      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
+      tick();
+
+      expect(messageOf(spy)).toContain('unsafe:javascript:alert(1)');
+    }));
+
+    it('keeps the support link authored in the translation catalogue', fakeAsync(() => {
+      translateService.get.mockImplementationOnce(() =>
+        of("Algo ha salido mal. Contacta con el <a href='https://support.example/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>."));
+      const spy = jest.spyOn(alertCtrl, 'create');
+
+      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
+      tick();
+
+      const message = messageOf(spy);
+      expect(message).toContain('href="https://support.example/"');
+      expect(message).toContain('target="_blank"');
+      expect(message).toContain('>equipo de soporte</a>');
+      expect(message).not.toContain('&lt;a');
+    }));
+
+    it('renders an empty message instead of crashing when the translation is missing', fakeAsync(() => {
+      translateService.get.mockImplementationOnce(() => of(undefined));
+      const spy = jest.spyOn(alertCtrl, 'create');
+
+      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
+      tick();
+
+      expect(messageOf(spy)).toContain('<span></span>');
+    }));
+
+    it('falls back to an empty message when the sanitizer rejects the content outright', fakeAsync(() => {
+      jest.spyOn(TestBed.inject(DomSanitizer), 'sanitize').mockReturnValue(null);
+      const spy = jest.spyOn(alertCtrl, 'create');
+
+      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
+      tick();
+
+      expect(messageOf(spy)).toContain('<span></span>');
+    }));
+
+    it('showToast drops script tags from the translated message', fakeAsync(() => {
       translateService.instant.mockReturnValueOnce('<script>alert(1)</script>');
-      const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+      const spy = jest.spyOn(alertCtrl, 'create');
 
       service.showToast('toast.success');
       tick();
 
-      const [call] = toastCtrlSpy.mock.calls;
-      expect((call[0] as { message: string }).message).not.toContain('<script>');
-      expect((call[0] as { message: string }).message).toContain('&lt;script&gt;');
+      expect(messageOf(spy)).not.toContain('<script');
     }));
   });
 
@@ -364,10 +417,11 @@ describe('ToastServiceHandler', () => {
       expect(message).not.toContain('{{supportLink}}');
     }));
 
-    it('still escapes markup surrounding the placeholder, and escapes the link label too', fakeAsync(() => {
-      translateService.get.mockImplementationOnce(() => of('<b>Alert</b> contact {{supportLink}}.'));
+    it('sanitizes dangerous markup surrounding the placeholder while still inserting the support link', fakeAsync(() => {
+      translateService.get.mockImplementationOnce(() =>
+        of('<script>alert(1)</script>Something went wrong. Contact {{supportLink}}.'));
       translateService.instant.mockImplementation((key: string) =>
-        key === 'errors.support-team-label' ? '<i>support</i>' : key
+        key === 'errors.support-team-label' ? 'the support team' : key
       );
       const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
 
@@ -376,10 +430,11 @@ describe('ToastServiceHandler', () => {
 
       const [call] = toastCtrlSpy.mock.calls;
       const message = (call[0] as { message: string }).message;
-      expect(message).toContain('&lt;b&gt;Alert&lt;/b&gt;');
-      expect(message).toContain('&lt;i&gt;support&lt;/i&gt;');
-      expect(message).not.toContain('<b>Alert</b>');
-      expect(message).not.toContain('<i>support</i>');
+      expect(message).not.toContain('<script');
+      expect(message).toContain(
+        "<a href=\"https://ticketing.dome-marketplace.eu/\" target=\"_blank\" rel=\"noopener noreferrer\">the support team</a>"
+      );
+      expect(message).not.toContain('{{supportLink}}');
     }));
 
     it('leaves messages without the placeholder untouched (no stray link)', fakeAsync(() => {

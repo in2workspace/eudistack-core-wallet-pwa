@@ -427,7 +427,7 @@ export class VcViewComponent implements OnDestroy {
   public async copyToClipboard(text: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(text);
-      this.toastService.showToast('vc-fields.copy-success');
+      this.toastService.showInfoToastByTranslateLabel('vc-fields.copy-success', 2000);
     } catch (err) {
       console.error('Error al copiar', err);
     }

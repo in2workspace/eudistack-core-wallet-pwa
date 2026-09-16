@@ -74,7 +74,8 @@
 // -- Transient states ---------------------------------------------------------
 
 .loading-state,
-.error-state {
+.error-state,
+.unavailable-state {
   display: flex;
   flex-direction: column;
   align-items: center;
