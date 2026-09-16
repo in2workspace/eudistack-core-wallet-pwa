@@ -48,6 +48,9 @@ module.exports = {
     "src/app/shared/services/toast.service.ts",
     "src/app/features/credentials/credentials.page.ts",
     "src/app/features/auth/login/login.page.ts",
+    "src/app/core/services/passkey-api.service.ts",
+    "src/app/core/services/passkey-prf.service.ts",
+    "src/app/core/services/passkey-store.service.ts",
     // --- EUD-142: runtime UI translation ---
     "src/app/core/models/ui-text-translation.model.ts",
     "src/app/core/constants/ui-translation.constants.ts",
