@@ -70,8 +70,6 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private readonly broadcastChannel = new BroadcastChannel('auth');
   private static readonly BROADCAST_FORCE_LOGOUT = 'forceWalletLogout';
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
-  private warningTimer: ReturnType<typeof setTimeout> | null = null;
-  private pendingWarningAlert: Promise<HTMLIonAlertElement> | null = null;
   private disposed = false;
 
   private readonly http = inject(HttpClient);
@@ -168,7 +166,6 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
     }
-    this.clearSessionExpiryWarning();
     this.broadcastChannel.close();
   }
 
@@ -215,37 +212,10 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
     }
-    this.clearSessionExpiryWarning();
 
     const refreshInMs = Math.max((expiresInSeconds - 60) * 1000, 0);
-    const warningInMs = Math.max((expiresInSeconds - 120) * 1000, 0);
-
-    this.warningTimer = setTimeout(() => {
-      if (this.disposed) return;
-      this.pendingWarningAlert = this.toastServiceHandler.showSessionExpiryWarning(() => {
-        // Cancel the still-pending automatic refresh first: the backend rotates refresh
-        // tokens on use (one-time use), so if both this manual call and the automatic one
-        // reached it, whichever loses the race would get an "invalid token" error and
-        // surface a spurious session-expired message right after the user clicked Continue.
-        if (this.refreshTimer) {
-          clearTimeout(this.refreshTimer);
-          this.refreshTimer = null;
-        }
-        this.refreshAccessToken().subscribe({
-          error: () => {
-            if (!this.disposed) {
-              this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.session-expired').subscribe();
-            }
-          }
-        });
-      });
-    }, warningInMs);
 
     this.refreshTimer = setTimeout(() => {
-      // The warning (if still open) has had its 60s and gone unanswered —
-      // clear it before the silent path below takes over, so a stale
-      // "still want to continue?" prompt never lingers over the toast/redirect.
-      this.clearSessionExpiryWarning();
       // refreshAccessToken() already calls forceLogout() from its own catchError
       // before rethrowing — this is the background/silent path (no user action
       // involved), so the only thing left to do here is let the user know why
@@ -258,24 +228,6 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
         }
       });
     }, refreshInMs);
-  }
-
-  /**
-   * Dismisses the "session about to expire" prompt, if one is open, and stops
-   * its timer. Called whenever the session is renewed or torn down by any
-   * other path (the scheduled silent refresh, a manual "continue", logout),
-   * so the prompt can never linger asking about a session that either just
-   * got extended or no longer exists.
-   */
-  private clearSessionExpiryWarning(): void {
-    if (this.warningTimer) {
-      clearTimeout(this.warningTimer);
-      this.warningTimer = null;
-    }
-    if (this.pendingWarningAlert) {
-      this.pendingWarningAlert.then(alert => alert.dismiss()).catch(() => {});
-      this.pendingWarningAlert = null;
-    }
   }
 
   private loadStoredTokens(): void {
@@ -313,7 +265,6 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
     }
-    this.clearSessionExpiryWarning();
   }
 
   private clearState(): void {
@@ -326,7 +277,6 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
     }
-    this.clearSessionExpiryWarning();
   }
 
   ngOnDestroy(): void {

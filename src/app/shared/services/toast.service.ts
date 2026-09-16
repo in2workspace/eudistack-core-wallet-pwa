@@ -19,17 +19,6 @@ const SUPPORT_URL = 'https://ticketing.dome-marketplace.eu/';
  */
 const SUPPORT_LINK_PLACEHOLDER = '{{supportLink}}';
 
-/**
- * How long the session-expiry warning's countdown bar spans — matches how
- * far ahead of the real deadline `RemoteAuthService` schedules the warning
- * (`expiresIn - 120s`). Purely visual: `RemoteAuthService`'s own timers are
- * what actually decide the deadline.
- */
-// Must match the gap between the warning and refresh timers in RemoteAuthService.scheduleTokenRefresh
-// (exp-120s vs exp-60s = 60s apart, always). If the user never responds, the pre-existing silent
-// background refresh takes over and dismisses this alert exactly when the bar would hit zero.
-const SESSION_WARNING_TOTAL_SECONDS = 60;
-
 const ERROR_TRANSLATION_MAP: Record<string, string> = {
   'The received QR content cannot be processed': 'errors.invalid-qr',
   'There are no credentials available to login': 'errors.no-credentials-available',
@@ -88,78 +77,6 @@ export class ToastServiceHandler {
         await alert.onDidDismiss();
       })
     );
-  }
-
-  /**
-   * Confirmation alert shown ~2 minutes before the access token's natural
-   * expiry (E-02 follow-up): gives the user a chance to extend the session
-   * before the silent background refresh — or its failure — takes over.
-   *
-   * Returns the created alert so the caller (`RemoteAuthService`) can dismiss
-   * it early if the session ends up renewed by other means (the scheduled
-   * silent refresh landing first) before the user responds to this one.
-   */
-  public async showSessionExpiryWarning(onContinue: () => void): Promise<HTMLIonAlertElement> {
-    const continueLabel = this.escapeHtml(this.translate.instant('errors.session-warning-continue'));
-
-    const alert = await this.alertController.create({
-      message: this.buildSessionWarningMessage(SESSION_WARNING_TOTAL_SECONDS),
-      buttons: [
-        { text: continueLabel, role: 'confirm', cssClass: 'centered-button', handler: () => onContinue() },
-      ],
-      // Force an active choice — no tap-outside dismissal, matching the
-      // Issuer UI's disableClose:true on its equivalent dialog.
-      backdropDismiss: false,
-      // Dedicated class, NOT custom-alert-ok — that one is styled as a green
-      // "success" alert, which reads wrong for a session-about-to-expire
-      // warning. This matches the Issuer UI's neutral Material dialog look.
-      cssClass: 'custom-alert-session-warning',
-    });
-
-    await alert.present();
-    this.startSessionWarningCountdown(alert);
-    return alert;
-  }
-
-  /**
-   * Ticks the alert's `message` down every second, matching the shrinking
-   * progress bar already used by the Verifier's own login page
-   * (eudistack-mfe-login LoginComponent) for QR session expiry — reassigning
-   * `alert.message` re-renders it, since `ion-alert` treats it as a reactive
-   * prop. Purely visual, so a little drift from the real deadline is the same
-   * trade-off the Verifier's own countdown already accepts.
-   */
-  private startSessionWarningCountdown(alert: HTMLIonAlertElement): void {
-    let remainingSeconds = SESSION_WARNING_TOTAL_SECONDS;
-    const interval = setInterval(() => {
-      remainingSeconds = Math.max(0, remainingSeconds - 1);
-      alert.message = this.buildSessionWarningMessage(remainingSeconds);
-      if (remainingSeconds <= 0) {
-        clearInterval(interval);
-      }
-    }, 1000);
-
-    alert.onDidDismiss().then(() => clearInterval(interval));
-  }
-
-  private buildSessionWarningMessage(remainingSeconds: number): string {
-    const message = this.escapeHtml(this.translate.instant('errors.session-warning-message'));
-    const remainingLabel = this.escapeHtml(
-      this.translate.instant('errors.session-warning-remaining', { seconds: remainingSeconds })
-    );
-    const percentage = (remainingSeconds / SESSION_WARNING_TOTAL_SECONDS) * 100;
-
-    return `
-      <div class="session-warning-body">
-        <p class="session-warning-text">${message}</p>
-        <div class="countdown-section" role="timer" aria-label="${remainingLabel}">
-          <div class="countdown-bar-track">
-            <div class="countdown-bar-fill" style="width: ${percentage}%;"></div>
-          </div>
-          <span class="countdown-text" aria-hidden="true">${remainingLabel}</span>
-        </div>
-      </div>
-    `;
   }
 
   /**
