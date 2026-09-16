@@ -28,8 +28,8 @@ describe('LoginPage (server mode)', () => {
     createPasskey: jest.Mock;
     getCredentialId: jest.Mock;
   };
-  let mockPasskeyStore: { getCredentialId: jest.Mock; hasPasskey: jest.Mock };
-  let mockPasskeyApi: { registerPasskey: jest.Mock; listPasskeys: jest.Mock };
+  let mockPasskeyStore: { getCredentialId: jest.Mock; hasPasskey: jest.Mock; clearCredentialId: jest.Mock };
+  let mockPasskeyApi: { registerPasskey: jest.Mock; listPasskeys: jest.Mock; confirmSession: jest.Mock };
   let mockRouter: { navigateByUrl: jest.Mock };
   let mockWalletService: { syncCredentials: jest.Mock };
   let mockActivityService: { syncFromServer: jest.Mock };
@@ -62,10 +62,12 @@ describe('LoginPage (server mode)', () => {
     mockPasskeyStore = {
       getCredentialId: jest.fn().mockReturnValue('cred-local-1'),
       hasPasskey: jest.fn().mockReturnValue(true),
+      clearCredentialId: jest.fn().mockResolvedValue(undefined),
     };
     mockPasskeyApi = {
       registerPasskey: jest.fn().mockReturnValue(of({ id: 'p1', credentialId: 'cred-local-1', displayName: 'device' })),
       listPasskeys: jest.fn().mockReturnValue(of([])),
+      confirmSession: jest.fn().mockReturnValue(of(undefined)),
     };
     mockRouter = { navigateByUrl: jest.fn() };
     mockWalletService = { syncCredentials: jest.fn().mockReturnValue(of(undefined)) };
@@ -236,16 +238,65 @@ describe('LoginPage (server mode)', () => {
       expect(component.step()).toBe('passkey');
     });
 
-    it('fails safe to needsPasskeySetup=true when listPasskeys() errors', () => {
-      mockPasskeyApi.listPasskeys.mockReturnValue(throwError(() => ({ status: 500 })));
+    it('retries once before failing safe to needsPasskeySetup=true when listPasskeys() keeps erroring', () => {
+      jest.useFakeTimers();
+      try {
+        mockPasskeyApi.listPasskeys.mockReturnValue(throwError(() => ({ status: 500 })));
+        (component as unknown as { matchedPasskeyId: string | null }).matchedPasskeyId = 'stale-id'; // must be cleared on the fail-safe
+        component.email = 'user@example.com';
+        component.otpValue = '123456';
+
+        component.verifyCode();
+
+        // A single transient failure does not yet decide the outcome: it retries
+        // once instead of forcing re-registration on the first network blip.
+        expect(mockPasskeyApi.listPasskeys).toHaveBeenCalledTimes(1);
+        expect(component.step()).not.toBe('passkey');
+
+        jest.advanceTimersByTime(1_000);
+
+        expect(mockPasskeyApi.listPasskeys).toHaveBeenCalledTimes(2);
+        expect(component.needsPasskeySetup).toBe(true);
+        expect((component as unknown as { matchedPasskeyId: string | null }).matchedPasskeyId).toBeNull();
+        expect(component.step()).toBe('passkey');
+        expect(component.loading).toBe(false);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('cancels the pending retry when the user leaves during the 1s wait', () => {
+      jest.useFakeTimers();
+      try {
+        mockPasskeyApi.listPasskeys.mockReturnValue(throwError(() => ({ status: 500 })));
+        component.email = 'user@example.com';
+        component.otpValue = '123456';
+
+        component.verifyCode();
+        expect(mockPasskeyApi.listPasskeys).toHaveBeenCalledTimes(1);
+
+        component.ionViewWillLeave();
+        jest.advanceTimersByTime(1_000);
+
+        // no second call, no fail-safe transition against an unmounted view
+        expect(mockPasskeyApi.listPasskeys).toHaveBeenCalledTimes(1);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('does not need a retry when listPasskeys() succeeds on the first call', () => {
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([
+        { id: 'p1', credentialId: 'cred-local-1', displayName: 'This Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
+      ]));
       component.email = 'user@example.com';
       component.otpValue = '123456';
 
       component.verifyCode();
 
-      expect(component.needsPasskeySetup).toBe(true);
+      expect(mockPasskeyApi.listPasskeys).toHaveBeenCalledTimes(1);
+      expect(component.needsPasskeySetup).toBe(false);
       expect(component.step()).toBe('passkey');
-      expect(component.loading).toBe(false);
     });
   });
 
@@ -295,6 +346,8 @@ describe('LoginPage (server mode)', () => {
       expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
       expect(component.errorMessage).toBeTruthy();
       expect(component.loading).toBe(false);
+      // Local credential state is rolled back so the next attempt starts clean.
+      expect(mockPasskeyStore.clearCredentialId).toHaveBeenCalled();
     });
 
     it('allows a retry that succeeds after a prior failure', async () => {
@@ -346,6 +399,88 @@ describe('LoginPage (server mode)', () => {
       expect(component.needsPasskeySetup).toBe(true);
       expect(component.step()).toBe('passkey');
       expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('session linking (confirm-session / refreshToken)', () => {
+    beforeEach(() => {
+      Object.defineProperty(globalThis.navigator, 'credentials', {
+        value: { get: jest.fn().mockResolvedValue({}) },
+        configurable: true,
+        writable: true,
+      });
+    });
+
+    it('sends the stored refresh token when registering a new device passkey', async () => {
+      localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
+      component.deviceName = 'My Device';
+
+      await component.createPasskeyForDevice();
+
+      expect(mockPasskeyApi.registerPasskey).toHaveBeenCalledWith(
+        expect.objectContaining({ refreshToken: 'stored-refresh-token' })
+      );
+    });
+
+    it('links the verified session to its passkey via confirm-session (existing device)', async () => {
+      localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([
+        { id: 'p-server-1', credentialId: 'cred-local-1', displayName: 'This Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
+      ]));
+      component.email = 'user@example.com';
+      component.otpValue = '123456';
+      component.verifyCode();
+      expect(component.needsPasskeySetup).toBe(false);
+
+      await component.verifyPasskey();
+
+      expect(mockPasskeyApi.confirmSession).toHaveBeenCalledWith('p-server-1', 'stored-refresh-token');
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('skips confirm-session when this device has no server-side passkey', async () => {
+      localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([])); // account has no passkeys for this device
+      component.needsPasskeySetup = false;
+
+      await component.verifyPasskey();
+
+      expect(mockPasskeyApi.confirmSession).not.toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('attributes the session on the different-day resume path (no OTP, listPasskeys not run yet)', async () => {
+      localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
+      mockPrfService.hasPasskey.mockReturnValue(true);
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([
+        { id: 'p-server-1', credentialId: 'cred-local-1', displayName: 'This Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
+      ]));
+
+      component.ionViewWillEnter();          // enters the passkey step straight away, no listPasskeys
+      expect(component.step()).toBe('passkey');
+
+      await component.verifyPasskey();
+
+      // resolved this device's passkey from its local credential id, then linked
+      expect(mockPasskeyApi.listPasskeys).toHaveBeenCalled();
+      expect(mockPasskeyApi.confirmSession).toHaveBeenCalledWith('p-server-1', 'stored-refresh-token');
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('does not block login when confirm-session fails', async () => {
+      localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([
+        { id: 'p-server-1', credentialId: 'cred-local-1', displayName: 'This Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
+      ]));
+      mockPasskeyApi.confirmSession.mockReturnValue(throwError(() => ({ status: 500 })));
+      component.email = 'user@example.com';
+      component.otpValue = '123456';
+      component.verifyCode();
+
+      await component.verifyPasskey();
+
+      expect(mockPasskeyApi.confirmSession).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
     });
   });
 

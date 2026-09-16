@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { PasskeyPrfService } from './passkey-prf.service';
 import { PasskeyStoreService } from './passkey-store.service';
 import { AppError } from '../models/error/AppError';
-import { base64UrlEncode } from '../utils/base64url';
+import { base64UrlDecode, base64UrlEncode } from '../utils/base64url';
 
 describe('PasskeyPrfService', () => {
   let service: PasskeyPrfService;
@@ -12,6 +12,8 @@ describe('PasskeyPrfService', () => {
     storeSpy = {
       getCredentialId: jest.fn(),
       setCredentialId: jest.fn(),
+      getWebAuthnUserId: jest.fn().mockReturnValue(null),
+      setWebAuthnUserId: jest.fn().mockResolvedValue(undefined),
       clear: jest.fn()
     } as any;
 
@@ -110,6 +112,55 @@ describe('PasskeyPrfService', () => {
       (navigator.credentials.create as jest.Mock).mockResolvedValue(null);
       await expect(service.createPasskey('Test User')).rejects.toThrow(AppError);
     });
+
+    describe('per-account WebAuthn user handle', () => {
+      beforeEach(() => {
+        (navigator.credentials.create as jest.Mock).mockResolvedValue({ rawId: new Uint8Array([9, 9, 9]).buffer });
+        // Non-zero randomness so a freshly minted handle is distinguishable from
+        // the all-zero 'AAAA…' fixture used for the "already stored" account.
+        Object.defineProperty(globalThis, 'crypto', {
+          value: { getRandomValues: (buf: Uint8Array) => { buf.fill(7); return buf; } },
+          configurable: true,
+          writable: true,
+        });
+      });
+
+      it('generates and persists a handle keyed by the account the first time', async () => {
+        await service.createPasskey('Alice', 'alice@example.com');
+
+        expect(storeSpy.getWebAuthnUserId).toHaveBeenCalledWith('alice@example.com');
+        const [accountKey, persisted] = storeSpy.setWebAuthnUserId.mock.calls[0];
+        expect(accountKey).toBe('alice@example.com');
+        expect(typeof persisted).toBe('string');
+        expect(persisted.length).toBeGreaterThan(0);
+      });
+
+      it('defaults the account key to the display name when none is passed', async () => {
+        await service.createPasskey('Alice');
+        expect(storeSpy.getWebAuthnUserId).toHaveBeenCalledWith('Alice');
+      });
+
+      it('reuses the stored handle for the same account instead of generating a new one', async () => {
+        const storedHandle = 'AAAAAAAAAAAAAAAAAAAAAA'; // 16 zero bytes, base64url
+        storeSpy.getWebAuthnUserId.mockReturnValue(storedHandle);
+
+        await service.createPasskey('Alice', 'alice@example.com');
+
+        expect(storeSpy.setWebAuthnUserId).not.toHaveBeenCalled();
+        const passedUserId = (navigator.credentials.create as jest.Mock).mock.calls[0][0].publicKey.user.id as Uint8Array;
+        expect(Array.from(passedUserId)).toEqual(Array.from(base64UrlDecode(storedHandle)));
+      });
+
+      it('mints a fresh handle for a second account on the same profile', async () => {
+        storeSpy.getWebAuthnUserId.mockImplementation((key: string) =>
+          key === 'alice@example.com' ? 'AAAAAAAAAAAAAAAAAAAAAA' : null);
+
+        await service.createPasskey('Bob', 'bob@example.com');
+
+        expect(storeSpy.setWebAuthnUserId).toHaveBeenCalledWith('bob@example.com', expect.any(String));
+        expect(storeSpy.setWebAuthnUserId.mock.calls[0][1]).not.toBe('AAAAAAAAAAAAAAAAAAAAAA');
+      });
+    });
   });
 
   describe('deriveSigningKey', () => {
@@ -201,7 +252,6 @@ describe('PasskeyPrfService', () => {
 
     it('detectPrfSupport handles catch branch', async () => {
         (service as any).status = null;
-        const original = globalThis.PublicKeyCredential;
         // Mock PublicKeyCredential as an object that throws when any property is accessed if possible
         // but simpler: just mock the getter for something called inside detectPrfSupport
         (globalThis as any).PublicKeyCredential = undefined;
