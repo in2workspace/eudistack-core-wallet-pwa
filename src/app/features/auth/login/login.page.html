@@ -88,6 +88,10 @@
               <button type="button" class="auth-button" (click)="createWalletBrowserMode()" [disabled]="loading">
                 {{ 'auth.passkey.register-button' | translate }}
               </button>
+
+              @if (showEdgeWindowsPasskeyHint) {
+                <p class="auth-hint">{{ 'auth.passkey.edge-windows-hint' | translate }}</p>
+              }
             }
           }
 
@@ -201,6 +205,10 @@
               >
                 {{ 'auth.passkey.register-button' | translate }}
               </button>
+
+              @if (showEdgeWindowsPasskeyHint) {
+                <p class="auth-hint">{{ 'auth.passkey.edge-windows-hint' | translate }}</p>
+              }
             } @else {
               <h1 class="auth-title">{{ 'auth.login.title-welcome' | translate }}</h1>
               <p class="auth-subtitle">{{ 'auth.login.verify-passkey' | translate }}</p>
