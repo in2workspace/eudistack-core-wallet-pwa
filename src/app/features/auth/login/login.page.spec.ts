@@ -13,7 +13,6 @@ import { WalletService } from 'src/app/core/services/wallet.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
-import { WEBAUTHN_ASSERTION_HINTS } from 'src/app/core/constants/webauthn.constants';
 
 describe('LoginPage (server mode)', () => {
   let component: LoginPage;
@@ -31,6 +30,7 @@ describe('LoginPage (server mode)', () => {
     hasPasskey: jest.Mock;
     createPasskey: jest.Mock;
     getCredentialId: jest.Mock;
+    assertLocalPasskey: jest.Mock;
   };
   let mockPasskeyStore: { getCredentialId: jest.Mock; hasPasskey: jest.Mock; clearCredentialId: jest.Mock };
   let mockPasskeyApi: { registerPasskey: jest.Mock; listPasskeys: jest.Mock; confirmSession: jest.Mock };
@@ -65,6 +65,7 @@ describe('LoginPage (server mode)', () => {
       hasPasskey: jest.fn().mockReturnValue(false),
       createPasskey: jest.fn().mockResolvedValue('cred-local-1'),
       getCredentialId: jest.fn().mockReturnValue('cred-local-1'),
+      assertLocalPasskey: jest.fn().mockResolvedValue(undefined),
     };
     mockPasskeyStore = {
       getCredentialId: jest.fn().mockReturnValue('cred-local-1'),
@@ -712,23 +713,8 @@ describe('LoginPage (server mode)', () => {
 
   describe('LoginPage Coverage Improvements', () => {
     it('throws error in authenticateLocally if no credentialId is found', async () => {
-      mockPrfService.getCredentialId.mockReturnValue(null);
+      mockPrfService.assertLocalPasskey.mockRejectedValue(new Error('No passkey found'));
       await expect(component['authenticateLocally']()).rejects.toThrow('No passkey found');
-    });
-
-    it('authenticateLocally sends client-device assertion hints, not hybrid-first', async () => {
-      const mockCredentialsGet = jest.fn().mockResolvedValue({});
-      Object.defineProperty(globalThis.navigator, 'credentials', {
-        value: { get: mockCredentialsGet },
-        configurable: true,
-        writable: true,
-      });
-
-      await component['authenticateLocally']();
-
-      const call = mockCredentialsGet.mock.calls[0][0];
-      expect(call.publicKey.hints).toEqual(WEBAUTHN_ASSERTION_HINTS);
-      expect(call.publicKey.hints[0]).not.toBe('hybrid');
     });
 
     it('handles sync error in syncCredentialsThenNavigate for protocol links', async () => {

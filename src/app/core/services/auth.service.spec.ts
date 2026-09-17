@@ -14,7 +14,6 @@ import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
 import { TenantService } from './tenant.service';
 import { ToastServiceHandler } from '../../shared/services/toast.service';
 import { environment } from 'src/environments/environment';
-import { WEBAUTHN_ASSERTION_HINTS } from '../constants/webauthn.constants';
 
 class MockToastServiceHandler {
   showErrorAlert(_message: string) { return of(undefined); }
@@ -58,6 +57,7 @@ describe('RemoteAuthService', () => {
   let routerMock: jest.Mocked<Router>;
   let passkeyStoreMock: jest.Mocked<Pick<PasskeyStoreService, 'hasPasskey'>>;
   let toastServiceHandlerMock: MockToastServiceHandler;
+  let prfServiceMock: { getCredentialId: jest.Mock; assertLocalPasskey: jest.Mock };
 
   beforeAll(() => {
     (globalThis as any).BroadcastChannel = BroadcastChannelMock;
@@ -76,6 +76,11 @@ describe('RemoteAuthService', () => {
 
     toastServiceHandlerMock = new MockToastServiceHandler();
 
+    prfServiceMock = {
+      getCredentialId: jest.fn().mockReturnValue('cred-local-1'),
+      assertLocalPasskey: jest.fn().mockResolvedValue(undefined),
+    };
+
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [
@@ -85,7 +90,7 @@ describe('RemoteAuthService', () => {
         { provide: IssuerMetadataCacheService, useValue: issuerMetadataCacheStub() },
         { provide: TenantService, useValue: tenantServiceStub() },
         { provide: ToastServiceHandler, useValue: toastServiceHandlerMock },
-        { provide: PasskeyPrfService, useValue: { getCredentialId: jest.fn().mockReturnValue('cred-local-1') } },
+        { provide: PasskeyPrfService, useValue: prfServiceMock },
       ],
     });
 
@@ -558,35 +563,23 @@ describe('RemoteAuthService', () => {
       expiresIn: 900,
     };
 
-    it('asserts the local passkey with assertion hints and POSTs /refresh when there is a refresh token and no access token', async () => {
-      const credentialsGet = jest.fn().mockResolvedValue({ id: 'assertion' });
-      Object.defineProperty(navigator, 'credentials', {
-        configurable: true,
-        value: { get: credentialsGet },
-      });
+    it('POSTs /refresh when there is a refresh token and no access token', async () => {
       (service as any).refreshTokenValue = 'old-refresh';
 
       const pending = service.unlockWithPasskey();
       await Promise.resolve();
-      await Promise.resolve();
-
       const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual({ refreshToken: 'old-refresh' });
       req.flush(tokenResponse);
       await pending;
 
-      const call = credentialsGet.mock.calls[0][0];
-      expect(call.publicKey.hints).toEqual(WEBAUTHN_ASSERTION_HINTS);
-      expect(call.publicKey.hints[0]).not.toBe('hybrid');
+      expect(prfServiceMock.assertLocalPasskey).toHaveBeenCalled();
       expect(service.getToken()).toBe(tokenResponse.accessToken);
     });
 
     it('does not POST /refresh when WebAuthn is cancelled', async () => {
-      Object.defineProperty(navigator, 'credentials', {
-        configurable: true,
-        value: { get: jest.fn().mockResolvedValue(null) },
-      });
+      prfServiceMock.assertLocalPasskey.mockRejectedValue(new Error('Authentication cancelled'));
       (service as any).refreshTokenValue = 'old-refresh';
 
       await expect(service.unlockWithPasskey()).rejects.toThrow('Authentication cancelled');
@@ -594,17 +587,11 @@ describe('RemoteAuthService', () => {
     });
 
     it('swallows refresh 401 after successful WebAuthn and leaves getToken empty (clear-only)', async () => {
-      Object.defineProperty(navigator, 'credentials', {
-        configurable: true,
-        value: { get: jest.fn().mockResolvedValue({ id: 'assertion' }) },
-      });
       (service as any).refreshTokenValue = 'stale-rt';
       localStorage.setItem('wallet_refresh_token', 'stale-rt');
 
       const pending = service.unlockWithPasskey();
       await Promise.resolve();
-      await Promise.resolve();
-
       const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
       req.flush({ detail: 'invalid_grant' }, { status: 401, statusText: 'Unauthorized' });
       await pending;

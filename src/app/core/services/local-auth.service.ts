@@ -90,6 +90,4 @@ export class LocalAuthService extends AuthService {
     const hasPasskey = this.hasPasskey();
     this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
   }
-
-  override dispose(): void {}
 }

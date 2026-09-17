@@ -9,8 +9,6 @@ import { UrlResolverService } from './url-resolver.service';
 import { TenantService } from './tenant.service';
 import { ToastServiceHandler } from '../../shared/services/toast.service';
 import { PasskeyPrfService } from './passkey-prf.service';
-import { base64UrlDecode } from '../utils/base64url';
-import { WEBAUTHN_ASSERTION_HINTS } from '../constants/webauthn.constants';
 
 export type AuthFailureMode = 'force-logout' | 'clear-only';
 
@@ -153,7 +151,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   }
 
   async unlockWithPasskey(): Promise<void> {
-    await this.assertLocalPasskey();
+    await this.prfService.assertLocalPasskey();
     if (this.refreshTokenValue && !this.getToken()) {
       try {
         await firstValueFrom(this.refreshAccessToken({ onAuthFailure: 'clear-only' }));
@@ -171,33 +169,6 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       throw new Error('No refresh token');
     }
     await firstValueFrom(this.refreshAccessToken({ onAuthFailure: 'clear-only' }));
-  }
-
-  private async assertLocalPasskey(): Promise<void> {
-    const credentialId = this.prfService.getCredentialId();
-    if (!credentialId) {
-      throw new Error('No passkey found');
-    }
-
-    const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer;
-    const credentialIdBuffer = base64UrlDecode(credentialId).buffer as ArrayBuffer;
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge,
-        allowCredentials: [{
-          id: credentialIdBuffer,
-          type: 'public-key',
-        }],
-        userVerification: 'required',
-        timeout: 60_000,
-        // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialRequestOptions (WebAuthn L3)
-        hints: WEBAUTHN_ASSERTION_HINTS,
-      },
-    });
-
-    if (!assertion) {
-      throw new Error('Authentication cancelled');
-    }
   }
 
   // --- Private helpers ---

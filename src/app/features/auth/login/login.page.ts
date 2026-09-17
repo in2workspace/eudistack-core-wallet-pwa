@@ -10,7 +10,6 @@ import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.servi
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
 import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
 import { PasskeyApiService } from 'src/app/core/services/passkey-api.service';
-import { base64UrlDecode } from 'src/app/core/utils/base64url';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
@@ -19,7 +18,6 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
-import { WEBAUTHN_ASSERTION_HINTS } from 'src/app/core/constants/webauthn.constants';
 
 const RESEND_COOLDOWN_SECONDS = 180;
 
@@ -552,30 +550,7 @@ export class LoginPage implements OnDestroy {
   }
 
   private async authenticateLocally(): Promise<void> {
-    const credentialId = this.prfService.getCredentialId();
-    if (!credentialId) {
-      throw new Error('No passkey found');
-    }
-
-    const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer;
-    const credentialIdBuffer = base64UrlDecode(credentialId).buffer as ArrayBuffer;
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge,
-        allowCredentials: [{
-          id: credentialIdBuffer,
-          type: 'public-key',
-        }],
-        userVerification: 'required',
-        timeout: 60_000,
-        // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialRequestOptions (WebAuthn L3)
-        hints: WEBAUTHN_ASSERTION_HINTS,
-      },
-    });
-
-    if (!assertion) {
-      throw new Error('Authentication cancelled');
-    }
+    await this.prfService.assertLocalPasskey();
   }
 
   /**
