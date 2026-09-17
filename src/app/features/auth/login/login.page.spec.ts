@@ -23,6 +23,9 @@ describe('LoginPage (server mode)', () => {
     register: jest.Mock;
     verifyEmail: jest.Mock;
     refreshAccessToken: jest.Mock;
+    unlockWithPasskey: jest.Mock;
+    ensureAccessToken: jest.Mock;
+    getToken: jest.Mock;
   };
   let mockPrfService: {
     hasPasskey: jest.Mock;
@@ -54,6 +57,9 @@ describe('LoginPage (server mode)', () => {
       register: jest.fn().mockReturnValue(of({ message: 'If the email is valid, you will receive a verification code.' })),
       verifyEmail: jest.fn().mockReturnValue(of({ accessToken: 'access-1', refreshToken: 'refresh-1', expiresIn: 900 })),
       refreshAccessToken: jest.fn().mockReturnValue(of({ accessToken: 'access-2', refreshToken: 'refresh-2', expiresIn: 900 })),
+      unlockWithPasskey: jest.fn().mockResolvedValue(undefined),
+      ensureAccessToken: jest.fn().mockResolvedValue(undefined),
+      getToken: jest.fn().mockReturnValue('access-1'),
     };
     mockPrfService = {
       hasPasskey: jest.fn().mockReturnValue(false),
@@ -465,6 +471,17 @@ describe('LoginPage (server mode)', () => {
       );
     });
 
+    it('exchanges the refresh token before registerPasskey when there is no access JWT', async () => {
+      mockAuthService.getToken.mockReturnValue('');
+      localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
+      component.deviceName = 'My Device';
+
+      await component.createPasskeyForDevice();
+
+      expect(mockAuthService.ensureAccessToken).toHaveBeenCalled();
+      expect(mockPasskeyApi.registerPasskey).toHaveBeenCalled();
+    });
+
     it('links the verified session to its passkey via confirm-session (existing device)', async () => {
       localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
       mockPasskeyApi.listPasskeys.mockReturnValue(of([
@@ -529,24 +546,24 @@ describe('LoginPage (server mode)', () => {
 
   describe('R-1: existing-passkey verification path (needsPasskeySetup = false) is unaffected', () => {
     it('authenticates locally and navigates home on success', async () => {
-      const mockCredentialsGet = jest.fn().mockResolvedValue({});
-      Object.defineProperty(globalThis.navigator, 'credentials', {
-        value: { get: mockCredentialsGet },
-        configurable: true,
-        writable: true,
-      });
       component.needsPasskeySetup = false;
 
       await component.verifyPasskey();
 
-      expect(mockCredentialsGet).toHaveBeenCalled();
+      expect(mockAuthService.unlockWithPasskey).toHaveBeenCalled();
       expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
 
-      // EUD bug: standardized `hints` must be present on the login assertion too,
-      // but must not prefer hybrid/QR — this assertion names a local credentialId.
-      const call = mockCredentialsGet.mock.calls[0][0];
-      expect(call.publicKey.hints).toEqual(WEBAUTHN_ASSERTION_HINTS);
-      expect(call.publicKey.hints[0]).not.toBe('hybrid');
+    it('does not navigate in server mode when unlock succeeds without an access JWT', async () => {
+      mockAuthService.getToken.mockReturnValue('');
+      component.needsPasskeySetup = false;
+      (component as any).passkeyFromRefreshToken = false;
+
+      await component.verifyPasskey();
+
+      expect(mockAuthService.unlockWithPasskey).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+      expect(component.errorMessage).toBe('No access token');
     });
   });
 
@@ -627,9 +644,9 @@ describe('LoginPage (server mode)', () => {
     });
 
     it('AC-01: on refresh failure, stays on email step with i18n session-expired, clears token and keeps the pending offer link', async () => {
-      mockAuthService.refreshAccessToken.mockImplementation(() => {
+      mockAuthService.unlockWithPasskey.mockImplementation(async () => {
         localStorage.removeItem('wallet_refresh_token');
-        return throwError(() => ({ status: 401, error: { detail: 'invalid_grant' } }));
+        mockAuthService.getToken.mockReturnValue('');
       });
 
       component.ionViewWillEnter();
@@ -637,7 +654,7 @@ describe('LoginPage (server mode)', () => {
 
       await component.verifyPasskey();
 
-      expect(mockAuthService.refreshAccessToken).toHaveBeenCalledWith({ onAuthFailure: 'clear-only' });
+      expect(mockAuthService.unlockWithPasskey).toHaveBeenCalled();
       expect(component.step()).toBe('email');
       expect(component.errorMessage).toBe('auth.errors.session-expired-request-code');
       expect(localStorage.getItem('wallet_refresh_token')).toBeNull();
@@ -646,10 +663,9 @@ describe('LoginPage (server mode)', () => {
     });
 
     it('AC-02: follows full flow (expiry -> email step -> OTP -> resume) and completes deep link', async () => {
-      // 1. Start with an expired session
-      mockAuthService.refreshAccessToken.mockReturnValue(
-        throwError(() => ({ status: 401, error: { detail: 'invalid_grant' } }))
-      );
+      mockAuthService.unlockWithPasskey.mockImplementation(async () => {
+        mockAuthService.getToken.mockReturnValue('');
+      });
 
       component.ionViewWillEnter();
       await component.verifyPasskey();
@@ -678,13 +694,7 @@ describe('LoginPage (server mode)', () => {
     });
 
     it('stays on passkey step if WebAuthn is cancelled, without clearing the token', async () => {
-      // Simulate manual cancellation of the biometrics prompt
-      Object.defineProperty(navigator, 'credentials', {
-        configurable: true,
-        value: {
-          get: jest.fn().mockResolvedValue(null),
-        },
-      });
+      mockAuthService.unlockWithPasskey.mockRejectedValue(new Error('Authentication cancelled'));
 
       localStorage.setItem('wallet_refresh_token', 'stale-refresh');
       component.ionViewWillEnter();
@@ -692,11 +702,11 @@ describe('LoginPage (server mode)', () => {
 
       await component.verifyPasskey();
 
-      // Result: user stays on passkey screen and token is still there
       expect(component.step()).toBe('passkey');
       expect(component.errorMessage).toBe('Authentication cancelled');
       expect(localStorage.getItem('wallet_refresh_token')).toBe('stale-refresh');
       expect(mockAuthService.refreshAccessToken).not.toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
     });
   });
 
@@ -704,6 +714,21 @@ describe('LoginPage (server mode)', () => {
     it('throws error in authenticateLocally if no credentialId is found', async () => {
       mockPrfService.getCredentialId.mockReturnValue(null);
       await expect(component['authenticateLocally']()).rejects.toThrow('No passkey found');
+    });
+
+    it('authenticateLocally sends client-device assertion hints, not hybrid-first', async () => {
+      const mockCredentialsGet = jest.fn().mockResolvedValue({});
+      Object.defineProperty(globalThis.navigator, 'credentials', {
+        value: { get: mockCredentialsGet },
+        configurable: true,
+        writable: true,
+      });
+
+      await component['authenticateLocally']();
+
+      const call = mockCredentialsGet.mock.calls[0][0];
+      expect(call.publicKey.hints).toEqual(WEBAUTHN_ASSERTION_HINTS);
+      expect(call.publicKey.hints[0]).not.toBe('hybrid');
     });
 
     it('handles sync error in syncCredentialsThenNavigate for protocol links', async () => {
@@ -898,7 +923,6 @@ describe('LoginPage (server mode)', () => {
     it('verifyPasskey: handles error when NOT using refresh token path', async () => {
       component.step.set('passkey');
       (component as any).passkeyFromRefreshToken = false;
-      jest.spyOn(component as any, 'authenticateLocally').mockResolvedValue(undefined);
       mockRouter.navigateByUrl.mockImplementation(() => { throw new Error('Sync failed'); });
 
       await component.verifyPasskey();
@@ -910,7 +934,6 @@ describe('LoginPage (server mode)', () => {
     it('verifyPasskey: uses default error message if error has no message', async () => {
       component.step.set('passkey');
       (component as any).passkeyFromRefreshToken = false;
-      jest.spyOn(component as any, 'authenticateLocally').mockResolvedValue(undefined);
       mockRouter.navigateByUrl.mockImplementation(() => { throw {}; });
 
       await component.verifyPasskey();
@@ -993,8 +1016,8 @@ describe('LoginPage (server mode)', () => {
       const translate = TestBed.inject(TranslateService);
       const translateSpy = jest.spyOn(translate, 'instant');
 
-      // 1. authenticateLocally error (verifyPasskey branch)
-      jest.spyOn(component as any, 'authenticateLocally').mockRejectedValueOnce({});
+      // 1. unlockWithPasskey error (verifyPasskey branch)
+      mockAuthService.unlockWithPasskey.mockRejectedValueOnce({});
       await component.verifyPasskey();
       expect(component.errorMessage).toBe('Passkey verification failed');
 

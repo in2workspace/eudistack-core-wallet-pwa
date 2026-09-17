@@ -457,35 +457,26 @@ export class LoginPage implements OnDestroy {
     this.loading = true;
     this.errorMessage = '';
 
-    // 1. Local authentication (Biometrics / WebAuthn)
     try {
-      await this.authenticateLocally();
+      await (this.authService as RemoteAuthService).unlockWithPasskey();
     } catch (err: any) {
-      // WebAuthn error or cancellation: stay on 'passkey' step
-      // with the original browser/system error message.
       this.errorMessage = err?.message || 'Passkey verification failed';
       this.loading = false;
       return;
     }
 
-    // 2. Network operations (Refresh and Sync)
     try {
-      if (this.passkeyFromRefreshToken) {
-        // If it fails with 'clear-only', RemoteAuthService clears localStorage automatically
-        await firstValueFrom(
-          (this.authService as RemoteAuthService).refreshAccessToken({ onAuthFailure: 'clear-only' })
-        );
+      if (!this.isBrowserMode && !this.authService.getToken()) {
+        throw new Error('No access token');
       }
 
       await this.attributeSessionToDevicePasskey();
       await this.syncCredentialsThenNavigate();
     } catch (err: any) {
       if (this.passkeyFromRefreshToken) {
-        // Token has expired: return to the start of the flow with recovery message
         this.passkeyFromRefreshToken = false;
         this.step.set('email');
         this.errorMessage = this.translate.instant('auth.errors.session-expired-request-code');
-        // PENDING_DEEP_LINK_KEY stays intact to allow resumption after OTP
       } else {
         this.errorMessage = err?.message || 'Passkey verification failed';
       }
@@ -515,6 +506,9 @@ export class LoginPage implements OnDestroy {
     }
 
     try {
+      if (!this.isBrowserMode && !this.authService.getToken()) {
+        await (this.authService as RemoteAuthService).ensureAccessToken();
+      }
       await firstValueFrom(this.passkeyApi.registerPasskey({
         credentialId,
         displayName: this.deviceName.trim() || this.getDeviceName(),

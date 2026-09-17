@@ -1,11 +1,13 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, switchMap } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
 import { UrlResolverService } from '../services/url-resolver.service';
 import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
 import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
+
+export const AUTH_RETRY_AFTER_REFRESH = new HttpContextToken<boolean>(() => false);
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   // --- Early exits: never need a token, and must NOT trigger inject(AuthService)
@@ -49,14 +51,31 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(authorizedReq).pipe(
     catchError((err: HttpErrorResponse) => {
-      if (err.status === 401) {
-        // Mark before forceLogout()/rethrow so HttpErrorInterceptor — which sees
-        // this same error next on the way back up the chain — knows the session
-        // was already handled and shows one dedicated message, not its generic one.
+      if (err.status !== 401) {
+        return throwError(() => err);
+      }
+
+      if (req.context.get(AUTH_RETRY_AFTER_REFRESH)) {
         sessionExpiryMarker.markSessionExpired(err);
         authService.forceLogout();
+        return throwError(() => err);
       }
-      return throwError(() => err);
+
+      return authService.refreshAccessToken().pipe(
+        switchMap(() => {
+          const newToken = authService.getToken();
+          const retryReq = authorizedReq.clone({
+            setHeaders: newToken ? { Authorization: `Bearer ${newToken}` } : {},
+            context: authorizedReq.context.set(AUTH_RETRY_AFTER_REFRESH, true),
+          });
+          return next(retryReq);
+        }),
+        catchError(() => {
+          sessionExpiryMarker.markSessionExpired(err);
+          authService.forceLogout();
+          return throwError(() => err);
+        })
+      );
     })
   );
 };

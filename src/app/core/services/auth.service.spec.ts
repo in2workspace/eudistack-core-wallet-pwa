@@ -3,7 +3,8 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
-import { AuthService, AUTH_SERVICE_PROVIDER, RemoteAuthService, TokenPairResponse } from './auth.service';
+import { AuthService, RemoteAuthService, TokenPairResponse } from './auth.service';
+import { AUTH_SERVICE_PROVIDER } from './auth-service.provider';
 import { PasskeyStoreService } from './passkey-store.service';
 import { PasskeyPrfService } from './passkey-prf.service';
 import { WalletDiscoveryService } from './wallet-discovery.service';
@@ -13,6 +14,7 @@ import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
 import { TenantService } from './tenant.service';
 import { ToastServiceHandler } from '../../shared/services/toast.service';
 import { environment } from 'src/environments/environment';
+import { WEBAUTHN_ASSERTION_HINTS } from '../constants/webauthn.constants';
 
 class MockToastServiceHandler {
   showErrorAlert(_message: string) { return of(undefined); }
@@ -83,6 +85,7 @@ describe('RemoteAuthService', () => {
         { provide: IssuerMetadataCacheService, useValue: issuerMetadataCacheStub() },
         { provide: TenantService, useValue: tenantServiceStub() },
         { provide: ToastServiceHandler, useValue: toastServiceHandlerMock },
+        { provide: PasskeyPrfService, useValue: { getCredentialId: jest.fn().mockReturnValue('cred-local-1') } },
       ],
     });
 
@@ -546,6 +549,93 @@ describe('RemoteAuthService', () => {
       expect(forceLogoutSpy).toHaveBeenCalledTimes(1);
     });
 
+  });
+
+  describe('unlockWithPasskey', () => {
+    const tokenResponse: TokenPairResponse = {
+      accessToken: 'eyJhbGciOiJSUzI1NiJ9.' + btoa(JSON.stringify({ sub: 'uuid-1' })) + '.sig',
+      refreshToken: 'new-refresh',
+      expiresIn: 900,
+    };
+
+    it('asserts the local passkey with assertion hints and POSTs /refresh when there is a refresh token and no access token', async () => {
+      const credentialsGet = jest.fn().mockResolvedValue({ id: 'assertion' });
+      Object.defineProperty(navigator, 'credentials', {
+        configurable: true,
+        value: { get: credentialsGet },
+      });
+      (service as any).refreshTokenValue = 'old-refresh';
+
+      const pending = service.unlockWithPasskey();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ refreshToken: 'old-refresh' });
+      req.flush(tokenResponse);
+      await pending;
+
+      const call = credentialsGet.mock.calls[0][0];
+      expect(call.publicKey.hints).toEqual(WEBAUTHN_ASSERTION_HINTS);
+      expect(call.publicKey.hints[0]).not.toBe('hybrid');
+      expect(service.getToken()).toBe(tokenResponse.accessToken);
+    });
+
+    it('does not POST /refresh when WebAuthn is cancelled', async () => {
+      Object.defineProperty(navigator, 'credentials', {
+        configurable: true,
+        value: { get: jest.fn().mockResolvedValue(null) },
+      });
+      (service as any).refreshTokenValue = 'old-refresh';
+
+      await expect(service.unlockWithPasskey()).rejects.toThrow('Authentication cancelled');
+      httpMock.expectNone(`${AUTH_BASE}/refresh`);
+    });
+
+    it('swallows refresh 401 after successful WebAuthn and leaves getToken empty (clear-only)', async () => {
+      Object.defineProperty(navigator, 'credentials', {
+        configurable: true,
+        value: { get: jest.fn().mockResolvedValue({ id: 'assertion' }) },
+      });
+      (service as any).refreshTokenValue = 'stale-rt';
+      localStorage.setItem('wallet_refresh_token', 'stale-rt');
+
+      const pending = service.unlockWithPasskey();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
+      req.flush({ detail: 'invalid_grant' }, { status: 401, statusText: 'Unauthorized' });
+      await pending;
+
+      expect(service.getToken()).toBe('');
+      expect(routerMock.navigate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ensureAccessToken', () => {
+    it('POSTs /refresh when getToken is empty', async () => {
+      (service as any).refreshTokenValue = 'old-refresh';
+      const tokenResponse: TokenPairResponse = {
+        accessToken: 'eyJhbGciOiJSUzI1NiJ9.' + btoa(JSON.stringify({ sub: 'uuid-1' })) + '.sig',
+        refreshToken: 'new-refresh',
+        expiresIn: 900,
+      };
+
+      const pending = service.ensureAccessToken();
+      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
+      req.flush(tokenResponse);
+      await pending;
+
+      expect(service.getToken()).toBe(tokenResponse.accessToken);
+    });
+
+    it('is a no-op when getToken is already set', async () => {
+      (service as any).accessToken = 'existing-jwt';
+      await service.ensureAccessToken();
+      httpMock.expectNone(`${AUTH_BASE}/refresh`);
+    });
   });
 });
 

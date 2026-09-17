@@ -20,7 +20,7 @@ import { authInterceptor } from './app/core/interceptors/auth.interceptor';
 import { disableTouchScrollOnPaths } from './app/shared/helpers/disable-touch-scroll-on-paths';
 import { httpTranslateLoader } from './app/shared/helpers/http-translate-loader';
 import { KEY_STORAGE_PROVIDERS } from './app/core/spi-impl/key-storage.provider.factory';
-import { AUTH_SERVICE_PROVIDER } from './app/core/services/auth.service';
+import { AUTH_SERVICE_PROVIDER } from './app/core/services/auth-service.provider';
 import { ThemeService } from './app/core/services/theme.service';
 import { PasskeyStoreService } from './app/core/services/passkey-store.service';
 import { WALLET_DISCOVERY_GATEWAY } from './app/core/gateways/wallet-discovery.gateway';
