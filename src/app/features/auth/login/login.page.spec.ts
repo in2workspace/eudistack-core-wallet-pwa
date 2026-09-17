@@ -13,7 +13,7 @@ import { WalletService } from 'src/app/core/services/wallet.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
-import { WEBAUTHN_HINTS } from 'src/app/core/constants/webauthn.constants';
+import { WEBAUTHN_ASSERTION_HINTS } from 'src/app/core/constants/webauthn.constants';
 
 describe('LoginPage (server mode)', () => {
   let component: LoginPage;
@@ -542,9 +542,11 @@ describe('LoginPage (server mode)', () => {
       expect(mockCredentialsGet).toHaveBeenCalled();
       expect(mockRouter.navigateByUrl).toHaveBeenCalled();
 
-      // EUD bug: standardized `hints` must be present on the login assertion too.
+      // EUD bug: standardized `hints` must be present on the login assertion too,
+      // but must not prefer hybrid/QR — this assertion names a local credentialId.
       const call = mockCredentialsGet.mock.calls[0][0];
-      expect(call.publicKey.hints).toEqual(WEBAUTHN_HINTS);
+      expect(call.publicKey.hints).toEqual(WEBAUTHN_ASSERTION_HINTS);
+      expect(call.publicKey.hints[0]).not.toBe('hybrid');
     });
   });
 
@@ -764,6 +766,31 @@ describe('LoginPage (server mode)', () => {
       expect((await createComponentWithUA(EDGE_MAC_UA)).showEdgeWindowsPasskeyHint).toBe(false);
 
       setUA(originalUA);
+    });
+
+    it('does not show the Edge/Windows hint on the verify-passkey screen (needsPasskeySetup = false), even on Edge/Windows', async () => {
+      const originalUA = navigator.userAgent;
+      Object.defineProperty(navigator, 'userAgent', {
+        value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0',
+        configurable: true,
+      });
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [LoginPage, TranslateModule.forRoot()],
+        providers: baseProviders,
+      }).compileComponents();
+      fixture = TestBed.createComponent(LoginPage);
+      component = fixture.componentInstance;
+
+      component.step.set('passkey');
+      component.needsPasskeySetup = false;
+      fixture.detectChanges();
+
+      expect(component.showEdgeWindowsPasskeyHint).toBe(true);
+      expect(fixture.nativeElement.querySelector('.auth-hint')).toBeNull();
+
+      Object.defineProperty(navigator, 'userAgent', { value: originalUA, configurable: true });
     });
 
     it('handles passkey registration failure in createPasskeyForDevice', async () => {

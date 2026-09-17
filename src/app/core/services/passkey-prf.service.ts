@@ -3,7 +3,7 @@ import { base64UrlEncode, base64UrlDecode } from '../utils/base64url';
 import { AppError } from '../models/error/AppError';
 import { p256 } from '@noble/curves/nist.js';
 import { PasskeyStoreService } from './passkey-store.service';
-import { WEBAUTHN_HINTS } from '../constants/webauthn.constants';
+import { WEBAUTHN_CREATE_HINTS, WEBAUTHN_ASSERTION_HINTS } from '../constants/webauthn.constants';
 
 const HKDF_INFO = 'eudistack:p256:v1';
 const MASTER_SALT = new TextEncoder().encode('eudistack:master:v1');
@@ -83,7 +83,7 @@ export class PasskeyPrfService {
       } as AuthenticationExtensionsClientInputs,
       timeout: 120_000,
       // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialCreationOptions (WebAuthn L3)
-      hints: WEBAUTHN_HINTS,
+      hints: WEBAUTHN_CREATE_HINTS,
     };
 
     const credential = (await navigator.credentials.create({
@@ -158,7 +158,7 @@ export class PasskeyPrfService {
           prf: { eval: { first: salt } },
         } as AuthenticationExtensionsClientInputs,
         // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialRequestOptions (WebAuthn L3)
-        hints: WEBAUTHN_HINTS,
+        hints: WEBAUTHN_ASSERTION_HINTS,
       },
     })) as PublicKeyCredential | null;
 

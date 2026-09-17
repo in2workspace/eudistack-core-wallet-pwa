@@ -88,10 +88,10 @@
               <button type="button" class="auth-button" (click)="createWalletBrowserMode()" [disabled]="loading">
                 {{ 'auth.passkey.register-button' | translate }}
               </button>
-            }
 
-            @if (showEdgeWindowsPasskeyHint) {
-              <p class="auth-hint">{{ 'auth.passkey.edge-windows-hint' | translate }}</p>
+              @if (showEdgeWindowsPasskeyHint) {
+                <p class="auth-hint">{{ 'auth.passkey.edge-windows-hint' | translate }}</p>
+              }
             }
           }
 
@@ -216,10 +216,6 @@
               <button type="button" class="auth-button" [disabled]="loading" (click)="verifyPasskey()">
                 {{ 'auth.login.passkey-button' | translate }}
               </button>
-
-              @if (showEdgeWindowsPasskeyHint) {
-                <p class="auth-hint">{{ 'auth.passkey.edge-windows-hint' | translate }}</p>
-              }
             }
           }
         }

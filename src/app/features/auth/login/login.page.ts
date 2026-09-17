@@ -19,7 +19,7 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
-import { WEBAUTHN_HINTS } from 'src/app/core/constants/webauthn.constants';
+import { WEBAUTHN_ASSERTION_HINTS } from 'src/app/core/constants/webauthn.constants';
 
 const RESEND_COOLDOWN_SECONDS = 180;
 
@@ -575,7 +575,7 @@ export class LoginPage implements OnDestroy {
         userVerification: 'required',
         timeout: 60_000,
         // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialRequestOptions (WebAuthn L3)
-        hints: WEBAUTHN_HINTS,
+        hints: WEBAUTHN_ASSERTION_HINTS,
       },
     });
 
