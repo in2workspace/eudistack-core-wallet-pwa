@@ -10,7 +10,6 @@ import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.servi
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
 import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
 import { PasskeyApiService } from 'src/app/core/services/passkey-api.service';
-import { base64UrlDecode } from 'src/app/core/utils/base64url';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
@@ -59,6 +58,7 @@ export class LoginPage implements OnDestroy {
   errorMessage = '';
   readonly showInstallScreen = signal(!this.pwaInstall.isStandalone);
   showHelpModal = false;
+  showMacStepsModal = false;
 
   readonly helpFaqs = [
     { question: 'auth.access.help.q1', answer: 'auth.access.help.a1' },
@@ -100,7 +100,18 @@ export class LoginPage implements OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
+  readonly isMacSafari = this.pwaInstall.isMacSafari;
+  readonly macInstallSteps = ['step-1', 'step-2', 'step-3'] as const;
   readonly hasExistingPasskey = this.prfService.hasPasskey();
+
+  // EUD bug: Edge on Windows takes a request with no `authenticatorAttachment`
+  // straight to the Windows Hello PIN prompt and never offers the cross-device
+  // (QR) option that Chrome's account chooser shows for the same request. The
+  // `hints` sent with every WebAuthn call (see webauthn.constants.ts) narrow
+  // that gap, but Edge's native picker is outside our control — so on that
+  // specific combination we tell the user what to expect up front instead of
+  // letting them read a Windows-only PIN prompt as the app being broken.
+  readonly showEdgeWindowsPasskeyHint = /Windows/.test(navigator.userAgent) && /Edg\//.test(navigator.userAgent);
 
   readonly brandName = computed(() => {
     const name = this.theme()?.branding?.name?.trim();
@@ -204,6 +215,14 @@ export class LoginPage implements OnDestroy {
 
   closeHelp(): void {
     this.showHelpModal = false;
+  }
+
+  openMacSteps(): void {
+    this.showMacStepsModal = true;
+  }
+
+  closeMacSteps(): void {
+    this.showMacStepsModal = false;
   }
 
   // --- Initialization watchdog ---
@@ -436,35 +455,26 @@ export class LoginPage implements OnDestroy {
     this.loading = true;
     this.errorMessage = '';
 
-    // 1. Local authentication (Biometrics / WebAuthn)
     try {
-      await this.authenticateLocally();
+      await (this.authService as RemoteAuthService).unlockWithPasskey();
     } catch (err: any) {
-      // WebAuthn error or cancellation: stay on 'passkey' step
-      // with the original browser/system error message.
       this.errorMessage = err?.message || 'Passkey verification failed';
       this.loading = false;
       return;
     }
 
-    // 2. Network operations (Refresh and Sync)
     try {
-      if (this.passkeyFromRefreshToken) {
-        // If it fails with 'clear-only', RemoteAuthService clears localStorage automatically
-        await firstValueFrom(
-          (this.authService as RemoteAuthService).refreshAccessToken({ onAuthFailure: 'clear-only' })
-        );
+      if (!this.isBrowserMode && !this.authService.getToken()) {
+        throw new Error('No access token');
       }
 
       await this.attributeSessionToDevicePasskey();
       await this.syncCredentialsThenNavigate();
     } catch (err: any) {
       if (this.passkeyFromRefreshToken) {
-        // Token has expired: return to the start of the flow with recovery message
         this.passkeyFromRefreshToken = false;
         this.step.set('email');
         this.errorMessage = this.translate.instant('auth.errors.session-expired-request-code');
-        // PENDING_DEEP_LINK_KEY stays intact to allow resumption after OTP
       } else {
         this.errorMessage = err?.message || 'Passkey verification failed';
       }
@@ -494,6 +504,9 @@ export class LoginPage implements OnDestroy {
     }
 
     try {
+      if (!this.isBrowserMode && !this.authService.getToken()) {
+        await (this.authService as RemoteAuthService).ensureAccessToken();
+      }
       await firstValueFrom(this.passkeyApi.registerPasskey({
         credentialId,
         displayName: this.deviceName.trim() || this.getDeviceName(),
@@ -537,28 +550,7 @@ export class LoginPage implements OnDestroy {
   }
 
   private async authenticateLocally(): Promise<void> {
-    const credentialId = this.prfService.getCredentialId();
-    if (!credentialId) {
-      throw new Error('No passkey found');
-    }
-
-    const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer;
-    const credentialIdBuffer = base64UrlDecode(credentialId).buffer as ArrayBuffer;
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge,
-        allowCredentials: [{
-          id: credentialIdBuffer,
-          type: 'public-key',
-        }],
-        userVerification: 'required',
-        timeout: 60_000,
-      },
-    });
-
-    if (!assertion) {
-      throw new Error('Authentication cancelled');
-    }
+    await this.prfService.assertLocalPasskey();
   }
 
   /**

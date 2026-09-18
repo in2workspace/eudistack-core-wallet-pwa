@@ -3,6 +3,7 @@ import { base64UrlEncode, base64UrlDecode } from '../utils/base64url';
 import { AppError } from '../models/error/AppError';
 import { p256 } from '@noble/curves/nist.js';
 import { PasskeyStoreService } from './passkey-store.service';
+import { WEBAUTHN_CREATE_HINTS, WEBAUTHN_ASSERTION_HINTS } from '../constants/webauthn.constants';
 
 const HKDF_INFO = 'eudistack:p256:v1';
 const MASTER_SALT = new TextEncoder().encode('eudistack:master:v1');
@@ -38,6 +39,38 @@ export class PasskeyPrfService {
   /** Returns the stored passkey credential ID, or null. */
   getCredentialId(): string | null {
     return this.store.getCredentialId();
+  }
+
+  /**
+   * Local WebAuthn assertion of the device passkey (no PRF, no server).
+   * Shared by server-mode resume (`RemoteAuthService.unlockWithPasskey`) and
+   * browser-mode login (`LoginPage.authenticateLocally`).
+   */
+  async assertLocalPasskey(): Promise<void> {
+    const credentialId = this.getCredentialId();
+    if (!credentialId) {
+      throw new Error('No passkey found');
+    }
+
+    const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer;
+    const credentialIdBuffer = base64UrlDecode(credentialId).buffer as ArrayBuffer;
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        allowCredentials: [{
+          id: credentialIdBuffer,
+          type: 'public-key',
+        }],
+        userVerification: 'required',
+        timeout: 60_000,
+        // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialRequestOptions (WebAuthn L3)
+        hints: WEBAUTHN_ASSERTION_HINTS,
+      },
+    });
+
+    if (!assertion) {
+      throw new Error('Authentication cancelled');
+    }
   }
 
   /**
@@ -81,6 +114,8 @@ export class PasskeyPrfService {
         prf: {},
       } as AuthenticationExtensionsClientInputs,
       timeout: 120_000,
+      // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialCreationOptions (WebAuthn L3)
+      hints: WEBAUTHN_CREATE_HINTS,
     };
 
     const credential = (await navigator.credentials.create({
@@ -154,6 +189,8 @@ export class PasskeyPrfService {
           // @ts-ignore — PRF extension not yet in TS lib types
           prf: { eval: { first: salt } },
         } as AuthenticationExtensionsClientInputs,
+        // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialRequestOptions (WebAuthn L3)
+        hints: WEBAUTHN_ASSERTION_HINTS,
       },
     })) as PublicKeyCredential | null;
 

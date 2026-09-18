@@ -143,3 +143,63 @@ describe('PwaInstallService > installDecision$', () => {
     expect(INSTALL_DECISION_HARD_TIMEOUT_MS).toBe(4000);
   });
 });
+
+const MAC_SAFARI_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15';
+const MAC_CHROME_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+function defineMaxTouchPoints(value: number): void {
+  Object.defineProperty(navigator, 'maxTouchPoints', { value, configurable: true });
+}
+
+describe('PwaInstallService > macOS Safari manual install', () => {
+  afterEach(() => {
+    removeServiceWorker();
+    defineUserAgent(DEFAULT_USER_AGENT);
+    defineMatchMedia(false);
+    defineMaxTouchPoints(0);
+    TestBed.resetTestingModule();
+  });
+
+  it('flags macOS Safari, where beforeinstallprompt is never emitted', () => {
+    defineUserAgent(MAC_SAFARI_UA);
+    defineMaxTouchPoints(0);
+
+    expect(TestBed.inject(PwaInstallService).isMacSafari).toBe(true);
+  });
+
+  it('resolves true immediately on macOS Safari, without waiting for a prompt that cannot arrive', fakeAsync(() => {
+    removeServiceWorker();
+    defineUserAgent(MAC_SAFARI_UA);
+    defineMaxTouchPoints(0);
+
+    const service = TestBed.inject(PwaInstallService);
+    let emitted: boolean | undefined;
+    service.installDecision$.subscribe((v) => (emitted = v));
+
+    expect(emitted).toBe(true);
+  }));
+
+  it('does not flag macOS Chrome, which does fire the prompt and keeps the real install button', () => {
+    defineUserAgent(MAC_CHROME_UA);
+    defineMaxTouchPoints(0);
+
+    expect(TestBed.inject(PwaInstallService).isMacSafari).toBe(false);
+  });
+
+  it('does not flag iPadOS in desktop mode, already handled as an iOS platform', () => {
+    defineUserAgent(MAC_SAFARI_UA);
+    defineMaxTouchPoints(5);
+
+    expect(TestBed.inject(PwaInstallService).isMacSafari).toBe(false);
+  });
+
+  it('does not flag macOS Safari once the app already runs from the Dock', () => {
+    defineUserAgent(MAC_SAFARI_UA);
+    defineMaxTouchPoints(0);
+    defineMatchMedia(true);
+
+    expect(TestBed.inject(PwaInstallService).isMacSafari).toBe(false);
+  });
+});
