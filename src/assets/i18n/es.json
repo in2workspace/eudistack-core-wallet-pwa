@@ -140,6 +140,7 @@
     "register": {
       "email-placeholder": "Introduce tu email",
       "send-code": "Enviar código de verificación",
+      "retry-in": "Reintentar en {{time}}",
       "code-sent": "Hemos enviado un código de verificación a tu email",
       "verify": "Verificar",
       "change-email": "Cambiar email",
