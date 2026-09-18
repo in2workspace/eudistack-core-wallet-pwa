@@ -160,9 +160,15 @@ export class LoginPage implements OnDestroy {
 
   readonly resendCountdown = computed(() => {
     const total = this.resendSecondsLeft();
-    const minutes = Math.floor(total / 60);
+    // A 429 cooldown is driven by the backend's Retry-After (its rate-limit
+    // window, e.g. 1h — see RateLimitWebFilter), which can run well past the
+    // few minutes the plain mm:ss format was designed for.
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
     const seconds = total % 60;
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    return hours > 0
+      ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+      : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   });
 
   ionViewWillEnter(): void {
@@ -319,7 +325,7 @@ export class LoginPage implements OnDestroy {
   }
 
   sendCode(): void {
-    if (!this.email || this.loading) return;
+    if (!this.email || this.loading || this.resendSecondsLeft() > 0) return;
 
     this.loading = true;
     this.errorMessage = '';
@@ -333,12 +339,7 @@ export class LoginPage implements OnDestroy {
         this.loading = false;
         this.startResendCountdown();
       },
-      error: (err) => {
-        this.errorMessage = err?.status === 429
-          ? this.translate.instant('auth.errors.too-many-attempts')
-          : (err?.error?.message || err?.error?.detail || 'Failed to send verification code');
-        this.loading = false;
-      }
+      error: (err) => this.handleSendCodeError(err)
     });
   }
 
@@ -356,13 +357,31 @@ export class LoginPage implements OnDestroy {
         this.loading = false;
         this.startResendCountdown();
       },
-      error: (err) => {
-        this.errorMessage = err?.status === 429
-          ? this.translate.instant('auth.errors.too-many-attempts')
-          : (err?.error?.message || err?.error?.detail || 'Failed to send verification code');
-        this.loading = false;
-      }
+      error: (err) => this.handleSendCodeError(err)
     });
+  }
+
+  /**
+   * Shared by sendCode() and resendCode(): on a 429 the send/resend button must
+   * stop being clickable for as long as the backend will keep rejecting it
+   * (RateLimitWebFilter), not just show a message the user can immediately
+   * dismiss by clicking again. Retry-After carries that real cooldown; fall
+   * back to the existing resend window if it's ever missing.
+   */
+  private handleSendCodeError(err: any): void {
+    if (err?.status === 429) {
+      this.errorMessage = this.translate.instant('auth.errors.too-many-attempts');
+      this.startResendCountdown(this.parseRetryAfterSeconds(err));
+    } else {
+      this.errorMessage = err?.error?.message || err?.error?.detail || 'Failed to send verification code';
+    }
+    this.loading = false;
+  }
+
+  private parseRetryAfterSeconds(err: any): number {
+    const header = err?.headers?.get?.('Retry-After');
+    const seconds = Number(header);
+    return Number.isFinite(seconds) && seconds > 0 ? seconds : RESEND_COOLDOWN_SECONDS;
   }
 
   verifyCode(): void {
@@ -530,9 +549,9 @@ export class LoginPage implements OnDestroy {
 
   // --- Private helpers ---
 
-  private startResendCountdown(): void {
+  private startResendCountdown(seconds: number = RESEND_COOLDOWN_SECONDS): void {
     this.stopResendCountdown();
-    this.resendSecondsLeft.set(RESEND_COOLDOWN_SECONDS);
+    this.resendSecondsLeft.set(seconds);
     this.resendTimer = setInterval(() => {
       this.resendSecondsLeft.update(seconds => seconds - 1);
       if (this.resendSecondsLeft() <= 0) {
