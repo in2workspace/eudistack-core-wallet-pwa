@@ -7,7 +7,7 @@ import { HttpErrorInterceptor } from './error-handler.interceptor';
 import { AuthService } from '../services/auth.service';
 import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
 import { UrlResolverService } from '../services/url-resolver.service';
-import { SERVER_PATH } from '../constants/api.constants';
+import { SERVER_PATH, WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import { environment } from 'src/environments/environment';
 
 class MockToastServiceHandler {
@@ -545,5 +545,55 @@ describe('HttpErrorInterceptor — session-expiry marker coordination', () => {
         done();
       },
     });
+  });
+});
+
+describe('HttpErrorInterceptor AuthService resolution timing', () => {
+  let authServiceResolved: boolean;
+
+  beforeEach(() => {
+    authServiceResolved = false;
+
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [
+        { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true },
+        { provide: ToastServiceHandler, useClass: MockToastServiceHandler },
+        SessionExpiryMarkerService,
+        UrlResolverService,
+        {
+          provide: AuthService,
+          useFactory: () => {
+            authServiceResolved = true;
+            return { forceLogout: jest.fn(), isLoggedIn: jest.fn().mockReturnValue(false) };
+          },
+        },
+      ],
+    });
+  });
+
+  it('does not resolve AuthService while the interceptor chain is built', () => {
+    const httpClient = TestBed.inject(HttpClient);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    httpClient.get('/whatever').subscribe({ next: () => undefined, error: () => undefined });
+    httpMock.expectOne('/whatever').flush({});
+
+    expect(authServiceResolved).toBe(false);
+
+    httpMock.verify();
+  });
+
+  it('does not resolve AuthService when the wallet discovery request fails', () => {
+    const httpClient = TestBed.inject(HttpClient);
+    const httpMock = TestBed.inject(HttpTestingController);
+    const url = `${environment.server_url}${WALLET_DISCOVERY_PATH}`;
+
+    httpClient.get(url).subscribe({ next: () => undefined, error: () => undefined });
+    httpMock.expectOne(url).flush('boom', { status: 503, statusText: 'Service Unavailable' });
+
+    expect(authServiceResolved).toBe(false);
+
+    httpMock.verify();
   });
 });
