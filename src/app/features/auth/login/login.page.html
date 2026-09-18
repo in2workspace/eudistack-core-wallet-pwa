@@ -21,9 +21,26 @@
 
           <!-- Installability probe still running -->
           @case ('checking') {
-            <div class="auth-checking">
-              <ion-spinner name="crescent"></ion-spinner>
-            </div>
+            @if (initFailed()) {
+              <div class="auth-checking init-error">
+                <ion-icon name="cloud-offline-outline" class="init-error-icon"></ion-icon>
+                <h2 class="auth-title">{{ 'auth.login.init-error-title' | translate }}</h2>
+                <p class="auth-subtitle">{{ 'auth.login.init-error-subtitle' | translate }}</p>
+
+                <button type="button" class="auth-button" (click)="retryInit()">
+                  {{ 'auth.login.retry' | translate }}
+                </button>
+
+                <button type="button" class="auth-link-button" (click)="reloadApp()">
+                  {{ 'auth.login.reload-app' | translate }}
+                </button>
+              </div>
+            } @else {
+              <div class="auth-checking">
+                <ion-spinner name="crescent"></ion-spinner>
+                <p class="init-status">{{ (initTakingLong() ? 'auth.login.initializing-slow' : 'auth.login.initializing') | translate }}</p>
+              </div>
+            }
           }
 
           <!-- Step 1: Access -->
@@ -37,7 +54,11 @@
               {{ 'auth.register.continue-browser' | translate }}
             </button>
 
-            <button type="button" class="auth-button auth-button--access" (click)="installApp()">
+            <button
+              type="button"
+              class="auth-button auth-button--access"
+              (click)="isMacSafari ? openMacSteps() : installApp()"
+            >
               {{ 'auth.access.continue-wallet' | translate: { brand: brandName() } }}
             </button>
 
@@ -67,6 +88,10 @@
               <button type="button" class="auth-button" (click)="createWalletBrowserMode()" [disabled]="loading">
                 {{ 'auth.passkey.register-button' | translate }}
               </button>
+
+              @if (showEdgeWindowsPasskeyHint) {
+                <p class="auth-hint">{{ 'auth.passkey.edge-windows-hint' | translate }}</p>
+              }
             }
           }
 
@@ -180,6 +205,10 @@
               >
                 {{ 'auth.passkey.register-button' | translate }}
               </button>
+
+              @if (showEdgeWindowsPasskeyHint) {
+                <p class="auth-hint">{{ 'auth.passkey.edge-windows-hint' | translate }}</p>
+              }
             } @else {
               <h1 class="auth-title">{{ 'auth.login.title-welcome' | translate }}</h1>
               <p class="auth-subtitle">{{ 'auth.login.verify-passkey' | translate }}</p>
@@ -209,6 +238,34 @@
   }
 
   <!-- "Need help?" modal-->
+  <ion-modal class="auth-help-modal" [isOpen]="showMacStepsModal" (didDismiss)="closeMacSteps()">
+    <ng-template>
+      <div class="help-modal">
+        <button type="button" class="help-modal__close" (click)="closeMacSteps()" [attr.aria-label]="'auth.access.help.close' | translate">
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+
+        <h2 class="help-modal__title">{{ 'auth.access.mac-modal-title' | translate }}</h2>
+        <p class="help-modal__intro">{{ 'auth.access.mac-steps-intro' | translate }}</p>
+
+        <ol class="auth-steps" [attr.aria-label]="'auth.access.mac-steps-aria' | translate">
+          @for (step of macInstallSteps; track step; let i = $index) {
+            <li class="auth-steps__item">
+              <span class="auth-steps__number" aria-hidden="true">{{ i + 1 }}</span>
+              <span class="auth-steps__text">{{ 'auth.access.mac-' + step | translate }}</span>
+            </li>
+          }
+        </ol>
+
+        <p class="auth-steps__caution">{{ 'auth.access.mac-reauth-notice' | translate }}</p>
+
+        <button type="button" class="auth-button" (click)="closeMacSteps()">
+          {{ 'auth.access.help.close' | translate }}
+        </button>
+      </div>
+    </ng-template>
+  </ion-modal>
+
   <ion-modal class="auth-help-modal" [isOpen]="showHelpModal" (didDismiss)="closeHelp()">
     <ng-template>
       <div class="help-modal">

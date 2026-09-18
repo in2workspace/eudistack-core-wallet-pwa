@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 import {
   HttpInterceptor,
   HttpRequest,
@@ -12,12 +12,14 @@ import { ToastServiceHandler } from '../../shared/services/toast.service';
 import { SERVER_PATH, WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import { UrlResolverService } from '../services/url-resolver.service';
 import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
+import { AuthService } from '../services/auth.service';
 
 @Injectable()
 export class HttpErrorInterceptor implements HttpInterceptor {
   private readonly toastServiceHandler = inject(ToastServiceHandler);
   private readonly urlResolver = inject(UrlResolverService);
   private readonly sessionExpiryMarker = inject(SessionExpiryMarkerService);
+  private readonly injector = inject(Injector);
 
   private logHandledSilentlyErrorMsg(errMsg: string) {
     console.error('Handled silently:', errMsg);
@@ -41,6 +43,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           return throwError(() => errorResp);
         }
 
+
         // Normalize URL to ensure request params are not included in the conditionals below
         const urlObj = new URL(request.url, window.location.origin);
         const href = urlObj.href;
@@ -50,6 +53,21 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         let errMessage =
           errorResp.error?.message || errorResp.message || 'Unknown Http error';
         const errStatus = errorResp.status ?? errorResp.error?.status;
+
+        if (pathname.endsWith(WALLET_DISCOVERY_PATH)) {
+          this.logHandledSilentlyErrorMsg(errMessage);
+          return throwError(() => errorResp);
+        }
+
+        // The session is already gone by the time this error arrived (e.g. a request
+        // racing the scheduled background refresh that just called forceLogout()) —
+        // the user has already seen, or is about to see, the dedicated session-expired
+        // notice from that path. A second, unrelated "something went wrong" toast here
+        // would just be noise stacked on top of it.
+        if (!this.injector.get(AuthService).isLoggedIn()) {
+          this.logHandledSilentlyErrorMsg(errMessage);
+          return throwError(() => errorResp);
+        }
 
         if (!isOwnBackend) {
           // Do not toast for 3rd party endpoints (issuers, well-known, etc.)

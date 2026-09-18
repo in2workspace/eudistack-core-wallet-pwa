@@ -78,7 +78,25 @@
 
 .auth-checking {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  gap: 12px;
+}
+
+.init-status {
+  @include fluid-type(0.8125rem, 0.9rem);
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0;
+}
+
+// Init failure screen
+.init-error {
+  .init-error-icon {
+    font-size: 40px;
+    color: var(--text-secondary);
+  }
 }
 
 .auth-back {
@@ -127,6 +145,14 @@
   strong {
     font-weight: 600;
   }
+}
+
+.auth-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--auth-ink-muted);
+  max-width: var(--auth-text-width);
+  margin: 12px auto 0;
 }
 
 .auth-field {
@@ -465,4 +491,47 @@
   .help-modal__item {
     margin-left: 5px;
   }
+}
+
+.auth-steps__intro {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.auth-steps {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  text-align: left;
+}
+
+.auth-steps__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: var(--auth-ink);
+}
+
+.auth-steps__number {
+  flex: 0 0 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--auth-disabled-bg);
+  color: var(--auth-ink);
+}
+
+.auth-steps__text {
+  line-height: 1.4;
+}
+
+.auth-steps__caution {
+  margin: 0 0 16px;
+  font-size: 0.85rem;
+  color: var(--auth-ink-muted);
 }

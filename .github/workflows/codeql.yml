@@ -1,41 +1,14 @@
-name: codeql
+name: Scheduled CodeQL
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'LICENSE'
-      - '.gitignore'
-  pull_request:
-    branches: [main]
   schedule:
     - cron: '0 4 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
   security-events: write
 
-concurrency:
-  group: codeql-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   analyze:
-    name: Analyze (javascript-typescript)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-          queries: security-extended
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: '/language:javascript-typescript'
+    uses: in2workspace/eudistack-devops-workflows/.github/workflows/common-codeql-javascript.yml@5f949958c1932739d0763fd7d733b6b1a634eba2

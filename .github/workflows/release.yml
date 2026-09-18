@@ -1,0 +1,30 @@
+name: Release SPA
+
+on:
+  push:
+    branches:
+      - 'release/v*.*.*'
+
+permissions:
+  actions: read
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    uses: in2workspace/eudistack-devops-workflows/.github/workflows/spa-release.yml@c2061f16b4fcacb12d8a4439899ed73c6d3a17cd
+    with:
+      project_name: eudistack
+      region_code: ew1
+      spa_prefix: /wallet/
+      staging_environment: stg
+      production_environment: pro
+      staging_smoke_url: https://sandbox.stg.eudistack.net/wallet/
+      production_smoke_url: https://sandbox.eudistack.net/wallet/
+      build_command: >-
+        npm run build -- --configuration production --output-path=./dist/out
+        --base-href=/wallet/ --deploy-url=/wallet/
+      build_output: dist/out/browser
+      runtime_required_variables: LOGS_ENABLED,WALLET_MODE,PREFERRED_GRANT,WIA,WIA_INSTANCE_KEY_JWK
+    secrets: inherit

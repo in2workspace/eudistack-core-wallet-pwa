@@ -1,7 +1,7 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
-import { NEVER, Observable, of, throwError } from 'rxjs';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { NEVER, Observable, of, Subject, throwError } from 'rxjs';
 import { LoginPage } from './login.page';
 import { AuthService } from 'src/app/core/services/auth.service';
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
@@ -22,14 +22,18 @@ describe('LoginPage (server mode)', () => {
     register: jest.Mock;
     verifyEmail: jest.Mock;
     refreshAccessToken: jest.Mock;
+    unlockWithPasskey: jest.Mock;
+    ensureAccessToken: jest.Mock;
+    getToken: jest.Mock;
   };
   let mockPrfService: {
     hasPasskey: jest.Mock;
     createPasskey: jest.Mock;
     getCredentialId: jest.Mock;
+    assertLocalPasskey: jest.Mock;
   };
-  let mockPasskeyStore: { getCredentialId: jest.Mock; hasPasskey: jest.Mock };
-  let mockPasskeyApi: { registerPasskey: jest.Mock; listPasskeys: jest.Mock };
+  let mockPasskeyStore: { getCredentialId: jest.Mock; hasPasskey: jest.Mock; clearCredentialId: jest.Mock };
+  let mockPasskeyApi: { registerPasskey: jest.Mock; listPasskeys: jest.Mock; confirmSession: jest.Mock };
   let mockRouter: { navigateByUrl: jest.Mock };
   let mockWalletService: { syncCredentials: jest.Mock };
   let mockActivityService: { syncFromServer: jest.Mock };
@@ -53,19 +57,25 @@ describe('LoginPage (server mode)', () => {
       register: jest.fn().mockReturnValue(of({ message: 'If the email is valid, you will receive a verification code.' })),
       verifyEmail: jest.fn().mockReturnValue(of({ accessToken: 'access-1', refreshToken: 'refresh-1', expiresIn: 900 })),
       refreshAccessToken: jest.fn().mockReturnValue(of({ accessToken: 'access-2', refreshToken: 'refresh-2', expiresIn: 900 })),
+      unlockWithPasskey: jest.fn().mockResolvedValue(undefined),
+      ensureAccessToken: jest.fn().mockResolvedValue(undefined),
+      getToken: jest.fn().mockReturnValue('access-1'),
     };
     mockPrfService = {
       hasPasskey: jest.fn().mockReturnValue(false),
       createPasskey: jest.fn().mockResolvedValue('cred-local-1'),
       getCredentialId: jest.fn().mockReturnValue('cred-local-1'),
+      assertLocalPasskey: jest.fn().mockResolvedValue(undefined),
     };
     mockPasskeyStore = {
       getCredentialId: jest.fn().mockReturnValue('cred-local-1'),
       hasPasskey: jest.fn().mockReturnValue(true),
+      clearCredentialId: jest.fn().mockResolvedValue(undefined),
     };
     mockPasskeyApi = {
       registerPasskey: jest.fn().mockReturnValue(of({ id: 'p1', credentialId: 'cred-local-1', displayName: 'device' })),
       listPasskeys: jest.fn().mockReturnValue(of([])),
+      confirmSession: jest.fn().mockReturnValue(of(undefined)),
     };
     mockRouter = { navigateByUrl: jest.fn() };
     mockWalletService = { syncCredentials: jest.fn().mockReturnValue(of(undefined)) };
@@ -104,14 +114,18 @@ describe('LoginPage (server mode)', () => {
     component = fixture.componentInstance;
   });
 
-  async function rebuildWithInstallDecision(decision: boolean, isStandalone = false): Promise<void> {
+  async function rebuildWithInstallDecision(
+    decision: boolean,
+    isStandalone = false,
+    isMacSafari = false
+  ): Promise<void> {
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [LoginPage, TranslateModule.forRoot()],
       providers: baseProviders.map(provider => provider.provide === PwaInstallService
         ? {
             provide: PwaInstallService,
-            useValue: { installDecision$: of(decision), isStandalone, promptInstall: jest.fn() },
+            useValue: { installDecision$: of(decision), isStandalone, isMacSafari, promptInstall: jest.fn() },
           }
         : provider),
     }).compileComponents();
@@ -119,6 +133,44 @@ describe('LoginPage (server mode)', () => {
     fixture = TestBed.createComponent(LoginPage);
     component = fixture.componentInstance;
   }
+
+  describe('macOS Safari install guidance (access screen)', () => {
+    const accessScreen = (): HTMLElement => {
+      fixture.detectChanges();
+      return fixture.nativeElement as HTMLElement;
+    };
+
+    it('keeps both options side by side, so install and continue-in-browser read as parallel choices', async () => {
+      await rebuildWithInstallDecision(true, false, true);
+      const el = accessScreen();
+
+      expect(el.querySelector('.auth-link-button')!.textContent).toContain('auth.register.continue-browser');
+      expect(el.querySelector('.auth-button--access')!.textContent).toContain('auth.access.continue-wallet');
+    });
+
+    it('keeps the steps out of the main screen until the user asks to install', async () => {
+      await rebuildWithInstallDecision(true, false, true);
+
+      expect(component.showMacStepsModal).toBe(false);
+      expect(accessScreen().querySelectorAll('.auth-steps__item')).toHaveLength(0);
+    });
+
+    it('opens the steps instead of a prompt Safari cannot show', async () => {
+      await rebuildWithInstallDecision(true, false, true);
+      accessScreen().querySelector<HTMLButtonElement>('.auth-button--access')!.click();
+
+      expect(component.showMacStepsModal).toBe(true);
+    });
+
+    it('still triggers the native prompt on browsers that do fire beforeinstallprompt', async () => {
+      await rebuildWithInstallDecision(true, false, false);
+      const promptInstall = TestBed.inject(PwaInstallService).promptInstall as jest.Mock;
+      accessScreen().querySelector<HTMLButtonElement>('.auth-button--access')!.click();
+
+      expect(promptInstall).toHaveBeenCalled();
+      expect(component.showMacStepsModal).toBe(false);
+    });
+  });
 
   it('should create in server mode', () => {
     expect(component.isBrowserMode).toBe(false);
@@ -236,16 +288,65 @@ describe('LoginPage (server mode)', () => {
       expect(component.step()).toBe('passkey');
     });
 
-    it('fails safe to needsPasskeySetup=true when listPasskeys() errors', () => {
-      mockPasskeyApi.listPasskeys.mockReturnValue(throwError(() => ({ status: 500 })));
+    it('retries once before failing safe to needsPasskeySetup=true when listPasskeys() keeps erroring', () => {
+      jest.useFakeTimers();
+      try {
+        mockPasskeyApi.listPasskeys.mockReturnValue(throwError(() => ({ status: 500 })));
+        (component as unknown as { matchedPasskeyId: string | null }).matchedPasskeyId = 'stale-id'; // must be cleared on the fail-safe
+        component.email = 'user@example.com';
+        component.otpValue = '123456';
+
+        component.verifyCode();
+
+        // A single transient failure does not yet decide the outcome: it retries
+        // once instead of forcing re-registration on the first network blip.
+        expect(mockPasskeyApi.listPasskeys).toHaveBeenCalledTimes(1);
+        expect(component.step()).not.toBe('passkey');
+
+        jest.advanceTimersByTime(1_000);
+
+        expect(mockPasskeyApi.listPasskeys).toHaveBeenCalledTimes(2);
+        expect(component.needsPasskeySetup).toBe(true);
+        expect((component as unknown as { matchedPasskeyId: string | null }).matchedPasskeyId).toBeNull();
+        expect(component.step()).toBe('passkey');
+        expect(component.loading).toBe(false);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('cancels the pending retry when the user leaves during the 1s wait', () => {
+      jest.useFakeTimers();
+      try {
+        mockPasskeyApi.listPasskeys.mockReturnValue(throwError(() => ({ status: 500 })));
+        component.email = 'user@example.com';
+        component.otpValue = '123456';
+
+        component.verifyCode();
+        expect(mockPasskeyApi.listPasskeys).toHaveBeenCalledTimes(1);
+
+        component.ionViewWillLeave();
+        jest.advanceTimersByTime(1_000);
+
+        // no second call, no fail-safe transition against an unmounted view
+        expect(mockPasskeyApi.listPasskeys).toHaveBeenCalledTimes(1);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('does not need a retry when listPasskeys() succeeds on the first call', () => {
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([
+        { id: 'p1', credentialId: 'cred-local-1', displayName: 'This Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
+      ]));
       component.email = 'user@example.com';
       component.otpValue = '123456';
 
       component.verifyCode();
 
-      expect(component.needsPasskeySetup).toBe(true);
+      expect(mockPasskeyApi.listPasskeys).toHaveBeenCalledTimes(1);
+      expect(component.needsPasskeySetup).toBe(false);
       expect(component.step()).toBe('passkey');
-      expect(component.loading).toBe(false);
     });
   });
 
@@ -295,6 +396,8 @@ describe('LoginPage (server mode)', () => {
       expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
       expect(component.errorMessage).toBeTruthy();
       expect(component.loading).toBe(false);
+      // Local credential state is rolled back so the next attempt starts clean.
+      expect(mockPasskeyStore.clearCredentialId).toHaveBeenCalled();
     });
 
     it('allows a retry that succeeds after a prior failure', async () => {
@@ -349,20 +452,119 @@ describe('LoginPage (server mode)', () => {
     });
   });
 
-  describe('R-1: existing-passkey verification path (needsPasskeySetup = false) is unaffected', () => {
-    it('authenticates locally and navigates home on success', async () => {
-      const mockCredentialsGet = jest.fn().mockResolvedValue({});
+  describe('session linking (confirm-session / refreshToken)', () => {
+    beforeEach(() => {
       Object.defineProperty(globalThis.navigator, 'credentials', {
-        value: { get: mockCredentialsGet },
+        value: { get: jest.fn().mockResolvedValue({}) },
         configurable: true,
         writable: true,
       });
+    });
+
+    it('sends the stored refresh token when registering a new device passkey', async () => {
+      localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
+      component.deviceName = 'My Device';
+
+      await component.createPasskeyForDevice();
+
+      expect(mockPasskeyApi.registerPasskey).toHaveBeenCalledWith(
+        expect.objectContaining({ refreshToken: 'stored-refresh-token' })
+      );
+    });
+
+    it('exchanges the refresh token before registerPasskey when there is no access JWT', async () => {
+      mockAuthService.getToken.mockReturnValue('');
+      localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
+      component.deviceName = 'My Device';
+
+      await component.createPasskeyForDevice();
+
+      expect(mockAuthService.ensureAccessToken).toHaveBeenCalled();
+      expect(mockPasskeyApi.registerPasskey).toHaveBeenCalled();
+    });
+
+    it('links the verified session to its passkey via confirm-session (existing device)', async () => {
+      localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([
+        { id: 'p-server-1', credentialId: 'cred-local-1', displayName: 'This Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
+      ]));
+      component.email = 'user@example.com';
+      component.otpValue = '123456';
+      component.verifyCode();
+      expect(component.needsPasskeySetup).toBe(false);
+
+      await component.verifyPasskey();
+
+      expect(mockPasskeyApi.confirmSession).toHaveBeenCalledWith('p-server-1', 'stored-refresh-token');
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('skips confirm-session when this device has no server-side passkey', async () => {
+      localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([])); // account has no passkeys for this device
       component.needsPasskeySetup = false;
 
       await component.verifyPasskey();
 
-      expect(mockCredentialsGet).toHaveBeenCalled();
+      expect(mockPasskeyApi.confirmSession).not.toHaveBeenCalled();
       expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('attributes the session on the different-day resume path (no OTP, listPasskeys not run yet)', async () => {
+      localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
+      mockPrfService.hasPasskey.mockReturnValue(true);
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([
+        { id: 'p-server-1', credentialId: 'cred-local-1', displayName: 'This Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
+      ]));
+
+      component.ionViewWillEnter();          // enters the passkey step straight away, no listPasskeys
+      expect(component.step()).toBe('passkey');
+
+      await component.verifyPasskey();
+
+      // resolved this device's passkey from its local credential id, then linked
+      expect(mockPasskeyApi.listPasskeys).toHaveBeenCalled();
+      expect(mockPasskeyApi.confirmSession).toHaveBeenCalledWith('p-server-1', 'stored-refresh-token');
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('does not block login when confirm-session fails', async () => {
+      localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([
+        { id: 'p-server-1', credentialId: 'cred-local-1', displayName: 'This Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
+      ]));
+      mockPasskeyApi.confirmSession.mockReturnValue(throwError(() => ({ status: 500 })));
+      component.email = 'user@example.com';
+      component.otpValue = '123456';
+      component.verifyCode();
+
+      await component.verifyPasskey();
+
+      expect(mockPasskeyApi.confirmSession).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+  });
+
+  describe('R-1: existing-passkey verification path (needsPasskeySetup = false) is unaffected', () => {
+    it('authenticates locally and navigates home on success', async () => {
+      component.needsPasskeySetup = false;
+
+      await component.verifyPasskey();
+
+      expect(mockAuthService.unlockWithPasskey).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('does not navigate in server mode when unlock succeeds without an access JWT', async () => {
+      mockAuthService.getToken.mockReturnValue('');
+      component.needsPasskeySetup = false;
+      (component as any).passkeyFromRefreshToken = false;
+
+      await component.verifyPasskey();
+
+      expect(mockAuthService.unlockWithPasskey).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+      expect(component.errorMessage).toBe('No access token');
     });
   });
 
@@ -423,6 +625,551 @@ describe('LoginPage (server mode)', () => {
       // navigation is not blocked by the failure — the page then surfaces the error state
       expect(mockRouter.navigateByUrl).toHaveBeenCalled();
     });
+  });
+
+  describe('Dedalo-1052543: expired wallet session on LEAR Employee email deep-link', () => {
+    beforeEach(() => {
+      localStorage.setItem('wallet_refresh_token', 'stale-refresh');
+      sessionStorage.setItem(
+        PENDING_DEEP_LINK_KEY,
+        '/protocol/callback?credential_offer_uri=https://sandbox.stg.eudistack.net/issuer/oid4vci/v1/credential-offer/abc'
+      );
+      mockPrfService.hasPasskey.mockReturnValue(true);
+      mockPrfService.getCredentialId.mockReturnValue('cred-local-1');
+      Object.defineProperty(navigator, 'credentials', {
+        configurable: true,
+        value: {
+          get: jest.fn().mockResolvedValue({ id: 'assertion' }),
+        },
+      });
+    });
+
+    it('AC-01: on refresh failure, stays on email step with i18n session-expired, clears token and keeps the pending offer link', async () => {
+      mockAuthService.unlockWithPasskey.mockImplementation(async () => {
+        localStorage.removeItem('wallet_refresh_token');
+        mockAuthService.getToken.mockReturnValue('');
+      });
+
+      component.ionViewWillEnter();
+      expect(component.step()).toBe('passkey');
+
+      await component.verifyPasskey();
+
+      expect(mockAuthService.unlockWithPasskey).toHaveBeenCalled();
+      expect(component.step()).toBe('email');
+      expect(component.errorMessage).toBe('auth.errors.session-expired-request-code');
+      expect(localStorage.getItem('wallet_refresh_token')).toBeNull();
+      expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toContain('credential_offer_uri');
+      expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('AC-02: follows full flow (expiry -> email step -> OTP -> resume) and completes deep link', async () => {
+      mockAuthService.unlockWithPasskey.mockImplementation(async () => {
+        mockAuthService.getToken.mockReturnValue('');
+      });
+
+      component.ionViewWillEnter();
+      await component.verifyPasskey();
+
+      expect(component.step()).toBe('email');
+      expect(component.errorMessage).toBe('auth.errors.session-expired-request-code');
+      expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBeTruthy();
+
+      // 2. User re-authenticates via OTP
+      component.email = 'user@example.com';
+      component.otpValue = '123456';
+      mockAuthService.verifyEmail.mockReturnValue(of({ accessToken: 'a', refreshToken: 'r', expiresIn: 900 }));
+      mockPasskeyApi.listPasskeys.mockReturnValue(of([])); // Force needsPasskeySetup = true
+
+      component.verifyCode();
+      expect(component.step()).toBe('passkey');
+      expect(component.needsPasskeySetup).toBe(true);
+
+      // 3. Complete passkey registration
+      mockPasskeyApi.registerPasskey.mockReturnValue(of({ id: 'p1' }));
+      await component.createPasskeyForDevice();
+
+      // 4. Verification: resumes the offer and clears the pending key
+      expect(mockRouter.navigateByUrl).toHaveBeenCalledWith(expect.stringContaining('credential_offer_uri=https://sandbox.stg.eudistack.net/issuer/oid4vci/v1/credential-offer/abc'));
+      expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBeNull();
+    });
+
+    it('stays on passkey step if WebAuthn is cancelled, without clearing the token', async () => {
+      mockAuthService.unlockWithPasskey.mockRejectedValue(new Error('Authentication cancelled'));
+
+      localStorage.setItem('wallet_refresh_token', 'stale-refresh');
+      component.ionViewWillEnter();
+      expect(component.step()).toBe('passkey');
+
+      await component.verifyPasskey();
+
+      expect(component.step()).toBe('passkey');
+      expect(component.errorMessage).toBe('Authentication cancelled');
+      expect(localStorage.getItem('wallet_refresh_token')).toBe('stale-refresh');
+      expect(mockAuthService.refreshAccessToken).not.toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('LoginPage Coverage Improvements', () => {
+    it('throws error in authenticateLocally if no credentialId is found', async () => {
+      mockPrfService.assertLocalPasskey.mockRejectedValue(new Error('No passkey found'));
+      await expect(component['authenticateLocally']()).rejects.toThrow('No passkey found');
+    });
+
+    it('handles sync error in syncCredentialsThenNavigate for protocol links', async () => {
+      sessionStorage.setItem(PENDING_DEEP_LINK_KEY, '/protocol/callback?offer=123');
+      mockWalletService.syncCredentials.mockReturnValue(throwError(() => new Error('Sync failed')));
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const cacheSpy = jest.spyOn(mockCredentialCache, 'setError');
+
+      await component['syncCredentialsThenNavigate']();
+
+      expect(consoleSpy).toHaveBeenCalledWith('Credential sync failed', expect.any(Error));
+      expect(cacheSpy).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('identifies different types of protocol deep links', () => {
+      expect(component['isProtocolDeepLink']('/protocol/test')).toBe(true);
+      expect(component['isProtocolDeepLink']('/wallet/protocol/test')).toBe(true);
+      expect(component['isProtocolDeepLink']('/tabs/vc-selector')).toBe(true);
+      expect(component['isProtocolDeepLink']('?credential_offer_uri=...')).toBe(true);
+      expect(component['isProtocolDeepLink']('/other')).toBe(false);
+      expect(component['isProtocolDeepLink'](null)).toBe(false);
+    });
+
+    it('detects device names correctly based on UserAgent', () => {
+      const originalUA = navigator.userAgent;
+      const setUA = (ua: string) => {
+        Object.defineProperty(navigator, 'userAgent', { value: ua, configurable: true });
+      };
+
+      setUA('iPhone'); expect(component['getDeviceName']()).toBe('iPhone');
+      setUA('Android'); expect(component['getDeviceName']()).toBe('Android Device');
+      setUA('Windows'); expect(component['getDeviceName']()).toBe('Windows PC');
+      setUA('Unknown'); expect(component['getDeviceName']()).toBe('Unknown Device');
+
+      setUA(originalUA);
+    });
+
+    it('shows the Edge/Windows passkey hint only for that exact browser+OS combination', async () => {
+      const originalUA = navigator.userAgent;
+      const setUA = (ua: string) => {
+        Object.defineProperty(navigator, 'userAgent', { value: ua, configurable: true });
+      };
+      const createComponentWithUA = async (ua: string): Promise<LoginPage> => {
+        setUA(ua);
+        TestBed.resetTestingModule();
+        await TestBed.configureTestingModule({
+          imports: [LoginPage, TranslateModule.forRoot()],
+          providers: baseProviders,
+        }).compileComponents();
+        return TestBed.createComponent(LoginPage).componentInstance;
+      };
+
+      const EDGE_WINDOWS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0';
+      const CHROME_WINDOWS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+      const EDGE_MAC_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0';
+
+      expect((await createComponentWithUA(EDGE_WINDOWS_UA)).showEdgeWindowsPasskeyHint).toBe(true);
+      expect((await createComponentWithUA(CHROME_WINDOWS_UA)).showEdgeWindowsPasskeyHint).toBe(false);
+      expect((await createComponentWithUA(EDGE_MAC_UA)).showEdgeWindowsPasskeyHint).toBe(false);
+
+      setUA(originalUA);
+    });
+
+    it('does not show the Edge/Windows hint on the verify-passkey screen (needsPasskeySetup = false), even on Edge/Windows', async () => {
+      const originalUA = navigator.userAgent;
+      Object.defineProperty(navigator, 'userAgent', {
+        value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0',
+        configurable: true,
+      });
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [LoginPage, TranslateModule.forRoot()],
+        providers: baseProviders,
+      }).compileComponents();
+      fixture = TestBed.createComponent(LoginPage);
+      component = fixture.componentInstance;
+
+      component.step.set('passkey');
+      component.needsPasskeySetup = false;
+      fixture.detectChanges();
+
+      expect(component.showEdgeWindowsPasskeyHint).toBe(true);
+      expect(fixture.nativeElement.querySelector('.auth-hint')).toBeNull();
+
+      Object.defineProperty(navigator, 'userAgent', { value: originalUA, configurable: true });
+    });
+
+    it('handles passkey registration failure in createPasskeyForDevice', async () => {
+      component.email = 'test@example.com';
+      mockPrfService.createPasskey.mockRejectedValue(new Error('Hardware fail'));
+
+      await component.createPasskeyForDevice();
+
+      expect(component.errorMessage).toBe('Hardware fail');
+      expect(component.loading).toBe(false);
+    });
+
+    it('handles case where createPasskey succeeds but getCredentialId returns null', async () => {
+      component.email = 'test@example.com';
+      mockPrfService.createPasskey.mockResolvedValue('ok');
+      mockPasskeyStore.getCredentialId.mockReturnValue(null);
+
+      await component.createPasskeyForDevice();
+
+      expect(component.errorMessage).toBe('Failed to create passkey');
+      expect(component.loading).toBe(false);
+    });
+
+    it('handles sync error in syncCredentialCache (non-protocol link)', () => {
+      sessionStorage.removeItem(PENDING_DEEP_LINK_KEY);
+      mockWalletService.syncCredentials.mockReturnValue(throwError(() => new Error('Async sync failed')));
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const cacheSpy = jest.spyOn(mockCredentialCache, 'setError');
+
+      component['syncCredentialCache']();
+
+      expect(consoleSpy).toHaveBeenCalledWith('Sync failed', expect.any(Error));
+      expect(cacheSpy).toHaveBeenCalled();
+    });
+
+    it('PWA installation: promptInstall and skipInstall', async () => {
+      const pwaInstallService = TestBed.inject(PwaInstallService);
+      const promptSpy = jest.spyOn(pwaInstallService, 'promptInstall').mockResolvedValue(true);
+      component.showInstallScreen.set(true);
+
+      await component.installApp();
+      expect(promptSpy).toHaveBeenCalled();
+      expect(component.showInstallScreen()).toBe(false);
+
+      component.showInstallScreen.set(true);
+      component.skipInstall();
+      expect(component.showInstallScreen()).toBe(false);
+    });
+
+    it('Browser mode: login and passkey creation', async () => {
+      // Re-configure for browser mode
+      Object.defineProperty(component, 'isBrowserMode', { value: true });
+      jest.spyOn(component as any, 'authenticateLocally').mockResolvedValue(undefined);
+
+      const markSpy = jest.fn();
+      (mockAuthService as any).markAuthenticated = markSpy;
+
+      const setupSpy = jest.fn().mockResolvedValue(undefined);
+      (mockAuthService as any).setupPasskey = setupSpy;
+
+      const navigateSpy = jest.spyOn(mockRouter, 'navigateByUrl');
+
+      // Local login
+      await component.loginBrowserMode();
+      expect(markSpy).toHaveBeenCalled();
+      expect(navigateSpy).toHaveBeenCalledWith('/tabs/credentials');
+
+      // Local setup
+      await component.createWalletBrowserMode();
+      expect(setupSpy).toHaveBeenCalled();
+      expect(navigateSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('Browser mode: handles failures in login and setup', async () => {
+      Object.defineProperty(component, 'isBrowserMode', { value: true });
+
+      // Test default error message for setup
+      (mockAuthService as any).setupPasskey = jest.fn().mockRejectedValue({});
+      await component.createWalletBrowserMode();
+      expect(component.errorMessage).toBe('Failed to create passkey');
+
+      // authenticateLocally fail
+      jest.spyOn(component as any, 'authenticateLocally').mockRejectedValue(new Error('Local fail'));
+      await component.loginBrowserMode();
+      expect(component.errorMessage).toBe('Local fail');
+
+      // Test default error message for login
+      jest.spyOn(component as any, 'authenticateLocally').mockRejectedValue({});
+      await component.loginBrowserMode();
+      expect(component.errorMessage).toBe('Login failed');
+    });
+
+    it('OTP flow: onOtpCompleted and goBackToEmail', () => {
+      const verifySpy = jest.spyOn(component, 'verifyCode').mockImplementation();
+      component.onOtpCompleted('123456');
+      expect((component as any).otpValue).toBe('123456');
+      expect(verifySpy).toHaveBeenCalled();
+
+      component.step.set('code');
+      component.goBackToEmail();
+      expect(component.step()).toBe('email');
+      expect((component as any).otpValue).toBe('');
+    });
+
+    it('verifyPasskey: handles error when NOT using refresh token path', async () => {
+      component.step.set('passkey');
+      (component as any).passkeyFromRefreshToken = false;
+      mockRouter.navigateByUrl.mockImplementation(() => { throw new Error('Sync failed'); });
+
+      await component.verifyPasskey();
+
+      expect(component.errorMessage).toBe('Sync failed');
+      expect(component.step()).toBe('passkey');
+    });
+
+    it('verifyPasskey: uses default error message if error has no message', async () => {
+      component.step.set('passkey');
+      (component as any).passkeyFromRefreshToken = false;
+      mockRouter.navigateByUrl.mockImplementation(() => { throw {}; });
+
+      await component.verifyPasskey();
+
+      expect(component.errorMessage).toBe('Passkey verification failed');
+      expect(component.step()).toBe('passkey');
+    });
+
+    it('getDeviceName: covers all OS branches', () => {
+      const setUA = (ua: string) => {
+        Object.defineProperty(navigator, 'userAgent', { value: ua, configurable: true });
+      };
+      const originalUA = navigator.userAgent;
+
+      setUA('iPad'); expect(component['getDeviceName']()).toBe('iPad');
+      setUA('Macintosh'); expect(component['getDeviceName']()).toBe('Mac');
+      setUA('Windows'); expect(component['getDeviceName']()).toBe('Windows PC');
+      setUA('Linux'); expect(component['getDeviceName']()).toBe('Linux');
+      setUA('Other'); expect(component['getDeviceName']()).toBe('Unknown Device');
+
+      setUA(originalUA);
+    });
+
+    it('sendCode: navigates to code step on success', () => {
+      component.email = 'test@example.com';
+      mockAuthService.register.mockReturnValue(of({ message: 'OK' }));
+
+      component.sendCode();
+
+      expect(component.step()).toBe('code');
+      expect(component.loading).toBe(false);
+    });
+
+    it('covers resendCode error branch', () => {
+      const registerSpy = mockAuthService.register.mockReturnValue(throwError(() => ({ status: 500, error: { detail: 'resend_failed_detail' } })));
+      component.email = 'user@example.com';
+      component.resendSecondsLeft.set(0);
+
+      component.resendCode();
+
+      expect(registerSpy).toHaveBeenCalled();
+      expect(component.errorMessage).toBe('resend_failed_detail');
+      expect(component.loading).toBe(false);
+    });
+
+    it('covers resendCode 429 error branch', () => {
+      mockAuthService.register.mockReturnValue(throwError(() => ({ status: 429 })));
+      component.email = 'user@example.com';
+      component.resendSecondsLeft.set(0);
+
+      component.resendCode();
+
+      expect(component.errorMessage).toBe('auth.errors.too-many-attempts');
+    });
+
+    it('covers sendCode 429 and error detail branches', () => {
+      mockAuthService.register.mockReturnValue(throwError(() => ({ status: 429 })));
+      component.email = 'user@example.com';
+      component.sendCode();
+      expect(component.errorMessage).toBe('auth.errors.too-many-attempts');
+
+      mockAuthService.register.mockReturnValue(throwError(() => ({ status: 500, error: { detail: 'send_failed_detail' } })));
+      component.sendCode();
+      expect(component.errorMessage).toBe('send_failed_detail');
+    });
+
+    it('covers verifyCode 429 and error detail branches', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => ({ status: 429 })));
+      component.email = 'user@example.com';
+      component.otpValue = '123456';
+      component.verifyCode();
+      expect(component.errorMessage).toBe('auth.errors.too-many-attempts-otp');
+
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => ({ status: 500, error: { detail: 'verify_failed_detail' } })));
+      component.verifyCode();
+      expect(component.errorMessage).toBe('verify_failed_detail');
+    });
+
+    it('covers error handling in verifyPasskey, createPasskeyForDevice and syncCredentialsThenNavigate', async () => {
+      const translate = TestBed.inject(TranslateService);
+      const translateSpy = jest.spyOn(translate, 'instant');
+
+      // 1. unlockWithPasskey error (verifyPasskey branch)
+      mockAuthService.unlockWithPasskey.mockRejectedValueOnce({});
+      await component.verifyPasskey();
+      expect(component.errorMessage).toBe('Passkey verification failed');
+
+      // 2. createPasskey error branch (createPasskeyForDevice)
+      mockPrfService.createPasskey.mockRejectedValueOnce({});
+      await component.createPasskeyForDevice();
+      expect(component.errorMessage).toBe('Failed to create passkey');
+
+      // 3. registerPasskey error branch (createPasskeyForDevice fallback name)
+      mockPrfService.createPasskey.mockResolvedValueOnce('ok');
+      mockPasskeyStore.getCredentialId.mockReturnValueOnce('cred-1');
+      mockPasskeyApi.registerPasskey.mockReturnValueOnce(throwError(() => ({})));
+      component.deviceName = '';
+      await component.createPasskeyForDevice();
+      // It should use getDeviceName() as fallback and eventually fail with i18n key
+      expect(translateSpy).toHaveBeenCalledWith('auth.errors.passkey-register-failed');
+    });
+  });
+
+  describe('Help modal and view events', () => {
+    it('covers openHelp and closeHelp', () => {
+      component.openHelp();
+      expect(component.showHelpModal).toBe(true);
+      component.closeHelp();
+      expect(component.showHelpModal).toBe(false);
+    });
+
+    it('covers ionViewWillLeave and ngOnDestroy', () => {
+      const stopSpy = jest.spyOn(component as any, 'stopResendCountdown');
+      component.ionViewWillLeave();
+      expect(stopSpy).toHaveBeenCalled();
+      component.ngOnDestroy();
+      expect(stopSpy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Initialization watchdog (structured loader / friendly timeout on stuck installDecision$)', () => {
+    let pendingInstallDecision$: Subject<boolean>;
+
+    beforeEach(async () => {
+      pendingInstallDecision$ = new Subject<boolean>();
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [LoginPage, TranslateModule.forRoot()],
+        providers: baseProviders.map(provider => provider.provide === PwaInstallService
+          ? {
+              provide: PwaInstallService,
+              // never emits on its own — the watchdog tests drive it manually via .next()
+              useValue: { installDecision$: pendingInstallDecision$, isStandalone: false, promptInstall: jest.fn() },
+            }
+          : provider),
+      }).compileComponents();
+
+      fixture = TestBed.createComponent(LoginPage);
+      component = fixture.componentInstance;
+    });
+
+    it('starts with neither the slow message nor the error screen showing', () => {
+      component.ionViewWillEnter();
+
+      expect(component.initTakingLong()).toBe(false);
+      expect(component.initFailed()).toBe(false);
+    });
+
+    it('shows the "taking longer" message once the slow threshold elapses without resolving', fakeAsync(() => {
+      component.ionViewWillEnter();
+
+      tick(2999);
+      expect(component.initTakingLong()).toBe(false);
+
+      tick(1);
+      expect(component.initTakingLong()).toBe(true);
+      expect(component.initFailed()).toBe(false);
+
+      pendingInstallDecision$.next(false);
+      tick(0);
+    }));
+
+    it('shows the friendly error screen once the fail threshold elapses without installDecision$ ever resolving', fakeAsync(() => {
+      component.ionViewWillEnter();
+
+      tick(7999);
+      expect(component.initFailed()).toBe(false);
+
+      tick(1);
+      expect(component.initFailed()).toBe(true);
+
+      pendingInstallDecision$.next(false);
+      tick(0);
+    }));
+
+    it('never shows the error screen when installDecision$ resolves before the fail threshold', fakeAsync(() => {
+      component.ionViewWillEnter();
+
+      tick(3500);
+      pendingInstallDecision$.next(false);
+      tick(8000);
+
+      expect(component.initFailed()).toBe(false);
+    }));
+
+    it('retryInit() clears the error screen and re-arms the watchdog', fakeAsync(() => {
+      component.ionViewWillEnter();
+      tick(8000);
+      expect(component.initFailed()).toBe(true);
+
+      component.retryInit();
+
+      expect(component.initFailed()).toBe(false);
+      expect(component.initTakingLong()).toBe(false);
+
+      pendingInstallDecision$.next(false);
+      tick(0);
+    }));
+
+    it('retryInit() actually leaves the "checking" screen when installDecision$ never settles (W1: re-arming alone cannot recover, since installDecision$ is a shareReplay a fresh subscription cannot restart)', fakeAsync(() => {
+      component.ionViewWillEnter();
+      tick(8000);
+      expect(component.initFailed()).toBe(true);
+      expect(component.screen()).toBe('checking');
+
+      component.retryInit();
+
+      // Proceeds as if installDecision$ had resolved to false, without a page reload.
+      expect(component.screen()).not.toBe('checking');
+      expect(component.screen()).toBe('email');
+
+      pendingInstallDecision$.next(false);
+      tick(0);
+    }));
+
+    it('reloadApp() reloads the page as the guaranteed manual fallback', () => {
+      const originalLocation = window.location;
+      const reloadSpy = jest.fn();
+      // jsdom's window.location.reload is read-only — swap the whole object for the spy.
+      delete (window as unknown as { location?: Location }).location;
+      (window as unknown as { location: Location }).location = { ...originalLocation, reload: reloadSpy } as Location;
+
+      component.reloadApp();
+
+      expect(reloadSpy).toHaveBeenCalled();
+
+      (window as unknown as { location: Location }).location = originalLocation;
+    });
+
+    it('stops the watchdog timers on ionViewWillLeave so a stale timeout cannot flip the signals after leaving (W2)', fakeAsync(() => {
+      component.ionViewWillEnter();
+      tick(1000);
+
+      component.ionViewWillLeave();
+      tick(8000);
+
+      expect(component.initTakingLong()).toBe(false);
+      expect(component.initFailed()).toBe(false);
+    }));
+
+    it('stops the watchdog timers on ngOnDestroy (W2)', fakeAsync(() => {
+      component.ionViewWillEnter();
+      tick(1000);
+
+      component.ngOnDestroy();
+      tick(8000);
+
+      expect(component.initTakingLong()).toBe(false);
+      expect(component.initFailed()).toBe(false);
+    }));
   });
 
   describe('verification-code resend cooldown', () => {

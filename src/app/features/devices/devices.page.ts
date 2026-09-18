@@ -1,5 +1,6 @@
 import { Component, DestroyRef, computed, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { timeout } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule, AlertController } from '@ionic/angular';
@@ -9,6 +10,8 @@ import { AuthService } from 'src/app/core/services/auth.service';
 import { PasskeyApiService, PasskeyInfo } from 'src/app/core/services/passkey-api.service';
 import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
+
+export const PASSKEY_LIST_TIMEOUT_MS = 10_000;
 
 @Component({
     selector: 'app-devices',
@@ -30,6 +33,7 @@ export class DevicesPage implements OnInit {
   readonly passkeys = signal<PasskeyInfo[]>([]);
   readonly loading = signal(true);
   readonly error = signal(false);
+  readonly unavailable = signal(false);
 
   /** True when the wallet operates in server (EBW) mode (AC-009.2c, AC-009.3c). */
   get isServerMode(): boolean {
@@ -50,8 +54,8 @@ export class DevicesPage implements OnInit {
 
   ngOnInit(): void {
     if (!this.isServerMode) {
-      // Redirect to settings if not in server mode
-      this.router.navigate(['/tabs/settings']);
+      this.loading.set(false);
+      this.unavailable.set(true);
       return;
     }
     this.loadPasskeys();
@@ -77,7 +81,10 @@ export class DevicesPage implements OnInit {
     this.loading.set(true);
     this.error.set(false);
 
-    this.passkeyApi.listPasskeys().subscribe({
+    this.passkeyApi.listPasskeys().pipe(
+      timeout(PASSKEY_LIST_TIMEOUT_MS),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
       next: (passkeys) => {
         this.passkeys.set(passkeys);
         this.loading.set(false);

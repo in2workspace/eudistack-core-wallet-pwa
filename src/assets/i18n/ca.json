@@ -111,7 +111,14 @@
         "q3": "Puc continuar sense instal·lar el Wallet?",
         "a3": "Sí. Pots continuar al navegador, tot i que algunes funcionalitats poden estar limitades.",
         "close": "Tancar"
-      }
+      },
+      "mac-modal-title": "Instal·lar el Wallet al teu Mac",
+      "mac-steps-intro": "Per instal·lar-la al teu Mac:",
+      "mac-steps-aria": "Passos per instal·lar Wallet a macOS",
+      "mac-step-1": "Obre el menú Arxiu de Safari.",
+      "mac-step-2": "Tria «Afegir al Dock…» i confirma el nom.",
+      "mac-step-3": "Obre l'app des del Dock per continuar.",
+      "mac-reauth-notice": "Si instal·les l'app més endavant, pot ser que hagis de tornar a iniciar la sessió."
     },
     "login": {
       "title": "Registra el teu dispositiu",
@@ -121,6 +128,12 @@
       "passkey-button": "Iniciar sessió amb Passkey",
       "enter-email": "Introdueix el teu email per començar",
       "verify-passkey": "Verifica la teva identitat amb la teva passkey",
+      "initializing": "Preparant el teu wallet…",
+      "initializing-slow": "Això està trigant més del que és habitual…",
+      "init-error-title": "No hem pogut carregar el teu wallet",
+      "init-error-subtitle": "S'ha produït un problema en preparar l'aplicació. Pots reintentar-ho o recarregar la pàgina.",
+      "retry": "Reintenta-ho",
+      "reload-app": "Recarrega l'aplicació",
       "email-title": "Continua amb el teu email",
       "email-subtitle": "Introdueix l'adreça de correu associada al teu compte de {{brand}}."
     },
@@ -159,12 +172,14 @@
       "verified-title": "Email verificat!",
       "setup-title": "Configura una passkey",
       "verified-subtitle": "El teu email s'ha verificat correctament.",
-      "setup-subtitle": "Configura una passkey per completar l'accés en aquest dispositiu."
+      "setup-subtitle": "Configura una passkey per completar l'accés en aquest dispositiu.",
+      "edge-windows-hint": "A Microsoft Edge veuràs el PIN de Windows Hello per verificar la teva identitat. Si prefereixes fer servir el mòbil com a clau d'accés, obre aquesta pàgina a Google Chrome."
     },
     "errors": {
       "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",
       "too-many-attempts-otp": "Massa intents incorrectes. Si us plau, sol·licita un nou codi.",
-      "passkey-register-failed": "No s'ha pogut registrar aquest dispositiu. Torna-ho a provar."
+      "passkey-register-failed": "No s'ha pogut registrar aquest dispositiu. Torna-ho a provar.",
+      "session-expired-request-code": "La teva sessió ha caducat. Sol·licita un codi de verificació per continuar obrint l'oferta de credencial."
     }
   },
   "otp-input": {
@@ -177,7 +192,8 @@
     "error": "Nom d'usuari o contrasenya incorrectes"
   },
   "errors": {
-    "default": "Alguna cosa ha anat malament. Si et torna a passar, contacta amb l’<a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equip de suport</a>.",
+    "default": "Alguna cosa ha anat malament. Si et torna a passar, contacta amb {{supportLink}}.",
+    "support-team-label": "l'equip de suport",
     "session-expired": "La teva sessió ha caducat. Torna a iniciar sessió.",
     "key-storage-unavailable": "Aquest navegador no pot desar claus de manera segura. No podràs activar ni fer servir credencials en aquest dispositiu.",
     "key-storage-public-only": "Aquest navegador no pot desar claus de manera segura. Pots afegir credencials, però podrien deixar de funcionar en tancar o recarregar l’app.",
@@ -216,21 +232,21 @@
     "server-error": "El servidor ha trobat un error. Torna-ho a provar més tard.",
     "verifier-post-failed": "No hem pogut enviar la resposta de login. Torna-ho a provar.",
     "signature-failed": "No hem pogut signar la presentació. Torna-ho a provar.",
-    "failed-qr-process": "Hi ha hagut un problema en processar el QR. Pot ser que sigui invàlid o que ja hagi estat utilitzat abans. Refresqueu-lo. Si el problema persisteix, contacteu <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>",
+    "failed-qr-process": "Hi ha hagut un problema en processar el QR. Pot ser que sigui invàlid o que ja hagi estat utilitzat abans. Refresqueu-lo. Si el problema persisteix, contacteu {{supportLink}}",
     "invalid-qr": "El QR presentat és invàlid",
     "no-credentials-available": "No hi ha cap credencial disponible per al login",
     "expired-credentialOffer": "L'oferta de credencial ha expirat o ja s'ha utilitzat",
     "cannot-get-VC": "No s'ha pogut obtenir la credencial del Issuer",
     "signing-failed": "Estem tenint dificultats tècniques puntuals. Tanca aquesta pantalla i torna-ho a provar d'aquí uns minuts des de l'enllaç del correu que vas rebre.",
     "cannot-save-VC": "No s'ha pogut guardar correctament la credencial",
-    "incorrect-pin": "PIN incorrecte. Si us plau, actualitzeu l'oferta de credencials. Si el problema persisteix, poseu-vos en contacte amb <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>.",
-    "pin-expired": "No ha introduït el PIN dins del límit de temps. Si us plau, renoveu l'oferta de credencial. Si el problema persisteix, poseu-vos en contacte amb <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>.",
+    "incorrect-pin": "PIN incorrecte. Si us plau, actualitzeu l'oferta de credencials. Si el problema persisteix, poseu-vos en contacte amb {{supportLink}}.",
+    "pin-expired": "No ha introduït el PIN dins del límit de temps. Si us plau, renoveu l'oferta de credencial. Si el problema persisteix, poseu-vos en contacte amb {{supportLink}}.",
     "qr-expired": "La sessió QR ha expirat. Si us plau, renoveu l'oferta de credencial.",
     "unsigned": "La credencial signada encara no està disponible",
-    "loading-VCs": "S'ha produït un error en carregar les credencials. Torni a intentar-ho més tard. Si el problema persisteix, posi's en contacte amb l'<a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equip de suport</a>.",
+    "loading-VCs": "S'ha produït un error en carregar les credencials. Torni a intentar-ho més tard. Si el problema persisteix, posi's en contacte amb {{supportLink}}.",
     "Errunsigned": "No s'ha pogut obtenir la credencial",
     "no-connection": "S'ha perdut la connexió. Comprovi la connexió a internet i torni-ho a intentar.",
-    "navigation": "Error inesperat en intentar accedir a la pàgina. Si el problema persisteix, contacteu <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>l'equip de suport</a>",
+    "navigation": "Error inesperat en intentar accedir a la pàgina. Si el problema persisteix, contacteu {{supportLink}}",
     "camera": {
       "not-readable": "No es pot accedir a la càmera. Assegura't que cap altra aplicació l'estigui utilitzant. Pot ser que hagis de refrescar la pàgina.",
       "not-allowed": "L'accés a la càmera està denegat. Comprova els permisos del teu navegador. Si el problema persisteix, intenta refrescar la pàgina.",
@@ -366,6 +382,7 @@
   "vc-fields": {
     "delete": "Eliminar credencial",
     "copy-success": "S'ha copiat al porta-retalls",
+    "copy": "Copiar",
     "modal-title": "Detalls de credencial",
     "title": "Informació de credencials",
     "credentialInfo": {
@@ -529,6 +546,7 @@
     "ok": "OK",
     "error-header": "No es pot eliminar",
     "last-passkey-error": "No pots eliminar la teva última passkey. Registra un nou dispositiu primer.",
+    "unavailable": "Els dispositius connectats només estan disponibles quan el wallet fa servir un compte de servidor.",
     "load-error": "No s'han pogut carregar els teus dispositius. Torna-ho a provar.",
     "retry": "Tornar a provar",
     "no-passkeys": "No hi ha passkeys registrades.",

@@ -1,5 +1,5 @@
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { DevicesPage } from './devices.page';
+import { DevicesPage, PASSKEY_LIST_TIMEOUT_MS } from './devices.page';
 import { AlertController, IonicModule, NavController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -7,7 +7,7 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { LangChangeEvent, TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Router } from '@angular/router';
 import { EventEmitter, NO_ERRORS_SCHEMA } from '@angular/core';
-import { of, throwError } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 import { WALLET_DISCOVERY_GATEWAY } from 'src/app/core/gateways/wallet-discovery.gateway';
 import { AuthService } from 'src/app/core/services/auth.service';
@@ -113,11 +113,11 @@ describe('T-17: DevicesPage > isServerMode > reads from WalletDiscoveryService (
     expect(component.isServerMode).toBe(false);
   });
 
-  it('should redirect to /tabs/settings when isServerMode is false (browser mode)', async () => {
-    await createModule('browser');
-    const router = TestBed.inject(Router);
+  it('should mark the feature unavailable when isServerMode is false (browser mode)', async () => {
+    const fixture = await createModule('browser');
 
-    expect(router.navigate).toHaveBeenCalledWith(['/tabs/settings']);
+    expect(fixture.componentInstance.unavailable()).toBe(true);
+    expect(fixture.componentInstance.loading()).toBe(false);
   });
 
   it('should load passkeys when isServerMode is true (server mode)', async () => {
@@ -326,12 +326,15 @@ describe('T8: DevicesPage > error scenarios (EUD-143)', () => {
   // Already covered by T-17 ("should redirect to /tabs/settings when isServerMode is false").
   // Reproduced here for explicit AC traceability.
 
-  it('ES-02: should redirect to /tabs/settings and not load passkeys in browser mode', async () => {
-    await createModule('browser');
+  it('ES-02: should explain the situation instead of querying the server in browser mode', async () => {
+    const fixture = await createModule('browser');
+    const el: HTMLElement = fixture.nativeElement;
     const router = TestBed.inject(Router);
 
-    expect(router.navigate).toHaveBeenCalledWith(['/tabs/settings']);
     expect(mockPasskeyApi.listPasskeys).not.toHaveBeenCalled();
+    expect(el.querySelector('.unavailable-state')).toBeTruthy();
+    expect(el.querySelector('.loading-state')).toBeFalsy();
+    expect(router.navigate).not.toHaveBeenCalledWith(['/tabs/settings']);
   });
 
   // --- ES-03 -----------------------------------------------------------
@@ -349,6 +352,23 @@ describe('T8: DevicesPage > error scenarios (EUD-143)', () => {
     const retryButton = el.querySelector('ion-button[ng-reflect-fill="outline"]') ??
                         el.querySelector('.error-state ion-button');
     expect(retryButton).toBeTruthy();
+  });
+
+  it('ES-04: should fall back to the error state when the backend never answers', async () => {
+    jest.useFakeTimers();
+    mockPasskeyApi.listPasskeys.mockReturnValue(NEVER);
+
+    const fixture = await createModule('server');
+    const el: HTMLElement = fixture.nativeElement;
+
+    expect(el.querySelector('.loading-state')).toBeTruthy();
+
+    jest.advanceTimersByTime(PASSKEY_LIST_TIMEOUT_MS);
+    fixture.detectChanges();
+
+    expect(el.querySelector('.loading-state')).toBeFalsy();
+    expect(el.querySelector('.error-state')).toBeTruthy();
+    jest.useRealTimers();
   });
 
   it('ES-03: should not render partial data or passkey list when backend fails', async () => {

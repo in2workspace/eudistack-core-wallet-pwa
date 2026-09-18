@@ -1,7 +1,8 @@
 import { inject, Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, of } from 'rxjs';
+import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { Router } from '@angular/router';
 import { PasskeyPrfService } from './passkey-prf.service';
+import { AuthService, TokenPairResponse } from './auth.service';
 
 /**
  * Auth service for browser-only (PRF) mode.
@@ -11,7 +12,7 @@ import { PasskeyPrfService } from './passkey-prf.service';
  * PRF-derived signing keys for credential operations.
  */
 @Injectable({ providedIn: 'root' })
-export class LocalAuthService {
+export class LocalAuthService extends AuthService {
   private readonly authenticated$ = new BehaviorSubject<boolean>(false);
   private readonly initialized$ = new BehaviorSubject<boolean>(false);
   private readonly name$ = new BehaviorSubject<string>('');
@@ -21,6 +22,7 @@ export class LocalAuthService {
 
   constructor() {
     // Initialization is synchronous — just check localStorage.
+    super();
     this.initialized$.next(true);
   }
 
@@ -45,6 +47,10 @@ export class LocalAuthService {
   /** No JWT tokens in browser mode. */
   getToken(): string {
     return '';
+  }
+
+  refreshAccessToken(): Observable<TokenPairResponse> {
+    return throwError(() => new Error('No refresh token in browser mode'));
   }
 
   // --- Auth flow ---
@@ -84,6 +90,4 @@ export class LocalAuthService {
     const hasPasskey = this.hasPasskey();
     this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
   }
-
-  dispose(): void {}
 }

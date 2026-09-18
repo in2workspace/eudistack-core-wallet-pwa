@@ -5,12 +5,11 @@ import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, take } from 'rxjs';
 import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.service';
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
 import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
 import { PasskeyApiService } from 'src/app/core/services/passkey-api.service';
-import { base64UrlDecode } from 'src/app/core/utils/base64url';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
@@ -21,6 +20,12 @@ import { ActivityService } from 'src/app/core/services/activity.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 
 const RESEND_COOLDOWN_SECONDS = 180;
+
+// Reassures the user that initialization is still progressing.
+const INIT_SLOW_THRESHOLD_MS = 3000;
+// Above PwaInstallService's own hard ceiling (INSTALL_DECISION_HARD_TIMEOUT_MS):
+// a safety net in case something other than installDecision$ hangs.
+const INIT_FAIL_THRESHOLD_MS = 8000;
 
 type WatermarkShape = 'access' | 'email' | 'verify' | 'passkey';
 
@@ -53,6 +58,7 @@ export class LoginPage implements OnDestroy {
   errorMessage = '';
   readonly showInstallScreen = signal(!this.pwaInstall.isStandalone);
   showHelpModal = false;
+  showMacStepsModal = false;
 
   readonly helpFaqs = [
     { question: 'auth.access.help.q1', answer: 'auth.access.help.a1' },
@@ -60,12 +66,24 @@ export class LoginPage implements OnDestroy {
     { question: 'auth.access.help.q3', answer: 'auth.access.help.a3' },
   ];
 
+  readonly initTakingLong = signal(false);
+  readonly initFailed = signal(false);
+  // Set by retryInit() when installDecision$ never settled even past the fail
+  // threshold: installDecision$ is a shareReplay({ refCount: false }), so a
+  // fresh subscription cannot "restart" it — the only way out without a full
+  // reload is to stop waiting on it and treat the decision as resolved (false).
+  private readonly forceReady = signal(false);
+  private slowInitTimer: ReturnType<typeof setTimeout> | null = null;
+  private failInitTimer: ReturnType<typeof setTimeout> | null = null;
+
   // Server mode: multi-step flow
   email = '';
   otpValue = '';
   readonly step = signal<'email' | 'code' | 'passkey'>('email');
   needsPasskeySetup = false;
   deviceName = '';
+  private matchedPasskeyId: string | null = null;
+  private passkeyRetryTimer: ReturnType<typeof setTimeout> | null = null;
   readonly resendSecondsLeft = signal(0);
   private resendTimer: ReturnType<typeof setInterval> | null = null;
   private passkeyFromRefreshToken = false;
@@ -82,7 +100,18 @@ export class LoginPage implements OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly isBrowserMode = this.authService instanceof LocalAuthService;
+  readonly isMacSafari = this.pwaInstall.isMacSafari;
+  readonly macInstallSteps = ['step-1', 'step-2', 'step-3'] as const;
   readonly hasExistingPasskey = this.prfService.hasPasskey();
+
+  // EUD bug: Edge on Windows takes a request with no `authenticatorAttachment`
+  // straight to the Windows Hello PIN prompt and never offers the cross-device
+  // (QR) option that Chrome's account chooser shows for the same request. The
+  // `hints` sent with every WebAuthn call (see webauthn.constants.ts) narrow
+  // that gap, but Edge's native picker is outside our control — so on that
+  // specific combination we tell the user what to expect up front instead of
+  // letting them read a Windows-only PIN prompt as the app being broken.
+  readonly showEdgeWindowsPasskeyHint = /Windows/.test(navigator.userAgent) && /Edg\//.test(navigator.userAgent);
 
   readonly brandName = computed(() => {
     const name = this.theme()?.branding?.name?.trim();
@@ -90,7 +119,7 @@ export class LoginPage implements OnDestroy {
   });
 
   readonly screen = computed<'checking' | 'access' | 'browser' | 'email' | 'code' | 'passkey'>(() => {
-    const decision = this.installDecision();
+    const decision = this.forceReady() ? false : this.installDecision();
     if (decision === undefined) return 'checking';
     if (decision && this.showInstallScreen()) return 'access';
     if (this.isBrowserMode) return 'browser';
@@ -139,6 +168,8 @@ export class LoginPage implements OnDestroy {
   ionViewWillEnter(): void {
     this.loading = false;
     this.errorMessage = '';
+    this.forceReady.set(false);
+    this.startInitWatchdog();
 
     if (!this.isBrowserMode && localStorage.getItem('wallet_refresh_token')) {
       this.step.set('passkey');
@@ -155,11 +186,18 @@ export class LoginPage implements OnDestroy {
   }
 
   ionViewWillLeave(): void {
-    this.stopResendCountdown();
+    this.teardownTimers();
   }
 
   ngOnDestroy(): void {
+    this.teardownTimers();
+  }
+
+  /** Cancels every pending timer this page owns (resend cooldown, init watchdog, passkey retry). */
+  private teardownTimers(): void {
     this.stopResendCountdown();
+    this.clearInitWatchdog();
+    this.clearPasskeyRetryTimer();
   }
 
   async installApp(): Promise<void> {
@@ -177,6 +215,59 @@ export class LoginPage implements OnDestroy {
 
   closeHelp(): void {
     this.showHelpModal = false;
+  }
+
+  openMacSteps(): void {
+    this.showMacStepsModal = true;
+  }
+
+  closeMacSteps(): void {
+    this.showMacStepsModal = false;
+  }
+
+  // --- Initialization watchdog ---
+
+  /**
+   * Guards against installDecision$ (or any future init dependency) never
+   * settling: escalates the spinner to a "taking longer" message and, past
+   * INIT_FAIL_THRESHOLD_MS, to a friendly error screen. retryInit() from that
+   * screen forces past the stuck probe (see forceReady) rather than merely
+   * re-arming these timers, so it recovers without a manual browser refresh.
+   */
+  private startInitWatchdog(): void {
+    this.clearInitWatchdog();
+    this.initTakingLong.set(false);
+    this.initFailed.set(false);
+
+    this.slowInitTimer = setTimeout(() => this.initTakingLong.set(true), INIT_SLOW_THRESHOLD_MS);
+    this.failInitTimer = setTimeout(() => this.initFailed.set(true), INIT_FAIL_THRESHOLD_MS);
+
+    this.pwaInstall.installDecision$.pipe(
+      take(1),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.clearInitWatchdog());
+  }
+
+  private clearInitWatchdog(): void {
+    if (this.slowInitTimer) clearTimeout(this.slowInitTimer);
+    if (this.failInitTimer) clearTimeout(this.failInitTimer);
+    this.slowInitTimer = null;
+    this.failInitTimer = null;
+  }
+
+  retryInit(): void {
+    // installDecision$ is shareReplay({ refCount: false }): resubscribing does not
+    // restart its race, so simply re-arming the watchdog can't recover a stuck probe.
+    // Once we've actually shown the failure screen, stop waiting on it and proceed
+    // as if it had resolved to false (no install screen, straight to login).
+    if (this.initFailed()) {
+      this.forceReady.set(true);
+    }
+    this.startInitWatchdog();
+  }
+
+  reloadApp(): void {
+    window.location.reload();
   }
 
   // --- Browser mode: single-step passkey login ---
@@ -311,25 +402,45 @@ export class LoginPage implements OnDestroy {
    * (if any) must still be found among them, or `verifyPasskey()` will fail with
    * "No passkey found" / a WebAuthn assertion error with no way to register instead.
    */
-  private resolvePasskeySetupStep(): void {
+  private resolvePasskeySetupStep(retriedAfterError = false): void {
     const localCredentialId = this.prfService.getCredentialId();
 
     this.passkeyApi.listPasskeys().pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: (passkeys) => {
-        this.needsPasskeySetup = !localCredentialId
-          || !passkeys.some(passkey => passkey.credentialId === localCredentialId);
+        const matched = passkeys.find(passkey => passkey.credentialId === localCredentialId);
+        this.matchedPasskeyId = matched?.id ?? null;
+        this.needsPasskeySetup = !localCredentialId || !matched;
         this.finishPasskeySetupStep();
       },
       error: (err) => {
-        // Fail-safe: if we can't confirm the account's server-side devices, assume
-        // it needs one rather than silently skipping registration.
-        console.warn('[LoginPage] listPasskeys failed, defaulting to needsPasskeySetup=true', err);
+        // A single network/5xx blip here used to force needsPasskeySetup=true
+        // immediately, repeating device registration for a transient failure
+        // unrelated to whether the passkey is actually still registered.
+        // Retry once; the timer is cancelled on view leave/destroy.
+        if (!retriedAfterError) {
+          console.warn('[LoginPage] listPasskeys failed, retrying once', err);
+          this.clearPasskeyRetryTimer();
+          this.passkeyRetryTimer = setTimeout(() => this.resolvePasskeySetupStep(true), 1000);
+          return;
+        }
+        // Fail-safe after the retry: could not confirm the account's server-side
+        // devices, so assume registration is needed. Drop any stale matched id so
+        // a later confirm-session cannot reuse it.
+        console.warn('[LoginPage] listPasskeys failed twice, defaulting to needsPasskeySetup=true', err);
+        this.matchedPasskeyId = null;
         this.needsPasskeySetup = true;
         this.finishPasskeySetupStep();
       }
     });
+  }
+
+  private clearPasskeyRetryTimer(): void {
+    if (this.passkeyRetryTimer !== null) {
+      clearTimeout(this.passkeyRetryTimer);
+      this.passkeyRetryTimer = null;
+    }
   }
 
   private finishPasskeySetupStep(): void {
@@ -345,22 +456,29 @@ export class LoginPage implements OnDestroy {
     this.errorMessage = '';
 
     try {
-      await this.authenticateLocally();
+      await (this.authService as RemoteAuthService).unlockWithPasskey();
+    } catch (err: any) {
+      this.errorMessage = err?.message || 'Passkey verification failed';
+      this.loading = false;
+      return;
+    }
 
-      if (this.passkeyFromRefreshToken) {
-        await firstValueFrom((this.authService as RemoteAuthService).refreshAccessToken());
+    try {
+      if (!this.isBrowserMode && !this.authService.getToken()) {
+        throw new Error('No access token');
       }
 
+      await this.attributeSessionToDevicePasskey();
       await this.syncCredentialsThenNavigate();
     } catch (err: any) {
       if (this.passkeyFromRefreshToken) {
-        localStorage.removeItem('wallet_refresh_token');
         this.passkeyFromRefreshToken = false;
         this.step.set('email');
-        this.errorMessage = 'Your session has expired. Please sign in again.';
+        this.errorMessage = this.translate.instant('auth.errors.session-expired-request-code');
       } else {
         this.errorMessage = err?.message || 'Passkey verification failed';
       }
+    } finally {
       this.loading = false;
     }
   }
@@ -386,13 +504,24 @@ export class LoginPage implements OnDestroy {
     }
 
     try {
+      if (!this.isBrowserMode && !this.authService.getToken()) {
+        await (this.authService as RemoteAuthService).ensureAccessToken();
+      }
       await firstValueFrom(this.passkeyApi.registerPasskey({
         credentialId,
         displayName: this.deviceName.trim() || this.getDeviceName(),
-        userAgent: navigator.userAgent
+        userAgent: navigator.userAgent,
+        refreshToken: localStorage.getItem('wallet_refresh_token')
       }));
       await this.syncCredentialsThenNavigate();
     } catch {
+      // The WebAuthn credential was created locally but the server never learned
+      // about it: roll back the local credential_id/has_passkey so the next
+      // attempt starts clean instead of the device permanently believing it has
+      // a passkey the account doesn't. The WebAuthn user handle (passkey-prf's
+      // createPasskey) is kept, so the retry replaces the same resident
+      // credential in the authenticator rather than creating another one.
+      await this.passkeyStore.clearCredentialId();
       this.errorMessage = this.translate.instant('auth.errors.passkey-register-failed');
     } finally {
       this.loading = false;
@@ -421,27 +550,41 @@ export class LoginPage implements OnDestroy {
   }
 
   private async authenticateLocally(): Promise<void> {
-    const credentialId = this.prfService.getCredentialId();
-    if (!credentialId) {
-      throw new Error('No passkey found');
+    await this.prfService.assertLocalPasskey();
+  }
+
+  /**
+   * Attributes this session's refresh token to the passkey that just verified it,
+   * so the backend can revoke/rotate this device's tokens without touching the
+   * account's other devices. Covers both entry points: the OTP flow (where
+   * `resolvePasskeySetupStep` already resolved `matchedPasskeyId`) and the
+   * different-day resume flow (`ionViewWillEnter` with a stored refresh token,
+   * which never lists passkeys) — there we resolve this device's server passkey
+   * from its local credential id here. Best-effort: never blocks a login that
+   * already passed WebAuthn verification.
+   */
+  private async attributeSessionToDevicePasskey(): Promise<void> {
+    const refreshToken = localStorage.getItem('wallet_refresh_token');
+    if (!refreshToken) return;
+
+    let passkeyId = this.matchedPasskeyId;
+    if (!passkeyId) {
+      const localCredentialId = this.prfService.getCredentialId();
+      if (!localCredentialId) return;
+      try {
+        const passkeys = await firstValueFrom(this.passkeyApi.listPasskeys());
+        passkeyId = passkeys.find(passkey => passkey.credentialId === localCredentialId)?.id ?? null;
+      } catch (err) {
+        console.warn('[LoginPage] listPasskeys failed while attributing session', err);
+        return;
+      }
     }
+    if (!passkeyId) return;
 
-    const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer;
-    const credentialIdBuffer = base64UrlDecode(credentialId).buffer as ArrayBuffer;
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge,
-        allowCredentials: [{
-          id: credentialIdBuffer,
-          type: 'public-key',
-        }],
-        userVerification: 'required',
-        timeout: 60_000,
-      },
-    });
-
-    if (!assertion) {
-      throw new Error('Authentication cancelled');
+    try {
+      await firstValueFrom(this.passkeyApi.confirmSession(passkeyId, refreshToken));
+    } catch (err) {
+      console.warn('[LoginPage] confirm-session failed, session stays unattributed', err);
     }
   }
 

@@ -8,8 +8,9 @@
  *  T-auth-4 — /api/v1/auth/passkeys includes Authorization header (exception)
  *  T-auth-5 — external URL passes through without Authorization header
  *  T-auth-6 — /assets/* bypasses AuthService (ThemeService bootstrap timing fix)
- *  T-auth-7 — 401 response on own-backend triggers forceLogout
- *  T-auth-8 — 401 response on own-backend marks the error via SessionExpiryMarkerService
+ *  T-auth-7 — 401 on own-backend: refresh fails → forceLogout
+ *  T-auth-8 — 401 on own-backend marks the error via SessionExpiryMarkerService
+ *  T-auth-9 — 401 then successful refresh retries once with new Bearer and does not forceLogout
  */
 
 import { TestBed } from '@angular/core/testing';
@@ -18,8 +19,9 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { HttpClient, HttpErrorResponse, HttpStatusCode, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { of, throwError, Observable } from 'rxjs';
 
-import { AuthService } from '../services/auth.service';
+import { AuthService, TokenPairResponse } from '../services/auth.service';
 import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
 import { authInterceptor } from './auth.interceptor';
 import { environment } from 'src/environments/environment';
@@ -36,6 +38,9 @@ class MockAuthService extends AuthService {
   getName$() { return null as any; }
   logout() { return null as any; }
   forceLogout() {}
+  refreshAccessToken(): Observable<TokenPairResponse> {
+    return throwError(() => new Error('No refresh token'));
+  }
 }
 
 describe('authInterceptor', () => {
@@ -152,5 +157,26 @@ describe('authInterceptor', () => {
 
     expect(capturedError).toBeTruthy();
     expect(sessionExpiryMarker.isSessionExpired(capturedError as HttpErrorResponse)).toBe(true);
+  });
+
+  it('T-auth-9: 401 then successful refresh retries once with new Bearer and does not forceLogout', () => {
+    const forceLogoutSpy = jest.spyOn(mockAuth, 'forceLogout');
+    mockAuth.setToken('expired-jwt');
+    mockAuth.refreshAccessToken = () => {
+      mockAuth.setToken('new-jwt');
+      return of({ accessToken: 'new-jwt', refreshToken: 'r', expiresIn: 900 });
+    };
+    const url = `${OWN_BACKEND}/api/v1/credentials`;
+
+    httpClient.get(url).subscribe();
+
+    const first = httpMock.expectOne(url);
+    first.flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
+
+    const second = httpMock.expectOne(url);
+    expect(second.request.headers.get('Authorization')).toBe('Bearer new-jwt');
+    second.flush([]);
+
+    expect(forceLogoutSpy).not.toHaveBeenCalled();
   });
 });

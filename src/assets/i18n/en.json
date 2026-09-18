@@ -124,7 +124,14 @@
         "q3": "Can I continue without installing the Wallet?",
         "a3": "Yes. You can continue in your browser, although some features may be limited.",
         "close": "Close"
-      }
+      },
+      "mac-modal-title": "Install the Wallet on your Mac",
+      "mac-steps-intro": "To install it on your Mac:",
+      "mac-steps-aria": "Steps to install Wallet on macOS",
+      "mac-step-1": "Open Safari's File menu.",
+      "mac-step-2": "Choose “Add to Dock…” and confirm the name.",
+      "mac-step-3": "Open the app from the Dock to continue.",
+      "mac-reauth-notice": "If you install the app later, you may need to sign in again."
     },
     "login": {
       "title": "Register your device",
@@ -134,6 +141,12 @@
       "passkey-button": "Sign in with Passkey",
       "enter-email": "Enter your email to get started",
       "verify-passkey": "Use your passkey to access your account securely.",
+      "initializing": "Setting up your wallet…",
+      "initializing-slow": "This is taking longer than expected…",
+      "init-error-title": "We couldn't load your wallet",
+      "init-error-subtitle": "Something went wrong while preparing the app. You can try again or reload the page.",
+      "retry": "Try again",
+      "reload-app": "Reload the app",
       "email-title": "Continue with your email",
       "email-subtitle": "Enter the email address associated with your {{brand}} account."
     },
@@ -172,7 +185,8 @@
       "verified-title": "Email verified!",
       "setup-title": "Set up a passkey",
       "verified-subtitle": "Your email has been successfully verified.",
-      "setup-subtitle": "Set up a passkey to complete access on this device."
+      "setup-subtitle": "Set up a passkey to complete access on this device.",
+      "edge-windows-hint": "In Microsoft Edge you'll see the Windows Hello PIN to verify your identity. If you'd rather use your phone as your security key, open this page in Google Chrome."
     },
     "reauth": {
       "subtitle": "Verify your email to restore your session",
@@ -181,7 +195,8 @@
     "errors": {
       "too-many-attempts": "Too many attempts. Please try again later.",
       "too-many-attempts-otp": "Too many incorrect attempts. Please request a new code.",
-      "passkey-register-failed": "Failed to register this device. Please try again."
+      "passkey-register-failed": "Failed to register this device. Please try again.",
+      "session-expired-request-code": "Your session has expired. Request a new verification code to continue opening your credential offer."
     }
   },
   "otp-input": {
@@ -301,6 +316,7 @@
   "vc-fields": {
     "delete": "Delete credential",
     "copy-success": "Copied to clipboard",
+    "copy": "Copy",
     "modal-title": "Credential Details",
     "title": "Credential Info",
     "credentialInfo": {
@@ -388,7 +404,8 @@
     "issued-by": "Issued by"
   },
   "errors": {
-    "default": "Something went wrong. If it keeps happening, please contact the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
+    "default": "Something went wrong. If it keeps happening, please contact {{supportLink}}.",
+    "support-team-label": "the support team",
     "session-expired": "Your session has expired. Please sign in again.",
     "key-storage-unavailable": "This browser can’t securely store keys. You won’t be able to activate or use credentials on this device.",
     "key-storage-public-only": "This browser can’t securely store keys. You can add credentials, but they may stop working after you close or reload the app.",
@@ -427,21 +444,21 @@
     "server-error": "The server encountered an error. Please try again later.",
     "verifier-post-failed": "We couldn’t send the login response. Please try again.",
     "signature-failed": "We couldn’t sign the presentation. Please try again.",
-    "failed-qr-process": "We couldn't process the QR code.<br>It might be invalid or already used. Please refresh it. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
+    "failed-qr-process": "We couldn't process the QR code. It might be invalid or already used. Please refresh it. If the problem persists, report it to {{supportLink}}.",
     "invalid-qr": "The presented QR code is not valid",
     "no-credentials-available": "There are no credentials available to login",
     "expired-credentialOffer": "The credential offer is expired or already used. Please refresh and try again later, or contact your company's LEAR to get a new credential.",
     "cannot-get-VC": "Issuer credential could not be obtained",
     "signing-failed": "We're experiencing a temporary technical issue. Please close this screen and try again in a few minutes using the link in the email you received.",
     "cannot-save-VC": "The credential could not be saved successfully",
-    "incorrect-pin": "Incorrect PIN. Please refresh the credential offer. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
-    "pin-expired": "You didn't enter the PIN within the time limit. Please refresh the credential offer. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
+    "incorrect-pin": "Incorrect PIN. Please refresh the credential offer. If the problem persists, report it to {{supportLink}}.",
+    "pin-expired": "You didn't enter the PIN within the time limit. Please refresh the credential offer. If the problem persists, report it to {{supportLink}}.",
     "qr-expired": "The QR session has expired. Please refresh the credential offer.",
     "unsigned": "The signed credential is not yet available",
-    "loading-VCs": "There was an error loading credentials. Please try again. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
+    "loading-VCs": "There was an error loading credentials. Please try again. If the problem persists, report it to {{supportLink}}.",
     "Errunsigned": "Credential could not be obtained",
     "no-connection": "Connection was lost. Please check your network and try again.",
-    "navigation": "There was an unexpected problem when trying to access the page. If the problem persists, report it to the <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>support team</a>.",
+    "navigation": "There was an unexpected problem when trying to access the page. If the problem persists, report it to {{supportLink}}.",
     "camera": {
       "not-readable": "The camera cannot be accessed. Make sure no other application is using it. You may need to refresh the page.",
       "not-allowed": "Camera access is denied. Check your browser permissions. If the issue persists, try refreshing the page.",
@@ -533,6 +550,7 @@
     "ok": "OK",
     "error-header": "Cannot Delete",
     "last-passkey-error": "You cannot delete your last passkey. Register a new device first.",
+    "unavailable": "Connected devices are only available when the wallet uses a server account.",
     "load-error": "Could not load your devices. Please try again.",
     "retry": "Retry",
     "no-passkeys": "No passkeys registered.",

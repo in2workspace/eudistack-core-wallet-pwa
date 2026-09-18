@@ -1,14 +1,16 @@
-import { inject, Injectable, OnDestroy, Provider } from '@angular/core';
+import { inject, Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { BehaviorSubject, Observable, of, throwError, firstValueFrom } from 'rxjs';
+import { catchError, tap, shareReplay } from 'rxjs/operators';
 import { Router } from '@angular/router';
-import { LocalAuthService } from './local-auth.service';
 import { PasskeyStoreService } from './passkey-store.service';
-import { WalletDiscoveryService } from './wallet-discovery.service';
 import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
 import { UrlResolverService } from './url-resolver.service';
 import { TenantService } from './tenant.service';
+import { ToastServiceHandler } from '../../shared/services/toast.service';
+import { PasskeyPrfService } from './passkey-prf.service';
+
+export type AuthFailureMode = 'force-logout' | 'clear-only';
 
 export interface TokenPairResponse {
   accessToken: string;
@@ -28,27 +30,9 @@ export abstract class AuthService {
   abstract getToken(): string;
   abstract logout(): Observable<void>;
   abstract forceLogout(): void;
+  abstract refreshAccessToken(options?: { onAuthFailure?: AuthFailureMode }): Observable<TokenPairResponse>;
   dispose(): void {}
 }
-
-/**
- * DI provider that selects the right AuthService implementation based on the
- * wallet mode resolved at bootstrap by `WalletDiscoveryService` (AC-009.2b,
- * AC-009.3b, AC-009.5d — EUDISTACK-502).
- *
- * The factory runs after `APP_INITIALIZER` completes, so `mode()` is always
- * synchronous and deterministic for the session (AD-3).
- */
-export const AUTH_SERVICE_PROVIDER: Provider = {
-  provide: AuthService,
-  useFactory: () => {
-    if (inject(WalletDiscoveryService).mode() === 'server') {
-      return inject(RemoteAuthService);
-    }
-    return inject(LocalAuthService);
-  },
-};
-
 
 /**
  * Auth service for server/enterprise mode.
@@ -68,6 +52,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private static readonly BROADCAST_FORCE_LOGOUT = 'forceWalletLogout';
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
+  private refreshInFlight$: Observable<TokenPairResponse> | null = null;
 
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
@@ -75,6 +60,8 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
   private readonly urlResolver = inject(UrlResolverService);
   private readonly tenantService = inject(TenantService);
+  private readonly toastServiceHandler = inject(ToastServiceHandler);
+  private readonly prfService = inject(PasskeyPrfService);
 
   private get authBase(): string { return `${this.urlResolver.serverUrl()}/api/v1/auth`; }
 
@@ -99,19 +86,34 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   // --- Token management ---
 
-  refreshAccessToken(): Observable<TokenPairResponse> {
+  refreshAccessToken(options?: { onAuthFailure?: AuthFailureMode }): Observable<TokenPairResponse> {
     if (!this.refreshTokenValue) {
       return throwError(() => new Error('No refresh token'));
     }
-    return this.http.post<TokenPairResponse>(`${this.authBase}/refresh`, {
+    if (this.refreshInFlight$) {
+      return this.refreshInFlight$;
+    }
+    const onAuthFailure = options?.onAuthFailure ?? 'force-logout';
+    this.refreshInFlight$ = this.http.post<TokenPairResponse>(`${this.authBase}/refresh`, {
       refreshToken: this.refreshTokenValue
     }).pipe(
       tap(response => this.handleTokenResponse(response)),
       catchError(err => {
         if (!this.disposed) {
-          this.forceLogout();
+          if (onAuthFailure === 'clear-only') {
+            this.clearState();
+          } else {
+            this.forceLogout();
+          }
         }
         return throwError(() => err);
+      }),
+      shareReplay({ bufferSize: 1, refCount: true })
+    );
+    return this.refreshInFlight$.pipe(
+      tap({
+        complete: () => { this.refreshInFlight$ = null; },
+        error: () => { this.refreshInFlight$ = null; }
       })
     );
   }
@@ -146,6 +148,27 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   isLoggedIn(): boolean {
     return this.authenticated$.getValue();
+  }
+
+  async unlockWithPasskey(): Promise<void> {
+    await this.prfService.assertLocalPasskey();
+    if (this.refreshTokenValue && !this.getToken()) {
+      try {
+        await firstValueFrom(this.refreshAccessToken({ onAuthFailure: 'clear-only' }));
+      } catch {
+        // WebAuthn succeeded; clear-only already ran. LoginPage decides the next
+        // step from getToken() so a cancelled biometric is not confused with an
+        // expired refresh token (Dedalo-1052543).
+      }
+    }
+  }
+
+  async ensureAccessToken(): Promise<void> {
+    if (this.getToken()) return;
+    if (!this.refreshTokenValue) {
+      throw new Error('No refresh token');
+    }
+    await firstValueFrom(this.refreshAccessToken({ onAuthFailure: 'clear-only' }));
   }
 
   // --- Private helpers ---
@@ -203,10 +226,20 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
     }
+
     const refreshInMs = Math.max((expiresInSeconds - 60) * 1000, 0);
+
     this.refreshTimer = setTimeout(() => {
+      // refreshAccessToken() already calls forceLogout() from its own catchError
+      // before rethrowing — this is the background/silent path (no user action
+      // involved), so the only thing left to do here is let the user know why
+      // they just got bounced to login (E-02: silent session expiry).
       this.refreshAccessToken().subscribe({
-        error: () => { if (!this.disposed) { this.forceLogout(); } }
+        error: () => {
+          if (!this.disposed) {
+            this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.session-expired').subscribe();
+          }
+        }
       });
     }, refreshInMs);
   }

@@ -1,0 +1,60 @@
+name: Deploy PRO fallback
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without the leading v
+        required: true
+        type: string
+      base_artifact_digest:
+        description: Base manifest digest (sha256:...)
+        required: true
+        type: string
+      base_archive_digest:
+        description: spa-base.tar.gz digest (sha256:...)
+        required: true
+        type: string
+      source_sha:
+        description: Exact 40-character release source commit
+        required: true
+        type: string
+      release_run_id:
+        description: Release workflow run containing the artifact and STG evidence
+        required: true
+        type: string
+      allow_downgrade:
+        description: Explicitly permit deployment of an older version
+        required: true
+        type: boolean
+        default: false
+      downgrade_reason:
+        description: Audit reason required for a downgrade
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+  id-token: write
+  attestations: read
+
+jobs:
+  deploy:
+    uses: in2workspace/eudistack-devops-workflows/.github/workflows/spa-deploy-pro.yml@5f949958c1932739d0763fd7d733b6b1a634eba2
+    with:
+      version: ${{ inputs.version }}
+      base_artifact_digest: ${{ inputs.base_artifact_digest }}
+      base_archive_digest: ${{ inputs.base_archive_digest }}
+      source_sha: ${{ inputs.source_sha }}
+      release_run_id: ${{ inputs.release_run_id }}
+      project_name: eudistack
+      region_code: ew1
+      spa_prefix: /wallet/
+      staging_environment: stg
+      production_environment: pro
+      production_smoke_url: https://sandbox.eudistack.net/wallet/
+      runtime_required_variables: LOGS_ENABLED,WALLET_MODE,PREFERRED_GRANT,WIA,WIA_INSTANCE_KEY_JWK
+      allow_downgrade: ${{ inputs.allow_downgrade }}
+      downgrade_reason: ${{ inputs.downgrade_reason }}
+    secrets: inherit

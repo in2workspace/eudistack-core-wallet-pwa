@@ -16,6 +16,7 @@ export interface RegisterPasskeyRequest {
   credentialId: string;
   displayName: string;
   userAgent?: string;
+  refreshToken?: string | null;
 }
 
 /**
@@ -74,6 +75,14 @@ export class PasskeyApiService {
    */
   revokeSessions(id: string): Observable<void> {
     return this.http.post<void>(`${this.authBase}/passkeys/${id}/revoke-sessions`, {});
+  }
+
+  /**
+   * Attributes the caller's current refresh token session to a passkey.
+   * POST /api/auth/passkeys/{id}/confirm-session
+   */
+  confirmSession(id: string, refreshToken: string): Observable<void> {
+    return this.http.post<void>(`${this.authBase}/passkeys/${id}/confirm-session`, { refreshToken });
   }
 }
 

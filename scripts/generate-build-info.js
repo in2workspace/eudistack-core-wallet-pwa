@@ -25,6 +25,15 @@ function resolveBuildId() {
   }
 }
 
+function resolveVersion(packageVersion) {
+  const releaseVersion = process.env.RELEASE_VERSION;
+  if (!releaseVersion) return packageVersion;
+  if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(releaseVersion)) {
+    throw new Error(`RELEASE_VERSION '${releaseVersion}' must use strict X.Y.Z format`);
+  }
+  return releaseVersion;
+}
+
 function render(version, buildId) {
   return (
     `// GENERATED FILE — do not edit. Produced by scripts/generate-build-info.js\n` +
@@ -46,18 +55,23 @@ function writeAtomic(body) {
 }
 
 function main() {
-  const { version } = require('../package.json');
+  const { version: packageVersion } = require('../package.json');
+  const version = resolveVersion(packageVersion);
   const buildId = resolveBuildId();
   writeAtomic(render(version, buildId));
   console.log(`[build-info] ${version} (${buildId})`);
 }
 
-// R-5/R-6: this script must NEVER exit 1 — a failure here would break every
-// build and every test run of the repo, not just the About section. If the
-// primary path fails, degrade to a minimal but still-valid file.
+// Local builds degrade to a minimal valid file. Release builds fail instead,
+// because silently replacing their authoritative version would mislabel the artifact.
 try {
   main();
 } catch (e) {
+  if (process.env.RELEASE_VERSION) {
+    console.error('[build-info] invalid release metadata:', e.message);
+    process.exitCode = 1;
+    return;
+  }
   console.warn('[build-info] degraded:', e.message);
   try {
     const { version } = require('../package.json');

@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { AppError } from 'src/app/core/models/error/AppError';
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
+import { WEBAUTHN_ASSERTION_HINTS } from 'src/app/core/constants/webauthn.constants';
 
 /**
  * Thin wrapper that evaluates the WebAuthn PRF extension with a given salt.
@@ -55,6 +56,7 @@ export class PrfClientService {
             },
           } as AuthenticationExtensionsClientInputs,
           userVerification: 'required',
+          hints: WEBAUTHN_ASSERTION_HINTS,
         },
       } as CredentialRequestOptions);
 
@@ -110,6 +112,7 @@ export class PrfClientService {
             prf: { eval: { first: prfSalt } },
           } as AuthenticationExtensionsClientInputs,
           userVerification: 'required',
+          hints: WEBAUTHN_ASSERTION_HINTS,
         },
       } as CredentialRequestOptions);
 

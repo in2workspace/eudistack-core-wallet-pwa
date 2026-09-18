@@ -12,7 +12,6 @@
     "connected-devices": "Dispositivos conectados",
     "settings": "Ajustes",
     "about": "Acerca de",
-    "signed-in-as": "Sesión iniciada como",
     "logout": "Cerrar sesión",
     "install": "Instalar app",
     "wallet": "Cartera"
@@ -112,7 +111,14 @@
         "q3": "¿Puedo continuar sin instalar el Wallet?",
         "a3": "Sí. Puedes continuar en el navegador, aunque algunas funcionalidades pueden estar limitadas.",
         "close": "Cerrar"
-      }
+      },
+      "mac-modal-title": "Instalar el Wallet en tu Mac",
+      "mac-steps-intro": "Para instalarla en tu Mac:",
+      "mac-steps-aria": "Pasos para instalar Wallet en macOS",
+      "mac-step-1": "Abre el menú Archivo de Safari.",
+      "mac-step-2": "Elige «Añadir al Dock…» y confirma el nombre.",
+      "mac-step-3": "Abre la app desde el Dock para continuar.",
+      "mac-reauth-notice": "Si instalas la app más adelante, es posible que tengas que volver a iniciar sesión."
     },
     "login": {
       "title": "Registra tu dispositivo",
@@ -122,6 +128,12 @@
       "passkey-button": "Iniciar sesión con Passkey",
       "enter-email": "Introduce tu email para empezar",
       "verify-passkey": "Verifica tu identidad con tu passkey",
+      "initializing": "Preparando tu wallet…",
+      "initializing-slow": "Esto está tardando más de lo habitual…",
+      "init-error-title": "No se ha podido cargar tu wallet",
+      "init-error-subtitle": "Ha ocurrido un problema al preparar la aplicación. Puedes reintentar o recargar la página.",
+      "retry": "Reintentar",
+      "reload-app": "Recargar la aplicación",
       "email-title": "Continúa con tu email",
       "email-subtitle": "Introduce la dirección de email asociada a tu cuenta de {{brand}}."
     },
@@ -160,7 +172,8 @@
       "verified-title": "¡Email verificado!",
       "setup-title": "Configura una passkey",
       "verified-subtitle": "Tu email se ha verificado correctamente.",
-      "setup-subtitle": "Configura una passkey para completar el acceso en este dispositivo."
+      "setup-subtitle": "Configura una passkey para completar el acceso en este dispositivo.",
+      "edge-windows-hint": "En Microsoft Edge verás el PIN de Windows Hello para verificar tu identidad. Si prefieres usar tu móvil como llave de acceso, abre esta página en Google Chrome."
     },
     "reauth": {
       "subtitle": "Verifica tu email para restaurar tu sesión",
@@ -169,7 +182,8 @@
     "errors": {
       "too-many-attempts": "Demasiados intentos. Por favor, inténtalo más tarde.",
       "too-many-attempts-otp": "Demasiados intentos incorrectos. Por favor, solicita un nuevo código.",
-      "passkey-register-failed": "No se ha podido registrar este dispositivo. Inténtalo de nuevo."
+      "passkey-register-failed": "No se ha podido registrar este dispositivo. Inténtalo de nuevo.",
+      "session-expired-request-code": "Tu sesión ha caducado. Solicita un código de verificación para seguir abriendo la oferta de credencial."
     }
   },
   "otp-input": {
@@ -302,6 +316,7 @@
   "vc-fields": {
     "delete": "Eliminar credencial",
     "copy-success": "Copiado al portapapeles",
+    "copy": "Copiar",
     "modal-title": "Detalles de credencial",
     "title": "Información de credenciales",
     "credentialInfo": {
@@ -389,7 +404,8 @@
     "issued-by": "Emitida por"
   },
   "errors": {
-    "default": "Algo ha salido mal. Si vuelve a ocurrir, contacta con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
+    "default": "Algo ha salido mal. Si vuelve a ocurrir, contacta con {{supportLink}}.",
+    "support-team-label": "el equipo de soporte",
     "session-expired": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
     "key-storage-unavailable": "Este navegador no puede guardar claves de forma segura. No podrás activar ni usar credenciales en este dispositivo.",
     "key-storage-public-only": "Este navegador no puede guardar claves de forma segura. Puedes añadir credenciales, pero podrían dejar de funcionar al cerrar o recargar la app.",
@@ -428,21 +444,21 @@
     "server-error": "El servidor ha encontrado un error. Vuelve a intentarlo más tarde.",
     "verifier-post-failed": "No hemos podido enviar la respuesta de login. Inténtalo de nuevo.",
     "signature-failed": "No hemos podido firmar la presentación. Inténtalo de nuevo.",
-    "failed-qr-process": "Ha habido un error al procesar QR. Puede que sea inválido o que ya haya sido usado antes. Refrésquelo, por favor. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>",
+    "failed-qr-process": "Ha habido un error al procesar QR. Puede que sea inválido o que ya haya sido usado antes. Refrésquelo, por favor. Si el problema persiste, póngase en contacto con {{supportLink}}",
     "invalid-qr": "El QR presentado es inválido",
     "no-credentials-available": "No hay ninguna credencial disponible para el login",
     "expired-credentialOffer": "La oferta de credencial está expirada o ya utilizada",
     "cannot-get-VC": "No se pudo obtener la credencial del Issuer",
     "signing-failed": "Estamos teniendo dificultades técnicas puntuales. Cierra esta pantalla e inténtalo de nuevo en unos minutos desde el enlace del correo que recibiste.",
     "cannot-save-VC": "No se pudo guardar correctamente la credencial",
-    "incorrect-pin": "PIN incorrecto. Por favor, renueve la oferta de credencial. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
-    "pin-expired": "No ha introducido el PIN dentro del límite de tiempo. Por favor, renueve la oferta de credencial. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
+    "incorrect-pin": "PIN incorrecto. Por favor, renueve la oferta de credencial. Si el problema persiste, póngase en contacto con {{supportLink}}.",
+    "pin-expired": "No ha introducido el PIN dentro del límite de tiempo. Por favor, renueve la oferta de credencial. Si el problema persiste, póngase en contacto con {{supportLink}}.",
     "qr-expired": "La sesión QR ha expirado. Por favor, renueve la oferta de credencial.",
     "unsigned": "La credencial firmada aún no está disponible.",
-    "loading-VCs": "Ha habido un error al cargar las credenciales. Vuélvalo a intentar más tarde. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>.",
+    "loading-VCs": "Ha habido un error al cargar las credenciales. Vuélvalo a intentar más tarde. Si el problema persiste, póngase en contacto con {{supportLink}}.",
     "Errunsigned": "No se pudo obtener la credencial",
     "no-connection": "Se perdió la conexión. Compruebe su conexión a internet e inténtelo de nuevo.",
-    "navigation": "Error inesperado al intentar acceder a la página. Si el problema persiste, póngase en contacto con el <a href='https://ticketing.dome-marketplace.eu/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>",
+    "navigation": "Error inesperado al intentar acceder a la página. Si el problema persiste, póngase en contacto con {{supportLink}}",
     "camera": {
       "not-readable": "No se puede acceder a la cámara. Asegúrate de que ninguna otra aplicación la esté utilizando. Es posible que necesites actualizar la página.",
       "not-allowed": "El acceso a la cámara está denegado. Revisa los permisos de tu navegador. Si el problema persiste, intenta actualizar la página.",
@@ -534,6 +550,7 @@
     "ok": "OK",
     "error-header": "No se puede eliminar",
     "last-passkey-error": "No puedes eliminar tu última passkey. Registra un nuevo dispositivo primero.",
+    "unavailable": "Los dispositivos conectados solo están disponibles cuando el wallet usa una cuenta de servidor.",
     "load-error": "No se pudieron cargar tus dispositivos. Inténtalo de nuevo.",
     "retry": "Reintentar",
     "no-passkeys": "No hay passkeys registradas.",

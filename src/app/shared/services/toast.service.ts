@@ -1,13 +1,31 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, SecurityContext, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { map, Observable, take } from 'rxjs';
 import { AlertController } from '@ionic/angular';
+import { DomSanitizer } from '@angular/platform-browser';
+
+/**
+ * Fixed destination for the "contact support" link embedded in some error
+ * messages. Kept out of the translated strings themselves — see
+ * SUPPORT_LINK_PLACEHOLDER.
+ */
+const SUPPORT_URL = 'https://ticketing.dome-marketplace.eu/';
+
+/**
+ * Token a translated message can contain to ask for the support link to be
+ * inlined. Swapped for a real anchor tag *after* escaping (see
+ * `renderMessage`), so the anchor itself — built in code, not translator
+ * content — is the only markup that ever reaches the DOM. Translator-authored
+ * prose stays escaped, preserving the EUD-142 (F2) XSS hardening.
+ */
+const SUPPORT_LINK_PLACEHOLDER = '{{supportLink}}';
 
 const ERROR_TRANSLATION_MAP: Record<string, string> = {
   'The received QR content cannot be processed': 'errors.invalid-qr',
   'There are no credentials available to login': 'errors.no-credentials-available',
   'There was a problem processing the QR. It might be invalid or already have been used': 'errors.failed-qr-process',
   'Error while fetching credentialOffer from the issuer': 'errors.expired-credentialOffer',
+  'Credential offer not found': 'errors.expired-credentialOffer',
   'Error while deserializing CredentialOffer': 'errors.invalid-credentialOffer',
   'Error while processing Credential Issuer Metadata from the Issuer': 'errors.invalid-issuerMetadata',
   'Error while fetching  Credential from Issuer': 'errors.cannot-get-VC',
@@ -25,6 +43,7 @@ const ERROR_TRANSLATION_MAP: Record<string, string> = {
 export class ToastServiceHandler {
   private readonly translate = inject(TranslateService);
   private readonly alertController = inject(AlertController);
+  private readonly sanitizer = inject(DomSanitizer);
 
   public showErrorAlert(message: string): Observable<unknown> {
     const translationKey = Object.keys(ERROR_TRANSLATION_MAP)
@@ -43,7 +62,7 @@ export class ToastServiceHandler {
         const alert = await this.alertController.create({
           message: `
             <div style="display: flex; align-items: center; gap: 50px;">
-              <span>${this.escapeHtml(translatedMessage)}</span>
+              <span>${this.renderMessage(translatedMessage)}</span>
             </div>
           `,
           buttons: [
@@ -87,7 +106,7 @@ export class ToastServiceHandler {
       el.dataset['variant'] = variant;
       el.innerHTML = `
         <ion-icon name="${icon}"></ion-icon>
-        <span>${this.escapeHtml(translatedMessage)}</span>
+        <span>${this.sanitizeHtml(translatedMessage)}</span>
       `;
 
       document.body.appendChild(el);
@@ -103,12 +122,28 @@ export class ToastServiceHandler {
     });
   }
 
-  private escapeHtml(value: string): string {
-    return String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+  /**
+   * Sanitizes the translated message (stripping scripts/event handlers/unsafe
+   * URLs but keeping safe markup — DomSanitizer, same primitive as the rest
+   * of this file), then — only if present — swaps SUPPORT_LINK_PLACEHOLDER
+   * for a real anchor. href/target/rel and the anchor's own label translation
+   * are all code-controlled, so the placeholder can only ever resolve to the
+   * one fixed support URL, regardless of what a translation string contains.
+   */
+  private renderMessage(translatedMessage: string): string {
+    const sanitized = this.sanitizeHtml(translatedMessage);
+    if (!sanitized.includes(SUPPORT_LINK_PLACEHOLDER)) {
+      return sanitized;
+    }
+
+    const label = this.sanitizeHtml(this.translate.instant('errors.support-team-label'));
+    const link = `<a href="${SUPPORT_URL}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+
+    return sanitized.split(SUPPORT_LINK_PLACEHOLDER).join(link);
+  }
+
+  private sanitizeHtml(value: string): string {
+    return this.sanitizer.sanitize(SecurityContext.HTML, String(value ?? '')) ?? '';
   }
 
   public showToast(messageKey: string, duration: number = 2000): void {
@@ -116,7 +151,7 @@ export class ToastServiceHandler {
       message: `
         <div style="display: flex; align-items: center; gap: 50px;">
           <ion-icon name="checkmark-circle"></ion-icon>
-          <span>${this.escapeHtml(this.translate.instant(messageKey))}</span>
+          <span>${this.sanitizeHtml(this.translate.instant(messageKey))}</span>
         </div>
       `,
       cssClass: 'custom-alert-ok',

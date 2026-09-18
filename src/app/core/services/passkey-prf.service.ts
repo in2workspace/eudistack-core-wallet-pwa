@@ -3,6 +3,7 @@ import { base64UrlEncode, base64UrlDecode } from '../utils/base64url';
 import { AppError } from '../models/error/AppError';
 import { p256 } from '@noble/curves/nist.js';
 import { PasskeyStoreService } from './passkey-store.service';
+import { WEBAUTHN_CREATE_HINTS, WEBAUTHN_ASSERTION_HINTS } from '../constants/webauthn.constants';
 
 const HKDF_INFO = 'eudistack:p256:v1';
 const MASTER_SALT = new TextEncoder().encode('eudistack:master:v1');
@@ -41,13 +42,56 @@ export class PasskeyPrfService {
   }
 
   /**
+   * Local WebAuthn assertion of the device passkey (no PRF, no server).
+   * Shared by server-mode resume (`RemoteAuthService.unlockWithPasskey`) and
+   * browser-mode login (`LoginPage.authenticateLocally`).
+   */
+  async assertLocalPasskey(): Promise<void> {
+    const credentialId = this.getCredentialId();
+    if (!credentialId) {
+      throw new Error('No passkey found');
+    }
+
+    const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer;
+    const credentialIdBuffer = base64UrlDecode(credentialId).buffer as ArrayBuffer;
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        allowCredentials: [{
+          id: credentialIdBuffer,
+          type: 'public-key',
+        }],
+        userVerification: 'required',
+        timeout: 60_000,
+        // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialRequestOptions (WebAuthn L3)
+        hints: WEBAUTHN_ASSERTION_HINTS,
+      },
+    });
+
+    if (!assertion) {
+      throw new Error('Authentication cancelled');
+    }
+  }
+
+  /**
    * Create a new discoverable passkey (client-side only, no backend).
    * The challenge is generated locally — the attestation is not verified.
    * Returns the base64url-encoded credential ID.
+   *
+   * `accountKey` scopes the reused WebAuthn user handle to one account (defaults
+   * to `displayName`, which is the account email in server mode). A retry by the
+   * same account reuses its handle; a different account gets a fresh one so the
+   * authenticator never overwrites the first account's resident credential.
    */
-  async createPasskey(displayName: string): Promise<string> {
+  async createPasskey(displayName: string, accountKey: string = displayName): Promise<string> {
     const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32));
-    const userId = globalThis.crypto.getRandomValues(new Uint8Array(16));
+
+    let userIdB64 = this.store.getWebAuthnUserId(accountKey);
+    if (!userIdB64) {
+      userIdB64 = base64UrlEncode(globalThis.crypto.getRandomValues(new Uint8Array(16)));
+      await this.store.setWebAuthnUserId(accountKey, userIdB64);
+    }
+    const userId = base64UrlDecode(userIdB64);
 
     const options: PublicKeyCredentialCreationOptions = {
       rp: { name: document.title || 'EUDI Wallet' },
@@ -70,6 +114,8 @@ export class PasskeyPrfService {
         prf: {},
       } as AuthenticationExtensionsClientInputs,
       timeout: 120_000,
+      // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialCreationOptions (WebAuthn L3)
+      hints: WEBAUTHN_CREATE_HINTS,
     };
 
     const credential = (await navigator.credentials.create({
@@ -143,6 +189,8 @@ export class PasskeyPrfService {
           // @ts-ignore — PRF extension not yet in TS lib types
           prf: { eval: { first: salt } },
         } as AuthenticationExtensionsClientInputs,
+        // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialRequestOptions (WebAuthn L3)
+        hints: WEBAUTHN_ASSERTION_HINTS,
       },
     })) as PublicKeyCredential | null;
 
