@@ -4,6 +4,7 @@ import { BUILD_INFO } from 'src/app/core/constants/build-info.constants';
 import {
   ISSUE_TRACKER_URL,
   SUPPORT_EMAIL,
+  SUPPORT_URL,
   SupportChannels,
   isEmailAddress,
   isHttpsUrl,
@@ -25,6 +26,7 @@ export class SupportChannelService {
       email: isEmailAddress(content?.supportEmail) ? content!.supportEmail! : SUPPORT_EMAIL,
       helpCenterUrl: isHttpsUrl(content?.knowledgeBaseUrl) ? content!.knowledgeBaseUrl! : null,
       issueTrackerUrl: isHttpsUrl(content?.issueTrackerUrl) ? content!.issueTrackerUrl! : ISSUE_TRACKER_URL,
+      supportUrl: isHttpsUrl(content?.supportUrl) ? content!.supportUrl! : SUPPORT_URL,
     };
   }
 

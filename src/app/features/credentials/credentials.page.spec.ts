@@ -48,7 +48,12 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     remove: jest.Mock;
   };
   let mockWalletService: { refreshCredentials: jest.Mock; getAllVCs: jest.Mock; updateCredentialStatus: jest.Mock };
-  let mockToastServiceHandler: { showErrorAlertByTranslateLabel: jest.Mock; showToast: jest.Mock; showErrorAlert: jest.Mock };
+  let mockToastServiceHandler: {
+    showErrorAlertByTranslateLabel: jest.Mock;
+    showToast: jest.Mock;
+    showErrorAlert: jest.Mock;
+    renderSupportMessage: jest.Mock;
+  };
   let mockHaptic: any;
 
   const mockValidVc: VerifiableCredential = { id: 'vc-valid', lifeCycleStatus: 'VALID' } as any;
@@ -96,6 +101,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       showErrorAlertByTranslateLabel: jest.fn().mockReturnValue(of(undefined)),
       showToast: jest.fn(),
       showErrorAlert: jest.fn().mockReturnValue(of(undefined)),
+      renderSupportMessage: jest.fn().mockImplementation((value: string) => value),
     };
 
     TestBed.overrideComponent(CredentialsPage, {
@@ -226,6 +232,18 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
         expect.any(Object)
       );
     }));
+
+    it('renders the load-error empty state as a real, clickable support link instead of the raw {{supportLink}} placeholder (regression)', () => {
+      mockToastServiceHandler.renderSupportMessage.mockReturnValue(
+        'There was an error loading credentials. Contact <a href="https://issues.example/new" target="_blank" rel="noopener noreferrer">the support team</a>.'
+      );
+
+      fixture.detectChanges();
+
+      const subtitle = fixture.nativeElement.querySelector('.empty-state-subtitle');
+      expect(subtitle.querySelector('a[href="https://issues.example/new"]')).toBeTruthy();
+      expect(subtitle.textContent).not.toContain('{{supportLink}}');
+    });
   });
 
   // AC-10 / NFR-S-142-08 / EC-09 (EUD-142, AD-4): the app-vc-view host itself is marked
