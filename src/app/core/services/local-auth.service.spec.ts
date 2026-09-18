@@ -46,6 +46,15 @@ describe('LocalAuthService', () => {
     expect(service.getToken()).toBe('');
   });
 
+  it('refreshAccessToken() errors and does not change getToken()', (done) => {
+    service.refreshAccessToken().subscribe({
+      error: () => {
+        expect(service.getToken()).toBe('');
+        done();
+      }
+    });
+  });
+
   it('getName$() should emit empty string initially', (done) => {
     service.getName$().subscribe(name => {
       expect(name).toBe('');

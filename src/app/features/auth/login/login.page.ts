@@ -10,7 +10,6 @@ import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.servi
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
 import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
 import { PasskeyApiService } from 'src/app/core/services/passkey-api.service';
-import { base64UrlDecode } from 'src/app/core/utils/base64url';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
@@ -19,7 +18,6 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
-import { WEBAUTHN_ASSERTION_HINTS } from 'src/app/core/constants/webauthn.constants';
 
 const RESEND_COOLDOWN_SECONDS = 180;
 
@@ -457,35 +455,26 @@ export class LoginPage implements OnDestroy {
     this.loading = true;
     this.errorMessage = '';
 
-    // 1. Local authentication (Biometrics / WebAuthn)
     try {
-      await this.authenticateLocally();
+      await (this.authService as RemoteAuthService).unlockWithPasskey();
     } catch (err: any) {
-      // WebAuthn error or cancellation: stay on 'passkey' step
-      // with the original browser/system error message.
       this.errorMessage = err?.message || 'Passkey verification failed';
       this.loading = false;
       return;
     }
 
-    // 2. Network operations (Refresh and Sync)
     try {
-      if (this.passkeyFromRefreshToken) {
-        // If it fails with 'clear-only', RemoteAuthService clears localStorage automatically
-        await firstValueFrom(
-          (this.authService as RemoteAuthService).refreshAccessToken({ onAuthFailure: 'clear-only' })
-        );
+      if (!this.isBrowserMode && !this.authService.getToken()) {
+        throw new Error('No access token');
       }
 
       await this.attributeSessionToDevicePasskey();
       await this.syncCredentialsThenNavigate();
     } catch (err: any) {
       if (this.passkeyFromRefreshToken) {
-        // Token has expired: return to the start of the flow with recovery message
         this.passkeyFromRefreshToken = false;
         this.step.set('email');
         this.errorMessage = this.translate.instant('auth.errors.session-expired-request-code');
-        // PENDING_DEEP_LINK_KEY stays intact to allow resumption after OTP
       } else {
         this.errorMessage = err?.message || 'Passkey verification failed';
       }
@@ -515,6 +504,9 @@ export class LoginPage implements OnDestroy {
     }
 
     try {
+      if (!this.isBrowserMode && !this.authService.getToken()) {
+        await (this.authService as RemoteAuthService).ensureAccessToken();
+      }
       await firstValueFrom(this.passkeyApi.registerPasskey({
         credentialId,
         displayName: this.deviceName.trim() || this.getDeviceName(),
@@ -558,30 +550,7 @@ export class LoginPage implements OnDestroy {
   }
 
   private async authenticateLocally(): Promise<void> {
-    const credentialId = this.prfService.getCredentialId();
-    if (!credentialId) {
-      throw new Error('No passkey found');
-    }
-
-    const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer;
-    const credentialIdBuffer = base64UrlDecode(credentialId).buffer as ArrayBuffer;
-    const assertion = await navigator.credentials.get({
-      publicKey: {
-        challenge,
-        allowCredentials: [{
-          id: credentialIdBuffer,
-          type: 'public-key',
-        }],
-        userVerification: 'required',
-        timeout: 60_000,
-        // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialRequestOptions (WebAuthn L3)
-        hints: WEBAUTHN_ASSERTION_HINTS,
-      },
-    });
-
-    if (!assertion) {
-      throw new Error('Authentication cancelled');
-    }
+    await this.prfService.assertLocalPasskey();
   }
 
   /**

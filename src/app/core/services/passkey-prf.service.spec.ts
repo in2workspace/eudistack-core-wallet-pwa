@@ -94,6 +94,31 @@ describe('PasskeyPrfService', () => {
     });
   });
 
+  describe('assertLocalPasskey', () => {
+    it('throws if no credential id is stored', async () => {
+      storeSpy.getCredentialId.mockReturnValue(null);
+      await expect(service.assertLocalPasskey()).rejects.toThrow('No passkey found');
+    });
+
+    it('sends client-device assertion hints, not hybrid-first', async () => {
+      storeSpy.getCredentialId.mockReturnValue(base64UrlEncode(new Uint8Array([1, 2, 3])));
+      (navigator.credentials.get as jest.Mock).mockResolvedValue({ id: 'assertion' });
+
+      await service.assertLocalPasskey();
+
+      const call = (navigator.credentials.get as jest.Mock).mock.calls[0][0];
+      expect(call.publicKey.hints).toEqual(WEBAUTHN_ASSERTION_HINTS);
+      expect(call.publicKey.hints[0]).not.toBe('hybrid');
+    });
+
+    it('throws when the authenticator returns no assertion', async () => {
+      storeSpy.getCredentialId.mockReturnValue(base64UrlEncode(new Uint8Array([1, 2, 3])));
+      (navigator.credentials.get as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.assertLocalPasskey()).rejects.toThrow('Authentication cancelled');
+    });
+  });
+
   describe('createPasskey', () => {
     it('should call navigator.credentials.create and store the result', async () => {
       const mockCredential = {

@@ -42,6 +42,38 @@ export class PasskeyPrfService {
   }
 
   /**
+   * Local WebAuthn assertion of the device passkey (no PRF, no server).
+   * Shared by server-mode resume (`RemoteAuthService.unlockWithPasskey`) and
+   * browser-mode login (`LoginPage.authenticateLocally`).
+   */
+  async assertLocalPasskey(): Promise<void> {
+    const credentialId = this.getCredentialId();
+    if (!credentialId) {
+      throw new Error('No passkey found');
+    }
+
+    const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer;
+    const credentialIdBuffer = base64UrlDecode(credentialId).buffer as ArrayBuffer;
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        allowCredentials: [{
+          id: credentialIdBuffer,
+          type: 'public-key',
+        }],
+        userVerification: 'required',
+        timeout: 60_000,
+        // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialRequestOptions (WebAuthn L3)
+        hints: WEBAUTHN_ASSERTION_HINTS,
+      },
+    });
+
+    if (!assertion) {
+      throw new Error('Authentication cancelled');
+    }
+  }
+
+  /**
    * Create a new discoverable passkey (client-side only, no backend).
    * The challenge is generated locally — the attestation is not verified.
    * Returns the base64url-encoded credential ID.
