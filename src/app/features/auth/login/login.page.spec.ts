@@ -981,6 +981,9 @@ describe('LoginPage (server mode)', () => {
       component.sendCode();
       expect(component.errorMessage).toBe('auth.errors.too-many-attempts');
 
+      // The 429 above starts a retry cooldown (see the dedicated describe block below),
+      // so this second call needs it cleared first to reach the 500/detail branch at all.
+      component.resendSecondsLeft.set(0);
       mockAuthService.register.mockReturnValue(throwError(() => ({ status: 500, error: { detail: 'send_failed_detail' } })));
       component.sendCode();
       expect(component.errorMessage).toBe('send_failed_detail');
@@ -1241,6 +1244,67 @@ describe('LoginPage (server mode)', () => {
 
       expect(component.step()).toBe('passkey');
       expect(component.resendSecondsLeft()).toBe(0);
+    });
+  });
+
+  describe('EUD bug: 429 on send/resend code must disable the button with a real countdown', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      component.email = 'user@example.com';
+    });
+
+    afterEach(() => {
+      component.ngOnDestroy();
+      jest.useRealTimers();
+    });
+
+    it('starts a cooldown from the backend Retry-After header on sendCode() 429, blocking an immediate retry', () => {
+      mockAuthService.register.mockReturnValue(throwError(() => ({
+        status: 429,
+        headers: { get: (name: string) => (name === 'Retry-After' ? '45' : null) },
+      })));
+
+      component.sendCode();
+
+      expect(component.errorMessage).toBe('auth.errors.too-many-attempts');
+      expect(component.resendSecondsLeft()).toBe(45);
+      expect(component.loading).toBe(false);
+
+      // The button is gated by the same signal the template binds [disabled] to.
+      mockAuthService.register.mockClear();
+      mockAuthService.register.mockReturnValue(of({ message: 'OK' }));
+      component.sendCode();
+      expect(mockAuthService.register).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(45_000);
+      expect(component.resendSecondsLeft()).toBe(0);
+
+      component.sendCode();
+      expect(mockAuthService.register).toHaveBeenCalled();
+    });
+
+    it('falls back to the default cooldown when the 429 response carries no Retry-After header', () => {
+      mockAuthService.register.mockReturnValue(throwError(() => ({ status: 429 })));
+
+      component.sendCode();
+
+      expect(component.resendSecondsLeft()).toBe(180);
+    });
+
+    it('also gates resendCode() 429 behind a countdown', () => {
+      mockAuthService.register.mockReturnValue(throwError(() => ({
+        status: 429,
+        headers: { get: (name: string) => (name === 'Retry-After' ? '30' : null) },
+      })));
+      component.resendSecondsLeft.set(0);
+
+      component.resendCode();
+
+      expect(component.resendSecondsLeft()).toBe(30);
+
+      mockAuthService.register.mockClear();
+      component.resendCode();
+      expect(mockAuthService.register).not.toHaveBeenCalled();
     });
   });
 

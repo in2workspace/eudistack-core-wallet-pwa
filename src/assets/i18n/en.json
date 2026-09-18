@@ -153,6 +153,7 @@
     "register": {
       "email-placeholder": "Enter your email",
       "send-code": "Send verification code",
+      "retry-in": "Retry in {{time}}",
       "code-sent": "We sent a verification code to your email",
       "verify": "Verify",
       "change-email": "Change email",

@@ -82,8 +82,13 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           urlObj.href.endsWith(SERVER_PATH.CREDENTIAL_RESPONSE) ||
           // REQUEST SIGNATURE endpoint
           pathname.endsWith(SERVER_PATH.CREDENTIALS_SIGNED_BY_ID) ||
-          // Auth endpoints
-          pathname.startsWith('/api/v1/auth/') ||
+          // Auth endpoints. `includes` (not `startsWith`): serverUrl() falls back to
+          // `${origin}/business-wallet`, so the real path is prefixed
+          // (`/business-wallet/api/v1/auth/...`), not a bare `/api/v1/auth/...` — a
+          // `startsWith` check here never matched outside unit tests, letting a 429
+          // on register/verify-email pop the generic modal on top of the inline
+          // banner the login page already shows (EUD bug: duplicate 429 feedback).
+          pathname.includes('/api/v1/auth/') ||
           // Hybrid signing endpoints — never toast or expose body (NFR-S-536-03 defense-in-depth)
           pathname.endsWith(SERVER_PATH.HYBRID_SIGN_PREPARE) ||
           pathname.endsWith(SERVER_PATH.HYBRID_SIGN_SUBMIT);
