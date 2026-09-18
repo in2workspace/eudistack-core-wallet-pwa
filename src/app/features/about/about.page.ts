@@ -10,7 +10,7 @@ import { SupportChannels } from 'src/app/core/constants/support.constants';
 import { ConfirmModalComponent } from 'src/app/shared/components/confirm-modal/confirm-modal.component';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
-import { SupportChannelService } from './services/support-channel.service';
+import { SupportChannelService } from 'src/app/core/services/support-channel.service';
 import { LegalContentService } from './services/legal-content.service';
 import { OssLicenseService } from './services/oss-license.service';
 import { OssLicense } from './models/oss-license.model';
