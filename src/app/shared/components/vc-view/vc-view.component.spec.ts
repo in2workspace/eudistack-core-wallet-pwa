@@ -10,6 +10,8 @@ import { TranslateModule } from '@ngx-translate/core';
 import { RouterTestingModule } from '@angular/router/testing';
 import { CallbackPage } from 'src/app/features/callback/callback.page';
 import { ComponentRef } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
 import { convertToParamMap, Router } from '@angular/router';
@@ -62,6 +64,8 @@ describe('VcViewComponent', () => {
         VcViewComponent,
       ],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: WalletService, useClass: WalletServiceMock },
         { provide: CredentialDisplayService, useClass: CredentialDisplayServiceMock },
         { provide: CredentialVerificationService, useClass: CredentialVerificationServiceMock },
