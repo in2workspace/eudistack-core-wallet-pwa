@@ -7,7 +7,7 @@ import { HttpErrorInterceptor } from './error-handler.interceptor';
 import { AuthService } from '../services/auth.service';
 import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
 import { UrlResolverService } from '../services/url-resolver.service';
-import { SERVER_PATH } from '../constants/api.constants';
+import { SERVER_PATH, WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import { environment } from 'src/environments/environment';
 
 class MockToastServiceHandler {
@@ -244,6 +244,31 @@ describe('HttpErrorInterceptor with HttpClient', () => {
       { message: 'Test error message' },
       { status: 400, statusText: 'Bad Request' }
     );
+  });
+
+  it('should handle errors silently for auth endpoints behind the business-wallet backend prefix (EUD: 429 duplicate modal)', () => {
+    // RemoteAuthService builds its base URL from UrlResolverService.serverUrl(),
+    // which falls back to `${origin}/business-wallet` in every real deployment
+    // (nginx routes the wallet's own backend under that prefix — see
+    // eudistack-platform-dev/local-env/nginx/docker-entrypoint.sh). So the actual
+    // request path is `/business-wallet/api/v1/auth/register`, not `/api/v1/auth/register`,
+    // and a `startsWith('/api/v1/auth/')` check never matches it.
+    const testUrl = `${environment.server_url}/business-wallet/api/v1/auth/register`;
+    const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
+    const spy = jest.spyOn(console, 'error');
+
+    let receivedError: unknown;
+    httpClient.post(testUrl, {}).subscribe({ error: (error) => { receivedError = error; } });
+
+    const req = httpMock.expectOne(testUrl);
+    req.flush(
+      { message: 'Too many requests' },
+      { status: 429, statusText: 'Too Many Requests' }
+    );
+
+    expect(receivedError).toBeTruthy();
+    expect(spy).toHaveBeenCalledWith('Handled silently:', 'Too many requests');
+    expect(toastSpy).not.toHaveBeenCalled();
   });
 
   it('should show a toast with "PIN expired" on a 408 Request Timeout response', () => {
@@ -520,5 +545,55 @@ describe('HttpErrorInterceptor — session-expiry marker coordination', () => {
         done();
       },
     });
+  });
+});
+
+describe('HttpErrorInterceptor AuthService resolution timing', () => {
+  let authServiceResolved: boolean;
+
+  beforeEach(() => {
+    authServiceResolved = false;
+
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [
+        { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true },
+        { provide: ToastServiceHandler, useClass: MockToastServiceHandler },
+        SessionExpiryMarkerService,
+        UrlResolverService,
+        {
+          provide: AuthService,
+          useFactory: () => {
+            authServiceResolved = true;
+            return { forceLogout: jest.fn(), isLoggedIn: jest.fn().mockReturnValue(false) };
+          },
+        },
+      ],
+    });
+  });
+
+  it('does not resolve AuthService while the interceptor chain is built', () => {
+    const httpClient = TestBed.inject(HttpClient);
+    const httpMock = TestBed.inject(HttpTestingController);
+
+    httpClient.get('/whatever').subscribe({ next: () => undefined, error: () => undefined });
+    httpMock.expectOne('/whatever').flush({});
+
+    expect(authServiceResolved).toBe(false);
+
+    httpMock.verify();
+  });
+
+  it('does not resolve AuthService when the wallet discovery request fails', () => {
+    const httpClient = TestBed.inject(HttpClient);
+    const httpMock = TestBed.inject(HttpTestingController);
+    const url = `${environment.server_url}${WALLET_DISCOVERY_PATH}`;
+
+    httpClient.get(url).subscribe({ next: () => undefined, error: () => undefined });
+    httpMock.expectOne(url).flush('boom', { status: 503, statusText: 'Service Unavailable' });
+
+    expect(authServiceResolved).toBe(false);
+
+    httpMock.verify();
   });
 });

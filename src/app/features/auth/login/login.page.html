@@ -88,6 +88,10 @@
               <button type="button" class="auth-button" (click)="createWalletBrowserMode()" [disabled]="loading">
                 {{ 'auth.passkey.register-button' | translate }}
               </button>
+
+              @if (showEdgeWindowsPasskeyHint) {
+                <p class="auth-hint">{{ 'auth.passkey.edge-windows-hint' | translate }}</p>
+              }
             }
           }
 
@@ -115,11 +119,12 @@
             <button
               type="button"
               class="auth-button auth-button--email"
-              [disabled]="!email || loading"
+              [disabled]="!email || loading || resendSecondsLeft() > 0"
               (click)="sendCode()"
             >
               <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
-              <span *ngIf="!loading">{{ 'auth.register.send-code' | translate }}</span>
+              <span *ngIf="!loading && resendSecondsLeft() === 0">{{ 'auth.register.send-code' | translate }}</span>
+              <span *ngIf="!loading && resendSecondsLeft() > 0">{{ 'auth.register.retry-in' | translate: { time: resendCountdown() } }}</span>
             </button>
           }
 
@@ -201,6 +206,10 @@
               >
                 {{ 'auth.passkey.register-button' | translate }}
               </button>
+
+              @if (showEdgeWindowsPasskeyHint) {
+                <p class="auth-hint">{{ 'auth.passkey.edge-windows-hint' | translate }}</p>
+              }
             } @else {
               <h1 class="auth-title">{{ 'auth.login.title-welcome' | translate }}</h1>
               <p class="auth-subtitle">{{ 'auth.login.verify-passkey' | translate }}</p>

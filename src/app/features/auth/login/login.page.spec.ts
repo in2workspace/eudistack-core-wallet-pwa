@@ -22,11 +22,15 @@ describe('LoginPage (server mode)', () => {
     register: jest.Mock;
     verifyEmail: jest.Mock;
     refreshAccessToken: jest.Mock;
+    unlockWithPasskey: jest.Mock;
+    ensureAccessToken: jest.Mock;
+    getToken: jest.Mock;
   };
   let mockPrfService: {
     hasPasskey: jest.Mock;
     createPasskey: jest.Mock;
     getCredentialId: jest.Mock;
+    assertLocalPasskey: jest.Mock;
   };
   let mockPasskeyStore: { getCredentialId: jest.Mock; hasPasskey: jest.Mock; clearCredentialId: jest.Mock };
   let mockPasskeyApi: { registerPasskey: jest.Mock; listPasskeys: jest.Mock; confirmSession: jest.Mock };
@@ -53,11 +57,15 @@ describe('LoginPage (server mode)', () => {
       register: jest.fn().mockReturnValue(of({ message: 'If the email is valid, you will receive a verification code.' })),
       verifyEmail: jest.fn().mockReturnValue(of({ accessToken: 'access-1', refreshToken: 'refresh-1', expiresIn: 900 })),
       refreshAccessToken: jest.fn().mockReturnValue(of({ accessToken: 'access-2', refreshToken: 'refresh-2', expiresIn: 900 })),
+      unlockWithPasskey: jest.fn().mockResolvedValue(undefined),
+      ensureAccessToken: jest.fn().mockResolvedValue(undefined),
+      getToken: jest.fn().mockReturnValue('access-1'),
     };
     mockPrfService = {
       hasPasskey: jest.fn().mockReturnValue(false),
       createPasskey: jest.fn().mockResolvedValue('cred-local-1'),
       getCredentialId: jest.fn().mockReturnValue('cred-local-1'),
+      assertLocalPasskey: jest.fn().mockResolvedValue(undefined),
     };
     mockPasskeyStore = {
       getCredentialId: jest.fn().mockReturnValue('cred-local-1'),
@@ -464,6 +472,17 @@ describe('LoginPage (server mode)', () => {
       );
     });
 
+    it('exchanges the refresh token before registerPasskey when there is no access JWT', async () => {
+      mockAuthService.getToken.mockReturnValue('');
+      localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
+      component.deviceName = 'My Device';
+
+      await component.createPasskeyForDevice();
+
+      expect(mockAuthService.ensureAccessToken).toHaveBeenCalled();
+      expect(mockPasskeyApi.registerPasskey).toHaveBeenCalled();
+    });
+
     it('links the verified session to its passkey via confirm-session (existing device)', async () => {
       localStorage.setItem('wallet_refresh_token', 'stored-refresh-token');
       mockPasskeyApi.listPasskeys.mockReturnValue(of([
@@ -528,18 +547,24 @@ describe('LoginPage (server mode)', () => {
 
   describe('R-1: existing-passkey verification path (needsPasskeySetup = false) is unaffected', () => {
     it('authenticates locally and navigates home on success', async () => {
-      const mockCredentialsGet = jest.fn().mockResolvedValue({});
-      Object.defineProperty(globalThis.navigator, 'credentials', {
-        value: { get: mockCredentialsGet },
-        configurable: true,
-        writable: true,
-      });
       component.needsPasskeySetup = false;
 
       await component.verifyPasskey();
 
-      expect(mockCredentialsGet).toHaveBeenCalled();
+      expect(mockAuthService.unlockWithPasskey).toHaveBeenCalled();
       expect(mockRouter.navigateByUrl).toHaveBeenCalled();
+    });
+
+    it('does not navigate in server mode when unlock succeeds without an access JWT', async () => {
+      mockAuthService.getToken.mockReturnValue('');
+      component.needsPasskeySetup = false;
+      (component as any).passkeyFromRefreshToken = false;
+
+      await component.verifyPasskey();
+
+      expect(mockAuthService.unlockWithPasskey).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+      expect(component.errorMessage).toBe('No access token');
     });
   });
 
@@ -620,9 +645,9 @@ describe('LoginPage (server mode)', () => {
     });
 
     it('AC-01: on refresh failure, stays on email step with i18n session-expired, clears token and keeps the pending offer link', async () => {
-      mockAuthService.refreshAccessToken.mockImplementation(() => {
+      mockAuthService.unlockWithPasskey.mockImplementation(async () => {
         localStorage.removeItem('wallet_refresh_token');
-        return throwError(() => ({ status: 401, error: { detail: 'invalid_grant' } }));
+        mockAuthService.getToken.mockReturnValue('');
       });
 
       component.ionViewWillEnter();
@@ -630,7 +655,7 @@ describe('LoginPage (server mode)', () => {
 
       await component.verifyPasskey();
 
-      expect(mockAuthService.refreshAccessToken).toHaveBeenCalledWith({ onAuthFailure: 'clear-only' });
+      expect(mockAuthService.unlockWithPasskey).toHaveBeenCalled();
       expect(component.step()).toBe('email');
       expect(component.errorMessage).toBe('auth.errors.session-expired-request-code');
       expect(localStorage.getItem('wallet_refresh_token')).toBeNull();
@@ -639,10 +664,9 @@ describe('LoginPage (server mode)', () => {
     });
 
     it('AC-02: follows full flow (expiry -> email step -> OTP -> resume) and completes deep link', async () => {
-      // 1. Start with an expired session
-      mockAuthService.refreshAccessToken.mockReturnValue(
-        throwError(() => ({ status: 401, error: { detail: 'invalid_grant' } }))
-      );
+      mockAuthService.unlockWithPasskey.mockImplementation(async () => {
+        mockAuthService.getToken.mockReturnValue('');
+      });
 
       component.ionViewWillEnter();
       await component.verifyPasskey();
@@ -671,13 +695,7 @@ describe('LoginPage (server mode)', () => {
     });
 
     it('stays on passkey step if WebAuthn is cancelled, without clearing the token', async () => {
-      // Simulate manual cancellation of the biometrics prompt
-      Object.defineProperty(navigator, 'credentials', {
-        configurable: true,
-        value: {
-          get: jest.fn().mockResolvedValue(null),
-        },
-      });
+      mockAuthService.unlockWithPasskey.mockRejectedValue(new Error('Authentication cancelled'));
 
       localStorage.setItem('wallet_refresh_token', 'stale-refresh');
       component.ionViewWillEnter();
@@ -685,17 +703,17 @@ describe('LoginPage (server mode)', () => {
 
       await component.verifyPasskey();
 
-      // Result: user stays on passkey screen and token is still there
       expect(component.step()).toBe('passkey');
       expect(component.errorMessage).toBe('Authentication cancelled');
       expect(localStorage.getItem('wallet_refresh_token')).toBe('stale-refresh');
       expect(mockAuthService.refreshAccessToken).not.toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
     });
   });
 
   describe('LoginPage Coverage Improvements', () => {
     it('throws error in authenticateLocally if no credentialId is found', async () => {
-      mockPrfService.getCredentialId.mockReturnValue(null);
+      mockPrfService.assertLocalPasskey.mockRejectedValue(new Error('No passkey found'));
       await expect(component['authenticateLocally']()).rejects.toThrow('No passkey found');
     });
 
@@ -733,6 +751,57 @@ describe('LoginPage (server mode)', () => {
       setUA('Unknown'); expect(component['getDeviceName']()).toBe('Unknown Device');
 
       setUA(originalUA);
+    });
+
+    it('shows the Edge/Windows passkey hint only for that exact browser+OS combination', async () => {
+      const originalUA = navigator.userAgent;
+      const setUA = (ua: string) => {
+        Object.defineProperty(navigator, 'userAgent', { value: ua, configurable: true });
+      };
+      const createComponentWithUA = async (ua: string): Promise<LoginPage> => {
+        setUA(ua);
+        TestBed.resetTestingModule();
+        await TestBed.configureTestingModule({
+          imports: [LoginPage, TranslateModule.forRoot()],
+          providers: baseProviders,
+        }).compileComponents();
+        return TestBed.createComponent(LoginPage).componentInstance;
+      };
+
+      const EDGE_WINDOWS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0';
+      const CHROME_WINDOWS_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
+      const EDGE_MAC_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0';
+
+      expect((await createComponentWithUA(EDGE_WINDOWS_UA)).showEdgeWindowsPasskeyHint).toBe(true);
+      expect((await createComponentWithUA(CHROME_WINDOWS_UA)).showEdgeWindowsPasskeyHint).toBe(false);
+      expect((await createComponentWithUA(EDGE_MAC_UA)).showEdgeWindowsPasskeyHint).toBe(false);
+
+      setUA(originalUA);
+    });
+
+    it('does not show the Edge/Windows hint on the verify-passkey screen (needsPasskeySetup = false), even on Edge/Windows', async () => {
+      const originalUA = navigator.userAgent;
+      Object.defineProperty(navigator, 'userAgent', {
+        value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 Edg/128.0.0.0',
+        configurable: true,
+      });
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [LoginPage, TranslateModule.forRoot()],
+        providers: baseProviders,
+      }).compileComponents();
+      fixture = TestBed.createComponent(LoginPage);
+      component = fixture.componentInstance;
+
+      component.step.set('passkey');
+      component.needsPasskeySetup = false;
+      fixture.detectChanges();
+
+      expect(component.showEdgeWindowsPasskeyHint).toBe(true);
+      expect(fixture.nativeElement.querySelector('.auth-hint')).toBeNull();
+
+      Object.defineProperty(navigator, 'userAgent', { value: originalUA, configurable: true });
     });
 
     it('handles passkey registration failure in createPasskeyForDevice', async () => {
@@ -840,7 +909,6 @@ describe('LoginPage (server mode)', () => {
     it('verifyPasskey: handles error when NOT using refresh token path', async () => {
       component.step.set('passkey');
       (component as any).passkeyFromRefreshToken = false;
-      jest.spyOn(component as any, 'authenticateLocally').mockResolvedValue(undefined);
       mockRouter.navigateByUrl.mockImplementation(() => { throw new Error('Sync failed'); });
 
       await component.verifyPasskey();
@@ -852,7 +920,6 @@ describe('LoginPage (server mode)', () => {
     it('verifyPasskey: uses default error message if error has no message', async () => {
       component.step.set('passkey');
       (component as any).passkeyFromRefreshToken = false;
-      jest.spyOn(component as any, 'authenticateLocally').mockResolvedValue(undefined);
       mockRouter.navigateByUrl.mockImplementation(() => { throw {}; });
 
       await component.verifyPasskey();
@@ -914,6 +981,9 @@ describe('LoginPage (server mode)', () => {
       component.sendCode();
       expect(component.errorMessage).toBe('auth.errors.too-many-attempts');
 
+      // The 429 above starts a retry cooldown (see the dedicated describe block below),
+      // so this second call needs it cleared first to reach the 500/detail branch at all.
+      component.resendSecondsLeft.set(0);
       mockAuthService.register.mockReturnValue(throwError(() => ({ status: 500, error: { detail: 'send_failed_detail' } })));
       component.sendCode();
       expect(component.errorMessage).toBe('send_failed_detail');
@@ -935,8 +1005,8 @@ describe('LoginPage (server mode)', () => {
       const translate = TestBed.inject(TranslateService);
       const translateSpy = jest.spyOn(translate, 'instant');
 
-      // 1. authenticateLocally error (verifyPasskey branch)
-      jest.spyOn(component as any, 'authenticateLocally').mockRejectedValueOnce({});
+      // 1. unlockWithPasskey error (verifyPasskey branch)
+      mockAuthService.unlockWithPasskey.mockRejectedValueOnce({});
       await component.verifyPasskey();
       expect(component.errorMessage).toBe('Passkey verification failed');
 
@@ -1174,6 +1244,67 @@ describe('LoginPage (server mode)', () => {
 
       expect(component.step()).toBe('passkey');
       expect(component.resendSecondsLeft()).toBe(0);
+    });
+  });
+
+  describe('EUD bug: 429 on send/resend code must disable the button with a real countdown', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      component.email = 'user@example.com';
+    });
+
+    afterEach(() => {
+      component.ngOnDestroy();
+      jest.useRealTimers();
+    });
+
+    it('starts a cooldown from the backend Retry-After header on sendCode() 429, blocking an immediate retry', () => {
+      mockAuthService.register.mockReturnValue(throwError(() => ({
+        status: 429,
+        headers: { get: (name: string) => (name === 'Retry-After' ? '45' : null) },
+      })));
+
+      component.sendCode();
+
+      expect(component.errorMessage).toBe('auth.errors.too-many-attempts');
+      expect(component.resendSecondsLeft()).toBe(45);
+      expect(component.loading).toBe(false);
+
+      // The button is gated by the same signal the template binds [disabled] to.
+      mockAuthService.register.mockClear();
+      mockAuthService.register.mockReturnValue(of({ message: 'OK' }));
+      component.sendCode();
+      expect(mockAuthService.register).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(45_000);
+      expect(component.resendSecondsLeft()).toBe(0);
+
+      component.sendCode();
+      expect(mockAuthService.register).toHaveBeenCalled();
+    });
+
+    it('falls back to the default cooldown when the 429 response carries no Retry-After header', () => {
+      mockAuthService.register.mockReturnValue(throwError(() => ({ status: 429 })));
+
+      component.sendCode();
+
+      expect(component.resendSecondsLeft()).toBe(180);
+    });
+
+    it('also gates resendCode() 429 behind a countdown', () => {
+      mockAuthService.register.mockReturnValue(throwError(() => ({
+        status: 429,
+        headers: { get: (name: string) => (name === 'Retry-After' ? '30' : null) },
+      })));
+      component.resendSecondsLeft.set(0);
+
+      component.resendCode();
+
+      expect(component.resendSecondsLeft()).toBe(30);
+
+      mockAuthService.register.mockClear();
+      component.resendCode();
+      expect(mockAuthService.register).not.toHaveBeenCalled();
     });
   });
 

@@ -3,6 +3,7 @@ import { PasskeyPrfService } from './passkey-prf.service';
 import { PasskeyStoreService } from './passkey-store.service';
 import { AppError } from '../models/error/AppError';
 import { base64UrlDecode, base64UrlEncode } from '../utils/base64url';
+import { WEBAUTHN_CREATE_HINTS, WEBAUTHN_ASSERTION_HINTS } from '../constants/webauthn.constants';
 
 describe('PasskeyPrfService', () => {
   let service: PasskeyPrfService;
@@ -93,6 +94,31 @@ describe('PasskeyPrfService', () => {
     });
   });
 
+  describe('assertLocalPasskey', () => {
+    it('throws if no credential id is stored', async () => {
+      storeSpy.getCredentialId.mockReturnValue(null);
+      await expect(service.assertLocalPasskey()).rejects.toThrow('No passkey found');
+    });
+
+    it('sends client-device assertion hints, not hybrid-first', async () => {
+      storeSpy.getCredentialId.mockReturnValue(base64UrlEncode(new Uint8Array([1, 2, 3])));
+      (navigator.credentials.get as jest.Mock).mockResolvedValue({ id: 'assertion' });
+
+      await service.assertLocalPasskey();
+
+      const call = (navigator.credentials.get as jest.Mock).mock.calls[0][0];
+      expect(call.publicKey.hints).toEqual(WEBAUTHN_ASSERTION_HINTS);
+      expect(call.publicKey.hints[0]).not.toBe('hybrid');
+    });
+
+    it('throws when the authenticator returns no assertion', async () => {
+      storeSpy.getCredentialId.mockReturnValue(base64UrlEncode(new Uint8Array([1, 2, 3])));
+      (navigator.credentials.get as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.assertLocalPasskey()).rejects.toThrow('Authentication cancelled');
+    });
+  });
+
   describe('createPasskey', () => {
     it('should call navigator.credentials.create and store the result', async () => {
       const mockCredential = {
@@ -106,6 +132,12 @@ describe('PasskeyPrfService', () => {
       const expectedId = base64UrlEncode(new Uint8Array(mockCredential.rawId));
       expect(result).toBe(expectedId);
       expect(storeSpy.setCredentialId).toHaveBeenCalledWith(expectedId);
+
+      // EUD bug: Chrome/Edge showed different authenticator pickers because no
+      // `hints` was ever sent — assert the standardized, hybrid-first hint set
+      // for registration is present.
+      const call = (navigator.credentials.create as jest.Mock).mock.calls[0][0];
+      expect(call.publicKey.hints).toEqual(WEBAUTHN_CREATE_HINTS);
     });
 
     it('should throw AppError if creation fails', async () => {
@@ -197,6 +229,10 @@ describe('PasskeyPrfService', () => {
       expect(navigator.credentials.get).toHaveBeenCalled();
       expect(result.privateKey).toBe(mockPrivateKey);
       expect(result.publicKeyJwk).toBeDefined();
+
+      // Assertion of a known local credential must not prefer hybrid/QR.
+      const call = (navigator.credentials.get as jest.Mock).mock.calls[0][0];
+      expect(call.publicKey.hints).toEqual(WEBAUTHN_ASSERTION_HINTS);
     });
 
     it('should throw AppError if PRF results are missing', async () => {

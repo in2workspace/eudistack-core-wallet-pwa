@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 import {
   HttpInterceptor,
   HttpRequest,
@@ -19,7 +19,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
   private readonly toastServiceHandler = inject(ToastServiceHandler);
   private readonly urlResolver = inject(UrlResolverService);
   private readonly sessionExpiryMarker = inject(SessionExpiryMarkerService);
-  private readonly authService = inject(AuthService);
+  private readonly injector = inject(Injector);
 
   private logHandledSilentlyErrorMsg(errMsg: string) {
     console.error('Handled silently:', errMsg);
@@ -43,15 +43,6 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           return throwError(() => errorResp);
         }
 
-        // The session is already gone by the time this error arrived (e.g. a request
-        // racing the scheduled background refresh that just called forceLogout()) —
-        // the user has already seen, or is about to see, the dedicated session-expired
-        // notice from that path. A second, unrelated "something went wrong" toast here
-        // would just be noise stacked on top of it.
-        if (!this.authService.isLoggedIn()) {
-          this.logHandledSilentlyErrorMsg(errorResp.error?.message || errorResp.message || 'Unknown Http error');
-          return throwError(() => errorResp);
-        }
 
         // Normalize URL to ensure request params are not included in the conditionals below
         const urlObj = new URL(request.url, window.location.origin);
@@ -62,6 +53,21 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         let errMessage =
           errorResp.error?.message || errorResp.message || 'Unknown Http error';
         const errStatus = errorResp.status ?? errorResp.error?.status;
+
+        if (pathname.endsWith(WALLET_DISCOVERY_PATH)) {
+          this.logHandledSilentlyErrorMsg(errMessage);
+          return throwError(() => errorResp);
+        }
+
+        // The session is already gone by the time this error arrived (e.g. a request
+        // racing the scheduled background refresh that just called forceLogout()) —
+        // the user has already seen, or is about to see, the dedicated session-expired
+        // notice from that path. A second, unrelated "something went wrong" toast here
+        // would just be noise stacked on top of it.
+        if (!this.injector.get(AuthService).isLoggedIn()) {
+          this.logHandledSilentlyErrorMsg(errMessage);
+          return throwError(() => errorResp);
+        }
 
         if (!isOwnBackend) {
           // Do not toast for 3rd party endpoints (issuers, well-known, etc.)
@@ -82,8 +88,13 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           urlObj.href.endsWith(SERVER_PATH.CREDENTIAL_RESPONSE) ||
           // REQUEST SIGNATURE endpoint
           pathname.endsWith(SERVER_PATH.CREDENTIALS_SIGNED_BY_ID) ||
-          // Auth endpoints
-          pathname.startsWith('/api/v1/auth/') ||
+          // Auth endpoints. `includes` (not `startsWith`): serverUrl() falls back to
+          // `${origin}/business-wallet`, so the real path is prefixed
+          // (`/business-wallet/api/v1/auth/...`), not a bare `/api/v1/auth/...` — a
+          // `startsWith` check here never matched outside unit tests, letting a 429
+          // on register/verify-email pop the generic modal on top of the inline
+          // banner the login page already shows (EUD bug: duplicate 429 feedback).
+          pathname.includes('/api/v1/auth/') ||
           // Hybrid signing endpoints — never toast or expose body (NFR-S-536-03 defense-in-depth)
           pathname.endsWith(SERVER_PATH.HYBRID_SIGN_PREPARE) ||
           pathname.endsWith(SERVER_PATH.HYBRID_SIGN_SUBMIT);

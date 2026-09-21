@@ -140,6 +140,7 @@
     "register": {
       "email-placeholder": "Introduce tu email",
       "send-code": "Enviar código de verificación",
+      "retry-in": "Reintentar en {{time}}",
       "code-sent": "Hemos enviado un código de verificación a tu email",
       "verify": "Verificar",
       "change-email": "Cambiar email",
@@ -172,7 +173,8 @@
       "verified-title": "¡Email verificado!",
       "setup-title": "Configura una passkey",
       "verified-subtitle": "Tu email se ha verificado correctamente.",
-      "setup-subtitle": "Configura una passkey para completar el acceso en este dispositivo."
+      "setup-subtitle": "Configura una passkey para completar el acceso en este dispositivo.",
+      "edge-windows-hint": "En Microsoft Edge verás el PIN de Windows Hello para verificar tu identidad. Si prefieres usar tu móvil como llave de acceso, abre esta página en Google Chrome."
     },
     "reauth": {
       "subtitle": "Verifica tu email para restaurar tu sesión",
