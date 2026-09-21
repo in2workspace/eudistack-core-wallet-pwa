@@ -10,6 +10,7 @@ import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.servi
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
 import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
 import { PasskeyApiService } from 'src/app/core/services/passkey-api.service';
+import { base64UrlDecode, compareCredentialIds } from 'src/app/core/utils/base64url';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
@@ -428,7 +429,7 @@ export class LoginPage implements OnDestroy {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: (passkeys) => {
-        const matched = passkeys.find(passkey => passkey.credentialId === localCredentialId);
+        const matched = passkeys.find(passkey => compareCredentialIds(passkey.credentialId, localCredentialId));
         this.matchedPasskeyId = matched?.id ?? null;
         this.needsPasskeySetup = !localCredentialId || !matched;
         this.finishPasskeySetupStep();
@@ -592,7 +593,7 @@ export class LoginPage implements OnDestroy {
       if (!localCredentialId) return;
       try {
         const passkeys = await firstValueFrom(this.passkeyApi.listPasskeys());
-        passkeyId = passkeys.find(passkey => passkey.credentialId === localCredentialId)?.id ?? null;
+        passkeyId = passkeys.find(passkey => compareCredentialIds(passkey.credentialId, localCredentialId))?.id ?? null;
       } catch (err) {
         console.warn('[LoginPage] listPasskeys failed while attributing session', err);
         return;
