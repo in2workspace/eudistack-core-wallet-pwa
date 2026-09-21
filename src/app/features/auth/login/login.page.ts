@@ -10,7 +10,7 @@ import { AuthService, RemoteAuthService } from 'src/app/core/services/auth.servi
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
 import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
 import { PasskeyApiService } from 'src/app/core/services/passkey-api.service';
-import { base64UrlDecode, compareCredentialIds } from 'src/app/core/utils/base64url';
+import { compareCredentialIds } from 'src/app/core/utils/base64url';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
