@@ -14,6 +14,13 @@ const SW_READY_GRACE_MS = 500;
 // takes control (registration blocked/failed) and beforeinstallprompt never fires.
 export const INSTALL_DECISION_HARD_TIMEOUT_MS = 4000;
 
+// Set by markPreUpdateReload() right before an SW-update reload of an already-standalone
+// session, and consumed once on the next boot. Covers browsers (notably macOS Safari "Add
+// to Dock") where display-mode/navigator.standalone can read unreliably on the very first
+// evaluation right after such a reload, which would otherwise show the install screen again
+// on an app that is already installed.
+export const POST_UPDATE_STANDALONE_GRACE_KEY = 'wallet_pwa_post_update_standalone';
+
 function isIosPlatform(): boolean {
   const ua = navigator.userAgent;
   return /iP(hone|ad)/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1);
@@ -60,6 +67,7 @@ export class PwaInstallService {
 
   private buildInstallDecision$(): Observable<boolean> {
     if (this.isStandalone) return of(false);
+    if (this.consumePostUpdateStandaloneGrace()) return of(false);
     if (isIosPlatform()) return of(false);
     if (this.isMacSafari) return of(true);
 
@@ -87,6 +95,24 @@ export class PwaInstallService {
     );
 
     return race(promptArrived$, swReadyThenGrace$, hardTimeout$).pipe(take(1));
+  }
+
+  /**
+   * Called by SwUpdateService right before it reloads the page to apply a new
+   * version. If this session is currently standalone, persists a one-shot marker
+   * so the post-reload boot trusts it even if the synchronous display-mode check
+   * misreads it during that specific reload.
+   */
+  markPreUpdateReload(): void {
+    if (this.isStandalone) {
+      sessionStorage.setItem(POST_UPDATE_STANDALONE_GRACE_KEY, 'true');
+    }
+  }
+
+  private consumePostUpdateStandaloneGrace(): boolean {
+    if (sessionStorage.getItem(POST_UPDATE_STANDALONE_GRACE_KEY) !== 'true') return false;
+    sessionStorage.removeItem(POST_UPDATE_STANDALONE_GRACE_KEY);
+    return true;
   }
 
   async promptInstall(): Promise<boolean> {

@@ -538,6 +538,13 @@ describe('ToastServiceHandler', () => {
     expect(document.body.contains(el)).toBe(false);
   }));
 
+  it('should pass interpolation params through to the translate service', fakeAsync(() => {
+    service.showInfoToastByTranslateLabel('app-update.toast', 5000, 'info', { version: '1.2.3' });
+    tick();
+
+    expect(translateSpy).toHaveBeenCalledWith('app-update.toast', { version: '1.2.3' });
+  }));
+
   it('should show warning toast with correct icon', fakeAsync(() => {
     const appendSpy = jest.spyOn(document.body, 'appendChild');
 

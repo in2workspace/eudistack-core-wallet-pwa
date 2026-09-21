@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Reopening the wallet after a version update could show the "install this app" screen again on an already-installed PWA**: `PwaInstallService.installDecision$` already treats `isStandalone` as authoritative, but that check runs again from scratch on the full-page reload `SwUpdateService` triggers once a new version activates (`VERSION_READY`) — a moment where display-mode detection is more likely to misread transiently, notably on macOS Safari "Add to Dock". `SwUpdateService` now marks the session as standalone (`PwaInstallService.markPreUpdateReload()`) right before that reload, and `PwaInstallService` trusts that one-shot marker on the very next boot alongside `isStandalone`/`navigator.standalone`, so an update never forces a reinstall prompt on a session that was already running as an installed app. `manifest.webmanifest` is now also part of the Angular Service Worker's precached "app" asset group, closing a related gap where it could be served stale across a version boundary.
+  - The holder now sees a one-shot toast ("La aplicación se ha actualizado a la versión X.X.X") the first time the wallet reopens after such an update, never on a plain reopen with no pending update.
+
 ### Added
 
 - **Install guidance for macOS Safari**: Safari fires no `beforeinstallprompt` on any platform, so the install screen never appeared on a Mac, and the manual guide at `/ios-install` is scoped to iOS devices by design (AC-008.6) — a Mac user had no way to install the wallet. The access screen now also shows on macOS Safari, where its primary button opens a modal with the manual "File → Add to Dock" steps instead of triggering a prompt that cannot exist; the screen keeps both options ("install" and "continue in browser") side by side, as on every other platform. Other browsers are untouched and keep the native prompt. The modal also notes that installing later may require signing in again.

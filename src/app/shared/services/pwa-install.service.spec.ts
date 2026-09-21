@@ -1,5 +1,9 @@
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { INSTALL_DECISION_HARD_TIMEOUT_MS, PwaInstallService } from './pwa-install.service';
+import {
+  INSTALL_DECISION_HARD_TIMEOUT_MS,
+  POST_UPDATE_STANDALONE_GRACE_KEY,
+  PwaInstallService,
+} from './pwa-install.service';
 
 /** Minimal EventTarget-compatible stub so rxjs `fromEvent` can attach to it. */
 function createServiceWorkerContainerStub(controller: unknown | null) {
@@ -54,6 +58,7 @@ describe('PwaInstallService > installDecision$', () => {
     removeServiceWorker();
     defineUserAgent(DEFAULT_USER_AGENT);
     defineMatchMedia(false);
+    sessionStorage.removeItem(POST_UPDATE_STANDALONE_GRACE_KEY);
     TestBed.resetTestingModule();
   });
 
@@ -201,5 +206,55 @@ describe('PwaInstallService > macOS Safari manual install', () => {
     defineMatchMedia(true);
 
     expect(TestBed.inject(PwaInstallService).isMacSafari).toBe(false);
+  });
+});
+
+describe('PwaInstallService > post-update standalone grace', () => {
+  afterEach(() => {
+    removeServiceWorker();
+    defineUserAgent(DEFAULT_USER_AGENT);
+    defineMatchMedia(false);
+    sessionStorage.removeItem(POST_UPDATE_STANDALONE_GRACE_KEY);
+    TestBed.resetTestingModule();
+  });
+
+  it('markPreUpdateReload persists the marker when the session is standalone', () => {
+    removeServiceWorker();
+    defineMatchMedia(true);
+
+    TestBed.inject(PwaInstallService).markPreUpdateReload();
+
+    expect(sessionStorage.getItem(POST_UPDATE_STANDALONE_GRACE_KEY)).toBe('true');
+  });
+
+  it('markPreUpdateReload does not persist the marker when the session is not standalone', () => {
+    removeServiceWorker();
+    defineMatchMedia(false);
+
+    TestBed.inject(PwaInstallService).markPreUpdateReload();
+
+    expect(sessionStorage.getItem(POST_UPDATE_STANDALONE_GRACE_KEY)).toBeNull();
+  });
+
+  it('resolves installDecision$ to false when the marker is present, even if display-mode misreads non-standalone', fakeAsync(() => {
+    removeServiceWorker();
+    defineMatchMedia(false);
+    sessionStorage.setItem(POST_UPDATE_STANDALONE_GRACE_KEY, 'true');
+
+    const service = TestBed.inject(PwaInstallService);
+    let emitted: boolean | undefined;
+    service.installDecision$.subscribe((v) => (emitted = v));
+
+    expect(emitted).toBe(false);
+  }));
+
+  it('consumes the marker on read, so a later reload in the same tab is not permanently exempted', () => {
+    removeServiceWorker();
+    defineMatchMedia(false);
+    sessionStorage.setItem(POST_UPDATE_STANDALONE_GRACE_KEY, 'true');
+
+    TestBed.inject(PwaInstallService);
+
+    expect(sessionStorage.getItem(POST_UPDATE_STANDALONE_GRACE_KEY)).toBeNull();
   });
 });
