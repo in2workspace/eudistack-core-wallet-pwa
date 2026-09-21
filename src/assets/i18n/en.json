@@ -668,5 +668,8 @@
     "wrap-unavailable-title": "Cannot sign on this device",
     "wrap-unavailable-body": "The signing key was created on another device and cannot be used here. Use the original device to present your credentials.",
     "wrap-unavailable-cta": "Close"
+  },
+  "app-update": {
+    "toast": "The app has been updated to version {{version}}"
   }
 }

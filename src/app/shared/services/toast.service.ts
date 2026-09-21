@@ -93,10 +93,11 @@ export class ToastServiceHandler {
   public showInfoToastByTranslateLabel(
     message: string,
     durationMs: number = 5000,
-    variant: 'info' | 'warning' = 'info'
+    variant: 'info' | 'warning' = 'info',
+    interpolateParams?: Record<string, unknown>
   ): void {
     const icon = variant === 'warning' ? 'warning' : 'information-circle';
-    this.translate.get(message).pipe(take(1)).subscribe((translatedMessage) => {
+    this.translate.get(message, interpolateParams).pipe(take(1)).subscribe((translatedMessage) => {
       const el = document.createElement('div');
       el.className = 'credential-toast';
       el.dataset['variant'] = variant;

@@ -664,5 +664,8 @@
     "wrap-unavailable-title": "No es pot signar en aquest dispositiu",
     "wrap-unavailable-body": "La clau de signatura es va crear en un altre dispositiu i no es pot utilitzar aquí. Usa el dispositiu original per presentar les teves credencials.",
     "wrap-unavailable-cta": "Tancar"
+  },
+  "app-update": {
+    "toast": "L'aplicació s'ha actualitzat a la versió {{version}}"
   }
 }
