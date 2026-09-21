@@ -20,3 +20,11 @@ export function base64UrlDecode(str: string): Uint8Array {
   }
   return bytes;
 }
+
+/** Compares two base64 or base64url strings for equality, ignoring padding and encoding differences. */
+export function compareCredentialIds(id1: string | null | undefined, id2: string | null | undefined): boolean {
+  if (id1 === id2) return true;
+  if (!id1 || !id2) return false;
+  const normalize = (s: string) => s.replace(/=/g, '').replace(/-/g, '+').replace(/_/g, '/');
+  return normalize(id1) === normalize(id2);
+}
