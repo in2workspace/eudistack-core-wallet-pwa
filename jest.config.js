@@ -44,6 +44,8 @@ module.exports = {
     "src/app/features/activity/activity.page.ts",
     "src/app/features/about/**/*.ts",
     "src/app/core/constants/support.constants.ts",
+    "src/app/core/services/support-channel.service.ts",
+    "src/app/shared/pipes/support-link.pipe.ts",
     "src/app/core/constants/webauthn.constants.ts",
     "src/app/core/services/credential-verification.service.ts",
     "src/app/shared/components/vc-view/vc-view.component.ts",
