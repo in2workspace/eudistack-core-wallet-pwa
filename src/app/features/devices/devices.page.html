@@ -42,6 +42,13 @@
               <div class="passkey-header">
                 <h2>{{ device.displayName }}</h2>
               </div>
+              <span
+                class="session-badge"
+                [class.session-badge--active]="device.activeSessions > 0"
+                [class.session-badge--inactive]="device.activeSessions === 0"
+              >
+                {{ (device.activeSessions > 0 ? 'devices.active-badge' : 'devices.inactive-badge') | translate }}
+              </span>
               <span class="this-device-badge" [attr.aria-label]="'devices.this-device' | translate">
                 {{ 'devices.this-device' | translate }}
               </span>
@@ -101,6 +108,13 @@
                 <div class="passkey-header">
                   <h2>{{ passkey.displayName }}</h2>
                 </div>
+                <span
+                  class="session-badge"
+                  [class.session-badge--active]="passkey.activeSessions > 0"
+                  [class.session-badge--inactive]="passkey.activeSessions === 0"
+                >
+                  {{ (passkey.activeSessions > 0 ? 'devices.active-badge' : 'devices.inactive-badge') | translate }}
+                </span>
               </div>
 
               <dl class="device-meta">
