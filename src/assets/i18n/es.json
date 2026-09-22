@@ -557,7 +557,9 @@
     "no-passkeys": "No hay passkeys registradas.",
     "last-used": "Último uso: {{date}}",
     "last-used-never": "Sin uso registrado",
-    "this-device": "Este dispositivo"
+    "this-device": "Este dispositivo",
+    "active-badge": "Activo",
+    "inactive-badge": "Sin sesión activa"
   },
   "verification": {
     "button": "Comprobar estado de la credencial",

@@ -143,7 +143,7 @@ describe('RemoteAuthService', () => {
   });
 
   describe('logout', () => {
-    it('clears access token and authenticated state without HTTP call', (done) => {
+    it('POSTs to /logout with this device\'s refresh token, then clears local state', (done) => {
       const broadcastSpy = jest.spyOn((service as any).broadcastChannel, 'postMessage');
       (service as any).refreshTokenValue = 'refresh-123';
       (service as any).accessToken = 'access-456';
@@ -154,24 +154,43 @@ describe('RemoteAuthService', () => {
         expect(service.getToken()).toBe('');
         expect(service.isLoggedIn()).toBe(false);
         expect(broadcastSpy).toHaveBeenCalledWith('softWalletLogout');
-        // refreshToken must be preserved so the user only needs their passkey to resume
+        // refreshToken must be preserved locally so the user only needs their passkey to resume —
+        // only the SERVER copy of this session is revoked, not the local "remember me" state.
         expect((service as any).refreshTokenValue).toBe('refresh-123');
         expect(localStorage.getItem('wallet_refresh_token')).toBe('refresh-123');
+        done();
+      });
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/logout`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ refreshToken: 'refresh-123' });
+      req.flush(null, { status: 204, statusText: 'No Content' });
+    });
+
+    it('does not call the backend when there is no refresh token to revoke', (done) => {
+      service.logout().subscribe(() => {
+        expect(service.isLoggedIn()).toBe(false);
         done();
       });
       httpMock.expectNone(`${AUTH_BASE}/logout`);
     });
 
-    it('preserves refresh token when logging out with no active access token', (done) => {
+    it('still clears local state when the backend revoke call fails', (done) => {
       (service as any).refreshTokenValue = 'stored-rt';
+      (service as any).authenticated$.next(true);
       localStorage.setItem('wallet_refresh_token', 'stored-rt');
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
 
       service.logout().subscribe(() => {
         expect(service.isLoggedIn()).toBe(false);
         expect((service as any).refreshTokenValue).toBe('stored-rt');
-        expect(localStorage.getItem('wallet_refresh_token')).toBe('stored-rt');
+        expect(consoleSpy).toHaveBeenCalled();
+        consoleSpy.mockRestore();
         done();
       });
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/logout`);
+      req.flush('Server error', { status: 500, statusText: 'Internal Server Error' });
     });
   });
 

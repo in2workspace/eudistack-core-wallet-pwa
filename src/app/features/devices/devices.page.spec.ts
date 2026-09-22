@@ -865,3 +865,74 @@ describe('DevicesPage > current/other split and device icons', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
   });
 });
+
+// ---------------------------------------------------------------------------
+// EUD-104: session-status badge — a device with a live session (activeSessions > 0)
+// must say so, both for the current device and for every other connected device.
+// ---------------------------------------------------------------------------
+
+describe('DevicesPage > active session badge', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([]));
+    mockPasskeyStore.getCredentialId.mockReturnValue('current-cred-id');
+  });
+
+  afterEach(() => {
+    TestBed.resetTestingModule();
+  });
+
+  it('marks the current device as active when it has a live session', async () => {
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([{ ...LAPTOP, activeSessions: 1 }]));
+    const fixture = await createModule('server');
+    const el: HTMLElement = fixture.nativeElement;
+
+    const badge = el.querySelector('.session-badge');
+    expect(badge).toBeTruthy();
+    expect(badge!.classList).toContain('session-badge--active');
+    expect(badge!.textContent).toContain('devices.active-badge');
+  });
+
+  it('marks another connected device as active when its own session is live', async () => {
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([
+      { ...LAPTOP, activeSessions: 1 },
+      { ...PHONE, activeSessions: 1 },
+    ]));
+    const fixture = await createModule('server');
+    const el: HTMLElement = fixture.nativeElement;
+
+    const badges = Array.from(el.querySelectorAll('.session-badge'));
+    expect(badges).toHaveLength(2);
+    expect(badges.every((b) => b.classList.contains('session-badge--active'))).toBe(true);
+    expect(badges.every((b) => b.textContent?.includes('devices.active-badge'))).toBe(true);
+  });
+
+  it('marks a device without a live session as inactive, not simply hidden', async () => {
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([
+      { ...LAPTOP, activeSessions: 1 },
+      { ...PHONE, activeSessions: 0 },
+    ]));
+    const fixture = await createModule('server');
+    const el: HTMLElement = fixture.nativeElement;
+
+    const badges = Array.from(el.querySelectorAll('.session-badge'));
+    const inactiveBadge = badges.find((b) => b.textContent?.includes('devices.inactive-badge'));
+    expect(inactiveBadge).toBeTruthy();
+    expect(inactiveBadge!.classList).toContain('session-badge--inactive');
+  });
+
+  it('EUD-104: two devices open at the same time both show as active simultaneously', async () => {
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([
+      { ...LAPTOP, activeSessions: 1 },
+      { ...PHONE, activeSessions: 1 },
+      { ...TABLET, activeSessions: 0 },
+    ]));
+    const fixture = await createModule('server');
+    const el: HTMLElement = fixture.nativeElement;
+
+    const activeBadges = el.querySelectorAll('.session-badge--active');
+    const inactiveBadges = el.querySelectorAll('.session-badge--inactive');
+    expect(activeBadges.length).toBe(2);
+    expect(inactiveBadges.length).toBe(1);
+  });
+});

@@ -553,7 +553,9 @@
     "no-passkeys": "No hi ha passkeys registrades.",
     "last-used": "Darrer ús: {{date}}",
     "last-used-never": "Sense ús registrat",
-    "this-device": "Aquest dispositiu"
+    "this-device": "Aquest dispositiu",
+    "active-badge": "Actiu",
+    "inactive-badge": "Sense sessió activa"
   },
   "verification": {
     "button": "Comprovar l'estat de la credencial",

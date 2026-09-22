@@ -151,6 +151,25 @@
   white-space: nowrap;
 }
 
+.session-badge {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &--active {
+    background: #DCFCE7;
+    color: #15803D;
+  }
+
+  &--inactive {
+    background: #F3F4F6;
+    color: #6B7280;
+  }
+}
+
 .device-meta {
   display: flex;
   margin: 12px 0 0;

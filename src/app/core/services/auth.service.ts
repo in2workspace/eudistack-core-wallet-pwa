@@ -1,7 +1,7 @@
 import { inject, Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, of, throwError, firstValueFrom } from 'rxjs';
-import { catchError, tap, shareReplay } from 'rxjs/operators';
+import { catchError, map, tap, shareReplay } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { PasskeyStoreService } from './passkey-store.service';
 import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
@@ -118,10 +118,28 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     );
   }
 
+  /**
+   * Ends this device's session server-side (revokes only its refresh token — other
+   * devices are untouched, see `LogoutWorkflow` in the EBW backend) and locks the app
+   * locally. Best-effort on the network call: a failure must not block the visible
+   * logout, since the user is leaving the session regardless.
+   */
   logout(): Observable<void> {
+    const refreshToken = this.refreshTokenValue;
     this.broadcastChannel.postMessage('softWalletLogout');
     this.softClearState();
-    return of(undefined);
+
+    if (!refreshToken) {
+      return of(undefined);
+    }
+
+    return this.http.post<void>(`${this.authBase}/logout`, { refreshToken }).pipe(
+      map(() => undefined),
+      catchError(err => {
+        console.warn('[RemoteAuthService] Server-side logout failed; session stays soft-locked locally', err);
+        return of(undefined);
+      })
+    );
   }
 
   forceLogout(): void {
