@@ -63,7 +63,7 @@ export class VcSelectorPage {
     redirectUri: '',
   };
 
-  @ViewChild(IonContent) private ionContent?: IonContent;
+  @ViewChild(IonContent) private readonly ionContent?: IonContent;
   private scrollEl?: HTMLElement;
 
   private readonly alertController = inject(AlertController);
