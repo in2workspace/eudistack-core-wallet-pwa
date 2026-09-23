@@ -102,6 +102,7 @@ export class WalletDiscoveryService {
    */
   resolve(): Promise<WalletDiscoverySnapshot> {
     this._resolvePromise ??= this.doResolve();
+    console.log("walletDiscover.resolve()");
     return this._resolvePromise;
   }
 
@@ -123,6 +124,7 @@ export class WalletDiscoveryService {
       const dto = await firstValueFrom(this.gateway.fetch());
 
       if (!isValidWalletConfigMetadataDto(dto)) {
+        console.log("doResolve: is not valid wallet config metadata");
         snapshot = this.buildFallbackSnapshot({ reason: 'invalid_payload' });
       } else {
         snapshot = {
@@ -131,6 +133,7 @@ export class WalletDiscoveryService {
           keyManager: dto.key_manager,
           resolvedAt: Date.now(),
         };
+        console.log("doResolve: wallet resolved: snapshot: " + this._snapshot);
 
         this.telemetry.track('wallet_discovery_resolved', {
           mode: snapshot.mode,
@@ -141,6 +144,7 @@ export class WalletDiscoveryService {
       snapshot = this.buildFallbackSnapshot(this.classifyError(err));
     }
 
+    console.log("doResolve: set snapshot")
     this._snapshot.set(snapshot);
     return snapshot;
   }

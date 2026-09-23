@@ -25,8 +25,10 @@ export class SingleInstanceService implements OnDestroy {
 
   /** Resolves `true` if this tab becomes the leader, `false` if one already exists. */
   public elect(): Promise<boolean> {
+    console.warn('[AUTH-DEBUG single-instance] elect() start', { tabId: this.tabId });
     if (!('BroadcastChannel' in window)) {
       // Unsupported browser — always act as leader.
+      console.warn('[AUTH-DEBUG single-instance] BroadcastChannel unsupported -> always leader', { tabId: this.tabId });
       return Promise.resolve(true);
     }
 
@@ -43,8 +45,10 @@ export class SingleInstanceService implements OnDestroy {
         tabId: this.tabId,
         url: currentUrl,
       } satisfies SingleInstanceMessage);
+      console.warn('[AUTH-DEBUG single-instance] posted NEW_TAB', { tabId: this.tabId, currentUrl });
 // TODO: There is a potential race condition here. This should be improved in a future update.
       const timeout = setTimeout(() => {
+        console.warn('[AUTH-DEBUG single-instance] election timeout elapsed, becoming LEADER', { tabId: this.tabId });
         this.becomeLeader();
         resolve(true);
       }, ELECTION_TIMEOUT_MS);
@@ -52,6 +56,8 @@ export class SingleInstanceService implements OnDestroy {
       const originalHandler = this.channel!.onmessage;
       this.channel!.onmessage = (ev: MessageEvent<SingleInstanceMessage>) => {
         if (ev.data.type === 'LEADER_ACK') {
+          console.warn('[AUTH-DEBUG single-instance] received LEADER_ACK -> this tab is FOLLOWER, disposing authService',
+            { tabId: this.tabId, leaderTabId: ev.data.tabId });
           clearTimeout(timeout);
           this.channel!.postMessage({
             type: 'NAVIGATE',
@@ -71,6 +77,7 @@ export class SingleInstanceService implements OnDestroy {
   }
 
   private becomeLeader(): void {
+    console.warn('[AUTH-DEBUG single-instance] becomeLeader()', { tabId: this.tabId });
     this.isLeader = true;
     if (this.channel) {
       this.channel.onmessage = (ev: MessageEvent<SingleInstanceMessage>) => {
@@ -126,6 +133,8 @@ export class SingleInstanceService implements OnDestroy {
 
     switch (msg.type) {
       case 'NEW_TAB':
+        console.warn('[AUTH-DEBUG single-instance] LEADER received NEW_TAB from another tab -> sending LEADER_ACK',
+          { leaderTabId: this.tabId, newTabId: msg.tabId });
         this.channel!.postMessage({
           type: 'LEADER_ACK',
           tabId: this.tabId,
@@ -155,6 +164,7 @@ export class SingleInstanceService implements OnDestroy {
   }
 
   private renderDuplicateTabMessage(isDeepLink: boolean): void {
+    console.warn('[AUTH-DEBUG single-instance] renderDuplicateTabMessage: disposing authService for FOLLOWER tab', { tabId: this.tabId });
     // Cancel any pending auth operations so this follower tab cannot corrupt shared
     // storage state.
     this.authService.dispose();

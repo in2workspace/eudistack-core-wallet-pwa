@@ -1,5 +1,5 @@
 import { inject, Injectable, OnDestroy } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { BehaviorSubject, Observable, of, throwError, firstValueFrom } from 'rxjs';
 import { catchError, tap, shareReplay } from 'rxjs/operators';
 import { Router } from '@angular/router';
@@ -63,10 +63,17 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private readonly toastServiceHandler = inject(ToastServiceHandler);
   private readonly prfService = inject(PasskeyPrfService);
 
+  // DEBUG EUD-BUG-refresh-token: temporary diagnostic logging, remove before commit.
+  private readonly instanceId = Math.random().toString(36).slice(2, 8);
+  private dlog(msg: string, extra?: unknown): void {
+    console.warn(`[AUTH-DEBUG ${this.instanceId}] ${msg}`, extra ?? '');
+  }
+
   private get authBase(): string { return `${this.urlResolver.serverUrl()}/api/v1/auth`; }
 
   constructor() {
     super();
+    this.dlog('constructor: new RemoteAuthService instance created');
     // TODO Refactor
     Promise.resolve().then(() => this.loadStoredTokens());
     this.listenToCrossTabLogout();
@@ -79,8 +86,12 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   }
 
   verifyEmail(email: string, code: string): Observable<TokenPairResponse> {
+    this.dlog('verifyEmail: sending', { email });
     return this.http.post<TokenPairResponse>(`${this.authBase}/verify-email`, { email, code }).pipe(
-      tap(response => this.handleTokenResponse(response))
+      tap(response => {
+        this.dlog('verifyEmail: response received', { refreshToken: response.refreshToken });
+        this.handleTokenResponse(response);
+      })
     );
   }
 
@@ -88,21 +99,32 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   refreshAccessToken(options?: { onAuthFailure?: AuthFailureMode }): Observable<TokenPairResponse> {
     if (!this.refreshTokenValue) {
+      this.dlog('refreshAccessToken: ABORT no refreshTokenValue in memory');
       return throwError(() => new Error('No refresh token'));
     }
     if (this.refreshInFlight$) {
+      this.dlog('refreshAccessToken: DEDUP reusing in-flight request, refreshTokenValue=', this.refreshTokenValue);
       return this.refreshInFlight$;
     }
     const onAuthFailure = options?.onAuthFailure ?? 'force-logout';
+    const tokenAtCallTime = this.refreshTokenValue;
+    this.dlog('refreshAccessToken: SENDING new request', { refreshToken: tokenAtCallTime, onAuthFailure });
     this.refreshInFlight$ = this.http.post<TokenPairResponse>(`${this.authBase}/refresh`, {
       refreshToken: this.refreshTokenValue
     }).pipe(
-      tap(response => this.handleTokenResponse(response)),
+      tap(response => {
+        this.dlog('refreshAccessToken: SUCCESS', { sent: tokenAtCallTime, received: response.refreshToken });
+        this.handleTokenResponse(response);
+      }),
       catchError(err => {
+        const status = err instanceof HttpErrorResponse ? err.status : 'network/unknown';
+        this.dlog('refreshAccessToken: FAILED', { sent: tokenAtCallTime, status, error: err?.error ?? err?.message });
         if (!this.disposed) {
           if (onAuthFailure === 'clear-only') {
+            this.dlog('refreshAccessToken: calling clearState()');
             this.clearState();
           } else {
+            this.dlog('refreshAccessToken: calling forceLogout()');
             this.forceLogout();
           }
         }
@@ -112,19 +134,21 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     );
     return this.refreshInFlight$.pipe(
       tap({
-        complete: () => { this.refreshInFlight$ = null; },
-        error: () => { this.refreshInFlight$ = null; }
+        complete: () => { this.dlog('refreshAccessToken: refreshInFlight$ reset (complete)'); this.refreshInFlight$ = null; },
+        error: () => { this.dlog('refreshAccessToken: refreshInFlight$ reset (error)'); this.refreshInFlight$ = null; }
       })
     );
   }
 
   logout(): Observable<void> {
+    this.dlog('logout() called — soft logout (menu button)');
     this.broadcastChannel.postMessage('softWalletLogout');
     this.softClearState();
     return of(undefined);
   }
 
   forceLogout(): void {
+    this.dlog('forceLogout() called', new Error('stack').stack);
     this.clearState();
     const hasPasskey = this.passkeyStore.hasPasskey();
     this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
@@ -151,8 +175,10 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   }
 
   async unlockWithPasskey(): Promise<void> {
+    this.dlog('unlockWithPasskey: start', { refreshTokenValue: this.refreshTokenValue, hasAccessToken: !!this.getToken() });
     await this.prfService.assertLocalPasskey();
     if (this.refreshTokenValue && !this.getToken()) {
+      this.dlog('unlockWithPasskey: no access token, calling refreshAccessToken(clear-only)');
       try {
         await firstValueFrom(this.refreshAccessToken({ onAuthFailure: 'clear-only' }));
       } catch {
@@ -160,6 +186,8 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
         // step from getToken() so a cancelled biometric is not confused with an
         // expired refresh token (Dedalo-1052543).
       }
+    } else {
+      this.dlog('unlockWithPasskey: skipping refresh (already have access token or no refresh token)');
     }
   }
 
@@ -184,7 +212,15 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   }
 
   private handleTokenResponse(response: TokenPairResponse): void {
-    if (this.disposed) return;
+    if (this.disposed) {
+      this.dlog('handleTokenResponse: SKIPPED (disposed instance)', { wouldHaveSet: response.refreshToken });
+      return;
+    }
+    this.dlog('handleTokenResponse: updating state', {
+      previousRefreshToken: this.refreshTokenValue,
+      newRefreshToken: response.refreshToken,
+      expiresIn: response.expiresIn,
+    });
     this.accessToken = response.accessToken;
     this.refreshTokenValue = response.refreshToken;
     localStorage.setItem('wallet_refresh_token', response.refreshToken);
@@ -224,12 +260,18 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   private scheduleTokenRefresh(expiresInSeconds: number): void {
     if (this.refreshTimer) {
+      this.dlog('scheduleTokenRefresh: cancelling previous timer');
       clearTimeout(this.refreshTimer);
     }
 
     const refreshInMs = Math.max((expiresInSeconds - 60) * 1000, 0);
+    const firesAt = new Date(Date.now() + refreshInMs).toISOString();
+    this.dlog('scheduleTokenRefresh: SCHEDULING', {
+      expiresInSeconds, refreshInMs, firesAt, refreshTokenValueAtScheduleTime: this.refreshTokenValue,
+    });
 
     this.refreshTimer = setTimeout(() => {
+      this.dlog('scheduleTokenRefresh: TIMER FIRED', { refreshTokenValueAtFireTime: this.refreshTokenValue });
       // refreshAccessToken() already calls forceLogout() from its own catchError
       // before rethrowing — this is the background/silent path (no user action
       // involved), so the only thing left to do here is let the user know why
@@ -246,6 +288,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   private loadStoredTokens(): void {
     const storedRefreshToken = localStorage.getItem('wallet_refresh_token');
+    this.dlog('loadStoredTokens: constructor microtask ran', { storedRefreshToken });
     if (storedRefreshToken) {
       // Keep the refresh token in memory so verifyPasskey() can exchange it after biometric auth.
       // Do NOT auto-authenticate — the user must present their passkey first.
@@ -256,6 +299,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   private listenToCrossTabLogout(): void {
     this.broadcastChannel.onmessage = (event) => {
+      this.dlog('listenToCrossTabLogout: BroadcastChannel message received', { data: event.data, disposed: this.disposed });
       if (this.disposed) return;
       if (event.data === RemoteAuthService.BROADCAST_FORCE_LOGOUT) {
         console.warn('Detected force-logout from another tab');
@@ -270,6 +314,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   }
 
   private softClearState(): void {
+    this.dlog('softClearState() called', new Error('stack').stack);
     this.accessToken = null;
     this.name$.next('');
     this.authenticated$.next(false);
@@ -282,6 +327,10 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   }
 
   private clearState(): void {
+    this.dlog('clearState() called — wiping refreshTokenValue', {
+      previousRefreshToken: this.refreshTokenValue,
+      stack: new Error('stack').stack,
+    });
     this.accessToken = null;
     this.refreshTokenValue = null;
     this.name$.next('');

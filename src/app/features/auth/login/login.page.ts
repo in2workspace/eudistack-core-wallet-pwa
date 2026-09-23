@@ -390,6 +390,7 @@ export class LoginPage implements OnDestroy {
 
     this.loading = true;
     this.errorMessage = '';
+    console.warn('[AUTH-DEBUG login.page] verifyCode: sending', { email: this.email });
 
     (this.authService as RemoteAuthService).verifyEmail(this.email, this.otpValue).pipe(
       takeUntilDestroyed(this.destroyRef)
@@ -474,10 +475,15 @@ export class LoginPage implements OnDestroy {
   async verifyPasskey(): Promise<void> {
     this.loading = true;
     this.errorMessage = '';
+    console.warn('[AUTH-DEBUG login.page] verifyPasskey: start', {
+      passkeyFromRefreshToken: this.passkeyFromRefreshToken,
+      storedRefreshToken: localStorage.getItem('wallet_refresh_token'),
+    });
 
     try {
       await (this.authService as RemoteAuthService).unlockWithPasskey();
     } catch (err: any) {
+      console.warn('[AUTH-DEBUG login.page] verifyPasskey: unlockWithPasskey threw', err);
       this.errorMessage = err?.message || 'Passkey verification failed';
       this.loading = false;
       return;
@@ -491,6 +497,9 @@ export class LoginPage implements OnDestroy {
       await this.attributeSessionToDevicePasskey();
       await this.syncCredentialsThenNavigate();
     } catch (err: any) {
+      console.warn('[AUTH-DEBUG login.page] verifyPasskey: post-unlock step failed', {
+        err, passkeyFromRefreshToken: this.passkeyFromRefreshToken,
+      });
       if (this.passkeyFromRefreshToken) {
         this.passkeyFromRefreshToken = false;
         this.step.set('email');
@@ -585,6 +594,7 @@ export class LoginPage implements OnDestroy {
    */
   private async attributeSessionToDevicePasskey(): Promise<void> {
     const refreshToken = localStorage.getItem('wallet_refresh_token');
+    console.warn('[AUTH-DEBUG login.page] attributeSessionToDevicePasskey: refreshToken read from localStorage', { refreshToken });
     if (!refreshToken) return;
 
     let passkeyId = this.matchedPasskeyId;
@@ -602,6 +612,7 @@ export class LoginPage implements OnDestroy {
     if (!passkeyId) return;
 
     try {
+      console.warn('[AUTH-DEBUG login.page] attributeSessionToDevicePasskey: calling confirm-session', { passkeyId, refreshToken });
       await firstValueFrom(this.passkeyApi.confirmSession(passkeyId, refreshToken));
     } catch (err) {
       console.warn('[LoginPage] confirm-session failed, session stays unattributed', err);

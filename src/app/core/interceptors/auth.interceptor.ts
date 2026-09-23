@@ -55,14 +55,19 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => err);
       }
 
+      console.warn('[AUTH-DEBUG interceptor] 401 received', { url: req.url, alreadyRetried: req.context.get(AUTH_RETRY_AFTER_REFRESH) });
+
       if (req.context.get(AUTH_RETRY_AFTER_REFRESH)) {
+        console.warn('[AUTH-DEBUG interceptor] already retried once, giving up -> forceLogout()');
         sessionExpiryMarker.markSessionExpired(err);
         authService.forceLogout();
         return throwError(() => err);
       }
 
+      console.warn('[AUTH-DEBUG interceptor] triggering reactive refreshAccessToken()', { url: req.url });
       return authService.refreshAccessToken().pipe(
         switchMap(() => {
+          console.warn('[AUTH-DEBUG interceptor] reactive refresh SUCCESS, retrying original request', { url: req.url });
           const newToken = authService.getToken();
           const retryReq = authorizedReq.clone({
             setHeaders: newToken ? { Authorization: `Bearer ${newToken}` } : {},
@@ -70,7 +75,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
           });
           return next(retryReq);
         }),
-        catchError(() => {
+        catchError((refreshErr) => {
+          console.warn('[AUTH-DEBUG interceptor] reactive refresh FAILED -> forceLogout()', { url: req.url, refreshErr });
           sessionExpiryMarker.markSessionExpired(err);
           authService.forceLogout();
           return throwError(() => err);

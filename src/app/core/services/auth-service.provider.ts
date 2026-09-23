@@ -17,6 +17,7 @@ import { WalletDiscoveryService } from './wallet-discovery.service';
 export const AUTH_SERVICE_PROVIDER: Provider = {
   provide: AuthService,
   useFactory: () => {
+    console.log("AUTH_SERVICE_PROVIDER: mode is: " + inject(WalletDiscoveryService).mode());
     if (inject(WalletDiscoveryService).mode() === 'server') {
       return inject(RemoteAuthService);
     }
