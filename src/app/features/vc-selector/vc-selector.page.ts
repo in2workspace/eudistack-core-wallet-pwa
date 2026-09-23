@@ -1,10 +1,11 @@
-import { Component, HostListener, ViewChild, inject } from '@angular/core';
+import { Component, HostListener, Injector, ViewChild, afterNextRender, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AlertController, IonContent, IonicModule } from '@ionic/angular';
 import { ActivatedRoute, Params, Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { VcViewComponent } from '../../shared/components/vc-view/vc-view.component';
+import { HighlightPlaceholderPipe } from '../../shared/pipes/highlight-placeholder.pipe';
 import { VCReply } from 'src/app/core/models/verifiable-credential-reply';
 import { VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { VerifiableCredentialSubjectDataNormalizer } from 'src/app/core/models/verifiable-credential-subject-data-normalizer';
@@ -28,6 +29,7 @@ import {UserPreferencesService} from "../../shared/services/user-preferences.ser
         FormsModule,
         TranslateModule,
         VcViewComponent,
+        HighlightPlaceholderPipe,
     ]
 })
 export class VcSelectorPage {
@@ -75,15 +77,20 @@ export class VcSelectorPage {
   private readonly oid4vpEngineService = inject(Oid4vpEngineService);
   private readonly credentialDecisionService = inject(CredentialDecisionService);
   private readonly userPrefs = inject(UserPreferencesService);
+  private readonly injector = inject(Injector);
 
   public constructor() {
       this.route.queryParams.pipe(takeUntilDestroyed()).subscribe((params) => {
         this.getExecutionParamsFromQueryParams(params);
         this.formatCredList();
         this.resetIsClickList();
-        // Deferred: the credential-list @for hasn't rendered yet in this tick,
-        // so scrollHeight would still reflect the previous (or empty) list.
-        setTimeout(() => this.updateScrollIndicator());
+        // The credential-list @for hasn't painted yet in this tick, so scrollHeight
+        // would still reflect the previous (or empty) list — afterNextRender waits
+        // for the browser to actually paint the new cards before measuring, unlike
+        // a plain setTimeout(0). An explicit injector is required here because this
+        // callback can also run outside the constructor's own injection context
+        // (queryParams re-emitting later in the component's lifetime).
+        afterNextRender(() => this.updateScrollIndicator(), { injector: this.injector });
     });
   }
 
@@ -255,10 +262,25 @@ export class VcSelectorPage {
     void this.updateScrollIndicator();
   }
 
+  // Safety net for the initial afterNextRender measure: the card-slide-up entrance
+  // animation is staggered per card (nth-child delay), so on a long list the last
+  // card can still be growing/settling into place after the first paint. Re-measure
+  // once every card's entrance animation has finished.
+  public onEntranceAnimationEnd(): void {
+    void this.updateScrollIndicator();
+  }
+
   private async updateScrollIndicator(): Promise<void> {
     if (!this.scrollEl) {
       if (!this.ionContent) return;
-      this.scrollEl = await this.ionContent.getScrollElement();
+      try {
+        this.scrollEl = await this.ionContent.getScrollElement();
+      } catch {
+        // ion-content's native element may not be upgraded/ready yet (e.g. right
+        // after afterNextRender's first paint on a slow device) — safe to no-op
+        // and retry on the next scroll/resize/animationend tick.
+        return;
+      }
     }
 
     const { scrollTop, scrollHeight, clientHeight } = this.scrollEl;

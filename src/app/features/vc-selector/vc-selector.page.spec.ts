@@ -525,6 +525,24 @@ describe('VcSelectorPage', () => {
 
       expect(spy).toHaveBeenCalled();
     });
+
+    it('onEntranceAnimationEnd triggers a recompute', () => {
+      const spy = jest.spyOn(component as any, 'updateScrollIndicator').mockResolvedValue(undefined);
+
+      component.onEntranceAnimationEnd();
+
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('does not throw and leaves isScrollable false when ion-content\'s native element is not ready yet', async () => {
+      (component as any).ionContent = {
+        getScrollElement: jest.fn().mockRejectedValue(new TypeError("Cannot read properties of undefined (reading 'apply')")),
+      };
+
+      await expect((component as any).updateScrollIndicator()).resolves.toBeUndefined();
+
+      expect(component.isScrollable).toBe(false);
+    });
   });
 
   describe('Component integration', () => {

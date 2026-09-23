@@ -33,9 +33,7 @@
       <p class="header-subtitle">{{ "vc-selector.select-instruction" | translate }}</p>
     }
     @if (credList.length > 1) {
-      <p class="credential-count">
-        {{ "vc-selector.credentials-count-prefix" | translate }}<span class="credential-count-value">{{ credList.length }}</span>{{ "vc-selector.credentials-count-suffix" | translate }}
-      </p>
+      <p class="credential-count" [innerHTML]="('vc-selector.credentials-count' | translate) | highlightPlaceholder: '{{count}}' : credList.length : 'credential-count-value'"></p>
     }
     <div class="legal-links">
       @if (clientUri) {
@@ -52,7 +50,7 @@
     </div>
   </div>
 
-  <div class="credential-list">
+  <div class="credential-list" (animationend)="onEntranceAnimationEnd()">
     @for (cred of credList; track cred) {
       <div role="button" class="selectable-card" tabindex="0" (click)="sendCred(cred)" (keydown.enter)="sendCred(cred)" (keydown.space)="$event.preventDefault()" (keyup.space)="sendCred(cred)" [attr.aria-label]="'vc-selector.select-cred' | translate">
         <app-vc-view [credentialInput$]="cred" [enableDetailView$]="false"></app-vc-view>
