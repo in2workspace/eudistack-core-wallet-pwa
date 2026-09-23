@@ -119,4 +119,153 @@ describe('CredentialCacheService', () => {
       expect(service.extractSignedJwt(cred)).toBe('abc.def.ghi');
     });
   });
+
+  describe('claims filtering (issuer_access power gate)', () => {
+    const onboardingExecuteQuery: DcqlQuery = {
+      credentials: [{
+        id: 'issuer_access_employee_sd_jwt',
+        format: 'dc+sd-jwt',
+        meta: { vct_values: ['learcredential.employee.sd.1'] },
+        claims: [
+          { path: ['mandate', 'power', '*', 'function'], values: ['Onboarding'] },
+          { path: ['mandate', 'power', '*', 'action'], values: ['Execute'] },
+        ],
+      }],
+    } as unknown as DcqlQuery;
+
+    const sysAdminQuery: DcqlQuery = {
+      credentials: [{
+        id: 'issuer_access_sysadmin_sd_jwt',
+        format: 'dc+sd-jwt',
+        meta: { vct_values: ['learcredential.employee.sd.1'] },
+        claims: [
+          { path: ['mandate', 'power', '*', 'type'], values: ['organization'] },
+          { path: ['mandate', 'power', '*', 'domain'], values: ['EUDISTACK'] },
+          { path: ['mandate', 'power', '*', 'function'], values: ['System'] },
+          { path: ['mandate', 'power', '*', 'action'], values: ['Administration'] },
+        ],
+      }],
+    } as unknown as DcqlQuery;
+
+    function makeEmployeeSdJwt(power: unknown[]): VerifiableCredential {
+      return makeCredential({
+        id: 'employee',
+        type: ['VerifiableCredential', 'learcredential.employee.sd.1'],
+        credentialSubject: { mandate: { power } } as any,
+      });
+    }
+
+    it('includes an employee credential whose power has Onboarding+Execute together', () => {
+      const cred = makeEmployeeSdJwt([
+        { type: 'domain', domain: 'SANDBOX', function: 'Onboarding', action: ['Execute'] },
+      ]);
+      service.setLoaded([cred]);
+
+      expect(service.findCredentialsByDcqlQuery(onboardingExecuteQuery).map(c => c.id)).toEqual(['employee']);
+    });
+
+    it('excludes an employee credential whose power lacks Onboarding entirely', () => {
+      const cred = makeEmployeeSdJwt([
+        { type: 'domain', domain: 'SANDBOX', function: 'ProductOffering', action: ['Create', 'Update', 'Delete'] },
+      ]);
+      service.setLoaded([cred]);
+
+      expect(service.findCredentialsByDcqlQuery(onboardingExecuteQuery)).toEqual([]);
+    });
+
+    it('does NOT include a credential when Onboarding and Execute sit on two different, unrelated powers', () => {
+      // Regression test: function=Onboarding and action=Execute must be satisfied by the SAME
+      // array element, not by two independent powers that each satisfy half the requirement.
+      const cred = makeEmployeeSdJwt([
+        { type: 'domain', domain: 'SANDBOX', function: 'Onboarding', action: ['View'] },
+        { type: 'domain', domain: 'SANDBOX', function: 'ProductOffering', action: ['Execute'] },
+      ]);
+      service.setLoaded([cred]);
+
+      expect(service.findCredentialsByDcqlQuery(onboardingExecuteQuery)).toEqual([]);
+    });
+
+    it('includes a SysAdmin credential via the sysadmin alternative query', () => {
+      const cred = makeEmployeeSdJwt([
+        { type: 'organization', domain: 'EUDISTACK', function: 'System', action: ['Administration'] },
+      ]);
+      service.setLoaded([cred]);
+
+      expect(service.findCredentialsByDcqlQuery(sysAdminQuery).map(c => c.id)).toEqual(['employee']);
+    });
+
+    it('matches when action is a plain string instead of an array', () => {
+      const cred = makeEmployeeSdJwt([
+        { type: 'domain', domain: 'SANDBOX', function: 'Onboarding', action: 'Execute' },
+      ]);
+      service.setLoaded([cred]);
+
+      expect(service.findCredentialsByDcqlQuery(onboardingExecuteQuery).map(c => c.id)).toEqual(['employee']);
+    });
+
+    it('matches a standalone (non-wildcard) claim, same shape used by the doctorid profile', () => {
+      const cred = makeCredential({
+        id: 'doctorid',
+        type: ['VerifiableCredential', 'urn:es.cgcom:doctorid:1'],
+        credentialSubject: { registrationNumber: '12345' } as any,
+      });
+      service.setLoaded([cred]);
+
+      const query: DcqlQuery = {
+        credentials: [{
+          id: 'doctorid_sd_jwt',
+          format: 'dc+sd-jwt',
+          meta: { vct_values: ['urn:es.cgcom:doctorid:1'] },
+          claims: [{ path: ['registrationNumber'] }],
+        }],
+      } as unknown as DcqlQuery;
+
+      expect(service.findCredentialsByDcqlQuery(query).map(c => c.id)).toEqual(['doctorid']);
+    });
+
+    it('excludes a credential missing a required standalone (non-wildcard) claim', () => {
+      const cred = makeCredential({
+        id: 'doctorid',
+        type: ['VerifiableCredential', 'urn:es.cgcom:doctorid:1'],
+        credentialSubject: {} as any,
+      });
+      service.setLoaded([cred]);
+
+      const query: DcqlQuery = {
+        credentials: [{
+          id: 'doctorid_sd_jwt',
+          format: 'dc+sd-jwt',
+          meta: { vct_values: ['urn:es.cgcom:doctorid:1'] },
+          claims: [{ path: ['registrationNumber'] }],
+        }],
+      } as unknown as DcqlQuery;
+
+      expect(service.findCredentialsByDcqlQuery(query)).toEqual([]);
+    });
+
+    it('resolves claim paths under credentialSubject for jwt_vc_json credentials', () => {
+      const cred = makeCredential({
+        id: 'employee-w3c',
+        type: ['VerifiableCredential', 'learcredential.employee.w3c.4'],
+        credentialSubject: {
+          mandate: { power: [{ type: 'domain', domain: 'SANDBOX', function: 'Onboarding', action: ['Execute'] }] },
+        } as any,
+      });
+      service.setLoaded([cred]);
+
+      const query: DcqlQuery = {
+        credentials: [{
+          id: 'issuer_access_employee_jwt_vc',
+          format: 'jwt_vc_json',
+          meta: { credential_definition: { type: ['learcredential.employee.w3c.4'] } },
+          claims: [
+            { path: ['credentialSubject', 'mandate', 'power', '*', 'function'], values: ['Onboarding'] },
+            { path: ['credentialSubject', 'mandate', 'power', '*', 'action'], values: ['Execute'] },
+          ],
+        }],
+      } as unknown as DcqlQuery;
+
+      expect(service.findCredentialsByDcqlQuery(query).map(c => c.id)).toEqual(['employee-w3c']);
+    });
+  });
 });
