@@ -25,6 +25,7 @@ describe('LoginPage (server mode)', () => {
     unlockWithPasskey: jest.Mock;
     ensureAccessToken: jest.Mock;
     getToken: jest.Mock;
+    hasRefreshToken: jest.Mock;
   };
   let mockPrfService: {
     hasPasskey: jest.Mock;
@@ -60,6 +61,7 @@ describe('LoginPage (server mode)', () => {
       unlockWithPasskey: jest.fn().mockResolvedValue(undefined),
       ensureAccessToken: jest.fn().mockResolvedValue(undefined),
       getToken: jest.fn().mockReturnValue('access-1'),
+      hasRefreshToken: jest.fn(() => !!localStorage.getItem('wallet_refresh_token')),
     };
     mockPrfService = {
       hasPasskey: jest.fn().mockReturnValue(false),
@@ -665,6 +667,8 @@ describe('LoginPage (server mode)', () => {
 
     it('AC-02: follows full flow (expiry -> email step -> OTP -> resume) and completes deep link', async () => {
       mockAuthService.unlockWithPasskey.mockImplementation(async () => {
+        // Refresh token rejected by the server: RemoteAuthService drops it (clear-only).
+        localStorage.removeItem('wallet_refresh_token');
         mockAuthService.getToken.mockReturnValue('');
       });
 
@@ -692,6 +696,22 @@ describe('LoginPage (server mode)', () => {
       // 4. Verification: resumes the offer and clears the pending key
       expect(mockRouter.navigateByUrl).toHaveBeenCalledWith(expect.stringContaining('credential_offer_uri=https://sandbox.stg.eudistack.net/issuer/oid4vci/v1/credential-offer/abc'));
       expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBeNull();
+    });
+
+    it('stays on passkey step with a network error when /refresh was unreachable and the token was kept', async () => {
+      mockAuthService.unlockWithPasskey.mockImplementation(async () => {
+        mockAuthService.getToken.mockReturnValue('');
+      });
+
+      component.ionViewWillEnter();
+      expect(component.step()).toBe('passkey');
+
+      await component.verifyPasskey();
+
+      expect(component.step()).toBe('passkey');
+      expect(component.errorMessage).toBe('errors.network-error');
+      expect(localStorage.getItem('wallet_refresh_token')).toBeTruthy();
+      expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
     });
 
     it('stays on passkey step if WebAuthn is cancelled, without clearing the token', async () => {
