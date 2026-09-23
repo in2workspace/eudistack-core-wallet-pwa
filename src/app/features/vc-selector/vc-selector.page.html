@@ -1,4 +1,11 @@
-<ion-content [fullscreen]="true" class="vc-selector-content">
+<ion-content [fullscreen]="true" class="vc-selector-content" [scrollEvents]="true" (ionScroll)="onContentScroll()">
+  @if (isScrollable) {
+    <div slot="fixed" class="scroll-indicator" aria-hidden="true">
+      <div class="scroll-indicator-track">
+        <div class="scroll-indicator-thumb" [style.height.%]="thumbHeightPct" [style.top.%]="thumbTopPct"></div>
+      </div>
+    </div>
+  }
   <div class="vc-selector-header">
     @if (clientLogo) {
       <div [class.header-logo-fallback]="needsFallback">
@@ -24,6 +31,11 @@
     @else {
       <h2 class="header-title">{{ "vc-selector.presentation-request" | translate }}</h2>
       <p class="header-subtitle">{{ "vc-selector.select-instruction" | translate }}</p>
+    }
+    @if (credList.length > 1) {
+      <p class="credential-count">
+        {{ "vc-selector.credentials-count-prefix" | translate }}<span class="credential-count-value">{{ credList.length }}</span>{{ "vc-selector.credentials-count-suffix" | translate }}
+      </p>
     }
     <div class="legal-links">
       @if (clientUri) {

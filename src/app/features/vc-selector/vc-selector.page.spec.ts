@@ -460,6 +460,73 @@ describe('VcSelectorPage', () => {
     });
   });
 
+  describe('updateScrollIndicator (mobile scroll indicator, M-02)', () => {
+    const mockScrollElement = (overrides: Partial<{ scrollTop: number; scrollHeight: number; clientHeight: number }>) => ({
+      scrollTop: 0,
+      scrollHeight: 500,
+      clientHeight: 500,
+      ...overrides,
+    });
+
+    const setIonContent = (scrollElement: ReturnType<typeof mockScrollElement>) => {
+      (component as any).ionContent = {
+        getScrollElement: jest.fn().mockResolvedValue(scrollElement),
+      };
+    };
+
+    it('marks content as not scrollable when it fits the viewport', async () => {
+      setIonContent(mockScrollElement({ scrollHeight: 500, clientHeight: 500 }));
+
+      await (component as any).updateScrollIndicator();
+
+      expect(component.isScrollable).toBe(false);
+    });
+
+    it('computes thumb size and position when content overflows', async () => {
+      setIonContent(mockScrollElement({ scrollTop: 300, scrollHeight: 1000, clientHeight: 400 }));
+
+      await (component as any).updateScrollIndicator();
+
+      expect(component.isScrollable).toBe(true);
+      expect(component.thumbHeightPct).toBe(40);
+      expect(component.thumbTopPct).toBe(30);
+    });
+
+    it('enforces a minimum thumb size for very long lists', async () => {
+      setIonContent(mockScrollElement({ scrollTop: 0, scrollHeight: 5000, clientHeight: 50 }));
+
+      await (component as any).updateScrollIndicator();
+
+      expect(component.thumbHeightPct).toBe(12);
+    });
+
+    it('reuses the cached scroll element across calls instead of re-querying ion-content', async () => {
+      setIonContent(mockScrollElement({ scrollHeight: 1000, clientHeight: 400 }));
+      const getScrollElement = (component as any).ionContent.getScrollElement;
+
+      await (component as any).updateScrollIndicator();
+      await (component as any).updateScrollIndicator();
+
+      expect(getScrollElement).toHaveBeenCalledTimes(1);
+    });
+
+    it('onContentScroll triggers a recompute', () => {
+      const spy = jest.spyOn(component as any, 'updateScrollIndicator').mockResolvedValue(undefined);
+
+      component.onContentScroll();
+
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('onWindowResize triggers a recompute', () => {
+      const spy = jest.spyOn(component as any, 'updateScrollIndicator').mockResolvedValue(undefined);
+
+      component.onWindowResize();
+
+      expect(spy).toHaveBeenCalled();
+    });
+  });
+
   describe('Component integration', () => {
     it('should handle full workflow from initialization to credential selection', () => {
       // Component should be initialized with query params
