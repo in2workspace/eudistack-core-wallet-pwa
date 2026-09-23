@@ -178,7 +178,7 @@
   --padding-end: 10px;
   --padding-top: 8px;
   --padding-bottom: 8px;
-  --highlight-color: transparent;
+  --highlight-color: var(--ui-caret);
   background: var(--surface-card, #fff);
   border: 1px solid var(--auth-border);
   border-radius: var(--radius-sm);

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Invisible text caret on the device-name and email inputs during passkey device registration**: `.auth-input` (`login.page.scss`) set `--highlight-color: transparent`, which Ionic's `ion-input` consumes internally as `caret-color: var(--highlight-color)` on `.has-focus` — so the caret vanished while typing on both the email and device-name steps, with no visual indication of where text was being entered. The theme already defines `--ui-caret` for this exact purpose (used correctly by `otp-input.component.ts`) but `.auth-input` never wired it up. Now sets `--highlight-color: var(--ui-caret)`.
+
 ### Added
 
 - **Install guidance for macOS Safari**: Safari fires no `beforeinstallprompt` on any platform, so the install screen never appeared on a Mac, and the manual guide at `/ios-install` is scoped to iOS devices by design (AC-008.6) — a Mac user had no way to install the wallet. The access screen now also shows on macOS Safari, where its primary button opens a modal with the manual "File → Add to Dock" steps instead of triggering a prompt that cannot exist; the screen keeps both options ("install" and "continue in browser") side by side, as on every other platform. Other browsers are untouched and keep the native prompt. The modal also notes that installing later may require signing in again.
