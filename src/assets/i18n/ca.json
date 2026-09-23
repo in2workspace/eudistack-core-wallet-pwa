@@ -140,6 +140,7 @@
     "register": {
       "email-placeholder": "Introdueix el teu email",
       "send-code": "Enviar codi de verificació",
+      "retry-in": "Torna-ho a provar en {{time}}",
       "code-sent": "Hem enviat un codi de verificació al teu email",
       "verify": "Verificar",
       "change-email": "Canviar email",
@@ -663,5 +664,8 @@
     "wrap-unavailable-title": "No es pot signar en aquest dispositiu",
     "wrap-unavailable-body": "La clau de signatura es va crear en un altre dispositiu i no es pot utilitzar aquí. Usa el dispositiu original per presentar les teves credencials.",
     "wrap-unavailable-cta": "Tancar"
+  },
+  "app-update": {
+    "toast": "L'aplicació s'ha actualitzat a la versió {{version}}"
   }
 }

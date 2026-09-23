@@ -1,6 +1,14 @@
 import { Injectable, OnDestroy, inject, isDevMode } from '@angular/core';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { Subject, filter, takeUntil } from 'rxjs';
+import { PwaInstallService } from '../../shared/services/pwa-install.service';
+import { ToastServiceHandler } from '../../shared/services/toast.service';
+import { BUILD_INFO } from '../constants/build-info.constants';
+
+// Set right before an SW-update reload, alongside PwaInstallService's own grace marker.
+// Consumed once on the next boot to show a one-shot "app updated" toast — never on a
+// plain reopen of an already-installed session.
+const JUST_UPDATED_KEY = 'wallet_pwa_just_updated';
 
 /**
  * Activates Angular Service Worker updates immediately on VERSION_READY to
@@ -9,9 +17,13 @@ import { Subject, filter, takeUntil } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class SwUpdateService implements OnDestroy {
   private readonly swUpdate = inject(SwUpdate);
+  private readonly pwaInstall = inject(PwaInstallService);
+  private readonly toast = inject(ToastServiceHandler);
   private readonly destroy$ = new Subject<void>();
 
   public init(): void {
+    this.notifyIfJustUpdated();
+
     if (!this.swUpdate.isEnabled) {
       return;
     }
@@ -23,7 +35,9 @@ export class SwUpdateService implements OnDestroy {
       )
       .subscribe(() => {
         this.swUpdate.activateUpdate().then(() => {
-          document.location.reload();
+          this.pwaInstall.markPreUpdateReload();
+          sessionStorage.setItem(JUST_UPDATED_KEY, 'true');
+          window.location.reload();
         }).catch(err => {
           console.error('Failed to activate SW update', err);
         });
@@ -37,5 +51,11 @@ export class SwUpdateService implements OnDestroy {
   public ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private notifyIfJustUpdated(): void {
+    if (sessionStorage.getItem(JUST_UPDATED_KEY) !== 'true') return;
+    sessionStorage.removeItem(JUST_UPDATED_KEY);
+    this.toast.showInfoToastByTranslateLabel('app-update.toast', 5000, 'info', { version: BUILD_INFO.version });
   }
 }

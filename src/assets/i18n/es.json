@@ -140,6 +140,7 @@
     "register": {
       "email-placeholder": "Introduce tu email",
       "send-code": "Enviar código de verificación",
+      "retry-in": "Reintentar en {{time}}",
       "code-sent": "Hemos enviado un código de verificación a tu email",
       "verify": "Verificar",
       "change-email": "Cambiar email",
@@ -667,5 +668,8 @@
     "wrap-unavailable-title": "No se puede firmar en este dispositivo",
     "wrap-unavailable-body": "La clave de firma fue creada en otro dispositivo y no puede usarse aquí. Usa el dispositivo original para presentar tus credenciales.",
     "wrap-unavailable-cta": "Cerrar"
+  },
+  "app-update": {
+    "toast": "La aplicación se ha actualizado a la versión {{version}}"
   }
 }

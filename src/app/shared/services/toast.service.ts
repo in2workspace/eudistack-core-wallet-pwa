@@ -3,20 +3,15 @@ import { TranslateService } from '@ngx-translate/core';
 import { map, Observable, take } from 'rxjs';
 import { AlertController } from '@ionic/angular';
 import { DomSanitizer } from '@angular/platform-browser';
-
-/**
- * Fixed destination for the "contact support" link embedded in some error
- * messages. Kept out of the translated strings themselves — see
- * SUPPORT_LINK_PLACEHOLDER.
- */
-const SUPPORT_URL = 'https://ticketing.dome-marketplace.eu/';
+import { SupportChannelService } from 'src/app/core/services/support-channel.service';
 
 /**
  * Token a translated message can contain to ask for the support link to be
  * inlined. Swapped for a real anchor tag *after* escaping (see
- * `renderMessage`), so the anchor itself — built in code, not translator
- * content — is the only markup that ever reaches the DOM. Translator-authored
- * prose stays escaped, preserving the EUD-142 (F2) XSS hardening.
+ * `renderSupportMessage`), so the anchor itself — built in code, not
+ * translator content — is the only markup that ever reaches the DOM.
+ * Translator-authored prose stays escaped, preserving the EUD-142 (F2) XSS
+ * hardening.
  */
 const SUPPORT_LINK_PLACEHOLDER = '{{supportLink}}';
 
@@ -44,6 +39,7 @@ export class ToastServiceHandler {
   private readonly translate = inject(TranslateService);
   private readonly alertController = inject(AlertController);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly supportChannel = inject(SupportChannelService);
 
   public showErrorAlert(message: string): Observable<unknown> {
     const translationKey = Object.keys(ERROR_TRANSLATION_MAP)
@@ -62,7 +58,7 @@ export class ToastServiceHandler {
         const alert = await this.alertController.create({
           message: `
             <div style="display: flex; align-items: center; gap: 50px;">
-              <span>${this.renderMessage(translatedMessage)}</span>
+              <span>${this.renderSupportMessage(translatedMessage)}</span>
             </div>
           `,
           buttons: [
@@ -97,10 +93,11 @@ export class ToastServiceHandler {
   public showInfoToastByTranslateLabel(
     message: string,
     durationMs: number = 5000,
-    variant: 'info' | 'warning' = 'info'
+    variant: 'info' | 'warning' = 'info',
+    interpolateParams?: Record<string, unknown>
   ): void {
     const icon = variant === 'warning' ? 'warning' : 'information-circle';
-    this.translate.get(message).pipe(take(1)).subscribe((translatedMessage) => {
+    this.translate.get(message, interpolateParams).pipe(take(1)).subscribe((translatedMessage) => {
       const el = document.createElement('div');
       el.className = 'credential-toast';
       el.dataset['variant'] = variant;
@@ -128,16 +125,22 @@ export class ToastServiceHandler {
    * of this file), then — only if present — swaps SUPPORT_LINK_PLACEHOLDER
    * for a real anchor. href/target/rel and the anchor's own label translation
    * are all code-controlled, so the placeholder can only ever resolve to the
-   * one fixed support URL, regardless of what a translation string contains.
+   * tenant-resolved support destination (SupportChannelService.supportUrl,
+   * EC-07/AD-4 — NOT issueTrackerUrl, which is the wallet's own GitHub bug
+   * tracker used by the About section, not a human support channel), never
+   * to whatever a translation string contains. Public so components that
+   * need to render a support-link-bearing message outside an alert (e.g. via
+   * the `supportLink` pipe) reuse this instead of duplicating it.
    */
-  private renderMessage(translatedMessage: string): string {
+  public renderSupportMessage(translatedMessage: string): string {
     const sanitized = this.sanitizeHtml(translatedMessage);
     if (!sanitized.includes(SUPPORT_LINK_PLACEHOLDER)) {
       return sanitized;
     }
 
     const label = this.sanitizeHtml(this.translate.instant('errors.support-team-label'));
-    const link = `<a href="${SUPPORT_URL}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+    const url = this.supportChannel.channels().supportUrl;
+    const link = `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
 
     return sanitized.split(SUPPORT_LINK_PLACEHOLDER).join(link);
   }
