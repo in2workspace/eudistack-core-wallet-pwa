@@ -273,6 +273,7 @@
     "presentation-request": "Select Credential",
     "presentation-request-verifier": "Select the credential you wish to present",
     "select-instruction": "Tap the credential you want to present",
+    "credentials-count": "There are {{count}} valid credentials to present",
     "cancel": "Cancel",
     "send-cred": "Send Credential",
     "ok-header": "Credential sent successfully",

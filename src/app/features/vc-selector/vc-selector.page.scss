@@ -57,6 +57,51 @@
   line-height: 1.4;
 }
 
+.credential-count {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary, #6B7280);
+  margin: 0 0 12px;
+}
+
+.credential-count-value {
+  font-weight: 700;
+  color: var(--status-info, #2563EB);
+}
+
+// ── Scroll indicator (mobile scrollbar surrogate, M-02) ──────────────
+// iOS Safari never renders a persistent/styleable scrollbar (overlay-only,
+// shown briefly during the gesture), so a single tall card can look like the
+// only option. Rendered in ion-content's "fixed" slot so it stays put while
+// the content underneath scrolls.
+.scroll-indicator {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  right: 4px;
+  width: 4px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.scroll-indicator-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--surface-muted, rgba(0, 0, 0, 0.06));
+}
+
+.scroll-indicator-thumb {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  border-radius: 4px;
+  background: var(--text-secondary, #6B7280);
+  opacity: 0.5;
+  transition: top 0.05s linear;
+}
+
 .requester-badge {
   display: inline-flex;
   align-items: center;

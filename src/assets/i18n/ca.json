@@ -326,6 +326,7 @@
     "presentation-request": "Sol·licitud de Credencial",
     "presentation-request-verifier": "Selecciona la credencial que vols presentar",
     "select-instruction": "Prem la credencial que vols presentar",
+    "credentials-count": "Hi ha {{count}} credencials vàlides per presentar",
     "cancel": "Cancel·lar",
     "send-cred": "Envia Credencial",
     "ok-header": "Credencial enviada correctament",
