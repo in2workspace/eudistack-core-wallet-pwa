@@ -1,7 +1,7 @@
 import { inject, Injectable, OnDestroy } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { BehaviorSubject, Observable, of, throwError, firstValueFrom } from 'rxjs';
-import { catchError, tap, shareReplay } from 'rxjs/operators';
+import { catchError, finalize, tap, shareReplay } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { PasskeyStoreService } from './passkey-store.service';
 import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
@@ -11,6 +11,18 @@ import { ToastServiceHandler } from '../../shared/services/toast.service';
 import { PasskeyPrfService } from './passkey-prf.service';
 
 export type AuthFailureMode = 'force-logout' | 'clear-only';
+
+const REFRESH_TOKEN_KEY = 'wallet_refresh_token';
+
+/**
+ * Whether a failed /refresh means the refresh token itself is no longer valid
+ * (expired, revoked, reused → EBW answers 401) as opposed to a transient failure
+ * (offline, 5xx, 429) where the token is still good and must be kept: dropping it
+ * is what forces the device back through email + OTP.
+ */
+export function isRefreshTokenRejected(err: unknown): boolean {
+  return err instanceof HttpErrorResponse && [400, 401, 403].includes(err.status);
+}
 
 export interface TokenPairResponse {
   accessToken: string;
@@ -87,35 +99,43 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   // --- Token management ---
 
   refreshAccessToken(options?: { onAuthFailure?: AuthFailureMode }): Observable<TokenPairResponse> {
-    if (!this.refreshTokenValue) {
-      return throwError(() => new Error('No refresh token'));
-    }
     if (this.refreshInFlight$) {
       return this.refreshInFlight$;
     }
+    // localStorage is the source of truth: another tab of this wallet may have
+    // rotated the token since this instance loaded it, and presenting the old
+    // one trips EBW's reuse detection, which revokes the whole device session.
+    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY) ?? this.refreshTokenValue;
+    if (!refreshToken) {
+      return throwError(() => new Error('No refresh token'));
+    }
     const onAuthFailure = options?.onAuthFailure ?? 'force-logout';
-    this.refreshInFlight$ = this.http.post<TokenPairResponse>(`${this.authBase}/refresh`, {
-      refreshToken: this.refreshTokenValue
+    const inFlight$: Observable<TokenPairResponse> = this.http.post<TokenPairResponse>(`${this.authBase}/refresh`, {
+      refreshToken
     }).pipe(
       tap(response => this.handleTokenResponse(response)),
       catchError(err => {
         if (!this.disposed) {
-          if (onAuthFailure === 'clear-only') {
-            this.clearState();
-          } else {
-            this.forceLogout();
-          }
+          this.handleRefreshFailure(err, onAuthFailure);
         }
         return throwError(() => err);
       }),
-      shareReplay({ bufferSize: 1, refCount: true })
+      // Reset when the request itself settles, not when a caller completes:
+      // firstValueFrom() (unlockWithPasskey/ensureAccessToken) unsubscribes right
+      // after the value, so a completion hook on the returned observable never
+      // ran and the next refresh replayed this request — with the token it had
+      // already rotated — getting the device session revoked as a reuse.
+      finalize(() => {
+        if (this.refreshInFlight$ === inFlight$) {
+          this.refreshInFlight$ = null;
+        }
+      }),
+      // refCount: false — a caller leaving early must not cancel a rotation the
+      // server may already have applied, or the new token would never be stored.
+      shareReplay({ bufferSize: 1, refCount: false })
     );
-    return this.refreshInFlight$.pipe(
-      tap({
-        complete: () => { this.refreshInFlight$ = null; },
-        error: () => { this.refreshInFlight$ = null; }
-      })
-    );
+    this.refreshInFlight$ = inFlight$;
+    return inFlight$;
   }
 
   logout(): Observable<void> {
@@ -152,26 +172,52 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   async unlockWithPasskey(): Promise<void> {
     await this.prfService.assertLocalPasskey();
-    if (this.refreshTokenValue && !this.getToken()) {
+    if (this.hasRefreshToken() && !this.getToken()) {
       try {
         await firstValueFrom(this.refreshAccessToken({ onAuthFailure: 'clear-only' }));
       } catch {
-        // WebAuthn succeeded; clear-only already ran. LoginPage decides the next
-        // step from getToken() so a cancelled biometric is not confused with an
-        // expired refresh token (Dedalo-1052543).
+        // WebAuthn succeeded; clear-only already ran if the token was rejected, and
+        // a transient failure kept it. LoginPage decides the next step from
+        // getToken()/hasRefreshToken() so a cancelled biometric is not confused
+        // with an expired refresh token (Dedalo-1052543).
       }
     }
   }
 
+  /** Whether this device still holds a server session it can resume with its passkey. */
+  hasRefreshToken(): boolean {
+    return !!(localStorage.getItem(REFRESH_TOKEN_KEY) ?? this.refreshTokenValue);
+  }
+
   async ensureAccessToken(): Promise<void> {
     if (this.getToken()) return;
-    if (!this.refreshTokenValue) {
+    if (!this.hasRefreshToken()) {
       throw new Error('No refresh token');
     }
     await firstValueFrom(this.refreshAccessToken({ onAuthFailure: 'clear-only' }));
   }
 
   // --- Private helpers ---
+
+  /**
+   * Only a rejected refresh token ends the device session (token dropped → the
+   * next login needs email + OTP). A transient failure keeps it: the user is
+   * sent back to the passkey screen at most, and can resume once reachable.
+   */
+  private handleRefreshFailure(err: unknown, onAuthFailure: AuthFailureMode): void {
+    if (isRefreshTokenRejected(err)) {
+      if (onAuthFailure === 'clear-only') {
+        this.clearState();
+      } else {
+        this.forceLogout();
+      }
+      return;
+    }
+    if (onAuthFailure === 'force-logout') {
+      this.softClearState();
+      this.router.navigate(['/auth/login']);
+    }
+  }
 
   override dispose(): void {
     if (this.disposed) return;
@@ -187,7 +233,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     if (this.disposed) return;
     this.accessToken = response.accessToken;
     this.refreshTokenValue = response.refreshToken;
-    localStorage.setItem('wallet_refresh_token', response.refreshToken);
+    localStorage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
 
     try {
       const payload = JSON.parse(atob(response.accessToken.split('.')[1]));
@@ -245,7 +291,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   }
 
   private loadStoredTokens(): void {
-    const storedRefreshToken = localStorage.getItem('wallet_refresh_token');
+    const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
     if (storedRefreshToken) {
       // Keep the refresh token in memory so verifyPasskey() can exchange it after biometric auth.
       // Do NOT auto-authenticate — the user must present their passkey first.
@@ -286,7 +332,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     this.refreshTokenValue = null;
     this.name$.next('');
     this.authenticated$.next(false);
-    localStorage.removeItem('wallet_refresh_token');
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = null;

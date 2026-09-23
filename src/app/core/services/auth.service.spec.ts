@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { of } from 'rxjs';
-import { AuthService, RemoteAuthService, TokenPairResponse } from './auth.service';
+import { firstValueFrom, of } from 'rxjs';
+import { AuthService, isRefreshTokenRejected, RemoteAuthService, TokenPairResponse } from './auth.service';
 import { AUTH_SERVICE_PROVIDER } from './auth-service.provider';
 import { PasskeyStoreService } from './passkey-store.service';
 import { PasskeyPrfService } from './passkey-prf.service';
@@ -512,11 +513,13 @@ describe('RemoteAuthService', () => {
         expect(clearSpy).toHaveBeenCalledWith(123);
       });
 
-      it('scheduleTokenRefresh: triggers forceLogout on refresh error if not disposed', (done) => {
+      it('scheduleTokenRefresh: a 500 on refresh logs out softly and keeps the device refresh token', () => {
         jest.useFakeTimers();
         const forceLogoutSpy = jest.spyOn(service, 'forceLogout').mockImplementation();
 
         (service as any).refreshTokenValue = 'valid-refresh';
+        localStorage.setItem('wallet_refresh_token', 'valid-refresh');
+        (service as any).authenticated$.next(true);
         (service as any).scheduleTokenRefresh(60); // refreshInMs = 0
 
         jest.runAllTimers();
@@ -524,13 +527,10 @@ describe('RemoteAuthService', () => {
         const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
         req.flush('Error', { status: 500, statusText: 'Server Error' });
 
-        // Use a small delay to allow the subscribe error block to run
-        setTimeout(() => {
-          expect(forceLogoutSpy).toHaveBeenCalled();
-          jest.useRealTimers();
-          done();
-        }, 0);
-        jest.runAllTimers();
+        expect(forceLogoutSpy).not.toHaveBeenCalled();
+        expect(service.isLoggedIn()).toBe(false);
+        expect(localStorage.getItem('wallet_refresh_token')).toBe('valid-refresh');
+        expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/login']);
       });
     });
   });
@@ -597,7 +597,107 @@ describe('RemoteAuthService', () => {
       await pending;
 
       expect(service.getToken()).toBe('');
+      expect(service.hasRefreshToken()).toBe(false);
       expect(routerMock.navigate).not.toHaveBeenCalled();
+    });
+
+    it('keeps the refresh token when /refresh is unreachable so the passkey can be retried', async () => {
+      localStorage.setItem('wallet_refresh_token', 'valid-rt');
+
+      const pending = service.unlockWithPasskey();
+      await Promise.resolve();
+      httpMock.expectOne(`${AUTH_BASE}/refresh`).error(new ProgressEvent('error'), { status: 0 });
+      await pending;
+
+      expect(service.getToken()).toBe('');
+      expect(service.hasRefreshToken()).toBe(true);
+      expect(localStorage.getItem('wallet_refresh_token')).toBe('valid-rt');
+      expect(routerMock.navigate).not.toHaveBeenCalled();
+    });
+  });
+
+  // Dedalo QA: "tras cerrar sesión, al segundo intento vuelve a pedir correo + OTP".
+  describe('logout + re-entry with the local passkey', () => {
+    const tokenPair = (refreshToken: string): TokenPairResponse => ({
+      accessToken: 'eyJhbGciOiJSUzI1NiJ9.' + btoa(JSON.stringify({ sub: 'uuid-1' })) + '.sig',
+      refreshToken,
+      expiresIn: 900,
+    });
+
+    async function unlock(expectedRefreshToken: string, rotatedTo: string): Promise<void> {
+      const pending = service.unlockWithPasskey();
+      await Promise.resolve();
+      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
+      expect(req.request.body).toEqual({ refreshToken: expectedRefreshToken });
+      req.flush(tokenPair(rotatedTo));
+      await pending;
+    }
+
+    it('resumes with the passkey on every logout, always presenting the latest rotated token', async () => {
+      localStorage.setItem('wallet_refresh_token', 'rt-1');
+      (service as any).loadStoredTokens();
+
+      await unlock('rt-1', 'rt-2');
+      expect(service.isLoggedIn()).toBe(true);
+
+      await firstValueFrom(service.logout());
+      // Before the fix the second unlock replayed the first (already rotated) request.
+      await unlock('rt-2', 'rt-3');
+      expect(service.isLoggedIn()).toBe(true);
+
+      await firstValueFrom(service.logout());
+      await unlock('rt-3', 'rt-4');
+
+      expect(service.isLoggedIn()).toBe(true);
+      expect(localStorage.getItem('wallet_refresh_token')).toBe('rt-4');
+    });
+
+    it('the scheduled refresh after a passkey resume sends the rotated token, not the replayed one', async () => {
+      localStorage.setItem('wallet_refresh_token', 'rt-1');
+      (service as any).loadStoredTokens();
+      await unlock('rt-1', 'rt-2');
+
+      service.refreshAccessToken().subscribe();
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
+      expect(req.request.body).toEqual({ refreshToken: 'rt-2' });
+      req.flush(tokenPair('rt-3'));
+    });
+
+    it('uses the token another tab rotated into localStorage instead of the stale in-memory one', () => {
+      (service as any).refreshTokenValue = 'rt-stale';
+      localStorage.setItem('wallet_refresh_token', 'rt-from-other-tab');
+
+      service.refreshAccessToken().subscribe();
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
+      expect(req.request.body).toEqual({ refreshToken: 'rt-from-other-tab' });
+      req.flush(tokenPair('rt-next'));
+    });
+
+    it('coalesces concurrent refreshes into a single request', () => {
+      localStorage.setItem('wallet_refresh_token', 'rt-1');
+      const received: string[] = [];
+
+      service.refreshAccessToken().subscribe(r => received.push(r.refreshToken));
+      service.refreshAccessToken().subscribe(r => received.push(r.refreshToken));
+
+      httpMock.expectOne(`${AUTH_BASE}/refresh`).flush(tokenPair('rt-2'));
+      expect(received).toEqual(['rt-2', 'rt-2']);
+    });
+  });
+
+  describe('isRefreshTokenRejected', () => {
+    it.each([400, 401, 403])('treats HTTP %i as a rejected refresh token', (status) => {
+      expect(isRefreshTokenRejected(new HttpErrorResponse({ status }))).toBe(true);
+    });
+
+    it.each([0, 429, 500, 503])('treats HTTP %i as transient', (status) => {
+      expect(isRefreshTokenRejected(new HttpErrorResponse({ status }))).toBe(false);
+    });
+
+    it('treats non-HTTP errors as transient', () => {
+      expect(isRefreshTokenRejected(new Error('boom'))).toBe(false);
     });
   });
 

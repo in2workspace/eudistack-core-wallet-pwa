@@ -11,6 +11,7 @@
  *  T-auth-7 — 401 on own-backend: refresh fails → forceLogout
  *  T-auth-8 — 401 on own-backend marks the error via SessionExpiryMarkerService
  *  T-auth-9 — 401 then successful refresh retries once with new Bearer and does not forceLogout
+ *  T-auth-10 — refresh failure that already ended the session (e.g. transient, token kept) does not forceLogout
  */
 
 import { TestBed } from '@angular/core/testing';
@@ -30,11 +31,12 @@ const OWN_BACKEND = environment.server_url || 'http://localhost:8083';
 
 class MockAuthService extends AuthService {
   private _token = '';
+  loggedIn = true;
   setToken(t: string) { this._token = t; }
   getToken() { return this._token; }
   isLoggedIn$() { return null as any; }
   isInitialized$() { return null as any; }
-  isLoggedIn() { return false; }
+  isLoggedIn() { return this.loggedIn; }
   getName$() { return null as any; }
   logout() { return null as any; }
   forceLogout() {}
@@ -178,5 +180,25 @@ describe('authInterceptor', () => {
     second.flush([]);
 
     expect(forceLogoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('T-auth-10: refresh failure that already ended the session does not forceLogout (keeps the device refresh token)', () => {
+    const forceLogoutSpy = jest.spyOn(mockAuth, 'forceLogout');
+    mockAuth.setToken('expired-jwt');
+    mockAuth.refreshAccessToken = () => {
+      // RemoteAuthService soft-logs-out on a transient /refresh failure.
+      mockAuth.loggedIn = false;
+      return throwError(() => new HttpErrorResponse({ status: 0, statusText: 'Unknown Error' }));
+    };
+    const url = `${OWN_BACKEND}/api/v1/credentials`;
+    let capturedError: HttpErrorResponse | undefined;
+
+    httpClient.get(url).subscribe({ error: (e) => { capturedError = e; } });
+
+    const req = httpMock.expectOne(url);
+    req.flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
+
+    expect(forceLogoutSpy).not.toHaveBeenCalled();
+    expect(sessionExpiryMarker.isSessionExpired(capturedError as HttpErrorResponse)).toBe(true);
   });
 });
