@@ -203,6 +203,46 @@ describe('CredentialCacheService', () => {
       expect(service.findCredentialsByDcqlQuery(onboardingExecuteQuery).map(c => c.id)).toEqual(['employee']);
     });
 
+    it('matches a standalone (non-wildcard) claim, same shape used by the doctorid profile', () => {
+      const cred = makeCredential({
+        id: 'doctorid',
+        type: ['VerifiableCredential', 'urn:es.cgcom:doctorid:1'],
+        credentialSubject: { registrationNumber: '12345' } as any,
+      });
+      service.setLoaded([cred]);
+
+      const query: DcqlQuery = {
+        credentials: [{
+          id: 'doctorid_sd_jwt',
+          format: 'dc+sd-jwt',
+          meta: { vct_values: ['urn:es.cgcom:doctorid:1'] },
+          claims: [{ path: ['registrationNumber'] }],
+        }],
+      } as unknown as DcqlQuery;
+
+      expect(service.findCredentialsByDcqlQuery(query).map(c => c.id)).toEqual(['doctorid']);
+    });
+
+    it('excludes a credential missing a required standalone (non-wildcard) claim', () => {
+      const cred = makeCredential({
+        id: 'doctorid',
+        type: ['VerifiableCredential', 'urn:es.cgcom:doctorid:1'],
+        credentialSubject: {} as any,
+      });
+      service.setLoaded([cred]);
+
+      const query: DcqlQuery = {
+        credentials: [{
+          id: 'doctorid_sd_jwt',
+          format: 'dc+sd-jwt',
+          meta: { vct_values: ['urn:es.cgcom:doctorid:1'] },
+          claims: [{ path: ['registrationNumber'] }],
+        }],
+      } as unknown as DcqlQuery;
+
+      expect(service.findCredentialsByDcqlQuery(query)).toEqual([]);
+    });
+
     it('resolves claim paths under credentialSubject for jwt_vc_json credentials', () => {
       const cred = makeCredential({
         id: 'employee-w3c',
