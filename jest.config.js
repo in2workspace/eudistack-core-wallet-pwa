@@ -84,6 +84,7 @@ module.exports = {
     "src/app/shared/components/menu/menu.component.ts",
     "src/app/shared/components/manual-code-modal/manual-code-modal.component.ts",
     "src/app/shared/components/credential-confirmation-modal/credential-confirmation-modal.component.ts",
+    "src/app/shared/services/credential-cache.service.ts",
   ],
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/',
