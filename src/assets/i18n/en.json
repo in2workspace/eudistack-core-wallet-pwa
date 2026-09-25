@@ -153,6 +153,7 @@
     "register": {
       "email-placeholder": "Enter your email",
       "send-code": "Send verification code",
+      "retry-in": "Retry in {{time}}",
       "code-sent": "We sent a verification code to your email",
       "verify": "Verify",
       "change-email": "Change email",
@@ -272,6 +273,7 @@
     "presentation-request": "Select Credential",
     "presentation-request-verifier": "Select the credential you wish to present",
     "select-instruction": "Tap the credential you want to present",
+    "credentials-count": "There are {{count}} valid credentials to present",
     "cancel": "Cancel",
     "send-cred": "Send Credential",
     "ok-header": "Credential sent successfully",
@@ -667,5 +669,8 @@
     "wrap-unavailable-title": "Cannot sign on this device",
     "wrap-unavailable-body": "The signing key was created on another device and cannot be used here. Use the original device to present your credentials.",
     "wrap-unavailable-cta": "Close"
+  },
+  "app-update": {
+    "toast": "The app has been updated to version {{version}}"
   }
 }
