@@ -116,7 +116,11 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           }
         }
 
-        this.toastServiceHandler.showErrorAlert(errMessage).subscribe();
+        if (errStatus === 410) {
+          this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.credential-offer-already-processed').subscribe();
+        } else {
+          this.toastServiceHandler.showErrorAlert(errMessage).subscribe();
+        }
         console.error('Error occurred:', errorResp);
 
         return throwError(() => errorResp);

@@ -196,6 +196,21 @@ describe('HttpErrorInterceptor with HttpClient', () => {
     req.flush({ message: expectedMessage }, { status: 500, statusText: 'Internal Server Error' });
   });
 
+  it('should show dedicated message for 410 Gone', () => {
+    const spy = jest.spyOn(mockToastServiceHandler, 'showErrorAlertByTranslateLabel').mockReturnValue(of(undefined) as any);
+    const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
+
+    httpClient.get('/test410').subscribe({
+      error: (error) => {
+        expect(spy).toHaveBeenCalledWith('errors.credential-offer-already-processed');
+        expect(toastSpy).not.toHaveBeenCalled();
+      }
+    });
+
+    const req = httpMock.expectOne('/test410');
+    req.flush({message: 'This credential offer can no longer be refreshed'}, { status: 410, statusText: 'Gone' });
+  });
+
   it('should log and show a toast on a generic HTTP error response', () => {
     const errorMessage = 'An error occurred';
     const spy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
