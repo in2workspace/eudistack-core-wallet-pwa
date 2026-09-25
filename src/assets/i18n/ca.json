@@ -237,6 +237,7 @@
     "invalid-qr": "El QR presentat és invàlid",
     "no-credentials-available": "No hi ha cap credencial disponible per al login",
     "expired-credentialOffer": "L'oferta de credencial ha expirat o ja s'ha utilitzat",
+    "credential-offer-already-processed": "Aquesta oferta de credencial ja ha estat processada i ja no es pot actualitzar.",
     "cannot-get-VC": "No s'ha pogut obtenir la credencial del Issuer",
     "signing-failed": "Estem tenint dificultats tècniques puntuals. Tanca aquesta pantalla i torna-ho a provar d'aquí uns minuts des de l'enllaç del correu que vas rebre.",
     "cannot-save-VC": "No s'ha pogut guardar correctament la credencial",

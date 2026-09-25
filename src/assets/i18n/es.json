@@ -450,6 +450,7 @@
     "invalid-qr": "El QR presentado es inválido",
     "no-credentials-available": "No hay ninguna credencial disponible para el login",
     "expired-credentialOffer": "La oferta de credencial está expirada o ya utilizada",
+    "credential-offer-already-processed": "Esta oferta de credencial ya ha sido procesada y ya no se puede actualizar.",
     "cannot-get-VC": "No se pudo obtener la credencial del Issuer",
     "signing-failed": "Estamos teniendo dificultades técnicas puntuales. Cierra esta pantalla e inténtalo de nuevo en unos minutos desde el enlace del correo que recibiste.",
     "cannot-save-VC": "No se pudo guardar correctamente la credencial",
