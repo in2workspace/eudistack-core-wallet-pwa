@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule, ModalController, ViewWillEnter, ViewWillLeave } from '@ionic/angular';
 import { Router } from '@angular/router';
@@ -23,6 +23,8 @@ import { QrContentService } from 'src/app/core/services/qr-content.service';
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class ScanPage implements ViewWillEnter, ViewWillLeave {
+  @ViewChild('scanner') private readonly barcodeScanner?: BarcodeScannerComponent;
+
   public showScanner = false;
 
   private readonly router = inject(Router);
@@ -47,7 +49,9 @@ export class ScanPage implements ViewWillEnter, ViewWillLeave {
     const intent = this.qrContentService.parse(qrCode);
 
     if (intent.kind === 'unsupported') {
-      this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.invalid-qr').pipe(take(1)).subscribe();
+      this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.invalid-qr')
+        .pipe(take(1))
+        .subscribe(() => this.barcodeScanner?.resumeScanning());
       return;
     }
 

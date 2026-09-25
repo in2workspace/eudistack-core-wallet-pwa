@@ -52,6 +52,27 @@ describe('ToastServiceHandler', () => {
     expect(service).toBeTruthy();
   });
 
+  // Plain async test, not fakeAsync: this spec file calls jest.useFakeTimers() at
+  // module scope, which does not reliably drain a multi-hop mocked-promise chain
+  // through zone.js's tick()/flushMicrotasks() — real awaits on the real
+  // microtask queue are what actually settles it here.
+  it('waits for the alert to be presented and dismissed before the observable emits (regression: map(async ...) used to emit the pending Promise itself and complete immediately)', async () => {
+    const order: string[] = [];
+
+    alertCtrl.create.mockResolvedValueOnce({
+      present: jest.fn().mockImplementation(async () => { order.push('present'); }),
+      dismiss: jest.fn(),
+      onDidDismiss: jest.fn().mockImplementation(async () => { order.push('dismiss'); }),
+    });
+
+    service.showErrorAlertByTranslateLabel('errors.default')
+      .subscribe(() => order.push('next'));
+
+    for (let i = 0; i < 10; i++) { await Promise.resolve(); }
+
+    expect(order).toEqual(['present', 'dismiss', 'next']);
+  });
+
   it('should format message correctly and translate it', fakeAsync(() => {
     service.showErrorAlert('Any undefined test message');
     tick();

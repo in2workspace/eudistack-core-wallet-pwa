@@ -1,6 +1,6 @@
 import { Injectable, SecurityContext, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
-import { map, Observable, take } from 'rxjs';
+import { Observable, from, switchMap, take } from 'rxjs';
 import { AlertController } from '@ionic/angular';
 import { DomSanitizer } from '@angular/platform-browser';
 
@@ -55,29 +55,14 @@ export class ToastServiceHandler {
     return this.showErrorAlertByTranslateLabel(messageBody);
   }
 
-  public showErrorAlertByTranslateLabel(message: string){
+  public showErrorAlertByTranslateLabel(message: string): Observable<void> {
     return this.translate.get(message).pipe(
       take(1),
-      map(async (translatedMessage) => {
-        const alert = await this.alertController.create({
-          message: `
-            <div style="display: flex; align-items: center; gap: 50px;">
-              <span>${this.renderMessage(translatedMessage)}</span>
-            </div>
-          `,
-          buttons: [
-            {
-              text: this.translate.instant('vc-selector.close'),
-              role: 'ok',
-              cssClass: 'centered-button',
-            },
-          ],
-          cssClass: 'custom-alert-error',
-        });
-
-        await alert.present();
-        await alert.onDidDismiss();
-      })
+      // switchMap + from(promise), not map(async ...): map would emit the
+      // pending Promise itself and complete immediately, so subscribers
+      // reacting on completion (e.g. resuming the QR scanner) would fire
+      // before the alert was even shown, instead of after it's dismissed.
+      switchMap((translatedMessage) => from(this.presentErrorAlert(translatedMessage))),
     );
   }
 
@@ -144,6 +129,27 @@ export class ToastServiceHandler {
 
   private sanitizeHtml(value: string): string {
     return this.sanitizer.sanitize(SecurityContext.HTML, String(value ?? '')) ?? '';
+  }
+
+  private async presentErrorAlert(translatedMessage: string): Promise<void> {
+    const alert = await this.alertController.create({
+      message: `
+        <div style="display: flex; align-items: center; gap: 50px;">
+          <span>${this.renderMessage(translatedMessage)}</span>
+        </div>
+      `,
+      buttons: [
+        {
+          text: this.translate.instant('vc-selector.close'),
+          role: 'ok',
+          cssClass: 'centered-button',
+        },
+      ],
+      cssClass: 'custom-alert-error',
+    });
+
+    await alert.present();
+    await alert.onDidDismiss();
   }
 
   public showToast(messageKey: string, duration: number = 2000): void {
