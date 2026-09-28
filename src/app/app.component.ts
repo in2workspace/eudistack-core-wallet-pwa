@@ -10,6 +10,7 @@ import { LoaderService } from './shared/services/loader.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Oid4vciEngineService } from './core/protocol/oid4vci/oid4vci.engine.service';
 import { ThemeService } from './core/services/theme.service';
+import { EnvironmentService } from './core/services/environment.service';
 import { IssuerMetadataCacheService } from './core/services/issuer-metadata-cache.service';
 import { UserPreferencesService } from './shared/services/user-preferences.service';
 import { SingleInstanceService } from './core/services/single-instance.service';
@@ -51,6 +52,8 @@ export class AppComponent implements OnInit, OnDestroy {
       return currentUrl.startsWith('/auth') || currentUrl.startsWith('/protocol');
   })));
   public logoSrc: string | null = null;
+  // non-production environment label (DEV/STG); null on PRO so no badge is rendered
+  public readonly envLabel = inject(EnvironmentService).label;
   private readonly destroy$ = new Subject<void>();
   public isLoading$: Signal<boolean>;
 
