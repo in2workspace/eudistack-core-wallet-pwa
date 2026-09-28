@@ -169,6 +169,7 @@
       "resend-in": "Didn't receive the code? Resend available in {{time}}",
       "resend-prompt": "Didn't receive the code?",
       "resend-action": "Resend it",
+      "code-expired-prompt": "Has your code expired?",
       "continue": "Continue",
       "back": "Back"
     },
@@ -196,6 +197,8 @@
     "errors": {
       "too-many-attempts": "Too many attempts. Please try again later.",
       "too-many-attempts-otp": "Too many incorrect attempts. Please request a new code.",
+      "otp-expired": "The code has expired. Tap Resend to get a new one at your email.",
+      "otp-invalid": "The code is incorrect. Check it and try again.",
       "passkey-register-failed": "Failed to register this device. Please try again.",
       "session-expired-request-code": "Your session has expired. Request a new verification code to continue opening your credential offer."
     }

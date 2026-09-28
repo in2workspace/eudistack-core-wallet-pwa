@@ -1247,6 +1247,103 @@ describe('LoginPage (server mode)', () => {
     });
   });
 
+  describe('#1061173: expired OTP offers resend without re-entering the email', () => {
+    const expiredError = { status: 401, error: { error: 'expired_code', message: 'Verification code has expired' } };
+    const invalidError = { status: 401, error: { error: 'invalid_code', message: 'Invalid verification code' } };
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      component.email = 'user@example.com';
+      component.sendCode();
+      component.otpValue = '123456';
+    });
+
+    afterEach(() => {
+      component.ngOnDestroy();
+      jest.useRealTimers();
+    });
+
+    it('stays on the code step with the same email when the code has expired', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => expiredError));
+
+      component.verifyCode();
+
+      expect(component.step()).toBe('code');
+      expect(component.email).toBe('user@example.com');
+    });
+
+    it('flags the code as expired and shows the expired message', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => expiredError));
+
+      component.verifyCode();
+
+      expect(component.codeExpired()).toBe(true);
+      expect(component.errorMessage).toBe('auth.errors.otp-expired');
+      expect(component.otpValue).toBe('');
+      expect(component.loading).toBe(false);
+    });
+
+    it('drops the residual resend cooldown so Resend is available at once', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => expiredError));
+      expect(component.resendSecondsLeft()).toBe(180);
+
+      component.verifyCode();
+
+      expect(component.resendSecondsLeft()).toBe(0);
+    });
+
+    it('resends to the same email and clears the expired state', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => expiredError));
+      component.verifyCode();
+
+      component.resendCode();
+
+      expect(mockAuthService.register).toHaveBeenLastCalledWith('user@example.com', 'login');
+      expect(component.codeExpired()).toBe(false);
+      expect(component.resendSecondsLeft()).toBe(180);
+    });
+
+    it('verifies the new code after the resend and continues to the passkey step', () => {
+      mockAuthService.verifyEmail.mockReturnValueOnce(throwError(() => expiredError));
+      component.verifyCode();
+      component.resendCode();
+
+      component.otpValue = '654321';
+      component.verifyCode();
+
+      expect(mockAuthService.verifyEmail).toHaveBeenLastCalledWith('user@example.com', '654321');
+      expect(component.step()).toBe('passkey');
+    });
+
+    it('shows the invalid-code message and keeps the cooldown for a wrong code', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => invalidError));
+
+      component.verifyCode();
+
+      expect(component.codeExpired()).toBe(false);
+      expect(component.errorMessage).toBe('auth.errors.otp-invalid');
+      expect(component.resendSecondsLeft()).toBe(180);
+    });
+
+    it('drops the resend cooldown once the attempt budget is exhausted (429)', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => ({ status: 429 })));
+
+      component.verifyCode();
+
+      expect(component.errorMessage).toBe('auth.errors.too-many-attempts-otp');
+      expect(component.resendSecondsLeft()).toBe(0);
+    });
+
+    it('clears the expired state when going back to the email step', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => expiredError));
+      component.verifyCode();
+
+      component.goBackToEmail();
+
+      expect(component.codeExpired()).toBe(false);
+    });
+  });
+
   describe('EUD bug: 429 on send/resend code must disable the button with a real countdown', () => {
     beforeEach(() => {
       jest.useFakeTimers();
