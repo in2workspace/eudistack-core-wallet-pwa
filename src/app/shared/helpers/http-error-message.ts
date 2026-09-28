@@ -7,6 +7,7 @@ export function defaultHttpToTranslationKey(http: HttpErrorResponse): string {
   if (http.status === 400) return 'errors.invalid-request';
   if (http.status === 401 || http.status === 403) return 'errors.not-authorized';
   if (http.status === 404) return 'errors.resource-not-found';
+  if (http.status === 410) return 'errors.credential-offer-already-processed';
   if (http.status >= 500) return 'errors.server-error';
   return 'errors.default';
 }
