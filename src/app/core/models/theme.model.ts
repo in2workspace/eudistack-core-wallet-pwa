@@ -30,11 +30,15 @@ export interface Theme {
     // --- EUD-135 (AD-4) ---
     /** Tenant support mailbox. Overrides SUPPORT_EMAIL when present and schema-valid. */
     supportEmail?: string | null;
-    /** Tenant issue tracker (https only). Overrides ISSUE_TRACKER_URL when present and schema-valid. */
+    /** Tenant issue tracker (https only) for the About section's "report a bug" action. Overrides ISSUE_TRACKER_URL when present and schema-valid. */
     issueTrackerUrl?: string | null;
-
-    // --- Fields already present in some tenants' theme.json (e.g. cgcom), previously undeclared ---
-    /** @deprecated Legacy field. NOT consumed by the About section (EUD-135) — see supportEmail/issueTrackerUrl. Declared to keep the model honest. */
+    /**
+     * Tenant "contact support" destination (https only) — e.g. a tenant's own
+     * ticketing site. Consumed by the in-app error popups' support link
+     * (SupportChannelService); distinct from issueTrackerUrl, which is the
+     * wallet-pwa's own GitHub bug tracker, not a tenant support channel.
+     * Overrides SUPPORT_URL when present and schema-valid.
+     */
     supportUrl?: string | null;
     walletUrl?: string | null;
     walletUrlTest?: string | null;

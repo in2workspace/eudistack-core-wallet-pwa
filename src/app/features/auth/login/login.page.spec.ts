@@ -25,6 +25,7 @@ describe('LoginPage (server mode)', () => {
     unlockWithPasskey: jest.Mock;
     ensureAccessToken: jest.Mock;
     getToken: jest.Mock;
+    hasRefreshToken: jest.Mock;
   };
   let mockPrfService: {
     hasPasskey: jest.Mock;
@@ -60,6 +61,7 @@ describe('LoginPage (server mode)', () => {
       unlockWithPasskey: jest.fn().mockResolvedValue(undefined),
       ensureAccessToken: jest.fn().mockResolvedValue(undefined),
       getToken: jest.fn().mockReturnValue('access-1'),
+      hasRefreshToken: jest.fn(() => !!localStorage.getItem('wallet_refresh_token')),
     };
     mockPrfService = {
       hasPasskey: jest.fn().mockReturnValue(false),
@@ -665,6 +667,8 @@ describe('LoginPage (server mode)', () => {
 
     it('AC-02: follows full flow (expiry -> email step -> OTP -> resume) and completes deep link', async () => {
       mockAuthService.unlockWithPasskey.mockImplementation(async () => {
+        // Refresh token rejected by the server: RemoteAuthService drops it (clear-only).
+        localStorage.removeItem('wallet_refresh_token');
         mockAuthService.getToken.mockReturnValue('');
       });
 
@@ -692,6 +696,22 @@ describe('LoginPage (server mode)', () => {
       // 4. Verification: resumes the offer and clears the pending key
       expect(mockRouter.navigateByUrl).toHaveBeenCalledWith(expect.stringContaining('credential_offer_uri=https://sandbox.stg.eudistack.net/issuer/oid4vci/v1/credential-offer/abc'));
       expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBeNull();
+    });
+
+    it('stays on passkey step with a network error when /refresh was unreachable and the token was kept', async () => {
+      mockAuthService.unlockWithPasskey.mockImplementation(async () => {
+        mockAuthService.getToken.mockReturnValue('');
+      });
+
+      component.ionViewWillEnter();
+      expect(component.step()).toBe('passkey');
+
+      await component.verifyPasskey();
+
+      expect(component.step()).toBe('passkey');
+      expect(component.errorMessage).toBe('errors.network-error');
+      expect(localStorage.getItem('wallet_refresh_token')).toBeTruthy();
+      expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
     });
 
     it('stays on passkey step if WebAuthn is cancelled, without clearing the token', async () => {
@@ -981,6 +1001,9 @@ describe('LoginPage (server mode)', () => {
       component.sendCode();
       expect(component.errorMessage).toBe('auth.errors.too-many-attempts');
 
+      // The 429 above starts a retry cooldown (see the dedicated describe block below),
+      // so this second call needs it cleared first to reach the 500/detail branch at all.
+      component.resendSecondsLeft.set(0);
       mockAuthService.register.mockReturnValue(throwError(() => ({ status: 500, error: { detail: 'send_failed_detail' } })));
       component.sendCode();
       expect(component.errorMessage).toBe('send_failed_detail');
@@ -1241,6 +1264,67 @@ describe('LoginPage (server mode)', () => {
 
       expect(component.step()).toBe('passkey');
       expect(component.resendSecondsLeft()).toBe(0);
+    });
+  });
+
+  describe('EUD bug: 429 on send/resend code must disable the button with a real countdown', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      component.email = 'user@example.com';
+    });
+
+    afterEach(() => {
+      component.ngOnDestroy();
+      jest.useRealTimers();
+    });
+
+    it('starts a cooldown from the backend Retry-After header on sendCode() 429, blocking an immediate retry', () => {
+      mockAuthService.register.mockReturnValue(throwError(() => ({
+        status: 429,
+        headers: { get: (name: string) => (name === 'Retry-After' ? '45' : null) },
+      })));
+
+      component.sendCode();
+
+      expect(component.errorMessage).toBe('auth.errors.too-many-attempts');
+      expect(component.resendSecondsLeft()).toBe(45);
+      expect(component.loading).toBe(false);
+
+      // The button is gated by the same signal the template binds [disabled] to.
+      mockAuthService.register.mockClear();
+      mockAuthService.register.mockReturnValue(of({ message: 'OK' }));
+      component.sendCode();
+      expect(mockAuthService.register).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(45_000);
+      expect(component.resendSecondsLeft()).toBe(0);
+
+      component.sendCode();
+      expect(mockAuthService.register).toHaveBeenCalled();
+    });
+
+    it('falls back to the default cooldown when the 429 response carries no Retry-After header', () => {
+      mockAuthService.register.mockReturnValue(throwError(() => ({ status: 429 })));
+
+      component.sendCode();
+
+      expect(component.resendSecondsLeft()).toBe(180);
+    });
+
+    it('also gates resendCode() 429 behind a countdown', () => {
+      mockAuthService.register.mockReturnValue(throwError(() => ({
+        status: 429,
+        headers: { get: (name: string) => (name === 'Retry-After' ? '30' : null) },
+      })));
+      component.resendSecondsLeft.set(0);
+
+      component.resendCode();
+
+      expect(component.resendSecondsLeft()).toBe(30);
+
+      mockAuthService.register.mockClear();
+      component.resendCode();
+      expect(mockAuthService.register).not.toHaveBeenCalled();
     });
   });
 

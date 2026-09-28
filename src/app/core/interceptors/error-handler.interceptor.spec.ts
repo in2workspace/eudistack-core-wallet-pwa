@@ -246,6 +246,31 @@ describe('HttpErrorInterceptor with HttpClient', () => {
     );
   });
 
+  it('should handle errors silently for auth endpoints behind the business-wallet backend prefix (EUD: 429 duplicate modal)', () => {
+    // RemoteAuthService builds its base URL from UrlResolverService.serverUrl(),
+    // which falls back to `${origin}/business-wallet` in every real deployment
+    // (nginx routes the wallet's own backend under that prefix — see
+    // eudistack-platform-dev/local-env/nginx/docker-entrypoint.sh). So the actual
+    // request path is `/business-wallet/api/v1/auth/register`, not `/api/v1/auth/register`,
+    // and a `startsWith('/api/v1/auth/')` check never matches it.
+    const testUrl = `${environment.server_url}/business-wallet/api/v1/auth/register`;
+    const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
+    const spy = jest.spyOn(console, 'error');
+
+    let receivedError: unknown;
+    httpClient.post(testUrl, {}).subscribe({ error: (error) => { receivedError = error; } });
+
+    const req = httpMock.expectOne(testUrl);
+    req.flush(
+      { message: 'Too many requests' },
+      { status: 429, statusText: 'Too Many Requests' }
+    );
+
+    expect(receivedError).toBeTruthy();
+    expect(spy).toHaveBeenCalledWith('Handled silently:', 'Too many requests');
+    expect(toastSpy).not.toHaveBeenCalled();
+  });
+
   it('should show a toast with "PIN expired" on a 408 Request Timeout response', () => {
     const expectedMessage = 'PIN expired';
     const spy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');

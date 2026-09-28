@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import { TranslateModule } from '@ngx-translate/core';
 import { OssLicenseService } from '../services/oss-license.service';
-import { SupportChannelService } from '../services/support-channel.service';
+import { SupportChannelService } from 'src/app/core/services/support-channel.service';
 import { OssLicense } from '../models/oss-license.model';
 
 /**

@@ -6,6 +6,8 @@ import { TranslateFakeLoader } from '@ngx-translate/core';
 import { fakeAsync, tick } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { DomSanitizer } from '@angular/platform-browser';
+import { SupportChannelService } from 'src/app/core/services/support-channel.service';
+import { SUPPORT_EMAIL, ISSUE_TRACKER_URL, SUPPORT_URL } from 'src/app/core/constants/support.constants';
 const TIME_IN_MS = 5000;
 
 jest.useFakeTimers();
@@ -16,6 +18,7 @@ describe('ToastServiceHandler', () => {
   let translateSpy: jest.SpyInstance;
   let alertCtrl: {create:jest.Mock};
   let alert: {present:jest.Mock, dismiss:jest.Mock}
+  let supportChannelService: {channels: jest.Mock};
 
   beforeEach(() => {
     translateService = {
@@ -31,6 +34,15 @@ describe('ToastServiceHandler', () => {
       }),
     };
 
+    supportChannelService = {
+      channels: jest.fn().mockReturnValue({
+        email: SUPPORT_EMAIL,
+        helpCenterUrl: null,
+        issueTrackerUrl: ISSUE_TRACKER_URL,
+        supportUrl: SUPPORT_URL,
+      }),
+    };
+
     TestBed.configureTestingModule({
       imports: [
         TranslateModule.forRoot({
@@ -40,6 +52,7 @@ describe('ToastServiceHandler', () => {
       providers: [
         { provide: TranslateService, useValue:translateService },
         { provide: AlertController, useValue: alertCtrl },
+        { provide: SupportChannelService, useValue: supportChannelService },
         ToastServiceHandler
       ],
     });
@@ -399,7 +412,7 @@ describe('ToastServiceHandler', () => {
   });
 
   describe('support link placeholder (errors.default, pin-expired, etc.)', () => {
-    it('replaces {{supportLink}} with a code-built anchor pointing at the fixed support URL', fakeAsync(() => {
+    it('replaces {{supportLink}} with a code-built anchor pointing at the default support URL', fakeAsync(() => {
       translateService.get.mockImplementationOnce(() => of('Something went wrong. Contact {{supportLink}}.'));
       translateService.instant.mockImplementation((key: string) =>
         key === 'errors.support-team-label' ? 'the support team' : key
@@ -412,9 +425,32 @@ describe('ToastServiceHandler', () => {
       const [call] = toastCtrlSpy.mock.calls;
       const message = (call[0] as { message: string }).message;
       expect(message).toContain(
-        "<a href=\"https://ticketing.dome-marketplace.eu/\" target=\"_blank\" rel=\"noopener noreferrer\">the support team</a>"
+        `<a href="${SUPPORT_URL}" target="_blank" rel="noopener noreferrer">the support team</a>`
       );
       expect(message).not.toContain('{{supportLink}}');
+    }));
+
+    it('points the support link at the tenant-resolved support URL when the theme overrides it', fakeAsync(() => {
+      supportChannelService.channels.mockReturnValue({
+        email: SUPPORT_EMAIL,
+        helpCenterUrl: null,
+        issueTrackerUrl: ISSUE_TRACKER_URL,
+        supportUrl: 'https://ticketing.customer.example/',
+      });
+      translateService.get.mockImplementationOnce(() => of('Something went wrong. Contact {{supportLink}}.'));
+      translateService.instant.mockImplementation((key: string) =>
+        key === 'errors.support-team-label' ? 'the support team' : key
+      );
+      const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+
+      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
+      tick();
+
+      const [call] = toastCtrlSpy.mock.calls;
+      const message = (call[0] as { message: string }).message;
+      expect(message).toContain(
+        '<a href="https://ticketing.customer.example/" target="_blank" rel="noopener noreferrer">the support team</a>'
+      );
     }));
 
     it('sanitizes dangerous markup surrounding the placeholder while still inserting the support link', fakeAsync(() => {
@@ -432,7 +468,7 @@ describe('ToastServiceHandler', () => {
       const message = (call[0] as { message: string }).message;
       expect(message).not.toContain('<script');
       expect(message).toContain(
-        "<a href=\"https://ticketing.dome-marketplace.eu/\" target=\"_blank\" rel=\"noopener noreferrer\">the support team</a>"
+        `<a href="${SUPPORT_URL}" target="_blank" rel="noopener noreferrer">the support team</a>`
       );
       expect(message).not.toContain('{{supportLink}}');
     }));
@@ -500,6 +536,13 @@ describe('ToastServiceHandler', () => {
     // Simulate animation end
     el.dispatchEvent(new Event('animationend'));
     expect(document.body.contains(el)).toBe(false);
+  }));
+
+  it('should pass interpolation params through to the translate service', fakeAsync(() => {
+    service.showInfoToastByTranslateLabel('app-update.toast', 5000, 'info', { version: '1.2.3' });
+    tick();
+
+    expect(translateSpy).toHaveBeenCalledWith('app-update.toast', { version: '1.2.3' });
   }));
 
   it('should show warning toast with correct icon', fakeAsync(() => {

@@ -44,6 +44,8 @@ module.exports = {
     "src/app/features/activity/activity.page.ts",
     "src/app/features/about/**/*.ts",
     "src/app/core/constants/support.constants.ts",
+    "src/app/core/services/support-channel.service.ts",
+    "src/app/shared/pipes/support-link.pipe.ts",
     "src/app/core/constants/webauthn.constants.ts",
     "src/app/core/services/credential-verification.service.ts",
     "src/app/shared/components/vc-view/vc-view.component.ts",
@@ -53,6 +55,7 @@ module.exports = {
     "src/app/core/services/passkey-api.service.ts",
     "src/app/core/services/passkey-prf.service.ts",
     "src/app/core/services/passkey-store.service.ts",
+    "src/app/core/services/sw-update.service.ts",
     // --- EUD-142: runtime UI translation ---
     "src/app/core/models/ui-text-translation.model.ts",
     "src/app/core/constants/ui-translation.constants.ts",

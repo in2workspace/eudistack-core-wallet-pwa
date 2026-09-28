@@ -10,6 +10,7 @@ import { AuthService } from 'src/app/core/services/auth.service';
 import { PasskeyApiService, PasskeyInfo } from 'src/app/core/services/passkey-api.service';
 import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
+import { compareCredentialIds } from 'src/app/core/utils/base64url';
 
 export const PASSKEY_LIST_TIMEOUT_MS = 10_000;
 
@@ -44,7 +45,7 @@ export class DevicesPage implements OnInit {
   readonly currentDevice = computed<PasskeyInfo | null>(() => {
     const credentialId = this.currentCredentialId;
     if (!credentialId) return null;
-    return this.passkeys().find((p) => p.credentialId === credentialId) ?? null;
+    return this.passkeys().find((p) => compareCredentialIds(p.credentialId, credentialId)) ?? null;
   });
 
   readonly otherDevices = computed<PasskeyInfo[]>(() => {
@@ -194,7 +195,7 @@ export class DevicesPage implements OnInit {
    * rather than risk forcing a logout that doesn't correspond to the revoked device.
    */
   private isSelfRevoke(passkey: PasskeyInfo): boolean {
-    return !!this.currentCredentialId && passkey.credentialId === this.currentCredentialId;
+    return !!this.currentCredentialId && compareCredentialIds(passkey.credentialId, this.currentCredentialId);
   }
 }
 

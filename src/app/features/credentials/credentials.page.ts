@@ -28,6 +28,7 @@ import { UserPreferencesService } from 'src/app/shared/services/user-preferences
 import { HapticService } from 'src/app/shared/services/haptic.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
+import { SupportLinkPipe } from 'src/app/shared/pipes/support-link.pipe';
 import dayjs from 'dayjs';
 
 @Component({
@@ -40,7 +41,8 @@ import dayjs from 'dayjs';
         CommonModule,
         VcViewComponent,
         TranslateModule,
-        SkeletonComponent
+        SkeletonComponent,
+        SupportLinkPipe
     ]
 })
 

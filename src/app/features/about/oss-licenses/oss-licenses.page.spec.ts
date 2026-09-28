@@ -5,7 +5,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { OssLicensesPage } from './oss-licenses.page';
 import { OssLicenseService } from '../services/oss-license.service';
-import { SupportChannelService } from '../services/support-channel.service';
+import { SupportChannelService } from 'src/app/core/services/support-channel.service';
 import { OssLicense } from '../models/oss-license.model';
 
 async function createFixture(licenses: readonly OssLicense[]): Promise<ComponentFixture<OssLicensesPage>> {

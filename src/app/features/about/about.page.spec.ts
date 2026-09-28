@@ -5,12 +5,12 @@ import { RouterModule } from '@angular/router';
 import { LangChangeEvent, TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Observable, of } from 'rxjs';
 import { AboutPage } from './about.page';
-import { SupportChannelService } from './services/support-channel.service';
 import { LegalContentService } from './services/legal-content.service';
 import { OssLicenseService } from './services/oss-license.service';
 import { LegalContentResult } from './models/legal-document.model';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
+import { SupportChannelService } from 'src/app/core/services/support-channel.service';
 
 const translateServiceMock = {
   currentLang: 'es',

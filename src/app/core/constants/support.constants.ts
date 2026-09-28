@@ -11,6 +11,13 @@ export const SUPPORT_EMAIL = 'support@eudistack.com';
 export const ISSUE_TRACKER_URL =
   'https://github.com/in2workspace/eudistack-core-wallet-pwa/issues/new';
 
+/**
+ * Default "contact support" destination for the in-app error popups, when the
+ * tenant does not declare its own `supportUrl` (or it's schema-invalid). Not
+ * the wallet's own issue tracker — this is a human-facing support channel.
+ */
+export const SUPPORT_URL = 'https://docs.eudistack.net/';
+
 /** Timeout for loading a legal document (ES-04, NFR-S-135-03). */
 export const LEGAL_DOCUMENT_TIMEOUT_MS = 5_000;
 
@@ -19,6 +26,8 @@ export interface SupportChannels {
   /** null ⇒ the help-center item is NOT rendered (EC-02). */
   readonly helpCenterUrl: string | null;
   readonly issueTrackerUrl: string;
+  /** "Contact support" destination for error popups — see SUPPORT_URL. */
+  readonly supportUrl: string;
 }
 
 /**

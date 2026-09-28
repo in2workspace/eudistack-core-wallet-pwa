@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { SupportChannelService } from './support-channel.service';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { BUILD_INFO } from 'src/app/core/constants/build-info.constants';
-import { ISSUE_TRACKER_URL, SUPPORT_EMAIL } from 'src/app/core/constants/support.constants';
+import { ISSUE_TRACKER_URL, SUPPORT_EMAIL, SUPPORT_URL } from 'src/app/core/constants/support.constants';
 import { Theme } from 'src/app/core/models/theme.model';
 
 function makeThemeStub(content: Partial<Theme['content']> | null): Partial<ThemeService> {
@@ -25,6 +25,7 @@ describe('SupportChannelService', () => {
         email: SUPPORT_EMAIL,
         helpCenterUrl: null,
         issueTrackerUrl: ISSUE_TRACKER_URL,
+        supportUrl: SUPPORT_URL,
       });
     });
 
@@ -35,10 +36,11 @@ describe('SupportChannelService', () => {
         email: SUPPORT_EMAIL,
         helpCenterUrl: null,
         issueTrackerUrl: ISSUE_TRACKER_URL,
+        supportUrl: SUPPORT_URL,
       });
     });
 
-    it('prefers the tenant support email and issue tracker when schema-valid (EC-07, case A)', () => {
+    it('prefers the tenant support email, issue tracker and support URL when schema-valid (EC-07, case A)', () => {
       const service = configure(
         makeThemeStub({
           links: [],
@@ -46,6 +48,7 @@ describe('SupportChannelService', () => {
           supportEmail: 'help@customer.example',
           issueTrackerUrl: 'https://issues.customer.example/new',
           knowledgeBaseUrl: 'https://docs.customer.example',
+          supportUrl: 'https://ticketing.customer.example/',
         })
       );
 
@@ -53,6 +56,7 @@ describe('SupportChannelService', () => {
         email: 'help@customer.example',
         helpCenterUrl: 'https://docs.customer.example',
         issueTrackerUrl: 'https://issues.customer.example/new',
+        supportUrl: 'https://ticketing.customer.example/',
       });
     });
 
@@ -64,6 +68,7 @@ describe('SupportChannelService', () => {
           supportEmail: 'not-an-email',
           issueTrackerUrl: 'not-a-url',
           knowledgeBaseUrl: 'http://insecure.example', // not https
+          supportUrl: 'not-a-url',
         })
       );
 
@@ -71,6 +76,7 @@ describe('SupportChannelService', () => {
         email: SUPPORT_EMAIL,
         helpCenterUrl: null,
         issueTrackerUrl: ISSUE_TRACKER_URL,
+        supportUrl: SUPPORT_URL,
       });
     });
   });
