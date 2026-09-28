@@ -5,6 +5,7 @@ import { ThemeService } from './theme.service';
 import { ColorService } from '../../shared/services/color-service.service';
 import { StorageService } from '../../shared/services/storage.service';
 import { Theme } from '../models/theme.model';
+import { EnvironmentService } from './environment.service';
 
 class ColorServiceMock {
   applyCustomColors = jest.fn();
@@ -128,5 +129,111 @@ describe('ThemeService', () => {
 
       expect(root.style.getPropertyValue('--card-background')).toBe('');
     });
+  });
+});
+
+describe('ThemeService environment label', () => {
+  const readBlob = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(blob);
+    });
+
+  const setup = (label: string | null): ThemeService => {
+    const environment = {
+      label,
+      decorate: (name: string) => (label ? `${name} (${label})` : name),
+      decorateShort: (name: string) => (label ? `${name} ${label}` : name),
+    };
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule, TranslateModule.forRoot()],
+      providers: [
+        ThemeService,
+        { provide: EnvironmentService, useValue: environment },
+        { provide: ColorService, useClass: ColorServiceMock },
+        { provide: StorageService, useClass: StorageServiceMock },
+      ],
+    });
+    return TestBed.inject(ThemeService);
+  };
+
+  let createObjectURL: jest.Mock;
+  let manifestBlob: Blob | undefined;
+
+  beforeEach(() => {
+    document.head.innerHTML = '<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#000">';
+    document.title = '';
+    manifestBlob = undefined;
+    createObjectURL = jest.fn((blob: Blob) => {
+      manifestBlob = blob;
+      return 'blob:manifest';
+    });
+    (URL as any).createObjectURL = createObjectURL;
+  });
+
+  afterEach(() => {
+    delete (URL as any).createObjectURL;
+    document.head.innerHTML = '';
+  });
+
+  it('labels the installed name and the iOS title on DEV, leaving the tab title untouched', async () => {
+    const service = setup('DEV');
+
+    (service as any).applyTheme(buildTheme({ name: 'EUDIStack' }));
+
+    const manifest = JSON.parse(await readBlob(manifestBlob as Blob));
+    expect(manifest.name).toBe('EUDIStack Wallet (DEV)');
+    expect(manifest.short_name).toBe('EUDIStack DEV');
+    expect(document.querySelector<HTMLMetaElement>("meta[name='apple-mobile-web-app-title']")?.content).toBe(
+      'EUDIStack DEV',
+    );
+    expect(document.title).toBe('EUDIStack');
+  });
+
+  it('labels the installed name on STG', async () => {
+    const service = setup('STG');
+
+    (service as any).applyTheme(buildTheme({ name: 'EUDIStack' }));
+
+    const manifest = JSON.parse(await readBlob(manifestBlob as Blob));
+    expect(manifest.name).toBe('EUDIStack Wallet (STG)');
+    expect(manifest.short_name).toBe('EUDIStack STG');
+  });
+
+  it('does not label the installed name when there is no environment label', async () => {
+    const service = setup(null);
+
+    (service as any).applyTheme(buildTheme({ name: 'EUDIStack' }));
+
+    const manifest = JSON.parse(await readBlob(manifestBlob as Blob));
+    expect(manifest.name).toBe('EUDIStack Wallet');
+    expect(manifest.short_name).toBe('EUDIStack');
+    expect(document.querySelector<HTMLMetaElement>("meta[name='apple-mobile-web-app-title']")?.content).toBe(
+      'EUDIStack',
+    );
+  });
+
+  it('reuses the existing iOS title meta instead of adding a second one', () => {
+    const service = setup('DEV');
+
+    (service as any).applyTheme(buildTheme({ name: 'EUDIStack' }));
+    (service as any).applyTheme(buildTheme({ name: 'Other' }));
+
+    const metas = document.querySelectorAll("meta[name='apple-mobile-web-app-title']");
+    expect(metas).toHaveLength(1);
+    expect((metas[0] as HTMLMetaElement).content).toBe('Other DEV');
+  });
+
+  it('falls back to the default names when the tenant has no branding name', async () => {
+    const service = setup('DEV');
+
+    (service as any).applyTheme(buildTheme({ name: '' }));
+
+    const manifest = JSON.parse(await readBlob(manifestBlob as Blob));
+    expect(manifest.name).toBe('EUDI Wallet (DEV)');
+    expect(manifest.short_name).toBe('Wallet DEV');
+    expect(document.querySelector("meta[name='apple-mobile-web-app-title']")).toBeNull();
   });
 });
