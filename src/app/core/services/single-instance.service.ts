@@ -43,6 +43,17 @@ const DUPLICATE_TAB_COPY = {
   },
 } as const;
 
+const DUPLICATE_TAB_HINT_KEYS = {
+  leaderAnswered: {
+    standalone: 'single-instance.hint-go-to-window',
+    tab: 'single-instance.hint-go-to-tab',
+  },
+  noAnswer: {
+    standalone: 'single-instance.hint-standalone',
+    tab: 'single-instance.hint-tab',
+  },
+} as const;
+
 @Injectable({ providedIn: 'root' })
 export class SingleInstanceService implements OnDestroy {
   private readonly authService = inject(AuthService);
@@ -265,10 +276,9 @@ export class SingleInstanceService implements OnDestroy {
     const title = this.translate.instant(copy.title);
     document.title = title;
     const subtitle = this.translate.instant(copy.subtitle, params);
-    const hintKey = ack
-      ? (isStandalone ? 'single-instance.hint-go-to-window' : 'single-instance.hint-go-to-tab')
-      : (isStandalone ? 'single-instance.hint-standalone' : 'single-instance.hint-tab');
-    const hint = this.translate.instant(hintKey);
+    const displayMode = isStandalone ? 'standalone' : 'tab';
+    const hintKeys = ack ? DUPLICATE_TAB_HINT_KEYS.leaderAnswered : DUPLICATE_TAB_HINT_KEYS.noAnswer;
+    const hint = this.translate.instant(hintKeys[displayMode]);
     const closeFallback = this.translate.instant(
       isStandalone ? 'single-instance.close-fallback-standalone' : 'single-instance.close-fallback-tab'
     );
