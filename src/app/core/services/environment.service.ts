@@ -3,9 +3,6 @@ import { Injectable, inject } from '@angular/core';
 
 const DEV_HOST_SUFFIX = '.dev.eudistack.net';
 const STG_HOST_SUFFIX = '.stg.eudistack.net';
-// TEMPORARY (preview only): local stack badge, to be removed once the DEV badge is approved.
-const LOCAL_HOSTS = ['localhost', '127.0.0.1'];
-const LOCAL_HOST_SUFFIXES = ['.localhost', '.127.0.0.1.nip.io'];
 
 /**
  * Label shown for non-production deployments, or null when the host is not one of them
@@ -15,9 +12,6 @@ export function resolveEnvironmentLabel(hostname: string): string | null {
   const host = hostname.toLowerCase();
   if (host.endsWith(DEV_HOST_SUFFIX)) return 'DEV';
   if (host.endsWith(STG_HOST_SUFFIX)) return 'STG';
-  if (LOCAL_HOSTS.includes(host) || LOCAL_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix))) {
-    return 'LOCAL';
-  }
   return null;
 }
 

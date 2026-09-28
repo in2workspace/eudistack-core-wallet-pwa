@@ -24,9 +24,9 @@ describe('resolveEnvironmentLabel', () => {
     expect(resolveEnvironmentLabel('sandbox.dev.eudistack.net.evil.com')).toBeNull();
   });
 
-  it('labels the local stack (temporary preview)', () => {
-    expect(resolveEnvironmentLabel('localhost')).toBe('LOCAL');
-    expect(resolveEnvironmentLabel('sandbox.127.0.0.1.nip.io')).toBe('LOCAL');
+  it('does not label the local stack', () => {
+    expect(resolveEnvironmentLabel('localhost')).toBeNull();
+    expect(resolveEnvironmentLabel('sandbox.127.0.0.1.nip.io')).toBeNull();
   });
 });
 
