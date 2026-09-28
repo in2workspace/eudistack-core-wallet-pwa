@@ -7,10 +7,12 @@ import { ColorService } from '../../shared/services/color-service.service';
 import { StorageService } from '../../shared/services/storage.service';
 import { FALLBACK_TENANT } from '../constants/tenants.constants';
 import { TenantService } from './tenant.service';
+import { EnvironmentService } from './environment.service';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private readonly tenantService = inject(TenantService);
+  private readonly environment = inject(EnvironmentService);
   private theme$ = new BehaviorSubject<Theme | null>(null);
 
   constructor(
@@ -123,6 +125,7 @@ export class ThemeService {
     // Title & favicon
     if (theme.branding.name) {
       document.title = theme.branding.name;
+      this.setIosAppTitle(this.environment.decorateShort(theme.branding.name));
     }
     if (theme.branding.faviconUrl) {
       this.setFavicon(theme.branding.faviconUrl);
@@ -136,8 +139,8 @@ export class ThemeService {
     const base = document.querySelector('base')?.getAttribute('href') || '/';
     const baseUrl = `${origin}${base}`;
     const manifest = {
-      name: `${theme.branding.name || 'EUDI'} Wallet`,
-      short_name: theme.branding.name || 'Wallet',
+      name: this.environment.decorate(`${theme.branding.name || 'EUDI'} Wallet`),
+      short_name: this.environment.decorateShort(theme.branding.name || 'Wallet'),
       theme_color: theme.branding.primaryColor,
       background_color: getComputedStyle(document.documentElement).getPropertyValue('--surface-page').trim(),
       display: 'standalone',
@@ -253,6 +256,20 @@ export class ThemeService {
    */
   private toAbsoluteAssetUrl(url: string, baseUrl: string): string {
     return url.startsWith('/') ? `${window.location.origin}${url}` : `${baseUrl}${url}`;
+  }
+
+  /**
+   * iOS "Add to Home Screen" names the app from this meta (falling back to document.title),
+   * so the environment label lives here and the browser tab title stays clean.
+   */
+  private setIosAppTitle(title: string): void {
+    let meta = document.querySelector<HTMLMetaElement>("meta[name='apple-mobile-web-app-title']");
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'apple-mobile-web-app-title';
+      document.head.appendChild(meta);
+    }
+    meta.content = title;
   }
 
   private setFavicon(url: string): void {
