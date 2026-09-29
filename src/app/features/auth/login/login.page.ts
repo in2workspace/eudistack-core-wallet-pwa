@@ -491,7 +491,11 @@ export class LoginPage implements OnDestroy {
       await this.attributeSessionToDevicePasskey();
       await this.syncCredentialsThenNavigate();
     } catch (err: any) {
-      if (this.passkeyFromRefreshToken) {
+      if (this.passkeyFromRefreshToken && (this.authService as RemoteAuthService).hasRefreshToken()) {
+        // The device session is still valid, the server just could not be reached:
+        // stay on the passkey step so a retry works without email + OTP.
+        this.errorMessage = this.translate.instant('errors.network-error');
+      } else if (this.passkeyFromRefreshToken) {
         this.passkeyFromRefreshToken = false;
         this.step.set('email');
         this.errorMessage = this.translate.instant('auth.errors.session-expired-request-code');
