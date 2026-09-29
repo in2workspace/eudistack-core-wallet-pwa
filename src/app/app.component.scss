@@ -221,3 +221,21 @@ ion-app .overlay-dots .dot:nth-child(3) {
     opacity: 1;
   }
 }
+
+// Non-production environment badge (rendered only on DEV).
+// Uses the header text colour so it follows the tenant theme instead of adding a new hue.
+.env-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-end: 8px;
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, currentColor 15%, transparent);
+  color: var(--header-text, var(--primary-contrast-color));
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}

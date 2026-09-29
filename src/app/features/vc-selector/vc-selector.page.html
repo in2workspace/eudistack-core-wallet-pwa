@@ -1,4 +1,11 @@
-<ion-content [fullscreen]="true" class="vc-selector-content">
+<ion-content [fullscreen]="true" class="vc-selector-content" [scrollEvents]="true" (ionScroll)="onContentScroll()">
+  @if (isScrollable) {
+    <div slot="fixed" class="scroll-indicator" aria-hidden="true">
+      <div class="scroll-indicator-track">
+        <div class="scroll-indicator-thumb" [style.height.%]="thumbHeightPct" [style.top.%]="thumbTopPct"></div>
+      </div>
+    </div>
+  }
   <div class="vc-selector-header">
     @if (clientLogo) {
       <div [class.header-logo-fallback]="needsFallback">
@@ -25,6 +32,9 @@
       <h2 class="header-title">{{ "vc-selector.presentation-request" | translate }}</h2>
       <p class="header-subtitle">{{ "vc-selector.select-instruction" | translate }}</p>
     }
+    @if (credList.length > 1) {
+      <p class="credential-count" [innerHTML]="('vc-selector.credentials-count' | translate) | highlightPlaceholder: '{{count}}' : credList.length : 'credential-count-value'"></p>
+    }
     <div class="legal-links">
       @if (clientUri) {
         <a [href]="clientUri" target="_blank" class="legal-link">{{ "vc-selector.official-site" | translate }}</a>
@@ -40,7 +50,7 @@
     </div>
   </div>
 
-  <div class="credential-list">
+  <div class="credential-list" (animationend)="onEntranceAnimationEnd()">
     @for (cred of credList; track cred) {
       <div role="button" class="selectable-card" tabindex="0" (click)="sendCred(cred)" (keydown.enter)="sendCred(cred)" (keydown.space)="$event.preventDefault()" (keyup.space)="sendCred(cred)" [attr.aria-label]="'vc-selector.select-cred' | translate">
         <app-vc-view [credentialInput$]="cred" [enableDetailView$]="false"></app-vc-view>

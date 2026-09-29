@@ -3,6 +3,9 @@
   <ion-header [translucent]="false">
     <ion-toolbar class="toolbar" [ngClass]="{ 'blurred': isAuthRoute$() }">
       <img alt="Logo" [src]="logoSrc" width="auto" slot="start" height="35px" class="logo"/>
+      @if (envLabel) {
+        <span slot="end" class="env-badge" data-testid="env-badge">{{ envLabel }}</span>
+      }
       <ion-button
         slot="end"
         fill="clear"

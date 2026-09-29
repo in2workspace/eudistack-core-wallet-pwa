@@ -72,7 +72,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         }),
         catchError(() => {
           sessionExpiryMarker.markSessionExpired(err);
-          authService.forceLogout();
+          // A failed refresh already ended the session itself, keeping the refresh
+          // token when the failure was transient so the device can resume with its
+          // passkey. Forcing a logout here would drop that token regardless.
+          if (authService.isLoggedIn()) {
+            authService.forceLogout();
+          }
           return throwError(() => err);
         })
       );

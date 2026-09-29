@@ -104,8 +104,16 @@ export class BarcodeScannerComponent implements OnInit {
   private readonly scanFailureDebounceDelay = 3000;
   private originalConsoleError: undefined|((...data: any[]) => void);
 
-  public scanSuccess$ = new BehaviorSubject<string>('');  
+  public scanSuccess$ = new BehaviorSubject<string>('');
   public destroy$ = new Subject<void>();
+
+  // Guards against the zxing decode loop re-firing (scanSuccess) for the same QR
+  // on every frame while the camera stays pointed at it: scanning is paused as
+  // soon as a result comes in, and a short dedupe window ignores a repeat of
+  // the same content if the loop resumes before the user moves the camera away.
+  private lastEmittedCode: string | undefined;
+  private lastEmittedAt = 0;
+  private readonly duplicateResultWindowMs = 3000;
 
 
   public constructor(
@@ -188,7 +196,34 @@ export class BarcodeScannerComponent implements OnInit {
   }
 
   public onCodeResult(resultString: string): void {
+    this.scanner?.scanStop();
+
+    const now = Date.now();
+    const isDuplicate = resultString === this.lastEmittedCode
+      && (now - this.lastEmittedAt) < this.duplicateResultWindowMs;
+
+    if (isDuplicate) {
+      // Same code decoded again before the caller resumed scanning (or before
+      // the dedupe window elapsed): swallow it instead of emitting a second time.
+      this.resumeScanning();
+      return;
+    }
+
+    this.lastEmittedCode = resultString;
+    this.lastEmittedAt = now;
     this.qrCode.emit(resultString);
+  }
+
+  /**
+   * Resumes decoding after a previous result was handled. Safe to call even if
+   * scanning was never paused or the scanner has no device yet (e.g. torn down).
+   */
+  public resumeScanning(): void {
+    try {
+      this.scanner?.scanStart();
+    } catch (err) {
+      console.warn('SCANNER: could not resume scanning after previous result.', err);
+    }
   }
 
   public onScanError(error: Error): void{
