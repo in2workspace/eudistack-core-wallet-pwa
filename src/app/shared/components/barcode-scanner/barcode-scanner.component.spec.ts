@@ -313,30 +313,34 @@ describe('BarcodeScannerComponent', () => {
     expect(component.qrCode.emit).toHaveBeenCalledWith(testString);
   });
 
-  describe('onCodeResult pause/dedupe', () => {
-    let scannerMock: { scanStop: jest.Mock; scanStart: jest.Mock };
-
+  describe('onCodeResult pause/dedupe (software gate, no scanner hardware calls)', () => {
     beforeEach(() => {
-      scannerMock = { scanStop: jest.fn(), scanStart: jest.fn() };
-      component['scanner'] = scannerMock as any;
       jest.spyOn(component.qrCode, 'emit');
     });
 
-    it('pauses decoding as soon as a result comes in, before emitting', () => {
+    it('ignores further decodes while the previous result is still awaiting handling', () => {
       component.onCodeResult('some-qr-content');
+      component.onCodeResult('some-other-content-seen-while-alert-is-up');
 
-      expect(scannerMock.scanStop).toHaveBeenCalledTimes(1);
+      expect(component.qrCode.emit).toHaveBeenCalledTimes(1);
       expect(component.qrCode.emit).toHaveBeenCalledWith('some-qr-content');
     });
 
-    it('does not re-emit the same content decoded again within the dedupe window', () => {
+    it('resumes reacting to decodes once resultHandled() is called', () => {
+      component.onCodeResult('first-content');
+      component.resultHandled();
+      component.onCodeResult('second-content');
+
+      expect(component.qrCode.emit).toHaveBeenCalledTimes(2);
+      expect(component.qrCode.emit).toHaveBeenNthCalledWith(2, 'second-content');
+    });
+
+    it('does not re-emit the same content decoded again within the dedupe window, even after resultHandled()', () => {
       component.onCodeResult('same-qr-content');
+      component.resultHandled();
       component.onCodeResult('same-qr-content');
 
       expect(component.qrCode.emit).toHaveBeenCalledTimes(1);
-      // the duplicate decode resumes scanning itself, since the caller never got a
-      // chance to react to a result it was never told about
-      expect(scannerMock.scanStart).toHaveBeenCalledTimes(1);
     });
 
     it('emits again for the same content once the dedupe window has elapsed', () => {
@@ -345,6 +349,7 @@ describe('BarcodeScannerComponent', () => {
         .mockReturnValueOnce(component['duplicateResultWindowMs'] + 1);
 
       component.onCodeResult('same-qr-content');
+      component.resultHandled();
       component.onCodeResult('same-qr-content');
 
       expect(component.qrCode.emit).toHaveBeenCalledTimes(2);
@@ -352,34 +357,22 @@ describe('BarcodeScannerComponent', () => {
 
     it('emits immediately for different content even within the dedupe window', () => {
       component.onCodeResult('first-content');
+      component.resultHandled();
       component.onCodeResult('second-content');
 
       expect(component.qrCode.emit).toHaveBeenCalledTimes(2);
     });
-  });
 
-  describe('resumeScanning', () => {
-    it('restarts the scanner', () => {
+    it('never touches the underlying scanner (no scanStop/scanStart hardware toggling)', () => {
+      const scanStop = jest.fn();
       const scanStart = jest.fn();
-      component['scanner'] = { scanStart } as any;
+      component['scanner'] = { scanStop, scanStart } as any;
 
-      component.resumeScanning();
+      component.onCodeResult('some-qr-content');
+      component.resultHandled();
 
-      expect(scanStart).toHaveBeenCalledTimes(1);
-    });
-
-    it('does not throw if the scanner refuses to restart (e.g. already scanning)', () => {
-      component['scanner'] = {
-        scanStart: jest.fn().mockImplementation(() => { throw new Error('already running'); }),
-      } as any;
-
-      expect(() => component.resumeScanning()).not.toThrow();
-    });
-
-    it('does not throw if there is no scanner instance', () => {
-      component['scanner'] = undefined as any;
-
-      expect(() => component.resumeScanning()).not.toThrow();
+      expect(scanStop).not.toHaveBeenCalled();
+      expect(scanStart).not.toHaveBeenCalled();
     });
   });
 

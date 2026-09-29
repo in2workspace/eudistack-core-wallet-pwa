@@ -51,7 +51,7 @@ export class ScanPage implements ViewWillEnter, ViewWillLeave {
     if (intent.kind === 'unsupported') {
       this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.invalid-qr')
         .pipe(take(1))
-        .subscribe(() => this.barcodeScanner?.resumeScanning());
+        .subscribe(() => this.barcodeScanner?.resultHandled());
       return;
     }
 
