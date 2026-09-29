@@ -108,12 +108,18 @@ export class BarcodeScannerComponent implements OnInit {
   public destroy$ = new Subject<void>();
 
   // Guards against the zxing decode loop re-firing (scanSuccess) for the same QR
-  // on every frame while the camera stays pointed at it: scanning is paused as
-  // soon as a result comes in, and a short dedupe window ignores a repeat of
-  // the same content if the loop resumes before the user moves the camera away.
+  // on every frame while the camera stays pointed at it. This is a purely
+  // software gate — deliberately NOT scanner.scanStop()/scanStart(): toggling
+  // the physical camera stream on every decode raced with zxing's own decode
+  // loop (a frame already mid-flight when scanStop() ran could still resolve
+  // and fire another result), and after a few such cycles the camera would
+  // visibly flicker and desync, showing overlapping alerts. Emission is
+  // blocked instead while a previous result is still being handled (an alert
+  // is up) or the same content repeats within a short window.
   private lastEmittedCode: string | undefined;
   private lastEmittedAt = 0;
   private readonly duplicateResultWindowMs = 3000;
+  private isAwaitingResultHandling = false;
 
 
   public constructor(
@@ -196,34 +202,32 @@ export class BarcodeScannerComponent implements OnInit {
   }
 
   public onCodeResult(resultString: string): void {
-    this.scanner?.scanStop();
+    if (this.isAwaitingResultHandling) {
+      // Still showing/handling the previous result: the decode loop keeps
+      // running underneath, but we ignore anything it finds until the caller
+      // calls resultHandled().
+      return;
+    }
 
     const now = Date.now();
     const isDuplicate = resultString === this.lastEmittedCode
       && (now - this.lastEmittedAt) < this.duplicateResultWindowMs;
-
     if (isDuplicate) {
-      // Same code decoded again before the caller resumed scanning (or before
-      // the dedupe window elapsed): swallow it instead of emitting a second time.
-      this.resumeScanning();
       return;
     }
 
     this.lastEmittedCode = resultString;
     this.lastEmittedAt = now;
+    this.isAwaitingResultHandling = true;
     this.qrCode.emit(resultString);
   }
 
   /**
-   * Resumes decoding after a previous result was handled. Safe to call even if
-   * scanning was never paused or the scanner has no device yet (e.g. torn down).
+   * Tells the scanner the last emitted result has been fully handled (e.g. its
+   * error alert was dismissed), so a new decode is allowed to reach the caller.
    */
-  public resumeScanning(): void {
-    try {
-      this.scanner?.scanStart();
-    } catch (err) {
-      console.warn('SCANNER: could not resume scanning after previous result.', err);
-    }
+  public resultHandled(): void {
+    this.isAwaitingResultHandling = false;
   }
 
   public onScanError(error: Error): void{
