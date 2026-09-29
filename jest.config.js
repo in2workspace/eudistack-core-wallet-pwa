@@ -56,6 +56,7 @@ module.exports = {
     "src/app/core/services/passkey-prf.service.ts",
     "src/app/core/services/passkey-store.service.ts",
     "src/app/core/services/sw-update.service.ts",
+    "src/app/core/services/single-instance.service.ts",
     // --- EUD-142: runtime UI translation ---
     "src/app/core/models/ui-text-translation.model.ts",
     "src/app/core/constants/ui-translation.constants.ts",
