@@ -72,6 +72,8 @@ module.exports = {
     "src/app/features/protocol-callback/protocol-callback.page.ts",
     "src/app/features/vc-selector/vc-selector.page.ts",
     "src/app/core/services/qr-content.service.ts",
+    "src/app/core/services/theme.service.ts",
+    "src/app/core/services/environment.service.ts",
     "src/app/core/services/auth.service.ts",
     "src/app/core/services/passkey-api.service.ts",
     "src/app/core/services/local-auth.service.ts",
@@ -84,6 +86,7 @@ module.exports = {
     "src/app/shared/components/menu/menu.component.ts",
     "src/app/shared/components/manual-code-modal/manual-code-modal.component.ts",
     "src/app/shared/components/credential-confirmation-modal/credential-confirmation-modal.component.ts",
+    "src/app/shared/components/barcode-scanner/barcode-scanner.component.ts",
   ],
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/',

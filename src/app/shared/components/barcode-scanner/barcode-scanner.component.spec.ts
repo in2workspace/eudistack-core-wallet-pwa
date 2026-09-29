@@ -313,6 +313,76 @@ describe('BarcodeScannerComponent', () => {
     expect(component.qrCode.emit).toHaveBeenCalledWith(testString);
   });
 
+  describe('onCodeResult pause/dedupe', () => {
+    let scannerMock: { scanStop: jest.Mock; scanStart: jest.Mock };
+
+    beforeEach(() => {
+      scannerMock = { scanStop: jest.fn(), scanStart: jest.fn() };
+      component['scanner'] = scannerMock as any;
+      jest.spyOn(component.qrCode, 'emit');
+    });
+
+    it('pauses decoding as soon as a result comes in, before emitting', () => {
+      component.onCodeResult('some-qr-content');
+
+      expect(scannerMock.scanStop).toHaveBeenCalledTimes(1);
+      expect(component.qrCode.emit).toHaveBeenCalledWith('some-qr-content');
+    });
+
+    it('does not re-emit the same content decoded again within the dedupe window', () => {
+      component.onCodeResult('same-qr-content');
+      component.onCodeResult('same-qr-content');
+
+      expect(component.qrCode.emit).toHaveBeenCalledTimes(1);
+      // the duplicate decode resumes scanning itself, since the caller never got a
+      // chance to react to a result it was never told about
+      expect(scannerMock.scanStart).toHaveBeenCalledTimes(1);
+    });
+
+    it('emits again for the same content once the dedupe window has elapsed', () => {
+      jest.spyOn(Date, 'now')
+        .mockReturnValueOnce(0)
+        .mockReturnValueOnce(component['duplicateResultWindowMs'] + 1);
+
+      component.onCodeResult('same-qr-content');
+      component.onCodeResult('same-qr-content');
+
+      expect(component.qrCode.emit).toHaveBeenCalledTimes(2);
+    });
+
+    it('emits immediately for different content even within the dedupe window', () => {
+      component.onCodeResult('first-content');
+      component.onCodeResult('second-content');
+
+      expect(component.qrCode.emit).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('resumeScanning', () => {
+    it('restarts the scanner', () => {
+      const scanStart = jest.fn();
+      component['scanner'] = { scanStart } as any;
+
+      component.resumeScanning();
+
+      expect(scanStart).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not throw if the scanner refuses to restart (e.g. already scanning)', () => {
+      component['scanner'] = {
+        scanStart: jest.fn().mockImplementation(() => { throw new Error('already running'); }),
+      } as any;
+
+      expect(() => component.resumeScanning()).not.toThrow();
+    });
+
+    it('does not throw if there is no scanner instance', () => {
+      component['scanner'] = undefined as any;
+
+      expect(() => component.resumeScanning()).not.toThrow();
+    });
+  });
+
 
   it('should save error log in saveErrorLog', () => {
     const testError = new Error('Test error');

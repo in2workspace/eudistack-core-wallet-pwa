@@ -1,8 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { IonicModule, ModalController } from '@ionic/angular';
 import { TranslateModule } from '@ngx-translate/core';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { Component, EventEmitter, Output } from '@angular/core';
 import { ScanPage } from './scan.page';
 import { BarcodeScannerComponent } from 'src/app/shared/components/barcode-scanner/barcode-scanner.component';
@@ -12,6 +13,7 @@ import { HapticService } from 'src/app/shared/services/haptic.service';
 @Component({ selector: 'app-barcode-scanner', standalone: true, template: '' })
 class BarcodeScannerStubComponent {
   @Output() public qrCode = new EventEmitter<string>();
+  public resumeScanning = jest.fn();
 }
 
 describe('ScanPage', () => {
@@ -102,5 +104,21 @@ describe('ScanPage', () => {
     component.qrCodeEmit('credential_offer_uri=data');
 
     expect(component.showScanner).toBe(false);
+  });
+
+  it('resumes scanning only after the invalid-QR alert is dismissed', () => {
+    const alertDismissed$ = new Subject<void>();
+    toast.showErrorAlertByTranslateLabel.mockReturnValue(alertDismissed$.asObservable());
+
+    component.ionViewWillEnter();
+    const scannerStub = fixture.debugElement
+      .query(By.directive(BarcodeScannerStubComponent))
+      .componentInstance as BarcodeScannerStubComponent;
+
+    component.qrCodeEmit('not-supported-content');
+    expect(scannerStub.resumeScanning).not.toHaveBeenCalled();
+
+    alertDismissed$.next();
+    expect(scannerStub.resumeScanning).toHaveBeenCalledTimes(1);
   });
 });
