@@ -13,7 +13,7 @@ import { HapticService } from 'src/app/shared/services/haptic.service';
 @Component({ selector: 'app-barcode-scanner', standalone: true, template: '' })
 class BarcodeScannerStubComponent {
   @Output() public qrCode = new EventEmitter<string>();
-  public resumeScanning = jest.fn();
+  public resultHandled = jest.fn();
 }
 
 describe('ScanPage', () => {
@@ -106,7 +106,7 @@ describe('ScanPage', () => {
     expect(component.showScanner).toBe(false);
   });
 
-  it('resumes scanning only after the invalid-QR alert is dismissed', () => {
+  it('marks the result as handled only after the invalid-QR alert is dismissed', () => {
     const alertDismissed$ = new Subject<void>();
     toast.showErrorAlertByTranslateLabel.mockReturnValue(alertDismissed$.asObservable());
 
@@ -116,9 +116,9 @@ describe('ScanPage', () => {
       .componentInstance as BarcodeScannerStubComponent;
 
     component.qrCodeEmit('not-supported-content');
-    expect(scannerStub.resumeScanning).not.toHaveBeenCalled();
+    expect(scannerStub.resultHandled).not.toHaveBeenCalled();
 
     alertDismissed$.next();
-    expect(scannerStub.resumeScanning).toHaveBeenCalledTimes(1);
+    expect(scannerStub.resultHandled).toHaveBeenCalledTimes(1);
   });
 });
