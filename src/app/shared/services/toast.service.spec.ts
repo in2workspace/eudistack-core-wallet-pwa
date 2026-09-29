@@ -86,6 +86,19 @@ describe('ToastServiceHandler', () => {
     expect(order).toEqual(['present', 'dismiss', 'next']);
   });
 
+  it('uses the caller-provided fallback key when the message matches no known backend message', fakeAsync(() => {
+    service.showErrorAlert('Http failure response for /api/v1/credentials: 500 OK', 'errors.server-error');
+    tick();
+    expect(translateSpy).toHaveBeenCalledWith('errors.server-error');
+    expect(translateSpy).not.toHaveBeenCalledWith('errors.default');
+  }));
+
+  it('prefers a known backend message over the fallback key', fakeAsync(() => {
+    service.showErrorAlert('Incorrect PIN', 'errors.invalid-request');
+    tick();
+    expect(translateSpy).toHaveBeenCalledWith('errors.incorrect-pin');
+  }));
+
   it('should format message correctly and translate it', fakeAsync(() => {
     service.showErrorAlert('Any undefined test message');
     tick();
