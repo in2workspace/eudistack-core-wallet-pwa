@@ -313,6 +313,69 @@ describe('BarcodeScannerComponent', () => {
     expect(component.qrCode.emit).toHaveBeenCalledWith(testString);
   });
 
+  describe('onCodeResult pause/dedupe (software gate, no scanner hardware calls)', () => {
+    beforeEach(() => {
+      jest.spyOn(component.qrCode, 'emit');
+    });
+
+    it('ignores further decodes while the previous result is still awaiting handling', () => {
+      component.onCodeResult('some-qr-content');
+      component.onCodeResult('some-other-content-seen-while-alert-is-up');
+
+      expect(component.qrCode.emit).toHaveBeenCalledTimes(1);
+      expect(component.qrCode.emit).toHaveBeenCalledWith('some-qr-content');
+    });
+
+    it('resumes reacting to decodes once resultHandled() is called', () => {
+      component.onCodeResult('first-content');
+      component.resultHandled();
+      component.onCodeResult('second-content');
+
+      expect(component.qrCode.emit).toHaveBeenCalledTimes(2);
+      expect(component.qrCode.emit).toHaveBeenNthCalledWith(2, 'second-content');
+    });
+
+    it('does not re-emit the same content decoded again within the dedupe window, even after resultHandled()', () => {
+      component.onCodeResult('same-qr-content');
+      component.resultHandled();
+      component.onCodeResult('same-qr-content');
+
+      expect(component.qrCode.emit).toHaveBeenCalledTimes(1);
+    });
+
+    it('emits again for the same content once the dedupe window has elapsed', () => {
+      jest.spyOn(Date, 'now')
+        .mockReturnValueOnce(0)
+        .mockReturnValueOnce(component['duplicateResultWindowMs'] + 1);
+
+      component.onCodeResult('same-qr-content');
+      component.resultHandled();
+      component.onCodeResult('same-qr-content');
+
+      expect(component.qrCode.emit).toHaveBeenCalledTimes(2);
+    });
+
+    it('emits immediately for different content even within the dedupe window', () => {
+      component.onCodeResult('first-content');
+      component.resultHandled();
+      component.onCodeResult('second-content');
+
+      expect(component.qrCode.emit).toHaveBeenCalledTimes(2);
+    });
+
+    it('never touches the underlying scanner (no scanStop/scanStart hardware toggling)', () => {
+      const scanStop = jest.fn();
+      const scanStart = jest.fn();
+      component['scanner'] = { scanStop, scanStart } as any;
+
+      component.onCodeResult('some-qr-content');
+      component.resultHandled();
+
+      expect(scanStop).not.toHaveBeenCalled();
+      expect(scanStart).not.toHaveBeenCalled();
+    });
+  });
+
 
   it('should save error log in saveErrorLog', () => {
     const testError = new Error('Test error');

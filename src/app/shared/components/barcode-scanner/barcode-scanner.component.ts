@@ -104,8 +104,22 @@ export class BarcodeScannerComponent implements OnInit {
   private readonly scanFailureDebounceDelay = 3000;
   private originalConsoleError: undefined|((...data: any[]) => void);
 
-  public scanSuccess$ = new BehaviorSubject<string>('');  
+  public scanSuccess$ = new BehaviorSubject<string>('');
   public destroy$ = new Subject<void>();
+
+  // Guards against the zxing decode loop re-firing (scanSuccess) for the same QR
+  // on every frame while the camera stays pointed at it. This is a purely
+  // software gate — deliberately NOT scanner.scanStop()/scanStart(): toggling
+  // the physical camera stream on every decode raced with zxing's own decode
+  // loop (a frame already mid-flight when scanStop() ran could still resolve
+  // and fire another result), and after a few such cycles the camera would
+  // visibly flicker and desync, showing overlapping alerts. Emission is
+  // blocked instead while a previous result is still being handled (an alert
+  // is up) or the same content repeats within a short window.
+  private lastEmittedCode: string | undefined;
+  private lastEmittedAt = 0;
+  private readonly duplicateResultWindowMs = 3000;
+  private isAwaitingResultHandling = false;
 
 
   public constructor(
@@ -188,7 +202,32 @@ export class BarcodeScannerComponent implements OnInit {
   }
 
   public onCodeResult(resultString: string): void {
+    if (this.isAwaitingResultHandling) {
+      // Still showing/handling the previous result: the decode loop keeps
+      // running underneath, but we ignore anything it finds until the caller
+      // calls resultHandled().
+      return;
+    }
+
+    const now = Date.now();
+    const isDuplicate = resultString === this.lastEmittedCode
+      && (now - this.lastEmittedAt) < this.duplicateResultWindowMs;
+    if (isDuplicate) {
+      return;
+    }
+
+    this.lastEmittedCode = resultString;
+    this.lastEmittedAt = now;
+    this.isAwaitingResultHandling = true;
     this.qrCode.emit(resultString);
+  }
+
+  /**
+   * Tells the scanner the last emitted result has been fully handled (e.g. its
+   * error alert was dismissed), so a new decode is allowed to reach the caller.
+   */
+  public resultHandled(): void {
+    this.isAwaitingResultHandling = false;
   }
 
   public onScanError(error: Error): void{
