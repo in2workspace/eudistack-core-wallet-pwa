@@ -2,16 +2,57 @@ import { Injectable, OnDestroy, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from './auth.service';
-import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
+import { DEEP_LINK_PATH_PREFIXES, PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
+
+type DeepLinkOutcome = 'navigated' | 'pending-login';
 
 interface SingleInstanceMessage {
-  type: 'NEW_TAB' | 'LEADER_ACK' | 'NAVIGATE';
+  type: 'NEW_TAB' | 'LEADER_ACK' | 'NAVIGATE' | 'NAVIGATE_ACK';
   tabId: string;
   url?: string;
+  replyTo?: string;
+  outcome?: DeepLinkOutcome;
+  leaderStandalone?: boolean;
+}
+
+interface NavigateAck {
+  outcome: DeepLinkOutcome;
+  leaderStandalone: boolean;
 }
 
 const CHANNEL_NAME = 'wallet-single-instance';
 const ELECTION_TIMEOUT_MS = 300;
+const NAVIGATE_ACK_TIMEOUT_MS = 500;
+
+const DUPLICATE_TAB_COPY = {
+  navigated: {
+    title: 'single-instance.title-offer-ready',
+    subtitle: 'single-instance.subtitle-offer-ready',
+  },
+  'pending-login': {
+    title: 'single-instance.title-offer-pending-login',
+    subtitle: 'single-instance.subtitle-offer-pending-login',
+  },
+  sent: {
+    title: 'single-instance.title-deep-link',
+    subtitle: 'single-instance.subtitle-deep-link',
+  },
+  'already-open': {
+    title: 'single-instance.title-already-open',
+    subtitle: 'single-instance.subtitle-already-open',
+  },
+} as const;
+
+const DUPLICATE_TAB_HINT_KEYS = {
+  leaderAnswered: {
+    standalone: 'single-instance.hint-go-to-window',
+    tab: 'single-instance.hint-go-to-tab',
+  },
+  noAnswer: {
+    standalone: 'single-instance.hint-standalone',
+    tab: 'single-instance.hint-tab',
+  },
+} as const;
 
 @Injectable({ providedIn: 'root' })
 export class SingleInstanceService implements OnDestroy {
@@ -22,6 +63,7 @@ export class SingleInstanceService implements OnDestroy {
   private channel: BroadcastChannel | null = null;
   private readonly tabId = crypto.randomUUID();
   private isLeader = false;
+  private titleBeforeFlag: string | null = null;
 
   /** Resolves `true` if this tab becomes the leader, `false` if one already exists. */
   public elect(): Promise<boolean> {
@@ -53,15 +95,8 @@ export class SingleInstanceService implements OnDestroy {
       this.channel!.onmessage = (ev: MessageEvent<SingleInstanceMessage>) => {
         if (ev.data.type === 'LEADER_ACK') {
           clearTimeout(timeout);
-          this.channel!.postMessage({
-            type: 'NAVIGATE',
-            tabId: this.tabId,
-            url: currentUrl,
-          } satisfies SingleInstanceMessage);
           this.channel!.onmessage = originalHandler;
-          const appRelative = SingleInstanceService.stripBase(currentUrl);
-          const isDeepLink = appRelative.startsWith('/protocol/') || appRelative.startsWith('/tabs/vc-selector') || appRelative.startsWith('/tabs/credentials');
-          this.renderDuplicateTabMessage(isDeepLink);
+          void this.handOffToLeader(currentUrl);
           resolve(false);
         } else {
           originalHandler?.call(this.channel!, ev);
@@ -79,6 +114,45 @@ export class SingleInstanceService implements OnDestroy {
     }
   }
 
+  private async handOffToLeader(currentUrl: string): Promise<void> {
+    // Cancel any pending auth operations so this follower tab cannot corrupt shared
+    // storage state while it waits for the leader's answer.
+    this.authService.dispose();
+
+    const isDeepLink = SingleInstanceService.isDeepLinkPath(SingleInstanceService.stripBase(currentUrl));
+    let ack: NavigateAck | null = null;
+    if (isDeepLink) {
+      ack = await this.requestNavigation(currentUrl);
+    } else {
+      this.postNavigate(currentUrl);
+    }
+
+    this.renderDuplicateTabMessage(isDeepLink, ack);
+  }
+
+  private requestNavigation(url: string): Promise<NavigateAck | null> {
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(null), NAVIGATE_ACK_TIMEOUT_MS);
+      this.channel!.onmessage = (ev: MessageEvent<SingleInstanceMessage>) => {
+        const { type, replyTo, outcome, leaderStandalone } = ev.data;
+        if (type !== 'NAVIGATE_ACK' || replyTo !== this.tabId || !outcome) {
+          return;
+        }
+        clearTimeout(timeout);
+        resolve({ outcome, leaderStandalone: leaderStandalone === true });
+      };
+      this.postNavigate(url);
+    });
+  }
+
+  private postNavigate(url: string): void {
+    this.channel!.postMessage({
+      type: 'NAVIGATE',
+      tabId: this.tabId,
+      url,
+    } satisfies SingleInstanceMessage);
+  }
+
   /**
    * Navigates the leader tab to a deep-link URL, or queues it for after login.
    * Accepts either a full URL (https://…) or an app-relative path (/tabs/…).
@@ -94,11 +168,16 @@ export class SingleInstanceService implements OnDestroy {
       appRelative = SingleInstanceService.stripBase(url);
     }
 
+    this.applyDeepLink(appRelative);
+  }
+
+  private applyDeepLink(appRelative: string): DeepLinkOutcome {
     if (this.authService.isLoggedIn()) {
       this.router.navigateByUrl(appRelative);
-    } else {
-      sessionStorage.setItem(PENDING_DEEP_LINK_KEY, appRelative);
+      return 'navigated';
     }
+    sessionStorage.setItem(PENDING_DEEP_LINK_KEY, appRelative);
+    return 'pending-login';
   }
 
   /**
@@ -139,12 +218,16 @@ export class SingleInstanceService implements OnDestroy {
         // <base href> directly from the DOM for reliability.
         const appRelative = SingleInstanceService.stripBase(msg.url ?? '');
 
-        if (appRelative.startsWith('/protocol/') || appRelative.startsWith('/tabs/vc-selector') || appRelative.startsWith('/tabs/credentials')) {
-          if (this.authService.isLoggedIn()) {
-            this.router.navigateByUrl(appRelative);
-          } else {
-            sessionStorage.setItem(PENDING_DEEP_LINK_KEY, appRelative);
-          }
+        if (SingleInstanceService.isDeepLinkPath(appRelative)) {
+          const outcome = this.applyDeepLink(appRelative);
+          this.flagPendingOffer();
+          this.channel!.postMessage({
+            type: 'NAVIGATE_ACK',
+            tabId: this.tabId,
+            replyTo: msg.tabId,
+            outcome,
+            leaderStandalone: SingleInstanceService.isStandalone(),
+          } satisfies SingleInstanceMessage);
         }
         break;
       }
@@ -154,32 +237,48 @@ export class SingleInstanceService implements OnDestroy {
     }
   }
 
-  private renderDuplicateTabMessage(isDeepLink: boolean): void {
-    // Cancel any pending auth operations so this follower tab cannot corrupt shared
-    // storage state.
-    this.authService.dispose();
+  /**
+   * Browsers do not let a background tab bring itself to the front, so when an offer lands
+   * while this tab is hidden its title is prefixed until the user comes back to it.
+   */
+  private flagPendingOffer(): void {
+    if (!document.hidden || this.titleBeforeFlag !== null) {
+      return;
+    }
+
+    this.titleBeforeFlag = document.title;
+    document.title = `${this.translate.instant('single-instance.tab-title-pending-offer')} · ${this.titleBeforeFlag}`;
+
+    const restoreTitle = () => {
+      if (document.hidden) {
+        return;
+      }
+      document.removeEventListener('visibilitychange', restoreTitle);
+      document.title = this.titleBeforeFlag ?? document.title;
+      this.titleBeforeFlag = null;
+    };
+    document.addEventListener('visibilitychange', restoreTitle);
+  }
+
+  private renderDuplicateTabMessage(isDeepLink: boolean, ack: NavigateAck | null = null): void {
     this.channel?.close();
     this.channel = null;
 
-    // Adapt copy depending on whether this is a browser tab or the installed PWA.
-    // iOS Safari PWAs expose navigator.standalone instead of display-mode:standalone.
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (navigator as any).standalone === true;
+    // Describe the tab the user has to go to: the leader's, when it told us, so a link
+    // opened in a browser tab does not say "tab" while the wallet lives in the installed PWA window.
+    const isStandalone = ack?.leaderStandalone ?? SingleInstanceService.isStandalone();
     const typeKey = isStandalone ? 'single-instance.type-window' : 'single-instance.type-tab';
     const type = this.translate.instant(typeKey);
     const params = { type };
 
-    const title = this.translate.instant(
-      isDeepLink ? 'single-instance.title-deep-link' : 'single-instance.title-already-open'
-    );
-    const subtitle = this.translate.instant(
-      isDeepLink ? 'single-instance.subtitle-deep-link' : 'single-instance.subtitle-already-open',
-      params
-    );
-    const hint = this.translate.instant(
-      isStandalone ? 'single-instance.hint-standalone' : 'single-instance.hint-tab'
-    );
+    const scenario = ack?.outcome ?? (isDeepLink ? 'sent' : 'already-open');
+    const copy = DUPLICATE_TAB_COPY[scenario];
+    const title = this.translate.instant(copy.title);
+    document.title = title;
+    const subtitle = this.translate.instant(copy.subtitle, params);
+    const displayMode = isStandalone ? 'standalone' : 'tab';
+    const hintKeys = ack ? DUPLICATE_TAB_HINT_KEYS.leaderAnswered : DUPLICATE_TAB_HINT_KEYS.noAnswer;
+    const hint = this.translate.instant(hintKeys[displayMode]);
     const closeFallback = this.translate.instant(
       isStandalone ? 'single-instance.close-fallback-standalone' : 'single-instance.close-fallback-tab'
     );
@@ -219,6 +318,16 @@ export class SingleInstanceService implements OnDestroy {
 
   public ngOnDestroy(): void {
     this.channel?.close();
+  }
+
+  private static isDeepLinkPath(appRelative: string): boolean {
+    return DEEP_LINK_PATH_PREFIXES.some((prefix) => appRelative.startsWith(prefix));
+  }
+
+  // iOS Safari PWAs expose navigator.standalone instead of display-mode:standalone.
+  private static isStandalone(): boolean {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true;
   }
 
   private static stripBase(url: string): string {
