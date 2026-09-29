@@ -107,6 +107,12 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     // one trips EBW's reuse detection, which revokes the whole device session.
     const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY) ?? this.refreshTokenValue;
     if (!refreshToken) {
+      // A live session without a refresh token can never be renewed (e.g. the token
+      // was cleared from storage), so it has to end here: the background timer only
+      // shows the expiry notice and would otherwise leave the user stuck in the app.
+      if (!this.disposed && this.isLoggedIn()) {
+        this.forceLogout();
+      }
       return throwError(() => new Error('No refresh token'));
     }
     const onAuthFailure = options?.onAuthFailure ?? 'force-logout';
