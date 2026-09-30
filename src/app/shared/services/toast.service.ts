@@ -167,7 +167,7 @@ export class ToastServiceHandler {
   }
 
   public showToast(messageKey: string, duration: number = 2000): void {
-    this.alertController.create({
+    void this.alertController.create({
       message: `
         <div style="display: flex; align-items: center; gap: 50px;">
           <ion-icon name="checkmark-circle"></ion-icon>
@@ -176,9 +176,9 @@ export class ToastServiceHandler {
       `,
       cssClass: 'custom-alert-ok',
     }).then(alert => {
-      alert.present().then(() => {
+      void alert.present().then(() => {
         setTimeout(() => {
-          alert.dismiss();
+          void alert.dismiss();
         }, duration);
       });
     });

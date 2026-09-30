@@ -85,7 +85,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   constructor() {
     super();
     // TODO Refactor
-    Promise.resolve().then(() => this.loadStoredTokens());
+    void Promise.resolve().then(() => this.loadStoredTokens());
     this.listenToCrossTabLogout();
   }
 
@@ -162,7 +162,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     }
     this.clearState();
     const hasPasskey = this.passkeyStore.hasPasskey();
-    this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
+    void this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
   }
 
   getToken(): string {
@@ -326,10 +326,10 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
         console.warn('Detected force-logout from another tab');
         this.clearState();
         const hasPasskey = this.passkeyStore.hasPasskey();
-        this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
+        void this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
       } else if (event.data === 'softWalletLogout') {
         this.softClearState();
-        this.router.navigate(['/auth/login']);
+        void this.router.navigate(['/auth/login']);
       }
     };
   }
