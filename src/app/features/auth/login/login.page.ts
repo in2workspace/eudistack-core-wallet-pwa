@@ -641,7 +641,7 @@ export class LoginPage implements OnDestroy {
   private navigateHome(): void {
     const pendingLink = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
     sessionStorage.removeItem(PENDING_DEEP_LINK_KEY);
-    this.router.navigateByUrl(pendingLink || '/tabs/credentials');
+    void this.router.navigateByUrl(pendingLink || '/tabs/credentials');
   }
 
   private getDeviceName(): string {
@@ -683,7 +683,7 @@ export class LoginPage implements OnDestroy {
     }
 
     // Fire regardless of which credential-sync path ran above (EUD-141 AC-01/AC-02).
-    this.activityService.syncFromServer();
+    void this.activityService.syncFromServer();
     this.navigateHome();
   }
 
