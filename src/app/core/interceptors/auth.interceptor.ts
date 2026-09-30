@@ -57,7 +57,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
       if (req.context.get(AUTH_RETRY_AFTER_REFRESH)) {
         sessionExpiryMarker.markSessionExpired(err);
-        authService.forceLogout();
+        // The refresh just succeeded, so the device refresh token is still valid:
+        // dropping it would force email + OTP on a session the passkey can resume.
+        authService.forceLogout({ keepRefreshToken: true });
         return throwError(() => err);
       }
 

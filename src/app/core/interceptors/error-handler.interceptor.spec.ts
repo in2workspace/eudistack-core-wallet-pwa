@@ -17,6 +17,9 @@ class MockToastServiceHandler {
   showErrorAlertByTranslateLabel(message: string) {
     return of(undefined);
   }
+  showInfoAlertByTranslateLabel(message: string) {
+    return of(undefined);
+  }
 }
 
 describe('HttpErrorInterceptor with HttpClient', () => {
@@ -457,19 +460,21 @@ describe('HttpErrorInterceptor — session-expiry marker coordination', () => {
     interceptor = TestBed.inject(HttpErrorInterceptor);
   });
 
-  it('shows the dedicated session-expired message and skips the generic toast when authInterceptor already marked the error', (done) => {
+  it('shows the session-expired notice as an informative alert and skips the generic error alert when authInterceptor already marked the error', (done) => {
     const markedError = new HttpErrorResponse({ status: 401, url: 'http://localhost/api/v1/credentials' });
     sessionExpiryMarker.markSessionExpired(markedError);
 
     const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
-    const dedicatedSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlertByTranslateLabel').mockReturnValue(of(undefined) as any);
+    const errorAlertSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlertByTranslateLabel');
+    const infoAlertSpy = jest.spyOn(mockToastServiceHandler, 'showInfoAlertByTranslateLabel');
 
     const fakeNext: HttpHandler = { handle: () => throwError(() => markedError) };
     const req = new HttpRequest('GET', 'http://localhost/api/v1/credentials');
 
     interceptor.intercept(req, fakeNext).subscribe({
       error: () => {
-        expect(dedicatedSpy).toHaveBeenCalledWith('errors.session-expired');
+        expect(infoAlertSpy).toHaveBeenCalledWith('errors.session-expired');
+        expect(errorAlertSpy).not.toHaveBeenCalled();
         expect(toastSpy).not.toHaveBeenCalled();
         done();
       },

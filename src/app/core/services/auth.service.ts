@@ -12,6 +12,11 @@ import { PasskeyPrfService } from './passkey-prf.service';
 
 export type AuthFailureMode = 'force-logout' | 'clear-only';
 
+export interface ForceLogoutOptions {
+  /** Keeps the device refresh token so the user can resume with the passkey instead of email + OTP. */
+  keepRefreshToken?: boolean;
+}
+
 const REFRESH_TOKEN_KEY = 'wallet_refresh_token';
 
 /**
@@ -41,7 +46,7 @@ export abstract class AuthService {
   abstract getName$(): Observable<string>;
   abstract getToken(): string;
   abstract logout(): Observable<void>;
-  abstract forceLogout(): void;
+  abstract forceLogout(options?: ForceLogoutOptions): void;
   abstract refreshAccessToken(options?: { onAuthFailure?: AuthFailureMode }): Observable<TokenPairResponse>;
   dispose(): void {}
 }
@@ -150,7 +155,11 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     return of(undefined);
   }
 
-  forceLogout(): void {
+  forceLogout(options?: ForceLogoutOptions): void {
+    if (options?.keepRefreshToken) {
+      this.softLogout();
+      return;
+    }
     this.clearState();
     const hasPasskey = this.passkeyStore.hasPasskey();
     this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
@@ -220,9 +229,13 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       return;
     }
     if (onAuthFailure === 'force-logout') {
-      this.softClearState();
-      this.router.navigate(['/auth/login']);
+      this.softLogout();
     }
+  }
+
+  private softLogout(): void {
+    this.softClearState();
+    this.router.navigate(['/auth/login']);
   }
 
   override dispose(): void {
@@ -289,7 +302,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       this.refreshAccessToken().subscribe({
         error: () => {
           if (!this.disposed) {
-            this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.session-expired').subscribe();
+            this.toastServiceHandler.showInfoAlertByTranslateLabel('errors.session-expired').subscribe();
           }
         }
       });

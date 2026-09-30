@@ -86,6 +86,26 @@ describe('ToastServiceHandler', () => {
     expect(order).toEqual(['present', 'dismiss', 'next']);
   });
 
+  it('showInfoAlertByTranslateLabel_anyMessage_presentsAnAlertWithTheInformativeStyle', async () => {
+    // Arrange
+    // Act
+    service.showInfoAlertByTranslateLabel('errors.session-expired').subscribe();
+    for (let i = 0; i < 10; i++) { await Promise.resolve(); }
+
+    // Assert
+    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining({ cssClass: 'custom-alert-ok-info' }));
+  });
+
+  it('showErrorAlertByTranslateLabel_anyMessage_keepsTheErrorStyle', async () => {
+    // Arrange
+    // Act
+    service.showErrorAlertByTranslateLabel('errors.default').subscribe();
+    for (let i = 0; i < 10; i++) { await Promise.resolve(); }
+
+    // Assert
+    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining({ cssClass: 'custom-alert-error' }));
+  });
+
   it('should format message correctly and translate it', fakeAsync(() => {
     service.showErrorAlert('Any undefined test message');
     tick();

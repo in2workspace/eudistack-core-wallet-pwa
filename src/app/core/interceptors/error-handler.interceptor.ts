@@ -39,7 +39,7 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         // "Something went wrong" toast (previously: same 401 handled twice by two
         // uncoordinated interceptors).
         if (this.sessionExpiryMarker.isSessionExpired(errorResp)) {
-          this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.session-expired').subscribe();
+          this.toastServiceHandler.showInfoAlertByTranslateLabel('errors.session-expired').subscribe();
           return throwError(() => errorResp);
         }
 

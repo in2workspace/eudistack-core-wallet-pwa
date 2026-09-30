@@ -32,7 +32,7 @@ describe('RemoteAuthService — session expiry redirect', () => {
   let httpMock: HttpTestingController;
   let routerMock: { navigate: jest.Mock };
   let passkeyStoreMock: { hasPasskey: jest.Mock };
-  let toastMock: { showErrorAlertByTranslateLabel: jest.Mock };
+  let toastMock: { showInfoAlertByTranslateLabel: jest.Mock };
 
   beforeAll(() => {
     (globalThis as unknown as { BroadcastChannel: unknown }).BroadcastChannel = BroadcastChannelMock;
@@ -44,7 +44,7 @@ describe('RemoteAuthService — session expiry redirect', () => {
 
     routerMock = { navigate: jest.fn() };
     passkeyStoreMock = { hasPasskey: jest.fn().mockReturnValue(true) };
-    toastMock = { showErrorAlertByTranslateLabel: jest.fn().mockReturnValue(of(undefined)) };
+    toastMock = { showInfoAlertByTranslateLabel: jest.fn().mockReturnValue(of(undefined)) };
 
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
@@ -95,7 +95,7 @@ describe('RemoteAuthService — session expiry redirect', () => {
       httpMock.expectOne(`${AUTH_BASE}/refresh`).flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
 
       // Assert
-      expect(toastMock.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.session-expired');
+      expect(toastMock.showInfoAlertByTranslateLabel).toHaveBeenCalledWith('errors.session-expired');
       expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/login']);
     });
 
@@ -123,7 +123,7 @@ describe('RemoteAuthService — session expiry redirect', () => {
 
       // Assert
       httpMock.expectNone(`${AUTH_BASE}/refresh`);
-      expect(toastMock.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.session-expired');
+      expect(toastMock.showInfoAlertByTranslateLabel).toHaveBeenCalledWith('errors.session-expired');
       expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/login']);
       expect(service.isLoggedIn()).toBe(false);
     });
