@@ -235,7 +235,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   private softLogout(): void {
     this.softClearState();
-    this.router.navigate(['/auth/login']);
+    void this.router.navigate(['/auth/login']);
   }
 
   override dispose(): void {
