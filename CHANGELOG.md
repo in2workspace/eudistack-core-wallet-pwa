@@ -30,9 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Browsers do not let a page bring another tab to the front without user interaction, so the original tab cannot be focused automatically. Closing the new tab automatically was ruled out because it left the user without an explanation and without landing on the wallet. Focusing the tab would only be possible through a system notification, which needs the user's permission and is left as a separate decision.
 - **Deep-link handling in `SingleInstanceService` was duplicated**: the "navigate if logged in, otherwise queue until login" logic lived separately in the `NAVIGATE` handler and in the `launchQueue` consumer, and the deep-link path prefixes were repeated in several places. Both entry points now share a single implementation and the prefixes live in `deep-link.constants.ts`. `SingleInstanceService` is now part of the coverage report.
 - **Automatic translation failed on first use and could not be cancelled (Settings → Language)**: the whole activation (language-pack download plus translating the interface) shared a single 20 s timeout, so the first activation of a language over a slow connection ended in "Translation could not be prepared". The engine is now prepared separately with no timeout, and the 20 s limit only applies to the translation itself.
-  - A **Cancel** button is shown while the translation is being prepared, restoring the native language.
-  - Automatic translation and the three native languages (en/es/ca) are now mutually exclusive: picking a native language switches the translation off instead of leaving it applied on top of it (going back to Castellano used to bring back the previous automatic translation), and no native language is shown as selected while the translation is on.
-  - The automatic translation control no longer sits inside its own nested box in the Language panel, but right below the native language options.
+- A **Cancel** button is shown while the translation is being prepared, restoring the native language.
+- Automatic translation and the three native languages (en/es/ca) are now mutually exclusive: picking a native language switches the translation off instead of leaving it applied on top of it (going back to Castellano used to bring back the previous automatic translation), and no native language is shown as selected while the translation is on.
+- The automatic translation control no longer sits inside its own nested box in the Language panel, but right below the native language options.
+
+- **An expired session showed the notice but did not redirect to login, leaving the user stuck in the app**: when the scheduled background refresh ran with no refresh token available (e.g. cleared from storage), `RemoteAuthService.refreshAccessToken()` failed before reaching any of its logout handling, so only the "session expired" notice was shown and the user stayed on the current screen. The session is now ended in that case, redirecting to login (or to registration when the device has no passkey), the same behaviour as when the server rejects the refresh token. Requests made without an active session are not redirected.
+- Tests: new `auth.service.session-expiry.spec.ts` covering the background refresh with a rejected token, with a server error and without a stored token, and the cases where no redirect must happen.
+- **A request that was rejected again right after a successful token refresh sent the user back to email + OTP**: the refresh had just succeeded, but the resulting logout also dropped the still-valid device refresh token, so the passkey could no longer resume the session. That logout now keeps the refresh token (`forceLogout({ keepRefreshToken: true })`) and returns to the passkey screen; the email + OTP step is only needed when the token is missing or was rejected by the server.
+
 
 ### Added
 
@@ -49,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The "session expired" notice is now informative instead of an error**: it was shown in the red error alert, which made an expected event look like a failure. It is still an alert that stays on screen until the user accepts it, but now uses an informative blue style (new `showInfoAlertByTranslateLabel`), both when the background refresh fails and when a request is rejected with an expired session.
 - **CodeQL-compliant test domains**: replaced generic `example.com` and `test.com` domains in `url-resolver.service.spec.ts` with `.local` suffixes to prevent static analysis tools from flagging literal URL strings as unescaped regular expressions.
 - **Fixed and reproducible inventory generation**: `@cyclonedx/cyclonedx-npm` becomes a `devDependency` with an exact version and is executed via `npm run sbom` after `npm ci`, instead of being downloaded with `npx --yes` at build time. Development components are kept marked in the inventory instead of being omitted: the gate already distinguishes by scope and only blocks what is distributed at runtime.
 

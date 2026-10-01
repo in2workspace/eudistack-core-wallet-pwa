@@ -12,6 +12,11 @@ import { PasskeyPrfService } from './passkey-prf.service';
 
 export type AuthFailureMode = 'force-logout' | 'clear-only';
 
+export interface ForceLogoutOptions {
+  /** Keeps the device refresh token so the user can resume with the passkey instead of email + OTP. */
+  keepRefreshToken?: boolean;
+}
+
 const REFRESH_TOKEN_KEY = 'wallet_refresh_token';
 
 /**
@@ -41,7 +46,7 @@ export abstract class AuthService {
   abstract getName$(): Observable<string>;
   abstract getToken(): string;
   abstract logout(): Observable<void>;
-  abstract forceLogout(): void;
+  abstract forceLogout(options?: ForceLogoutOptions): void;
   abstract refreshAccessToken(options?: { onAuthFailure?: AuthFailureMode }): Observable<TokenPairResponse>;
   dispose(): void {}
 }
@@ -79,8 +84,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   constructor() {
     super();
-    // TODO Refactor
-    Promise.resolve().then(() => this.loadStoredTokens());
+    this.loadStoredTokens();
     this.listenToCrossTabLogout();
   }
 
@@ -107,6 +111,12 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     // one trips EBW's reuse detection, which revokes the whole device session.
     const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY) ?? this.refreshTokenValue;
     if (!refreshToken) {
+      // A live session without a refresh token can never be renewed (e.g. the token
+      // was cleared from storage), so it has to end here: the background timer only
+      // shows the expiry notice and would otherwise leave the user stuck in the app.
+      if (!this.disposed && this.isLoggedIn()) {
+        this.forceLogout();
+      }
       return throwError(() => new Error('No refresh token'));
     }
     const onAuthFailure = options?.onAuthFailure ?? 'force-logout';
@@ -144,10 +154,14 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     return of(undefined);
   }
 
-  forceLogout(): void {
+  forceLogout(options?: ForceLogoutOptions): void {
+    if (options?.keepRefreshToken) {
+      this.softLogout();
+      return;
+    }
     this.clearState();
     const hasPasskey = this.passkeyStore.hasPasskey();
-    this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
+    void this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
   }
 
   getToken(): string {
@@ -214,9 +228,13 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       return;
     }
     if (onAuthFailure === 'force-logout') {
-      this.softClearState();
-      this.router.navigate(['/auth/login']);
+      this.softLogout();
     }
+  }
+
+  private softLogout(): void {
+    this.softClearState();
+    void this.router.navigate(['/auth/login']);
   }
 
   override dispose(): void {
@@ -283,7 +301,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       this.refreshAccessToken().subscribe({
         error: () => {
           if (!this.disposed) {
-            this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.session-expired').subscribe();
+            this.toastServiceHandler.showInfoAlertByTranslateLabel('errors.session-expired').subscribe();
           }
         }
       });
@@ -307,10 +325,10 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
         console.warn('Detected force-logout from another tab');
         this.clearState();
         const hasPasskey = this.passkeyStore.hasPasskey();
-        this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
+        void this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
       } else if (event.data === 'softWalletLogout') {
         this.softClearState();
-        this.router.navigate(['/auth/login']);
+        void this.router.navigate(['/auth/login']);
       }
     };
   }
