@@ -88,7 +88,7 @@ describe('HttpErrorInterceptor with HttpClient', () => {
     const url = `http://localhost/api/not-credentials`; // NO acaba amb CREDENTIALS
 
     httpClient.get(url).subscribe({ error: () => {
-      expect(toastSpy).toHaveBeenCalledWith('The credentials list is empty'); // cau a flux genèric
+      expect(toastSpy).toHaveBeenCalledWith('The credentials list is empty', 'errors.server-error'); // cau a flux genèric
     }});
 
     const req = httpMock.expectOne(url);
@@ -100,7 +100,7 @@ describe('HttpErrorInterceptor with HttpClient', () => {
 
     const url = `http://localhost/other-endpoint`;
     httpClient.get(url).subscribe({ error: () => {
-      expect(toastSpy).toHaveBeenCalledWith('Test error message');
+      expect(toastSpy).toHaveBeenCalledWith('Test error message', 'errors.invalid-request');
     }});
 
     const req = httpMock.expectOne(url);
@@ -127,7 +127,7 @@ describe('HttpErrorInterceptor with HttpClient', () => {
 
     const url = `http://localhost/credentials/something-else`;
     httpClient.get(url).subscribe({ error: () => {
-      expect(toastSpy).toHaveBeenCalledWith('Oops');
+      expect(toastSpy).toHaveBeenCalledWith('Oops', 'errors.server-error');
     }});
 
     const req = httpMock.expectOne(url);
@@ -139,7 +139,7 @@ describe('HttpErrorInterceptor with HttpClient', () => {
 
     const url = `http://localhost/another-endpoint`;
     httpClient.get(url).subscribe({ error: () => {
-      expect(toastSpy).toHaveBeenCalledWith('Gateway Timeout');
+      expect(toastSpy).toHaveBeenCalledWith('Gateway Timeout', 'errors.server-error');
     }});
 
     const req = httpMock.expectOne(url);
@@ -151,7 +151,7 @@ describe('HttpErrorInterceptor with HttpClient', () => {
 
       httpClient.get('/test404').subscribe({
         error: (error) => {
-          expect(spy).toHaveBeenCalledWith('Resource not found message from backend');
+          expect(spy).toHaveBeenCalledWith('Resource not found message from backend', 'errors.resource-not-found');
         }
       });
 
@@ -164,7 +164,7 @@ describe('HttpErrorInterceptor with HttpClient', () => {
 
     const url = `http://localhost/not-execute-content`;
     httpClient.get(url).subscribe({ error: () => {
-      expect(toastSpy).toHaveBeenCalledWith('Some backend error');
+      expect(toastSpy).toHaveBeenCalledWith('Some backend error', 'errors.invalid-request');
     }});
 
     const req = httpMock.expectOne(url);
@@ -177,7 +177,7 @@ describe('HttpErrorInterceptor with HttpClient', () => {
 
     httpClient.get('/test422').subscribe({
       error: (error) => {
-        expect(spy).toHaveBeenCalledWith(expectedMessage);
+        expect(spy).toHaveBeenCalledWith(expectedMessage, 'errors.default');
       }
     });
 
@@ -191,7 +191,7 @@ describe('HttpErrorInterceptor with HttpClient', () => {
 
     httpClient.get('/test500').subscribe({
       error: (error) => {
-        expect(spy).toHaveBeenCalledWith(expectedMessage);
+        expect(spy).toHaveBeenCalledWith(expectedMessage, 'errors.server-error');
       }
     });
 
@@ -220,7 +220,7 @@ describe('HttpErrorInterceptor with HttpClient', () => {
 
     httpClient.get('/testError').subscribe({
       error: (error) => {
-        expect(spy).toHaveBeenCalledWith(errorMessage);
+        expect(spy).toHaveBeenCalledWith(errorMessage, 'errors.server-error');
       }
     });
 
@@ -295,7 +295,7 @@ describe('HttpErrorInterceptor with HttpClient', () => {
 
     httpClient.get('/' + SERVER_PATH.REQUEST_CREDENTIAL).subscribe({
       error: (error) => {
-        expect(spy).toHaveBeenCalledWith(expectedMessage);
+        expect(spy).toHaveBeenCalledWith(expectedMessage, 'errors.default');
       },
     });
 
@@ -309,7 +309,7 @@ describe('HttpErrorInterceptor with HttpClient', () => {
 
     httpClient.get('/' + SERVER_PATH.REQUEST_CREDENTIAL).subscribe({
       error: (error) => {
-        expect(spy).toHaveBeenCalledWith(expectedMessage);
+        expect(spy).toHaveBeenCalledWith(expectedMessage, 'errors.server-error');
       },
     });
 
@@ -340,7 +340,7 @@ it('should show toast for CREDENTIALS when message is not the empty list one', (
 
   httpClient.get(url).subscribe({
     error: () => {
-      expect(toastSpy).toHaveBeenCalledWith('Something went wrong');
+      expect(toastSpy).toHaveBeenCalledWith('Something went wrong', 'errors.server-error');
     }
   });
 
@@ -354,7 +354,7 @@ it('should keep backend message for REQUEST_CREDENTIAL when not a timeout', () =
 
   httpClient.get(url).subscribe({
     error: () => {
-      expect(toastSpy).toHaveBeenCalledWith('Bad pin format');
+      expect(toastSpy).toHaveBeenCalledWith('Bad pin format', 'errors.invalid-request');
     }
   });
 
@@ -368,7 +368,7 @@ it('keeps the backend message as-is for REQUEST_CREDENTIAL on "Incorrect PIN" (n
 
   httpClient.get(url).subscribe({
     error: () => {
-      expect(toastSpy).toHaveBeenCalledWith('Incorrect PIN');
+      expect(toastSpy).toHaveBeenCalledWith('Incorrect PIN', 'errors.invalid-request');
     }
   });
 
@@ -426,6 +426,54 @@ it('wallet discovery 404 → handled silently (no toast, no console.error) [M1 f
 
   const req = httpMock.expectOne(url);
   req.flush({ message: 'Not Found' }, { status: 404, statusText: 'Not Found' });
+});
+
+// W-10: background sync must never pop the generic "Algo ha salido mal" modal.
+// EBW answers with an RFC 7807 ProblemDetail (no `message`), as in production.
+const problemDetail500 = { type: 'urn:eudistack:error:internal', status: 500, detail: 'An unexpected error occurred' };
+
+it.each([
+  ['GET', `${environment.server_url}/business-wallet${SERVER_PATH.ACTIVITY}`],
+  ['POST', `${environment.server_url}/business-wallet${SERVER_PATH.ACTIVITY}`],
+  ['PATCH', `${environment.server_url}/business-wallet${SERVER_PATH.CREDENTIALS}/cred-1/status`],
+])('%s %s 500 → handled silently, no modal (W-10)', (method, url) => {
+  const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
+  const labelSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlertByTranslateLabel');
+  let receivedError: unknown;
+
+  httpClient.request(method, url, { body: {} }).subscribe({ error: (err) => { receivedError = err; } });
+  httpMock.expectOne(url).flush(problemDetail500, { status: 500, statusText: 'Internal Server Error' });
+
+  expect(receivedError).toBeInstanceOf(HttpErrorResponse);
+  expect(toastSpy).not.toHaveBeenCalled();
+  expect(labelSpy).not.toHaveBeenCalled();
+});
+
+it('GET credential by id ending in "status" is not mistaken for a status update → still shows a modal', () => {
+  const url = `${environment.server_url}/business-wallet${SERVER_PATH.CREDENTIALS}/cred-1/status`;
+  const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
+
+  httpClient.get(url).subscribe({ error: () => undefined });
+  httpMock.expectOne(url).flush(problemDetail500, { status: 500, statusText: 'Internal Server Error' });
+
+  expect(toastSpy).toHaveBeenCalledTimes(1);
+});
+
+it.each([
+  [0, 'errors.network-error'],
+  [400, 'errors.invalid-request'],
+  [404, 'errors.resource-not-found'],
+  [500, 'errors.server-error'],
+  [503, 'errors.server-error'],
+  [422, 'errors.default'],
+])('unmapped ProblemDetail error with status %s → fallback message describes the cause (%s)', (status, expectedKey) => {
+  const url = `${environment.server_url}/business-wallet${SERVER_PATH.CREDENTIALS}`;
+  const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
+
+  httpClient.get(url).subscribe({ error: () => undefined });
+  httpMock.expectOne(url).flush({ ...problemDetail500, status }, { status, statusText: 'Error' });
+
+  expect(toastSpy).toHaveBeenCalledWith(expect.any(String), expectedKey);
 });
 
 });
@@ -496,7 +544,7 @@ describe('HttpErrorInterceptor — session-expiry marker coordination', () => {
 
     interceptor.intercept(req, fakeNext).subscribe({
       error: () => {
-        expect(toastSpy).toHaveBeenCalledWith('Unauthorized');
+        expect(toastSpy).toHaveBeenCalledWith('Unauthorized', 'errors.not-authorized');
         expect(dedicatedSpy).not.toHaveBeenCalled();
         done();
       },

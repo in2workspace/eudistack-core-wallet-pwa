@@ -43,12 +43,17 @@ export class ToastServiceHandler {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly supportChannel = inject(SupportChannelService);
 
-  public showErrorAlert(message: string): Observable<unknown> {
+  /**
+   * @param fallbackKey translation used when `message` matches no known backend
+   * message — callers that know the cause (e.g. the HTTP status) pass a specific
+   * key so the user is not shown the generic "something went wrong" text.
+   */
+  public showErrorAlert(message: string, fallbackKey: string = 'errors.default'): Observable<unknown> {
     const translationKey = Object.keys(ERROR_TRANSLATION_MAP)
       .find(prefix => message.startsWith(prefix));
     const messageBody = translationKey
       ? ERROR_TRANSLATION_MAP[translationKey]
-      : 'errors.default';
+      : fallbackKey;
 
     return this.showErrorAlertByTranslateLabel(messageBody);
   }
