@@ -11,6 +11,7 @@ import { PasskeyApiService, PasskeyInfo } from 'src/app/core/services/passkey-ap
 import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 import { compareCredentialIds } from 'src/app/core/utils/base64url';
+import { getBrowserName } from 'src/app/core/utils/browser-detect.util';
 
 export const PASSKEY_LIST_TIMEOUT_MS = 10_000;
 
@@ -76,6 +77,11 @@ export class DevicesPage implements OnInit {
       return 'phone-portrait-outline';
     }
     return 'desktop-outline';
+  }
+
+  /** Browser the passkey was registered from, or the fallback translation key if unknown. */
+  browserName(passkey: PasskeyInfo): string {
+    return getBrowserName(passkey.userAgent) ?? this.translate.instant('devices.unknown-browser');
   }
 
   loadPasskeys(): void {
@@ -179,14 +185,31 @@ export class DevicesPage implements OnInit {
   }
 
   async revokeSessions(passkey: PasskeyInfo): Promise<void> {
-    this.passkeyApi.revokeSessions(passkey.id).subscribe({
-      next: () => {
-        this.passkeys.update(list =>
-          list.map(p => p.id === passkey.id ? { ...p, activeSessions: 0 } : p)
-        );
-      },
-      error: (err) => console.error('Failed to revoke sessions:', err)
+    const alert = await this.alertController.create({
+      header: this.translate.instant('devices.revoke-header'),
+      message: this.translate.instant('devices.revoke-message', { device: passkey.displayName }),
+      buttons: [
+        {
+          text: this.translate.instant('devices.cancel'),
+          role: 'cancel',
+        },
+        {
+          text: this.translate.instant('devices.revoke-confirm'),
+          role: 'destructive',
+          handler: () => {
+            this.passkeyApi.revokeSessions(passkey.id).subscribe({
+              next: () => {
+                this.passkeys.update(list =>
+                  list.map(p => p.id === passkey.id ? { ...p, activeSessions: 0 } : p)
+                );
+              },
+              error: (err) => console.error('Failed to revoke sessions:', err)
+            });
+          },
+        },
+      ],
     });
+    await alert.present();
   }
 
   /**

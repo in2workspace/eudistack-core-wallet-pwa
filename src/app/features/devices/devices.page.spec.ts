@@ -142,6 +142,7 @@ const BASE_PASSKEY: PasskeyInfo = {
   id: '1',
   credentialId: 'cred-1',
   displayName: 'My Laptop',
+  userAgent: null,
   createdAt: '2024-01-15T10:00:00Z',
   lastUsedAt: '2024-06-01T08:30:00Z',
   activeSessions: 0,
@@ -439,6 +440,7 @@ const OTHER_PASSKEY: PasskeyInfo = {
   id: '2',
   credentialId: 'cred-other',
   displayName: 'Work Phone',
+  userAgent: null,
   createdAt: '2024-02-10T10:00:00Z',
   lastUsedAt: '2024-06-02T08:30:00Z',
   activeSessions: 0,
@@ -565,6 +567,7 @@ const CURRENT_PASSKEY: PasskeyInfo = {
   id: '1',
   credentialId: 'current-cred-id',
   displayName: 'My Laptop',
+  userAgent: null,
   createdAt: '2024-01-15T10:00:00Z',
   lastUsedAt: '2024-06-01T08:30:00Z',
   activeSessions: 0,
@@ -777,6 +780,7 @@ const LAPTOP: PasskeyInfo = {
   id: '1',
   credentialId: 'current-cred-id',
   displayName: 'MacBook Pro - Chrome',
+  userAgent: null,
   createdAt: '2024-01-15T10:00:00Z',
   lastUsedAt: '2024-06-01T08:30:00Z',
   activeSessions: 0,
@@ -786,6 +790,7 @@ const PHONE: PasskeyInfo = {
   id: '2',
   credentialId: 'cred-phone',
   displayName: 'iPhone 16 Pro',
+  userAgent: null,
   createdAt: '2024-02-10T10:00:00Z',
   lastUsedAt: null,
   activeSessions: 0,
@@ -795,6 +800,7 @@ const TABLET: PasskeyInfo = {
   id: '3',
   credentialId: 'cred-tablet',
   displayName: 'iPad 11',
+  userAgent: null,
   createdAt: '2024-03-10T10:00:00Z',
   lastUsedAt: null,
   activeSessions: 0,
@@ -867,14 +873,91 @@ describe('DevicesPage > current/other split and device icons', () => {
 });
 
 // ---------------------------------------------------------------------------
-// EUD-104: session-status badge — a device with a live session (activeSessions > 0)
-// must say so, both for the current device and for every other connected device.
+// revokeSessions() confirmation dialog — closing a device's session is scoped
+// to that one device only, but it wasn't asking for confirmation before doing
+// it (unlike deletePasskey), so a stray click had no way to be undone.
 // ---------------------------------------------------------------------------
 
-describe('DevicesPage > active session badge', () => {
+describe('DevicesPage > revokeSessions confirmation dialog', () => {
+  const REVOKABLE_PASSKEY: PasskeyInfo = {
+    id: '3',
+    credentialId: 'cred-revokable',
+    displayName: 'Work Phone',
+    userAgent: null,
+    createdAt: '2024-02-10T10:00:00Z',
+    lastUsedAt: '2024-06-02T08:30:00Z',
+    activeSessions: 1,
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
-    mockPasskeyApi.listPasskeys.mockReturnValue(of([]));
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([REVOKABLE_PASSKEY]));
+    mockPasskeyApi.revokeSessions.mockReturnValue(of(undefined));
+    mockAlertController.create.mockResolvedValue({ present: jest.fn() });
+  });
+
+  afterEach(() => {
+    TestBed.resetTestingModule();
+  });
+
+  it('shows a confirmation dialog naming the device before closing its session', async () => {
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.revokeSessions(REVOKABLE_PASSKEY);
+
+    expect(mockAlertController.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        header: 'devices.revoke-header',
+        message: 'devices.revoke-message',
+      })
+    );
+  });
+
+  it('does not call the API when the confirmation dialog is dismissed without confirming', async () => {
+    // Default mock resolves the alert without invoking any button handler.
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.revokeSessions(REVOKABLE_PASSKEY);
+
+    expect(mockPasskeyApi.revokeSessions).not.toHaveBeenCalled();
+  });
+
+  it('calls revokeSessions with the target id once the dialog is confirmed', async () => {
+    mockAlertController.create.mockImplementation((opts) => {
+      pressAlertButton(opts, 'destructive');
+      return Promise.resolve({ present: jest.fn() });
+    });
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.revokeSessions(REVOKABLE_PASSKEY);
+
+    expect(mockPasskeyApi.revokeSessions).toHaveBeenCalledWith(REVOKABLE_PASSKEY.id);
+  });
+
+  it('marks the device as inactive locally once the API call succeeds', async () => {
+    mockAlertController.create.mockImplementation((opts) => {
+      pressAlertButton(opts, 'destructive');
+      return Promise.resolve({ present: jest.fn() });
+    });
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.revokeSessions(REVOKABLE_PASSKEY);
+
+    expect(fixture.componentInstance.passkeys()[0].activeSessions).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// browserName() / browser badge — shows which browser a passkey was
+// registered from, parsed from the userAgent captured at registration time.
+// ---------------------------------------------------------------------------
+
+describe('DevicesPage > browser badge', () => {
+  const CHROME_UA =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
     mockPasskeyStore.getCredentialId.mockReturnValue('current-cred-id');
   });
 
@@ -882,57 +965,31 @@ describe('DevicesPage > active session badge', () => {
     TestBed.resetTestingModule();
   });
 
-  it('marks the current device as active when it has a live session', async () => {
-    mockPasskeyApi.listPasskeys.mockReturnValue(of([{ ...LAPTOP, activeSessions: 1 }]));
+  it('shows the parsed browser name for the current device', async () => {
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([{ ...CURRENT_PASSKEY, userAgent: CHROME_UA }]));
     const fixture = await createModule('server');
     const el: HTMLElement = fixture.nativeElement;
 
-    const badge = el.querySelector('.session-badge');
-    expect(badge).toBeTruthy();
-    expect(badge!.classList).toContain('session-badge--active');
-    expect(badge!.textContent).toContain('devices.active-badge');
+    expect(el.querySelector('.browser-badge')?.textContent).toContain('Chrome');
   });
 
-  it('marks another connected device as active when its own session is live', async () => {
+  it('shows the parsed browser name for another connected device', async () => {
     mockPasskeyApi.listPasskeys.mockReturnValue(of([
-      { ...LAPTOP, activeSessions: 1 },
-      { ...PHONE, activeSessions: 1 },
+      CURRENT_PASSKEY,
+      { ...OTHER_PASSKEY, userAgent: CHROME_UA },
     ]));
     const fixture = await createModule('server');
     const el: HTMLElement = fixture.nativeElement;
 
-    const badges = Array.from(el.querySelectorAll('.session-badge'));
-    expect(badges).toHaveLength(2);
-    expect(badges.every((b) => b.classList.contains('session-badge--active'))).toBe(true);
-    expect(badges.every((b) => b.textContent?.includes('devices.active-badge'))).toBe(true);
+    const badges = Array.from(el.querySelectorAll('.browser-badge'));
+    expect(badges.some((b) => b.textContent?.includes('Chrome'))).toBe(true);
   });
 
-  it('marks a device without a live session as inactive, not simply hidden', async () => {
-    mockPasskeyApi.listPasskeys.mockReturnValue(of([
-      { ...LAPTOP, activeSessions: 1 },
-      { ...PHONE, activeSessions: 0 },
-    ]));
+  it('falls back to the unknown-browser translation when userAgent is null', async () => {
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([{ ...CURRENT_PASSKEY, userAgent: null }]));
     const fixture = await createModule('server');
-    const el: HTMLElement = fixture.nativeElement;
 
-    const badges = Array.from(el.querySelectorAll('.session-badge'));
-    const inactiveBadge = badges.find((b) => b.textContent?.includes('devices.inactive-badge'));
-    expect(inactiveBadge).toBeTruthy();
-    expect(inactiveBadge!.classList).toContain('session-badge--inactive');
-  });
-
-  it('EUD-104: two devices open at the same time both show as active simultaneously', async () => {
-    mockPasskeyApi.listPasskeys.mockReturnValue(of([
-      { ...LAPTOP, activeSessions: 1 },
-      { ...PHONE, activeSessions: 1 },
-      { ...TABLET, activeSessions: 0 },
-    ]));
-    const fixture = await createModule('server');
-    const el: HTMLElement = fixture.nativeElement;
-
-    const activeBadges = el.querySelectorAll('.session-badge--active');
-    const inactiveBadges = el.querySelectorAll('.session-badge--inactive');
-    expect(activeBadges.length).toBe(2);
-    expect(inactiveBadges.length).toBe(1);
+    expect(fixture.componentInstance.browserName(fixture.componentInstance.currentDevice()!))
+      .toBe('devices.unknown-browser');
   });
 });

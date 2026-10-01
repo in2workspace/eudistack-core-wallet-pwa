@@ -7,6 +7,7 @@ export interface PasskeyInfo {
   id: string;
   credentialId: string;
   displayName: string;
+  userAgent: string | null;
   createdAt: string;
   lastUsedAt: string | null;
   activeSessions: number;
