@@ -13,6 +13,14 @@ import { SERVER_PATH, WALLET_DISCOVERY_PATH } from '../constants/api.constants';
 import { UrlResolverService } from '../services/url-resolver.service';
 import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
 import { AuthService } from '../services/auth.service';
+import { defaultHttpToTranslationKey } from '../../shared/helpers/http-error-message';
+
+/** `PATCH .../api/v1/credentials/{id}/status` (see WalletService.updateCredentialStatus). */
+function isCredentialStatusUpdate(method: string, pathname: string): boolean {
+  return method === 'PATCH'
+    && pathname.includes(`${SERVER_PATH.CREDENTIALS}/`)
+    && pathname.endsWith('/status');
+}
 
 @Injectable()
 export class HttpErrorInterceptor implements HttpInterceptor {
@@ -97,7 +105,14 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           pathname.includes('/api/v1/auth/') ||
           // Hybrid signing endpoints — never toast or expose body (NFR-S-536-03 defense-in-depth)
           pathname.endsWith(SERVER_PATH.HYBRID_SIGN_PREPARE) ||
-          pathname.endsWith(SERVER_PATH.HYBRID_SIGN_SUBMIT);
+          pathname.endsWith(SERVER_PATH.HYBRID_SIGN_SUBMIT) ||
+          // Background sync the user never triggered directly: activity history
+          // (sync after login, list on Actividad, append after saving/deleting a
+          // credential) and credential lifecycle status persistence. Callers already
+          // treat them as best-effort (local cache stays authoritative), so a failure
+          // here must not pop a generic modal over an operation that succeeded (W-10).
+          pathname.endsWith(SERVER_PATH.ACTIVITY) ||
+          isCredentialStatusUpdate(request.method, pathname);
 
         if (shouldHandleSilently) {
           this.logHandledSilentlyErrorMsg(errMessage);
@@ -119,7 +134,10 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         if (errStatus === 410) {
           this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.credential-offer-already-processed').subscribe();
         } else {
-          this.toastServiceHandler.showErrorAlert(errMessage).subscribe();
+          // EBW errors are RFC 7807 ProblemDetails (`detail`, no `message`), so the
+          // text rarely matches a known backend message: fall back to a message
+          // describing the HTTP status instead of the generic one.
+          this.toastServiceHandler.showErrorAlert(errMessage, defaultHttpToTranslationKey(errorResp)).subscribe();
         }
         console.error('Error occurred:', errorResp);
 

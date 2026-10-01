@@ -156,6 +156,7 @@
       "resend-in": "No has rebut el codi? Reenviament disponible en {{time}}",
       "resend-prompt": "No has rebut el codi?",
       "resend-action": "Reenviar",
+      "code-expired-prompt": "El teu codi ha caducat?",
       "continue": "Continuar",
       "back": "Enrere"
     },
@@ -179,6 +180,8 @@
     "errors": {
       "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",
       "too-many-attempts-otp": "Massa intents incorrectes. Si us plau, sol·licita un nou codi.",
+      "otp-expired": "El codi ha caducat. Prem Reenviar per rebre'n un de nou al teu correu.",
+      "otp-invalid": "El codi no és correcte. Revisa'l i torna-ho a provar.",
       "passkey-register-failed": "No s'ha pogut registrar aquest dispositiu. Torna-ho a provar.",
       "session-expired-request-code": "La teva sessió ha caducat. Sol·licita un codi de verificació per continuar obrint l'oferta de credencial."
     }
