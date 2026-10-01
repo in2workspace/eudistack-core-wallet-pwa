@@ -14,6 +14,12 @@ import { UiTextKey } from '../models/ui-text-translation.model';
 const PRISTINE_BUNDLE = { menu: { scan: 'Escáner QR', wallet: 'Cartera' } };
 const PRISTINE_JSON = JSON.stringify(PRISTINE_BUNDLE);
 
+async function flushMicrotasks(): Promise<void> {
+  for (let i = 0; i < 10; i++) {
+    await Promise.resolve();
+  }
+}
+
 function flatEntries() {
   return [
     { key: 'menu.scan' as UiTextKey, text: 'Escáner QR' },
@@ -57,6 +63,7 @@ describe('UiTextTranslationService', () => {
     engine = {
       isSupported: jest.fn().mockReturnValue(true),
       availability: jest.fn().mockResolvedValue('available'),
+      prepare: jest.fn().mockResolvedValue(undefined),
       translateEntries: jest.fn().mockImplementation(async (entries) =>
         entries.map((e: { key: UiTextKey; text: string }) => ({ key: e.key, text: `[${e.text}]` }))),
       destroy: jest.fn(),
@@ -300,15 +307,74 @@ describe('UiTextTranslationService', () => {
     });
   });
 
+  describe('activate — engine preparation (first-time language-pack download)', () => {
+    it('prepares the engine for the native/target pair before translating', async () => {
+      await service.activate('el');
+
+      expect(engine.prepare).toHaveBeenCalledWith({ sourceLanguage: 'es', targetLanguage: 'el' });
+      expect(engine.prepare.mock.invocationCallOrder[0]).toBeLessThan(engine.translateEntries.mock.invocationCallOrder[0]);
+    });
+
+    it('does not prepare the engine on a cache hit', async () => {
+      cache.read.mockResolvedValue([{ key: 'menu.scan', text: 'QR' }]);
+
+      await service.activate('el');
+
+      expect(engine.prepare).not.toHaveBeenCalled();
+    });
+
+    it('does not apply the TRANSLATION_BUDGET_MS timeout while the language pack is still downloading', async () => {
+      jest.useFakeTimers();
+      let finishDownload!: () => void;
+      engine.prepare.mockImplementation(() => new Promise<void>(resolve => { finishDownload = resolve; }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      jest.advanceTimersByTime(60_000);
+      await flushMicrotasks();
+      expect(service.status()).toBe('preparing');
+      finishDownload();
+      await flushMicrotasks();
+      await activation;
+
+      expect(service.status()).toBe('active');
+    });
+
+    it('falls back to native with status "error" when preparing the engine fails', async () => {
+      engine.prepare.mockRejectedValue(new Error('download failed'));
+
+      await service.activate('el');
+
+      expect(service.status()).toBe('error');
+      expect(engine.translateEntries).not.toHaveBeenCalled();
+      expect(engine.destroy).toHaveBeenCalled();
+    });
+
+    it('does not translate nor leave a stale state when cancelled while the language pack downloads', async () => {
+      let finishDownload!: () => void;
+      engine.prepare.mockImplementation(() => new Promise<void>(resolve => { finishDownload = resolve; }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      service.deactivate();
+      finishDownload();
+      await activation;
+
+      expect(engine.translateEntries).not.toHaveBeenCalled();
+      expect(service.status()).toBe('idle');
+      expect(service.targetLanguage()).toBeNull();
+    });
+  });
+
   describe('activate — timeout (ES-05)', () => {
-    it('falls back to native and destroys the engine when the engine never settles within TRANSLATION_BUDGET_MS', async () => {
+    it('falls back to native and destroys the engine when the translation never settles within TRANSLATION_BUDGET_MS', async () => {
       jest.useFakeTimers();
       engine.translateEntries.mockImplementation(() => new Promise(() => { /* never resolves */ }));
 
       const activation = service.activate('el');
       // Flush the fetch + cache-read microtasks so doActivate() reaches the
       // engine call and withBudget()'s timer is armed before we advance it.
-      await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+      await flushMicrotasks();
       jest.advanceTimersByTime(20_000);
       await activation;
 
@@ -331,7 +397,7 @@ describe('UiTextTranslationService', () => {
       const first = service.activate('el');
       const second = service.activate('el');
 
-      await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+      await flushMicrotasks();
       releaseEngine();
       await Promise.all([first, second]);
 
@@ -349,7 +415,7 @@ describe('UiTextTranslationService', () => {
       }));
 
       const first = service.activate('bg'); // e.g. an accidental default, not what the user wanted
-      await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+      await flushMicrotasks();
 
       const second = service.activate('fr'); // the user's actual, deliberate choice
       releaseFirstEngine(); // the stale 'bg' operation finally settles...
