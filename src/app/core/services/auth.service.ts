@@ -20,6 +20,15 @@ export interface ForceLogoutOptions {
 const REFRESH_TOKEN_KEY = 'wallet_refresh_token';
 
 /**
+ * How often an authenticated tab pings the server to notice its own session was
+ * revoked elsewhere. Without this, an otherwise-idle tab (no other request in
+ * flight) sits "zombie" — still looking logged in — until the holder happens to
+ * trigger a call that then 401s. This bounds that detection window instead of
+ * leaving it open-ended.
+ */
+export const SESSION_POLL_INTERVAL_MS = 5_000;
+
+/**
  * Whether a failed /refresh means the refresh token itself is no longer valid
  * (expired, revoked, reused → EBW answers 401) as opposed to a transient failure
  * (offline, 5xx, 429) where the token is still good and must be kept: dropping it
@@ -68,6 +77,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private readonly broadcastChannel = new BroadcastChannel('auth');
   private static readonly BROADCAST_FORCE_LOGOUT = 'forceWalletLogout';
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private sessionPollTimer: ReturnType<typeof setInterval> | null = null;
   private disposed = false;
   private refreshInFlight$: Observable<TokenPairResponse> | null = null;
 
@@ -262,6 +272,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
     }
+    this.stopSessionPolling();
     this.broadcastChannel.close();
   }
 
@@ -280,8 +291,33 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
     this.authenticated$.next(true);
     this.scheduleTokenRefresh(response.expiresIn);
+    this.startSessionPolling();
 
     void this.preloadIssuerMetadata();
+  }
+
+  /**
+   * Proactively checks this device's own session while the tab is otherwise idle.
+   * The ping itself does nothing server-side — reaching it at all already proves the
+   * access token is still accepted (see AuthController#checkSession) — its only job
+   * is to give a revoked session something to 401 on. That 401 flows through the
+   * same `authInterceptor` as any other request, which already retries once via
+   * refresh and then calls `forceLogout()`, so nothing extra is needed here beyond
+   * firing the request and swallowing whatever it settles with.
+   */
+  private startSessionPolling(): void {
+    if (this.sessionPollTimer) return;
+    this.sessionPollTimer = setInterval(() => {
+      if (this.disposed || !this.getToken()) return;
+      this.http.get<void>(`${this.authBase}/session`).subscribe({ error: () => undefined });
+    }, SESSION_POLL_INTERVAL_MS);
+  }
+
+  private stopSessionPolling(): void {
+    if (this.sessionPollTimer) {
+      clearInterval(this.sessionPollTimer);
+      this.sessionPollTimer = null;
+    }
   }
 
   /**
@@ -361,6 +397,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
     }
+    this.stopSessionPolling();
   }
 
   private clearState(): void {
@@ -373,6 +410,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       clearTimeout(this.refreshTimer);
       this.refreshTimer = null;
     }
+    this.stopSessionPolling();
   }
 
   ngOnDestroy(): void {
