@@ -67,6 +67,12 @@ ion-alert.custom-alert-ok .alert-message {
   color: var(--custom-alert-ok-text) !important;
 }
 
+ion-alert.custom-alert-ok-info .alert-message,
+ion-alert.custom-alert-ok-info .alert-button.sc-ion-alert-md,
+ion-alert.custom-alert-ok-info .alert-button.sc-ion-alert-ios {
+  color: var(--status-info) !important;
+}
+
 ion-alert.custom-alert-ok .alert-message ion-icon {
   font-size: 38px;
   color: var(--custom-alert-ok-text);
@@ -78,8 +84,9 @@ ion-alert .alert-message div {
   gap: 20px;
 }
 
-/* Center the button for error alert */
-ion-alert.custom-alert-error .alert-button-group {
+/* Center the button for error and info alerts */
+ion-alert.custom-alert-error .alert-button-group,
+ion-alert.custom-alert-ok-info .alert-button-group {
   justify-content: center !important;
 }
 

@@ -15,6 +15,8 @@ import { SupportChannelService } from 'src/app/core/services/support-channel.ser
  */
 const SUPPORT_LINK_PLACEHOLDER = '{{supportLink}}';
 
+type AlertCssClass = 'custom-alert-error' | 'custom-alert-ok-info';
+
 const ERROR_TRANSLATION_MAP: Record<string, string> = {
   'The received QR content cannot be processed': 'errors.invalid-qr',
   'There are no credentials available to login': 'errors.no-credentials-available',
@@ -57,13 +59,22 @@ export class ToastServiceHandler {
   }
 
   public showErrorAlertByTranslateLabel(message: string): Observable<void> {
+    return this.showAlertByTranslateLabel(message, 'custom-alert-error');
+  }
+
+  /** Blocking alert with informative styling, for expected events that are not failures. */
+  public showInfoAlertByTranslateLabel(message: string): Observable<void> {
+    return this.showAlertByTranslateLabel(message, 'custom-alert-ok-info');
+  }
+
+  private showAlertByTranslateLabel(message: string, cssClass: AlertCssClass): Observable<void> {
     return this.translate.get(message).pipe(
       take(1),
       // switchMap + from(promise), not map(async ...): map would emit the
       // pending Promise itself and complete immediately, so subscribers
       // reacting on completion (e.g. resuming the QR scanner) would fire
       // before the alert was even shown, instead of after it's dismissed.
-      switchMap((translatedMessage) => from(this.presentErrorAlert(translatedMessage))),
+      switchMap((translatedMessage) => from(this.presentAlert(translatedMessage, cssClass))),
     );
   }
 
@@ -139,7 +150,7 @@ export class ToastServiceHandler {
     return this.sanitizer.sanitize(SecurityContext.HTML, String(value ?? '')) ?? '';
   }
 
-  private async presentErrorAlert(translatedMessage: string): Promise<void> {
+  private async presentAlert(translatedMessage: string, cssClass: AlertCssClass): Promise<void> {
     const alert = await this.alertController.create({
       message: `
         <div style="display: flex; align-items: center; gap: 50px;">
@@ -153,7 +164,7 @@ export class ToastServiceHandler {
           cssClass: 'centered-button',
         },
       ],
-      cssClass: 'custom-alert-error',
+      cssClass,
     });
 
     await alert.present();
@@ -161,7 +172,7 @@ export class ToastServiceHandler {
   }
 
   public showToast(messageKey: string, duration: number = 2000): void {
-    this.alertController.create({
+    void this.alertController.create({
       message: `
         <div style="display: flex; align-items: center; gap: 50px;">
           <ion-icon name="checkmark-circle"></ion-icon>
@@ -170,9 +181,9 @@ export class ToastServiceHandler {
       `,
       cssClass: 'custom-alert-ok',
     }).then(alert => {
-      alert.present().then(() => {
+      void alert.present().then(() => {
         setTimeout(() => {
-          alert.dismiss();
+          void alert.dismiss();
         }, duration);
       });
     });
