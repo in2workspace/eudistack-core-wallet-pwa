@@ -6,7 +6,11 @@
   --custom-alert-error-border: 1px solid var(--status-error);
   --custom-alert-error-text: var(--status-error);
   --custom-alert-ok-bg: #e7f8e4;
-  --custom-alert-ok-info-bg: #d0efff;
+  /* Neutral by design, not a status color — the session-expired notice is an
+     expected event, not a success/info/error state, and must read the same
+     in both themes. */
+  --custom-alert-ok-info-bg: #ffffff;
+  --custom-alert-ok-info-text: #000000;
   --custom-alert-ok-text: var(--status-success);
 }
 
@@ -15,7 +19,8 @@
   --custom-alert-error-border: 1px solid #e84e4f;
   --custom-alert-error-text: White;
   --custom-alert-ok-bg: #e7f8e4;
-  --custom-alert-ok-info-bg: #d0efff;
+  --custom-alert-ok-info-bg: #ffffff;
+  --custom-alert-ok-info-text: #000000;
   --custom-alert-ok-text: var(--status-success);
 }
 
@@ -59,7 +64,7 @@ ion-alert.custom-alert-ok .alert-wrapper {
 
 ion-alert.custom-alert-ok-info .alert-wrapper {
   background-color: var(--custom-alert-ok-info-bg) !important;
-  color: var(--surface-card) !important;
+  color: var(--custom-alert-ok-info-text) !important;
   border-radius: var(--radius-md);
 }
 
@@ -70,7 +75,7 @@ ion-alert.custom-alert-ok .alert-message {
 ion-alert.custom-alert-ok-info .alert-message,
 ion-alert.custom-alert-ok-info .alert-button.sc-ion-alert-md,
 ion-alert.custom-alert-ok-info .alert-button.sc-ion-alert-ios {
-  color: var(--status-info) !important;
+  color: var(--custom-alert-ok-info-text) !important;
 }
 
 ion-alert.custom-alert-ok .alert-message ion-icon {
