@@ -25,10 +25,14 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
-  // Auth endpoints handle their own credentials (except passkey management)
+  // Auth endpoints handle their own credentials (except passkey management and the
+  // session liveness check the wallet polls in the background — both need the Bearer
+  // token attached and the same 401 → refresh → forceLogout handling as any other
+  // authenticated request, since that's exactly what lets an idle tab notice a
+  // session revoked elsewhere without waiting for the holder to act).
   const isAuthEndpoint = req.url.includes('/api/v1/auth/');
-  const isPasskeyEndpoint = req.url.includes('/api/v1/auth/passkeys');
-  if (isAuthEndpoint && !isPasskeyEndpoint) {
+  const needsBearerToken = req.url.includes('/api/v1/auth/passkeys') || req.url.includes('/api/v1/auth/session');
+  if (isAuthEndpoint && !needsBearerToken) {
     return next(req);
   }
 

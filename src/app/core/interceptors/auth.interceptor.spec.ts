@@ -6,6 +6,7 @@
  *  T-auth-2 — own-backend request with token adds Authorization header
  *  T-auth-3 — /api/v1/auth/* passes through without Authorization header
  *  T-auth-4 — /api/v1/auth/passkeys includes Authorization header (exception)
+ *  T-auth-4b — /api/v1/auth/session includes Authorization header (background poll, exception)
  *  T-auth-5 — external URL passes through without Authorization header
  *  T-auth-6 — /assets/* bypasses AuthService (ThemeService bootstrap timing fix)
  *  T-auth-7 — 401 on own-backend: refresh fails → forceLogout
@@ -110,6 +111,17 @@ describe('authInterceptor', () => {
     const req = httpMock.expectOne(url);
     expect(req.request.headers.get('Authorization')).toBe('Bearer test-jwt');
     req.flush([]);
+  });
+
+  it('T-auth-4b: /api/v1/auth/session includes Authorization header', () => {
+    mockAuth.setToken('test-jwt');
+    const url = `${OWN_BACKEND}/api/v1/auth/session`;
+
+    httpClient.get(url).subscribe();
+
+    const req = httpMock.expectOne(url);
+    expect(req.request.headers.get('Authorization')).toBe('Bearer test-jwt');
+    req.flush(null);
   });
 
   it('T-auth-5: external URL passes through without Authorization header', () => {
