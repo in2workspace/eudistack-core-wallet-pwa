@@ -68,7 +68,7 @@ export const MAX_CACHED_TRANSLATIONS = 3;
 /** Max cached bytes per language — approximate, measured on the serialized entry (NFR-S-142-05). */
 export const MAX_CACHED_BYTES_PER_LANGUAGE = 200_000;
 
-/** Hard timeout for a full activation (probe → engine → apply) — ES-05, NFR-S-142-02. */
+/** Hard timeout for the translation step only — engine preparation (language-pack download) is excluded — ES-05, NFR-S-142-02. */
 export const TRANSLATION_BUDGET_MS = 20_000;
 
 /** Timeout fetching the pristine i18n bundle (`assets/i18n/<lang>.json`) — ES-02. */

@@ -33,13 +33,13 @@
 
             <div class="language-options" role="radiogroup" [attr.aria-label]="'language-selector.title' | translate">
               @for (language of languageList; track language.code) {
-                <label class="language-card" [class.language-card--selected]="currentLanguage === language.code">
+                <label class="language-card" [class.language-card--selected]="currentLanguage === language.code && !translationEnabled()">
                   <input
                     type="radio"
                     class="language-card__input"
                     name="app-language"
                     [value]="language.code"
-                    [checked]="currentLanguage === language.code"
+                    [checked]="currentLanguage === language.code && !translationEnabled()"
                     (change)="languageChange(language.code)"
                   />
                   <span>{{ language.name }}</span>
@@ -47,7 +47,7 @@
               }
             </div>
 
-            <section class="translation-box">
+            <div class="translation-options">
               <h3 class="translation-box__title">{{ "ui-translation.title" | translate }}</h3>
               <p class="settings-desc">{{ "ui-translation.description" | translate }}</p>
 
@@ -95,6 +95,9 @@
                     @if (translationProgress(); as progress) {
                       <ion-progress-bar [value]="progress.total > 0 ? progress.done / progress.total : 0"></ion-progress-bar>
                     }
+                    <ion-button fill="outline" size="small" (click)="cancelTranslation()">
+                      {{ "ui-translation.cancel" | translate }}
+                    </ion-button>
                   </output>
                 }
 
@@ -107,7 +110,7 @@
                   </div>
                 }
               }
-            </section>
+            </div>
           </section>
         }
       </article>

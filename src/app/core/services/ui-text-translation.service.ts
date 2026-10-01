@@ -107,8 +107,11 @@ export class UiTextTranslationService {
    * completion a no-op (ES-03), so it never overwrites the newer choice —
    * without this, picking a different language before the first one
    * finishes preparing silently persisted the discarded choice instead.
-   * Bounded to `TRANSLATION_BUDGET_MS` (ES-05); on timeout or any failure,
-   * falls back to the native language (`status = 'error'`).
+   * The translation step is bounded to `TRANSLATION_BUDGET_MS` (ES-05); the
+   * engine preparation (first-time language-pack download) is not, since it
+   * can legitimately take longer — the user can cancel it via `deactivate()`.
+   * On timeout or any failure, falls back to the native language
+   * (`status = 'error'`).
    */
   activate(target: LanguageTag): Promise<void> {
     if (this._operation && this._inFlightTarget === target) {
@@ -226,7 +229,7 @@ export class UiTextTranslationService {
     this._progress.set({ done: 0, total: 0 });
 
     try {
-      await this.withBudget(this.doActivate(target, generation));
+      await this.doActivate(target, generation);
     } catch {
       if (!this.isCurrentGeneration(generation)) {
         return; // superseded — the newer operation owns the visible state
@@ -325,18 +328,22 @@ export class UiTextTranslationService {
     generation: number,
     allowedKeys: ReadonlySet<UiTextKey>,
   ): Promise<ReadonlyArray<UiTextEntry>> {
+    const pair = { sourceLanguage, targetLanguage };
+    await this.engine.prepare(pair);
+    if (!this.isCurrentGeneration(generation)) return []; // cancelled while the language pack downloaded
+
     const maskedEntries = entries.map(e => ({ key: e.key, text: maskPlaceholders(e.text) }));
 
-    const rawTranslated = await this.engine.translateEntries(
+    const rawTranslated = await this.withBudget(this.engine.translateEntries(
       maskedEntries,
-      { sourceLanguage, targetLanguage },
+      pair,
       allowedKeys,
       (done, total) => {
         if (this.isCurrentGeneration(generation)) {
           this._progress.set({ done, total });
         }
       },
-    );
+    ));
 
     const byKey = new Map(entries.map(e => [e.key, e.text]));
     return rawTranslated.map(translated => {

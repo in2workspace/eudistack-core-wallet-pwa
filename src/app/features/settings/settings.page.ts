@@ -83,6 +83,12 @@ export class SettingsPage implements OnInit {
   public languageChange(code: string): void {
     if (!code) return;
 
+    // A native language and the automatic translation are mutually exclusive.
+    // deactivate() must run before use(): it restores the pristine bundle of
+    // the CURRENT language and would otherwise overwrite the one just loaded.
+    if (this.translationEnabled()) {
+      this.uiTranslation.deactivate();
+    }
     this.languages.next(code);
     this.translate.use(code);
     this.storageService.set('language', code);
@@ -113,6 +119,10 @@ export class SettingsPage implements OnInit {
     if (this.translationEnabled()) {
       void this.uiTranslation.activate(code);
     }
+  }
+
+  public cancelTranslation(): void {
+    this.uiTranslation.deactivate();
   }
 
   public retryTranslation(): void {
