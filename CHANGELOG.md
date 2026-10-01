@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [3.16.7] - 2026-10-01
+
+### Fixed
+- **#1052785** La lista de credenciales seleccionables no deja ver que hay más de una candidata.
+- **#1061301** Al registrar un dispositivo el cursor se pierde y no se ve dónde se escribe.
+- **#1061300** Tras cerrar sesión el registro de dispositivo vuelve a pedir correo y OTP.
+- **#1061304** Desde el móvil o la app no se distingue el entorno (DEV o STG) en la descarga ni en la PWA.
+- **#1061173** Al caducar el OTP no se ofrece reenviar el código y hay que volver a registrar el correo.
+- **#1061305** Open Wallet desde el correo no enfoca la pestaña ya abierta para aprobar la credencial.
+- **#1052784** La consulta de acceso al issuer pide el poder concreto, no cualquier credencial de empleado.
+
 ### Fixed
 - **SonarCloud quality gate failing on `main` (new-code reliability rating C)**: floating promises flagged by `typescript:S9383` are now either explicitly fire-and-forget (`void` on router navigations, haptics and `StorageService.set`) or get a rejection handler (`bootstrapApplication`, `SettingsPage` language load — falls back to the current/default language, `ToastServiceHandler.showToast`). Also cleared the new-code smells: parallel eviction in `UiTranslationCacheService.evictBeyondLimit()`, `replaceAll()` in `compareCredentialIds()` (`tsconfig` `lib` gains `es2021.string`), an unused import in `LoginPage` and a `TODO` marker in the Activity page. The sequential chunk loop in `BrowserTranslatorEngineAdapter` is kept on purpose (bounded concurrency + progress) and annotated `NOSONAR`.
 - **Generic "Algo ha salido mal" modal after logging in, opening Actividad or saving a credential although the operation succeeded (W-10)**: those screens trigger background calls to the wallet's own backend that the user never started directly — activity history sync after login (`GET /api/v1/activity`), the Actividad list, the activity append after saving/deleting a credential (`POST /api/v1/activity`) and the credential lifecycle status persistence (`PATCH /api/v1/credentials/{id}/status`). Their callers already treat them as best-effort (local cache stays authoritative), but `HttpErrorInterceptor` still turned any failure into the generic error modal on top of a flow that had worked. They are now handled silently. In addition, for errors that do reach the user, the fallback message now describes the HTTP status (`defaultHttpToTranslationKey`: network, invalid request, not authorized, not found, server error) instead of always showing the generic text: `eudistack-core-wallet-ebw` answers with RFC 7807 ProblemDetails (`detail`, no `message`), so the backend text practically never matched a known message. `ToastServiceHandler.showErrorAlert()` takes an optional fallback key for this.
