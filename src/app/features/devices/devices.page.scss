@@ -151,23 +151,15 @@
   white-space: nowrap;
 }
 
-.session-badge {
+.browser-badge {
   flex-shrink: 0;
   padding: 4px 10px;
   border-radius: 8px;
+  background: #F3F4F6;
+  color: #4B5563;
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
-
-  &--active {
-    background: #DCFCE7;
-    color: #15803D;
-  }
-
-  &--inactive {
-    background: #F3F4F6;
-    color: #4B5563;
-  }
 }
 
 .device-meta {

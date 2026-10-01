@@ -549,6 +549,9 @@
     "delete-self-message": "This is the passkey for the device you're using right now. Revoking it will sign you out of this session immediately, and you'll need to complete device registration again before you can access your wallet from here.",
     "delete-confirm": "Delete",
     "delete-aria": "Delete this passkey",
+    "revoke-header": "Close device session",
+    "revoke-message": "This will end the session for \"{{device}}\" immediately. That device will need to sign in again to use the wallet.",
+    "revoke-confirm": "Close session",
     "cancel": "Cancel",
     "ok": "OK",
     "error-header": "Cannot Delete",
@@ -560,8 +563,7 @@
     "last-used": "Last used: {{date}}",
     "last-used-never": "Never used",
     "this-device": "This device",
-    "active-badge": "Active",
-    "inactive-badge": "No active session"
+    "unknown-browser": "Unknown browser"
   },
   "verification": {
     "button": "Check credential status",
