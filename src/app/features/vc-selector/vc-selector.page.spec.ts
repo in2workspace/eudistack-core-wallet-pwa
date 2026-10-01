@@ -406,6 +406,16 @@ describe('VcSelectorPage', () => {
 
       expect(component.selCredList).toEqual([]);
     });
+
+    it('should navigate back to /tabs/credentials when building the presentation fails', async () => {
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      mockOid4vpEngineService.buildVerifiablePresentationWithSelectedVCs.mockRejectedValueOnce(new Error('boom'));
+
+      await component.sendCred(mockCred);
+
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
+      expect(component.selCredList).toEqual([]);
+    });
   });
 
   // describe('errorMessage', () => {
