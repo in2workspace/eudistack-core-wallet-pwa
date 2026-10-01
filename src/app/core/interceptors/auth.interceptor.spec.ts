@@ -13,6 +13,7 @@
  *  T-auth-8 — 401 on own-backend marks the error via SessionExpiryMarkerService
  *  T-auth-9 — 401 then successful refresh retries once with new Bearer and does not forceLogout
  *  T-auth-10 — refresh failure that already ended the session (e.g. transient, token kept) does not forceLogout
+ *  T-auth-11 — 401 again after a successful refresh logs out keeping the device refresh token
  */
 
 import { TestBed } from '@angular/core/testing';
@@ -211,6 +212,28 @@ describe('authInterceptor', () => {
     req.flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
 
     expect(forceLogoutSpy).not.toHaveBeenCalled();
+    expect(sessionExpiryMarker.isSessionExpired(capturedError as HttpErrorResponse)).toBe(true);
+  });
+
+  it('T-auth-11: 401 again after a successful refresh logs out keeping the device refresh token', () => {
+    // Arrange
+    const forceLogoutSpy = jest.spyOn(mockAuth, 'forceLogout');
+    mockAuth.setToken('expired-jwt');
+    mockAuth.refreshAccessToken = () => {
+      mockAuth.setToken('new-jwt');
+      return of({ accessToken: 'new-jwt', refreshToken: 'r', expiresIn: 900 });
+    };
+    const url = `${OWN_BACKEND}/api/v1/credentials`;
+    let capturedError: HttpErrorResponse | undefined;
+
+    // Act
+    httpClient.get(url).subscribe({ error: (e) => { capturedError = e; } });
+    httpMock.expectOne(url).flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
+    httpMock.expectOne(url).flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
+
+    // Assert
+    expect(forceLogoutSpy).toHaveBeenCalledTimes(1);
+    expect(forceLogoutSpy).toHaveBeenCalledWith({ keepRefreshToken: true });
     expect(sessionExpiryMarker.isSessionExpired(capturedError as HttpErrorResponse)).toBe(true);
   });
 });
