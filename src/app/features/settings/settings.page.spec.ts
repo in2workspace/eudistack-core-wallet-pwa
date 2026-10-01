@@ -182,6 +182,17 @@ describe('SettingsPage', () => {
       expect(latestLanguage()).toBe('en');
     });
 
+    it('falls back to the active translate language when reading the stored one fails', async () => {
+      storage.get.mockRejectedValueOnce(new Error('storage unavailable'));
+      TestBed.inject(TranslateService).currentLang = 'en';
+
+      component.ngOnInit();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(latestLanguage()).toBe('en');
+    });
+
     it('falls back to Catalan when there is neither stored nor active language', async () => {
       storage.get.mockResolvedValueOnce(null);
       TestBed.inject(TranslateService).currentLang = undefined as unknown as string;

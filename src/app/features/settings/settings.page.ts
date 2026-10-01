@@ -59,9 +59,10 @@ export class SettingsPage implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
 
   public ngOnInit(): void {
-    this.storageService.get('language').then((stored) => {
-      this.languages.next((stored as string) ?? this.translate.currentLang ?? this.languageList[2].code);
-    });
+    const fallbackLanguage = () => this.translate.currentLang ?? this.languageList[2].code;
+    this.storageService.get('language')
+      .then((stored) => this.languages.next((stored as string) ?? fallbackLanguage()))
+      .catch(() => this.languages.next(fallbackLanguage()));
 
     void this.uiTranslation.probeAvailability();
     this.selectedTargetLanguage = this.uiTranslation.targetLanguage();
@@ -85,7 +86,7 @@ export class SettingsPage implements OnInit {
 
     this.languages.next(code);
     this.translate.use(code);
-    this.storageService.set('language', code);
+    void this.storageService.set('language', code);
   }
 
   public targetLanguageName(code: LanguageTag): string {

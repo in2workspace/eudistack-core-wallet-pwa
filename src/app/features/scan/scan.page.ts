@@ -45,7 +45,7 @@ export class ScanPage implements ViewWillEnter, ViewWillLeave {
   }
 
   public qrCodeEmit(qrCode: string): void {
-    this.hapticService.notification();
+    void this.hapticService.notification();
     const intent = this.qrContentService.parse(qrCode);
 
     if (intent.kind === 'unsupported') {
