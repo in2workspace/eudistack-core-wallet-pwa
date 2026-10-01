@@ -219,6 +219,13 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   private credentialActivationFlow(credentialOfferUri: string): void{
     from(this.oid4vciEngineService.performOid4vciFlow(credentialOfferUri))
       .pipe(
+        // The engine (LoaderHandledFlowService) has already shown the specific
+        // alert for its own failures (e.g. offer expired) — or none on user
+        // cancel. A second, generic "failed QR" alert here would bury it.
+        catchError((err: ExtendedHttpErrorResponse | Error) => {
+          this.handleContentExecutionError(err, { notifyUser: false });
+          return EMPTY;
+        }),
         switchMap((flowResult: FinalizeIssuancePayload) => {
           // Deferred credentials (202): save to backend without user decision
           if (flowResult.credentialResponseWithStatus.statusCode === 202) {
@@ -482,7 +489,10 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   }
 
   //todo review this (it is storing camera logs, but is used after API calls)
-  private handleContentExecutionError(errorResponse: ExtendedHttpErrorResponse | Error): void{
+  private handleContentExecutionError(
+    errorResponse: ExtendedHttpErrorResponse | Error,
+    { notifyUser }: { notifyUser: boolean } = { notifyUser: true }
+  ): void{
     const httpErr = (errorResponse as ExtendedHttpErrorResponse)?.error;
     const message = httpErr?.message || (errorResponse as ExtendedHttpErrorResponse)?.message || errorResponse?.message || 'No error message';
     const title = httpErr?.title || (errorResponse as ExtendedHttpErrorResponse)?.title || '(No title)';
@@ -493,13 +503,15 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
 
     console.error(errorResponse);
 
-    const translationKey = errorResponse instanceof InvalidQrError
-      ? 'errors.invalid-qr'
-      : 'errors.failed-qr-process';
-    this.toastServiceHandler
-      .showErrorAlertByTranslateLabel(translationKey)
-      .pipe(take(1))
-      .subscribe();
+    if (notifyUser) {
+      const translationKey = errorResponse instanceof InvalidQrError
+        ? 'errors.invalid-qr'
+        : 'errors.failed-qr-process';
+      this.toastServiceHandler
+        .showErrorAlertByTranslateLabel(translationKey)
+        .pipe(take(1))
+        .subscribe();
+    }
 
     setTimeout(()=>{
       this.router.navigate(['/tabs/credentials'])

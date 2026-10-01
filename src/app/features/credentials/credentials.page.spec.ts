@@ -2,7 +2,8 @@ import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testin
 import { By } from '@angular/platform-browser';
 import { Router, ActivatedRoute } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
-import { EMPTY, of } from 'rxjs';
+import { EMPTY, of, throwError } from 'rxjs';
+import { CredentialOfferExpiredError } from 'src/app/core/models/error/Oid4vciError';
 import { ModalController } from '@ionic/angular';
 import { CredentialsPage } from './credentials.page';
 import { VcViewComponent } from 'src/app/shared/components/vc-view/vc-view.component';
@@ -311,6 +312,43 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
 
       expect(refreshSpy).not.toHaveBeenCalled();
     });
+  });
+
+  describe('credentialActivationFlow — engine failures (credential_offer_expired)', () => {
+    let performOid4vciFlow: jest.Mock;
+
+    beforeEach(() => {
+      performOid4vciFlow = TestBed.inject(Oid4vciEngineService).performOid4vciFlow as jest.Mock;
+    });
+
+    it('does not stack the generic "failed QR" alert over the engine\'s specific one', fakeAsync(() => {
+      performOid4vciFlow.mockRejectedValue(new CredentialOfferExpiredError());
+
+      (component as any).credentialActivationFlow('https://issuer.example/credential-offer/abc');
+      tick(1000);
+
+      expect(mockToastServiceHandler.showErrorAlertByTranslateLabel).not.toHaveBeenCalled();
+    }));
+
+    it('still returns to the credentials list after an engine failure', fakeAsync(() => {
+      performOid4vciFlow.mockRejectedValue(new CredentialOfferExpiredError());
+
+      (component as any).credentialActivationFlow('https://issuer.example/credential-offer/abc');
+      tick(1000);
+
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
+    }));
+
+    it('keeps the generic alert for failures after the engine (e.g. finalize)', fakeAsync(() => {
+      performOid4vciFlow.mockResolvedValue({ credentialResponseWithStatus: { statusCode: 202 } });
+      (mockWalletService as unknown as { finalizeCredentialIssuance: jest.Mock }).finalizeCredentialIssuance =
+        jest.fn().mockReturnValue(throwError(() => new Error('finalize failed')));
+
+      (component as any).credentialActivationFlow('https://issuer.example/credential-offer/abc');
+      tick(1000);
+
+      expect(mockToastServiceHandler.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.failed-qr-process');
+    }));
   });
 
   describe('checkCredentialStatuses — background revocation check', () => {

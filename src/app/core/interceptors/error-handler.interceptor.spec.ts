@@ -196,19 +196,51 @@ describe('HttpErrorInterceptor with HttpClient', () => {
     req.flush({ message: expectedMessage }, { status: 500, statusText: 'Internal Server Error' });
   });
 
+  // Assertions live after flush(), not inside the error callback: an expect()
+  // throwing there is rethrown asynchronously by RxJS and never fails the test.
   it('should show dedicated message for 410 Gone', () => {
-    const spy = jest.spyOn(mockToastServiceHandler, 'showErrorAlertByTranslateLabel').mockReturnValue(of(undefined) as any);
+    const spy = jest.spyOn(mockToastServiceHandler, 'showErrorAlertByTranslateLabel');
     const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
+    const url = `${environment.server_url}/test410`;
 
-    httpClient.get('/test410').subscribe({
-      error: (error) => {
-        expect(spy).toHaveBeenCalledWith('errors.credential-offer-already-processed');
-        expect(toastSpy).not.toHaveBeenCalled();
-      }
-    });
+    httpClient.get(url).subscribe({ error: () => undefined });
 
-    const req = httpMock.expectOne('/test410');
-    req.flush({message: 'This credential offer can no longer be refreshed'}, { status: 410, statusText: 'Gone' });
+    httpMock.expectOne(url).flush(
+      { type: 'credential_offer_gone', message: 'This credential offer can no longer be refreshed' },
+      { status: 410, statusText: 'Gone' }
+    );
+
+    expect(spy).toHaveBeenCalledWith('errors.credential-offer-already-processed');
+    expect(toastSpy).not.toHaveBeenCalled();
+  });
+
+  it('should show the already-in-wallet message for 410 + credential_already_issued', () => {
+    const spy = jest.spyOn(mockToastServiceHandler, 'showErrorAlertByTranslateLabel');
+    const url = `${environment.server_url}/test410-issued`;
+
+    httpClient.get(url).subscribe({ error: () => undefined });
+
+    httpMock.expectOne(url).flush(
+      { type: 'credential_already_issued', title: 'Credential already issued', status: 410 },
+      { status: 410, statusText: 'Gone' }
+    );
+
+    expect(spy).toHaveBeenCalledWith('errors.credential-already-issued');
+  });
+
+  it('should show the offer-expired message for 410 + credential_offer_expired', () => {
+    const spy = jest.spyOn(mockToastServiceHandler, 'showErrorAlertByTranslateLabel');
+    const url = `${environment.server_url}/test410-expired`;
+
+    httpClient.get(url).subscribe({ error: () => undefined });
+
+    httpMock.expectOne(url).flush(
+      { type: 'credential_offer_expired', title: 'Credential offer expired', status: 410, instance: 'abc' },
+      { status: 410, statusText: 'Gone' }
+    );
+
+    expect(spy).toHaveBeenCalledWith('errors.credential-offer-expired');
+    expect(spy).not.toHaveBeenCalledWith('errors.credential-offer-already-processed');
   });
 
   it('should log and show a toast on a generic HTTP error response', () => {

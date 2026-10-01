@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Detailed OID4VCI error handling (RFC 7807 Problem Details)**: The wallet now recognizes and specifically handles machine-readable error types from the Issuer and EBW backends.
+  - Introduced `ApiError` interface and parser to extract stable error identifiers (`type`) from RFC 7807 Problem Details responses.
+  - New dedicated error classes: `CredentialOfferExpiredError` (HTTP 410), `CredentialOfferNotFoundError` (HTTP 404), and `CredentialAlreadyIssuedError`.
+  - Added specific English, Spanish, and Catalan translations for these scenarios (e.g., distinguishing between an expired offer and one already processed).
+  - Updated `HttpErrorInterceptor` and the core error mapping logic to prioritize these specific backend signals over generic HTTP status codes when showing alerts.
+- **Test coverage for error infrastructure**: Added unit and integration tests for `ApiError` parsing, `Oid4vciError` hierarchy, and the `CredentialOffer` service error paths. `jest.config.js` was updated to include these new components in coverage reports.
+
+### Fixed
+
+- **Duplicate error alerts during credential activation**: `CredentialsPage` now avoids stacking generic "Failed QR" alerts when the underlying OID4VCI engine has already presented a specific, more informative error modal to the user.
+
 ### Fixed
 - **Generic "Algo ha salido mal" modal after logging in, opening Actividad or saving a credential although the operation succeeded (W-10)**: those screens trigger background calls to the wallet's own backend that the user never started directly — activity history sync after login (`GET /api/v1/activity`), the Actividad list, the activity append after saving/deleting a credential (`POST /api/v1/activity`) and the credential lifecycle status persistence (`PATCH /api/v1/credentials/{id}/status`). Their callers already treat them as best-effort (local cache stays authoritative), but `HttpErrorInterceptor` still turned any failure into the generic error modal on top of a flow that had worked. They are now handled silently. In addition, for errors that do reach the user, the fallback message now describes the HTTP status (`defaultHttpToTranslationKey`: network, invalid request, not authorized, not found, server error) instead of always showing the generic text: `eudistack-core-wallet-ebw` answers with RFC 7807 ProblemDetails (`detail`, no `message`), so the backend text practically never matched a known message. `ToastServiceHandler.showErrorAlert()` takes an optional fallback key for this.
 - **Generic error message on 410 Gone responses**: When a credential offer refresh was rejected by the backend with an HTTP 410 (Gone) because the offer was no longer in DRAFT state, the UI displayed a generic "An unknown error occurred" message. Now maps HTTP 410 to a dedicated `errors.credential-offer-already-processed` translation key across English, Spanish, and Catalan locales. The `HttpErrorInterceptor` and `defaultHttpToTranslationKey` helper were updated to handle this status specifically, and comprehensive unit tests were added to ensure correct mapping and alert behavior.
