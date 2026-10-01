@@ -86,6 +86,9 @@ export class LoginPage implements OnDestroy {
   private matchedPasskeyId: string | null = null;
   private passkeyRetryTimer: ReturnType<typeof setTimeout> | null = null;
   readonly resendSecondsLeft = signal(0);
+  // Set when EBW answers verify-email with `expired_code` (#1061173): the code step
+  // stays put and Resend is offered right away instead of sending the user back to email.
+  readonly codeExpired = signal(false);
   private resendTimer: ReturnType<typeof setInterval> | null = null;
   private passkeyFromRefreshToken = false;
 
@@ -322,6 +325,7 @@ export class LoginPage implements OnDestroy {
     this.step.set('email');
     this.errorMessage = '';
     this.otpValue = '';
+    this.codeExpired.set(false);
     this.stopResendCountdown();
   }
 
@@ -337,6 +341,7 @@ export class LoginPage implements OnDestroy {
       next: () => {
         this.step.set('code');
         this.otpValue = '';
+        this.codeExpired.set(false);
         this.loading = false;
         this.startResendCountdown();
       },
@@ -355,6 +360,8 @@ export class LoginPage implements OnDestroy {
     ).subscribe({
       next: () => {
         this.otpValue = '';
+        this.otpInput?.reset();
+        this.codeExpired.set(false);
         this.loading = false;
         this.startResendCountdown();
       },
@@ -399,13 +406,32 @@ export class LoginPage implements OnDestroy {
         this.passkeyFromRefreshToken = false;
         this.resolvePasskeySetupStep();
       },
-      error: (err) => {
-        this.errorMessage = err?.status === 429
-          ? this.translate.instant('auth.errors.too-many-attempts-otp')
-          : (err?.error?.message || err?.error?.detail || 'Invalid verification code');
-        this.loading = false;
-      }
+      error: (err) => this.handleVerifyCodeError(err)
     });
+  }
+
+  /**
+   * An expired code (401 `expired_code`) or an exhausted attempt budget (429) means the
+   * current OTP can never succeed, so any leftover resend cooldown is dropped and the user
+   * stays on the code step with the same email, one click away from a fresh code (#1061173).
+   */
+  private handleVerifyCodeError(err: any): void {
+    const errorCode = err?.error?.error;
+    if (err?.status === 401 && errorCode === 'expired_code') {
+      this.codeExpired.set(true);
+      this.otpValue = '';
+      this.otpInput?.reset();
+      this.stopResendCountdown();
+      this.errorMessage = this.translate.instant('auth.errors.otp-expired');
+    } else if (err?.status === 429) {
+      this.stopResendCountdown();
+      this.errorMessage = this.translate.instant('auth.errors.too-many-attempts-otp');
+    } else if (err?.status === 401 && errorCode === 'invalid_code') {
+      this.errorMessage = this.translate.instant('auth.errors.otp-invalid');
+    } else {
+      this.errorMessage = err?.error?.message || err?.error?.detail || 'Invalid verification code';
+    }
+    this.loading = false;
   }
 
   /**
@@ -615,7 +641,7 @@ export class LoginPage implements OnDestroy {
   private navigateHome(): void {
     const pendingLink = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
     sessionStorage.removeItem(PENDING_DEEP_LINK_KEY);
-    this.router.navigateByUrl(pendingLink || '/tabs/credentials');
+    void this.router.navigateByUrl(pendingLink || '/tabs/credentials');
   }
 
   private getDeviceName(): string {
@@ -657,7 +683,7 @@ export class LoginPage implements OnDestroy {
     }
 
     // Fire regardless of which credential-sync path ran above (EUD-141 AC-01/AC-02).
-    this.activityService.syncFromServer();
+    void this.activityService.syncFromServer();
     this.navigateHome();
   }
 

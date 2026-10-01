@@ -413,7 +413,7 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
         const expiry = dayjs(cred.validUntil);
         if (expiry.isValid() && expiry.isBefore(dayjs())) {
           this.credentialCacheService.patchStatus(cred.id, 'EXPIRED');
-          this.walletService.updateCredentialStatus(cred.id, 'EXPIRED').subscribe();
+          this.walletService.updateCredentialStatus(cred.id, 'EXPIRED').subscribe({ error: (e) => console.error('Failed to persist credential status', e) });
         }
       }
     }
@@ -435,7 +435,7 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
         if (settled.status === 'fulfilled' && settled.value.result === 'revoked') {
           this.revokedCredentialIds.add(settled.value.cred.id);
           this.credentialCacheService.patchStatus(settled.value.cred.id, 'REVOKED');
-          this.walletService.updateCredentialStatus(settled.value.cred.id, 'REVOKED').subscribe();
+          this.walletService.updateCredentialStatus(settled.value.cred.id, 'REVOKED').subscribe({ error: (e) => console.error('Failed to persist credential status', e) });
         }
       }
     }

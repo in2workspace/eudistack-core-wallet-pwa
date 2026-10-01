@@ -153,7 +153,7 @@
               @if (resendSecondsLeft() > 0) {
                 {{ 'auth.register.resend-in' | translate: { time: resendCountdown() } }}
               } @else {
-                {{ 'auth.register.resend-prompt' | translate }}
+                {{ (codeExpired() ? 'auth.register.code-expired-prompt' : 'auth.register.resend-prompt') | translate }}
                 <button type="button" class="auth-inline-link" [disabled]="loading" (click)="resendCode()">
                   {{ 'auth.register.resend-action' | translate }}
                 </button>
@@ -163,7 +163,7 @@
             <button
               type="button"
               class="auth-button auth-button--code"
-              [disabled]="otpValue.length < 6 || loading"
+              [disabled]="otpValue.length < 6 || loading || codeExpired()"
               (click)="verifyCode()"
             >
               <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
