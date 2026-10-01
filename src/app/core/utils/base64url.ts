@@ -25,6 +25,6 @@ export function base64UrlDecode(str: string): Uint8Array {
 export function compareCredentialIds(id1: string | null | undefined, id2: string | null | undefined): boolean {
   if (id1 === id2) return true;
   if (!id1 || !id2) return false;
-  const normalize = (s: string) => s.replace(/=/g, '').replace(/-/g, '+').replace(/_/g, '/');
+  const normalize = (s: string) => s.replaceAll('=', '').replaceAll('-', '+').replaceAll('_', '/');
   return normalize(id1) === normalize(id2);
 }

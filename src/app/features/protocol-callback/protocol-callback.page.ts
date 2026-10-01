@@ -27,7 +27,7 @@ export class ProtocolCallbackPage implements OnInit {
       .subscribe(params => {
         const credentialOfferUri = params['credential_offer_uri'];
         if (credentialOfferUri) {
-          this.router.navigate(['/tabs/credentials'], {
+          void this.router.navigate(['/tabs/credentials'], {
             queryParams: { credentialOfferUri },
           });
           return;
@@ -35,13 +35,13 @@ export class ProtocolCallbackPage implements OnInit {
 
         const authorizationRequest = params['authorization_request'];
         if (authorizationRequest) {
-          this.router.navigate(['/tabs/credentials'], {
+          void this.router.navigate(['/tabs/credentials'], {
             queryParams: { authorizationRequest },
           });
           return;
         }
 
-        this.router.navigate(['/tabs/credentials']);
+        void this.router.navigate(['/tabs/credentials']);
       });
   }
 }

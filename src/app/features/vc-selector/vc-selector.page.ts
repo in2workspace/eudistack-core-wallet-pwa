@@ -232,7 +232,7 @@ export class VcSelectorPage {
       try {
         await this.oid4vpEngineService.buildVerifiablePresentationWithSelectedVCs(this._VCReply);
 
-        this.router.navigate(['/tabs/credentials']);
+        void this.router.navigate(['/tabs/credentials']);
         this.showSuccessToast();
       } catch (err) {
         this.handleError(err);
@@ -245,7 +245,7 @@ export class VcSelectorPage {
 
   private async handleError(err: any) {
     console.error(err);
-    this.router.navigate(['/tabs/credentials']);
+    void this.router.navigate(['/tabs/credentials']);
     this.selCredList = [];
   }
 
