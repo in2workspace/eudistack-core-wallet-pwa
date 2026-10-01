@@ -133,4 +133,4 @@ bootstrapApplication(AppComponent, {
       registrationStrategy: 'registerImmediately',
     }),
   ],
-});
+}).catch(err => console.error(err));

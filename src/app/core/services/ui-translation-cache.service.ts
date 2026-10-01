@@ -112,9 +112,7 @@ export class UiTranslationCacheService {
     }
     const sortedByRecency = [...index].sort((a, b) => a.lastUsedAt - b.lastUsedAt);
     const toEvict = sortedByRecency.slice(0, index.length - MAX_CACHED_TRANSLATIONS);
-    for (const { cacheKey } of toEvict) {
-      await this.storage.remove(cacheKey).catch(() => undefined);
-    }
+    await Promise.all(toEvict.map(({ cacheKey }) => this.storage.remove(cacheKey).catch(() => undefined)));
     const evictedKeys = new Set(toEvict.map(e => e.cacheKey));
     await this.writeIndex(index.filter(e => !evictedKeys.has(e.cacheKey)));
   }

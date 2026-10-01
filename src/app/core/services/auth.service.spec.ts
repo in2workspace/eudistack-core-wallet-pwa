@@ -19,6 +19,7 @@ import { environment } from 'src/environments/environment';
 class MockToastServiceHandler {
   showErrorAlert(_message: string) { return of(undefined); }
   showErrorAlertByTranslateLabel(_message: string) { return of(undefined); }
+  showInfoAlertByTranslateLabel(_message: string) { return of(undefined); }
 }
 
 /**
@@ -210,6 +211,25 @@ describe('RemoteAuthService', () => {
 
       expect(service.getToken()).toBe('');
       expect(service.isLoggedIn()).toBe(false);
+      expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/login']);
+    });
+
+    it('forceLogout_keepRefreshToken_endsSessionKeepingTheDeviceTokenAndGoesToLogin', () => {
+      // Arrange
+      (service as any).accessToken = 'some-token';
+      (service as any).refreshTokenValue = 'device-refresh';
+      (service as any).authenticated$.next(true);
+      localStorage.setItem('wallet_refresh_token', 'device-refresh');
+      passkeyStoreMock.hasPasskey.mockReturnValue(false);
+
+      // Act
+      service.forceLogout({ keepRefreshToken: true });
+
+      // Assert
+      expect(service.getToken()).toBe('');
+      expect(service.isLoggedIn()).toBe(false);
+      expect(service.hasRefreshToken()).toBe(true);
+      expect(localStorage.getItem('wallet_refresh_token')).toBe('device-refresh');
       expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/login']);
     });
   });
@@ -538,7 +558,7 @@ describe('RemoteAuthService', () => {
   describe('scheduleTokenRefresh', () => {
     it('E-02: background refresh failure shows the session-expired toast exactly once and does not double-call forceLogout', () => {
       jest.useFakeTimers();
-      const toastSpy = jest.spyOn(toastServiceHandlerMock, 'showErrorAlertByTranslateLabel').mockReturnValue(of(undefined) as any);
+      const toastSpy = jest.spyOn(toastServiceHandlerMock, 'showInfoAlertByTranslateLabel').mockReturnValue(of(undefined) as any);
       const forceLogoutSpy = jest.spyOn(service, 'forceLogout');
       (service as any).refreshTokenValue = 'refresh-abc';
 

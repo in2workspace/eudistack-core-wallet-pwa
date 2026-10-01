@@ -113,7 +113,7 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   }
 
   public startScan(): void {
-    this.hapticService.impact();
+    void this.hapticService.impact();
     this.router.navigate(['/tabs/scan'])
       .catch(() => this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.navigation').subscribe());
   }
@@ -514,7 +514,7 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
     }
 
     setTimeout(()=>{
-      this.router.navigate(['/tabs/credentials'])
+      void this.router.navigate(['/tabs/credentials'])
     }, 1000);
   }
 

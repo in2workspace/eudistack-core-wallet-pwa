@@ -86,6 +86,26 @@ describe('ToastServiceHandler', () => {
     expect(order).toEqual(['present', 'dismiss', 'next']);
   });
 
+  it('showInfoAlertByTranslateLabel_anyMessage_presentsAnAlertWithTheInformativeStyle', async () => {
+    // Arrange
+    // Act
+    service.showInfoAlertByTranslateLabel('errors.session-expired').subscribe();
+    for (let i = 0; i < 10; i++) { await Promise.resolve(); }
+
+    // Assert
+    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining({ cssClass: 'custom-alert-ok-info' }));
+  });
+
+  it('showErrorAlertByTranslateLabel_anyMessage_keepsTheErrorStyle', async () => {
+    // Arrange
+    // Act
+    service.showErrorAlertByTranslateLabel('errors.default').subscribe();
+    for (let i = 0; i < 10; i++) { await Promise.resolve(); }
+
+    // Assert
+    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining({ cssClass: 'custom-alert-error' }));
+  });
+
   it('uses the caller-provided fallback key when the message matches no known backend message', fakeAsync(() => {
     service.showErrorAlert('Http failure response for /api/v1/credentials: 500 OK', 'errors.server-error');
     tick();
@@ -548,6 +568,18 @@ describe('ToastServiceHandler', () => {
 
     tick(duration);
     expect(dismissMock).toHaveBeenCalled();
+  }));
+
+  it('should log instead of leaving an unhandled rejection when the success toast cannot be created', fakeAsync(() => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const failure = new Error('overlay unavailable');
+    alertCtrl.create.mockRejectedValueOnce(failure);
+
+    service.showToast('toast.success');
+    tick();
+
+    expect(consoleSpy).toHaveBeenCalledWith('ToastService: failed to show toast', failure);
+    consoleSpy.mockRestore();
   }));
 
   it('should show info toast and remove it after duration', fakeAsync(() => {

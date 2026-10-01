@@ -55,30 +55,32 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => err);
       }
 
-      if (req.context.get(AUTH_RETRY_AFTER_REFRESH)) {
+      // A failed refresh already ended the session itself, keeping the refresh token
+      // when the failure was transient so the device can resume with its passkey.
+      // Forcing a logout here would drop that token regardless, hence the guard.
+      const endExpiredSession = (keepRefreshToken: boolean) => {
         sessionExpiryMarker.markSessionExpired(err);
-        authService.forceLogout();
+        if (authService.isLoggedIn()) {
+          authService.forceLogout({ keepRefreshToken });
+        }
         return throwError(() => err);
+      };
+
+      if (req.context.get(AUTH_RETRY_AFTER_REFRESH)) {
+        return endExpiredSession(true);
       }
 
       return authService.refreshAccessToken().pipe(
+        catchError(() => endExpiredSession(false)),
         switchMap(() => {
           const newToken = authService.getToken();
           const retryReq = authorizedReq.clone({
             setHeaders: newToken ? { Authorization: `Bearer ${newToken}` } : {},
             context: authorizedReq.context.set(AUTH_RETRY_AFTER_REFRESH, true),
           });
-          return next(retryReq);
-        }),
-        catchError(() => {
-          sessionExpiryMarker.markSessionExpired(err);
-          // A failed refresh already ended the session itself, keeping the refresh
-          // token when the failure was transient so the device can resume with its
-          // passkey. Forcing a logout here would drop that token regardless.
-          if (authService.isLoggedIn()) {
-            authService.forceLogout();
-          }
-          return throwError(() => err);
+          // The refresh just succeeded, so the device refresh token is still valid:
+          // dropping it would force email + OTP on a session the passkey can resume.
+          return next(retryReq).pipe(catchError(() => endExpiredSession(true)));
         })
       );
     })

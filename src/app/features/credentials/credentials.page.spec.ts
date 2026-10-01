@@ -131,7 +131,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
         { provide: IssuerNotificationService, useValue: { notifyIssuer: jest.fn().mockReturnValue(of(null)) } },
         { provide: IssuerMetadataCacheService, useValue: { registerIssuance: jest.fn().mockResolvedValue(undefined) } },
         { provide: ActivityService, useValue: { log: jest.fn() } },
-        { provide: HapticService, useValue: { notification: jest.fn() } },
+        { provide: HapticService, useValue: { notification: jest.fn(), impact: jest.fn().mockResolvedValue(undefined) } },
         { provide: CredentialVerificationService, useValue: { isRevoked: jest.fn().mockResolvedValue('not-revoked') } },
         { provide: Oid4vciEngineService, useValue: { performOid4vciFlow: jest.fn() } },
         { provide: ModalController, useValue: mockModalController },
@@ -409,5 +409,32 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       expect(mockCredentialCacheService.patchStatus).not.toHaveBeenCalled();
       expect(mockWalletService.updateCredentialStatus).not.toHaveBeenCalled();
     });
+  });
+
+  describe('startScan', () => {
+    it('should trigger an impact haptic and navigate to the scan tab', () => {
+      // Act
+      component.startScan();
+
+      // Assert
+      expect(mockHaptic.impact).toHaveBeenCalled();
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/scan']);
+    });
+  });
+
+  describe('handleContentExecutionError', () => {
+    it('should show the failed-qr toast and navigate back to /tabs/credentials after 1s', fakeAsync(() => {
+      // Arrange
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      // Act
+      (component as unknown as { handleContentExecutionError: (e: Error) => void })
+        .handleContentExecutionError(new Error('boom'));
+      tick(1000);
+
+      // Assert
+      expect(mockToastServiceHandler.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.failed-qr-process');
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
+    }));
   });
 });
