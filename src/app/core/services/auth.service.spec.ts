@@ -4,7 +4,7 @@ import { HttpClientTestingModule, HttpTestingController } from '@angular/common/
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { firstValueFrom, of } from 'rxjs';
-import { AuthService, isRefreshTokenRejected, RemoteAuthService, TokenPairResponse } from './auth.service';
+import { AuthService, isRefreshTokenRejected, RemoteAuthService, SESSION_POLL_INTERVAL_MS, TokenPairResponse } from './auth.service';
 import { AUTH_SERVICE_PROVIDER } from './auth-service.provider';
 import { PasskeyStoreService } from './passkey-store.service';
 import { PasskeyPrfService } from './passkey-prf.service';
@@ -145,7 +145,7 @@ describe('RemoteAuthService', () => {
   });
 
   describe('logout', () => {
-    it('clears access token and authenticated state without HTTP call', (done) => {
+    it('POSTs to /logout with this device\'s refresh token, then clears local state', (done) => {
       const broadcastSpy = jest.spyOn((service as any).broadcastChannel, 'postMessage');
       (service as any).refreshTokenValue = 'refresh-123';
       (service as any).accessToken = 'access-456';
@@ -156,24 +156,43 @@ describe('RemoteAuthService', () => {
         expect(service.getToken()).toBe('');
         expect(service.isLoggedIn()).toBe(false);
         expect(broadcastSpy).toHaveBeenCalledWith('softWalletLogout');
-        // refreshToken must be preserved so the user only needs their passkey to resume
+        // refreshToken must be preserved locally so the user only needs their passkey to resume —
+        // only the SERVER copy of this session is revoked, not the local "remember me" state.
         expect((service as any).refreshTokenValue).toBe('refresh-123');
         expect(localStorage.getItem('wallet_refresh_token')).toBe('refresh-123');
+        done();
+      });
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/logout`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ refreshToken: 'refresh-123' });
+      req.flush(null, { status: 204, statusText: 'No Content' });
+    });
+
+    it('does not call the backend when there is no refresh token to revoke', (done) => {
+      service.logout().subscribe(() => {
+        expect(service.isLoggedIn()).toBe(false);
         done();
       });
       httpMock.expectNone(`${AUTH_BASE}/logout`);
     });
 
-    it('preserves refresh token when logging out with no active access token', (done) => {
+    it('still clears local state when the backend revoke call fails', (done) => {
       (service as any).refreshTokenValue = 'stored-rt';
+      (service as any).authenticated$.next(true);
       localStorage.setItem('wallet_refresh_token', 'stored-rt');
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
 
       service.logout().subscribe(() => {
         expect(service.isLoggedIn()).toBe(false);
         expect((service as any).refreshTokenValue).toBe('stored-rt');
-        expect(localStorage.getItem('wallet_refresh_token')).toBe('stored-rt');
+        expect(consoleSpy).toHaveBeenCalled();
+        consoleSpy.mockRestore();
         done();
       });
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/logout`);
+      req.flush('Server error', { status: 500, statusText: 'Internal Server Error' });
     });
   });
 
@@ -576,6 +595,48 @@ describe('RemoteAuthService', () => {
 
   });
 
+  describe('session polling', () => {
+    const pollTokenResponse: TokenPairResponse = {
+      accessToken: 'eyJhbGciOiJSUzI1NiJ9.' + btoa(JSON.stringify({ sub: 'uuid-1', email: 'user@test.com' })) + '.sig',
+      refreshToken: 'refresh-poll',
+      expiresIn: 900,
+    };
+
+    it('pings /session on an interval once authenticated, so a revoked session is noticed on an otherwise-idle tab', () => {
+      jest.useFakeTimers();
+
+      (service as any).handleTokenResponse(pollTokenResponse);
+      jest.advanceTimersByTime(SESSION_POLL_INTERVAL_MS);
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/session`);
+      expect(req.request.method).toBe('GET');
+      req.flush(null);
+    });
+
+    it('stops polling once forceLogout runs', () => {
+      jest.useFakeTimers();
+
+      (service as any).handleTokenResponse(pollTokenResponse);
+      service.forceLogout();
+
+      jest.advanceTimersByTime(SESSION_POLL_INTERVAL_MS * 2);
+
+      httpMock.expectNone(`${AUTH_BASE}/session`);
+    });
+
+    it('stops polling once a soft logout() runs', () => {
+      jest.useFakeTimers();
+
+      (service as any).handleTokenResponse(pollTokenResponse);
+      service.logout().subscribe();
+      httpMock.expectOne(`${AUTH_BASE}/logout`).flush(null);
+
+      jest.advanceTimersByTime(SESSION_POLL_INTERVAL_MS * 2);
+
+      httpMock.expectNone(`${AUTH_BASE}/session`);
+    });
+  });
+
   describe('unlockWithPasskey', () => {
     const tokenResponse: TokenPairResponse = {
       accessToken: 'eyJhbGciOiJSUzI1NiJ9.' + btoa(JSON.stringify({ sub: 'uuid-1' })) + '.sig',
@@ -660,12 +721,16 @@ describe('RemoteAuthService', () => {
       await unlock('rt-1', 'rt-2');
       expect(service.isLoggedIn()).toBe(true);
 
-      await firstValueFrom(service.logout());
+      const firstLogout = firstValueFrom(service.logout());
+      httpMock.expectOne(`${AUTH_BASE}/logout`).flush(null, { status: 204, statusText: 'No Content' });
+      await firstLogout;
       // Before the fix the second unlock replayed the first (already rotated) request.
       await unlock('rt-2', 'rt-3');
       expect(service.isLoggedIn()).toBe(true);
 
-      await firstValueFrom(service.logout());
+      const secondLogout = firstValueFrom(service.logout());
+      httpMock.expectOne(`${AUTH_BASE}/logout`).flush(null, { status: 204, statusText: 'No Content' });
+      await secondLogout;
       await unlock('rt-3', 'rt-4');
 
       expect(service.isLoggedIn()).toBe(true);

@@ -15,6 +15,7 @@ describe('PasskeyApiService', () => {
     id: '1',
     credentialId: 'cred-123',
     displayName: 'My Device',
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
     createdAt: '2023-01-01T00:00:00Z',
     lastUsedAt: null,
     activeSessions: 1

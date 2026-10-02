@@ -42,6 +42,7 @@
               <div class="passkey-header">
                 <h2>{{ device.displayName }}</h2>
               </div>
+              <span class="browser-badge">{{ browserName(device) }}</span>
               <span class="this-device-badge" [attr.aria-label]="'devices.this-device' | translate">
                 {{ 'devices.this-device' | translate }}
               </span>
@@ -101,6 +102,7 @@
                 <div class="passkey-header">
                   <h2>{{ passkey.displayName }}</h2>
                 </div>
+                <span class="browser-badge">{{ browserName(passkey) }}</span>
               </div>
 
               <dl class="device-meta">

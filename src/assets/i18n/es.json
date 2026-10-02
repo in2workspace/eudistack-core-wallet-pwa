@@ -549,11 +549,14 @@
     "rename-placeholder": "Introduce un nuevo nombre",
     "rename-confirm": "Renombrar",
     "rename-aria": "Renombrar esta passkey",
-    "delete-header": "Eliminar Passkey",
-    "delete-message": "¿Estás seguro de que quieres eliminar esta passkey? Si es la passkey de tu dispositivo actual, no podrás iniciar sesión desde este navegador.",
-    "delete-self-message": "Esta es la passkey del dispositivo que estás usando ahora mismo. Revocarla cerrará tu sesión de inmediato y tendrás que volver a completar el registro de dispositivo para acceder de nuevo a tu wallet desde aquí.",
+    "delete-header": "Eliminar dispositivo",
+    "delete-message": "¿Estás seguro de que quieres eliminar este dispositivo? Esto eliminará también la passkey con la que inicias sesión desde él. Si es tu dispositivo actual, no podrás iniciar sesión desde este navegador.",
+    "delete-self-message": "Este es el dispositivo que estás usando ahora mismo. Eliminarlo también eliminará la passkey con la que inicias sesión, cerrará tu sesión de inmediato y tendrás que volver a completar el registro de dispositivo para acceder de nuevo a tu wallet desde aquí.",
     "delete-confirm": "Eliminar",
-    "delete-aria": "Eliminar esta passkey",
+    "delete-aria": "Eliminar este dispositivo",
+    "revoke-header": "Cerrar sesión del dispositivo",
+    "revoke-message": "Esto cerrará la sesión de \"{{device}}\" de inmediato. Ese dispositivo tendrá que iniciar sesión de nuevo para volver a usar la wallet.",
+    "revoke-confirm": "Cerrar sesión",
     "cancel": "Cancelar",
     "ok": "OK",
     "error-header": "No se puede eliminar",
@@ -564,7 +567,8 @@
     "no-passkeys": "No hay passkeys registradas.",
     "last-used": "Último uso: {{date}}",
     "last-used-never": "Sin uso registrado",
-    "this-device": "Este dispositivo"
+    "this-device": "Este dispositivo",
+    "unknown-browser": "Navegador desconocido"
   },
   "verification": {
     "button": "Comprobar estado de la credencial",
