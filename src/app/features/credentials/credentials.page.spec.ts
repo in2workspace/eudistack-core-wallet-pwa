@@ -20,6 +20,7 @@ import { HapticService } from 'src/app/shared/services/haptic.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
 import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
 import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
+import { AppError } from 'src/app/core/models/error/AppError';
 import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engine.service';
 import { StorageService } from 'src/app/shared/services/storage.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
@@ -397,6 +398,43 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       // Assert
       expect(mockToastServiceHandler.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.failed-qr-process');
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
+    }));
+  });
+
+  describe('credentialActivationFlow', () => {
+    const activate = (): void =>
+      (component as unknown as { credentialActivationFlow: (uri: string) => void })
+        .credentialActivationFlow('openid-credential-offer://?credential_offer_uri=x');
+
+    it('should only navigate back, without a second alert, when the engine already alerted an AppError', fakeAsync(() => {
+      // Arrange
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      const engine = TestBed.inject(Oid4vciEngineService) as unknown as { performOid4vciFlow: jest.Mock };
+      engine.performOid4vciFlow.mockRejectedValue(
+        new AppError('offer gone', { translationKey: 'errors.credential-already-activated' }),
+      );
+
+      // Act
+      activate();
+      tick();
+
+      // Assert
+      expect(mockToastServiceHandler.showErrorAlertByTranslateLabel).not.toHaveBeenCalled();
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
+    }));
+
+    it('should keep the failed-qr alert for errors that are not AppError', fakeAsync(() => {
+      // Arrange
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      const engine = TestBed.inject(Oid4vciEngineService) as unknown as { performOid4vciFlow: jest.Mock };
+      engine.performOid4vciFlow.mockRejectedValue(new Error('boom'));
+
+      // Act
+      activate();
+      tick(1000);
+
+      // Assert
+      expect(mockToastServiceHandler.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.failed-qr-process');
     }));
   });
 });

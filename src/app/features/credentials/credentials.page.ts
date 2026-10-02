@@ -13,6 +13,7 @@ import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
 import { catchError, EMPTY, finalize, forkJoin, from, Observable, of, switchMap, take, tap } from 'rxjs';
 import { ExtendedHttpErrorResponse } from 'src/app/core/models/errors';
+import { AppError } from 'src/app/core/models/error/AppError';
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engine.service';
 import { AuthorizationRequestService, InvalidQrError } from 'src/app/core/protocol/oid4vp/authorization-request.service';
@@ -248,9 +249,14 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
             );
         }),
 
-        catchError((err: ExtendedHttpErrorResponse) => {
+        catchError((err: ExtendedHttpErrorResponse | AppError) => {
           console.error(err);
-          this.handleContentExecutionError(err);
+          if (err instanceof AppError) {
+            // The OID4VCI engine already alerted the user; a second QR-oriented alert would be misleading.
+            void this.router.navigate(['/tabs/credentials']);
+          } else {
+            this.handleContentExecutionError(err);
+          }
           return of(null);
         }),
 

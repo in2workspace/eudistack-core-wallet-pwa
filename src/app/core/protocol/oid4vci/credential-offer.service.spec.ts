@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { CredentialOfferService } from './credential-offer.service';
 import { WalletService } from 'src/app/core/services/wallet.service';
@@ -111,6 +112,36 @@ describe('CredentialOfferService', () => {
         'https://sandbox.eudistack.net/issuer/credential-offer?id=abc',
       ),
     ).rejects.toMatchObject({ translationKey: 'errors.cannot-download-credentialOffer' });
+  });
+
+  it('maps a 404 on the offer download to the already-activated message', async () => {
+    // Arrange
+    walletServiceMock.fetchTextFromUrl.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 404 })),
+    );
+
+    // Act
+    const result = service.getCredentialOfferFromCredentialOfferUri(
+      'https://sandbox.eudistack.net/issuer/credential-offer?id=abc',
+    );
+
+    // Assert
+    await expect(result).rejects.toMatchObject({ translationKey: 'errors.credential-already-activated' });
+  });
+
+  it('keeps the generic download message for a non-404 HTTP failure', async () => {
+    // Arrange
+    walletServiceMock.fetchTextFromUrl.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500 })),
+    );
+
+    // Act
+    const result = service.getCredentialOfferFromCredentialOfferUri(
+      'https://sandbox.eudistack.net/issuer/credential-offer?id=abc',
+    );
+
+    // Assert
+    await expect(result).rejects.toMatchObject({ translationKey: 'errors.cannot-download-credentialOffer' });
   });
 
   it('unwraps a credential_offer_uri query param before fetching', async () => {

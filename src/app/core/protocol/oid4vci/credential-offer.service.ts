@@ -1,3 +1,4 @@
+import { HttpErrorResponse, HttpStatusCode } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { CredentialOffer, CredentialOfferCredential, CredentialOfferGrant } from '../../models/dto/CredentialOffer';
@@ -53,8 +54,12 @@ export class CredentialOfferService {
       return await firstValueFrom(this.walletService.fetchTextFromUrl(credentialOfferUri));
     } catch (e: unknown) {
       console.error('Error fetching credential offer:', e);
+      // The issuer drops the offer once it is redeemed, so a 404 on a second activation means "already activated".
+      const isOfferGone = e instanceof HttpErrorResponse && e.status === HttpStatusCode.NotFound;
       wrapOid4vciHttpError(e, 'Could not download the credential offer', {
-        translationKey: 'errors.cannot-download-credentialOffer',
+        translationKey: isOfferGone
+          ? 'errors.credential-already-activated'
+          : 'errors.cannot-download-credentialOffer',
       });
     }
   }

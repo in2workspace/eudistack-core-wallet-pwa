@@ -420,6 +420,7 @@
     "cannot-download-auth-server-metadata": "We couldn’t reach the authorization server. Please try again.",
     "cannot-download-issuerMetadata": "We couldn’t reach the issuer. Please try again.",
     "cannot-download-credentialOffer": "We couldn’t download the credential offer. Please try again.",
+    "credential-already-activated": "This credential has already been activated and is available in your Wallet. If you can't find it, please contact your organization's administrator to get a new one.",
     "cross-tenant-offer": "This credential offer comes from a different tenant and cannot be added to this wallet.",
     "invalid-credential-configuration": "This offer contains an invalid credential configuration.",
     "unsupported-credential-format": "This credential type isn’t supported by this wallet.",
