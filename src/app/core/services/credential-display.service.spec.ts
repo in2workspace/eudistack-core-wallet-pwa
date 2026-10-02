@@ -205,6 +205,15 @@ describe('CredentialDisplayService', () => {
       expect(field.structured?.[0].label).toBe('Onboarding (DOME)');
     });
 
+    it('renders a power without actions as an empty action list entry', () => {
+      const service = setupWithLanguage('es');
+      const subject = buildSubject([{ function: 'Onboarding', domain: 'DOME' }]);
+
+      const [field] = service.buildFieldsFromClaims(subject, buildPowersMetadata());
+
+      expect(field.structured?.[0]).toEqual({ label: 'Alta (DOME)', value: '', values: [''] });
+    });
+
     it('translates the powers in the detail sections as well', () => {
       const service = setupWithLanguage('es');
       const subject = buildSubject([{ function: 'Onboarding', domain: 'DOME', action: ['Create'] }]);

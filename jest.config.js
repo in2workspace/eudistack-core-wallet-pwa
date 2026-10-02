@@ -48,6 +48,7 @@ module.exports = {
     "src/app/shared/pipes/support-link.pipe.ts",
     "src/app/core/constants/webauthn.constants.ts",
     "src/app/core/services/credential-verification.service.ts",
+    "src/app/core/services/credential-display.service.ts",
     "src/app/shared/components/vc-view/vc-view.component.ts",
     "src/app/shared/services/toast.service.ts",
     "src/app/features/credentials/credentials.page.ts",
