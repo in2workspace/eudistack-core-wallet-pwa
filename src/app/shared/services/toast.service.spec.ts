@@ -570,6 +570,18 @@ describe('ToastServiceHandler', () => {
     expect(dismissMock).toHaveBeenCalled();
   }));
 
+  it('should log instead of leaving an unhandled rejection when the success toast cannot be created', fakeAsync(() => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const failure = new Error('overlay unavailable');
+    alertCtrl.create.mockRejectedValueOnce(failure);
+
+    service.showToast('toast.success');
+    tick();
+
+    expect(consoleSpy).toHaveBeenCalledWith('ToastService: failed to show toast', failure);
+    consoleSpy.mockRestore();
+  }));
+
   it('should show info toast and remove it after duration', fakeAsync(() => {
     const appendSpy = jest.spyOn(document.body, 'appendChild');
     const message = 'toast.info';
