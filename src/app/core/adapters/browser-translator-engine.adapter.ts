@@ -80,7 +80,8 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
 
     for (let start = 0; start < entries.length; start += TRANSLATION_CHUNK_SIZE) {
       const chunk = entries.slice(start, start + TRANSLATION_CHUNK_SIZE);
-      const translatedChunk = await Promise.all(
+      // Chunks run sequentially on purpose: bounds concurrent calls to the on-device translator and drives onProgress.
+      const translatedChunk = await Promise.all( // NOSONAR typescript:S9382
         chunk.map(async entry => ({ key: entry.key, text: await translator.translate(entry.text) })),
       );
       results.push(...translatedChunk);

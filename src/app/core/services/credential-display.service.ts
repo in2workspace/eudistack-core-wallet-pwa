@@ -54,7 +54,7 @@ export class CredentialDisplayService {
         fields.push({
           label,
           value: '',
-          structured: value.map((item: Record<string, unknown>) => formatObjectItem(item)),
+          structured: value.map((item: Record<string, unknown>) => this.formatObjectItem(item)),
         });
         continue;
       }
@@ -106,6 +106,36 @@ export class CredentialDisplayService {
     }
   }
 
+  private formatObjectItem(obj: Record<string, unknown>): DisplayFieldItem {
+    if ('function' in obj && 'domain' in obj) {
+      const fn = this.translatePower(stringifyValue(obj['function']));
+      const domain = stringifyValue(obj['domain']);
+      const actions = (Array.isArray(obj['action']) ? obj['action'] : [obj['action']])
+        .map(action => this.translatePower(stringifyValue(action)));
+      return { label: `${fn} (${domain})`, value: actions.join(', '), values: actions };
+    }
+
+    const entries = Object.entries(obj)
+      .filter(([k, v]) => v != null && v !== '' && k !== 'type' && k !== 'id')
+      .slice(0, 2);
+
+    if (entries.length > 0) {
+      return {
+        label: humanizeKey(String(entries[0][0])),
+        value: entries.map(([, v]) => stringifyValue(v)).join(' — '),
+      };
+    }
+
+    return { label: '', value: stringifyValue(obj) };
+  }
+
+  /** Power functions/actions are issuer-defined identifiers; unknown ones are shown as issued. */
+  private translatePower(value: string): string {
+    const key = `vc-fields.power.${value.toLowerCase()}`;
+    const translated = this.translate.instant(key);
+    return translated === key ? value : translated;
+  }
+
   // ── Section builder ─────────────────────────────────
 
   createSectionsFromClaims(subject: any, meta: CredentialMetadata): DisplaySection[] {
@@ -124,7 +154,7 @@ export class CredentialDisplayService {
           fields: [{
             label: title,
             value: '',
-            structured: value.map((item: any) => formatObjectItem(item)),
+            structured: value.map((item: any) => this.formatObjectItem(item)),
           }],
         });
         continue;
@@ -175,30 +205,6 @@ function walkPath(obj: any, path: string[]): unknown {
     current = current[key];
   }
   return current === undefined ? undefined : current;
-}
-
-function formatObjectItem(obj: Record<string, unknown>): DisplayFieldItem {
-  if ('function' in obj && 'domain' in obj) {
-    const fn = String(obj['function'] ?? '');
-    const domain = String(obj['domain'] ?? '');
-    const action = Array.isArray(obj['action'])
-      ? obj['action'].join(', ')
-      : String(obj['action'] ?? '');
-    return { label: `${fn} (${domain})`, value: action };
-  }
-
-  const entries = Object.entries(obj)
-    .filter(([k, v]) => v != null && v !== '' && k !== 'type' && k !== 'id')
-    .slice(0, 2);
-
-  if (entries.length > 0) {
-    return {
-      label: humanizeKey(String(entries[0][0])),
-      value: entries.map(([, v]) => stringifyValue(v)).join(' — '),
-    };
-  }
-
-  return { label: '', value: stringifyValue(obj) };
 }
 
 function stringifyValue(value: unknown): string {

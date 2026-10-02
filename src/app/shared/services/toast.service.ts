@@ -172,7 +172,7 @@ export class ToastServiceHandler {
   }
 
   public showToast(messageKey: string, duration: number = 2000): void {
-    void this.alertController.create({
+    this.alertController.create({
       message: `
         <div style="display: flex; align-items: center; gap: 50px;">
           <ion-icon name="checkmark-circle"></ion-icon>
@@ -180,13 +180,13 @@ export class ToastServiceHandler {
         </div>
       `,
       cssClass: 'custom-alert-ok',
-    }).then(alert => {
-      void alert.present().then(() => {
+    })
+      .then(alert => alert.present().then(() => {
         setTimeout(() => {
           void alert.dismiss();
         }, duration);
-      });
-    });
+      }))
+      .catch(err => console.error('ToastService: failed to show toast', err));
   }
 
 
