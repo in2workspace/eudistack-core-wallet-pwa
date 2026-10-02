@@ -535,7 +535,6 @@
     "last-active": "Last active",
     "added-on": "Added on",
     "remove-device": "Remove device",
-    "close-sessions": "Close sessions",
     "no-other-devices-title": "No other devices connected",
     "no-other-devices-hint": "Your wallet is currently available only on this device.",
     "no-current-device-title": "This device is not registered",
