@@ -77,7 +77,8 @@
     "state-unavailable": "No disponible en este dispositivo",
     "state-unavailable-hint": "Tu navegador no ofrece traducción integrada en el dispositivo. Podrás usar esta función cuando esté disponible.",
     "state-error": "No se ha podido preparar la traducción",
-    "retry": "Reintentar"
+    "retry": "Reintentar",
+    "cancel": "Cancelar"
   },
   "logs-selector": {
     "title": "Ver logs",

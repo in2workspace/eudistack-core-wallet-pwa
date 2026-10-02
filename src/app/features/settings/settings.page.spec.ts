@@ -127,6 +127,59 @@ describe('SettingsPage', () => {
     expect(storage.set).toHaveBeenCalledWith('language', 'en');
   });
 
+  describe('mutual exclusion between native languages and automatic translation', () => {
+    it('deactivates an active translation before applying the picked native language', () => {
+      uiTranslation.status.set('active');
+
+      component.languageChange('ca');
+
+      expect(uiTranslation.deactivate).toHaveBeenCalledTimes(1);
+      expect(uiTranslation.deactivate.mock.invocationCallOrder[0]).toBeLessThan(translateUse.mock.invocationCallOrder[0]);
+      expect(translateUse).toHaveBeenCalledWith('ca');
+    });
+
+    it('deactivates a translation that is still preparing when a native language is picked', () => {
+      uiTranslation.status.set('preparing');
+
+      component.languageChange('en');
+
+      expect(uiTranslation.deactivate).toHaveBeenCalledTimes(1);
+      expect(translateUse).toHaveBeenCalledWith('en');
+    });
+
+    it('does not deactivate anything when translation is off', () => {
+      uiTranslation.status.set('idle');
+
+      component.languageChange('en');
+
+      expect(uiTranslation.deactivate).not.toHaveBeenCalled();
+      expect(translateUse).toHaveBeenCalledWith('en');
+    });
+
+    it('shows a native language card as selected while translation is off', async () => {
+      component.togglePanel('language');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const checked = fixture.nativeElement.querySelectorAll('.language-card--selected');
+
+      expect(checked).toHaveLength(1);
+    });
+
+    it('shows no native language card as selected while translation is active', async () => {
+      uiTranslation.status.set('active');
+      component.togglePanel('language');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const checked = fixture.nativeElement.querySelectorAll('.language-card--selected');
+
+      expect(checked).toHaveLength(0);
+    });
+  });
+
   it('ignores an empty language code', () => {
     component.languageChange('');
 
@@ -271,6 +324,29 @@ describe('SettingsPage', () => {
 
       expect(uiTranslation.deactivate).toHaveBeenCalled();
       expect(uiTranslation.activate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('cancelTranslation', () => {
+    it('deactivates the translation that is being prepared', () => {
+      component.cancelTranslation();
+
+      expect(uiTranslation.deactivate).toHaveBeenCalledTimes(1);
+    });
+
+    it('renders the cancel button only while the translation is preparing', () => {
+      component.togglePanel('language');
+      uiTranslation.availableTargets.set(['fr']);
+      uiTranslation.status.set('idle');
+      fixture.detectChanges();
+      const idleButtons = fixture.nativeElement.querySelectorAll('.translation-state--progress ion-button');
+
+      uiTranslation.status.set('preparing');
+      fixture.detectChanges();
+      const preparingButtons = fixture.nativeElement.querySelectorAll('.translation-state--progress ion-button');
+
+      expect(idleButtons).toHaveLength(0);
+      expect(preparingButtons).toHaveLength(1);
     });
   });
 

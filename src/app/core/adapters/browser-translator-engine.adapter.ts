@@ -41,6 +41,10 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
     }
   }
 
+  async prepare(pair: LanguagePair): Promise<void> {
+    await this.translatorFor(pair);
+  }
+
   async translateEntries(
     entries: ReadonlyArray<UiTextEntry>,
     pair: LanguagePair,
