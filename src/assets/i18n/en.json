@@ -408,7 +408,9 @@
       "update": "Update",
       "delete": "Delete",
       "attest": "Attest",
-      "upload": "Upload"
+      "upload": "Upload",
+      "system": "System",
+      "administration": "Administration"
     },
     "issued-by": "Issued by"
   },
