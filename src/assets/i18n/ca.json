@@ -311,6 +311,8 @@
     },
     "legal-document": {
       "back": "Tornar",
+      "not-published-title": "El document encara no està disponible",
+      "not-published-description": "Aquest document encara no s'ha publicat. El gestiona EUDIStack. Per a més informació, contacta amb suport:",
       "loading": "Carregant document...",
       "error-title": "No s'ha pogut carregar el document",
       "error-description": "Comprova la teva connexió i torna-ho a provar.",
@@ -319,6 +321,8 @@
     },
     "oss-licenses": {
       "title": "Llicències de programari de codi obert",
+      "sbom-frontend": "SBOM del frontend (darrera release)",
+      "sbom-backend": "SBOM del backend (darrera release)",
       "count-suffix": "dependències",
       "empty-title": "Llistat no disponible",
       "empty-description": "No hem pogut carregar el llistat de llicències en aquest moment.",
