@@ -1,3 +1,6 @@
+/// <reference types="node" />
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { TestBed } from '@angular/core/testing';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { CredentialDisplayService } from './credential-display.service';
@@ -230,6 +233,20 @@ describe('CredentialDisplayService', () => {
       const [field] = service.buildFieldsFromClaims(subject, buildPowersMetadata());
 
       expect(field.structured).toEqual([{ label: 'Name', value: 'Alice — Admin' }]);
+    });
+  });
+
+  describe('power translation keys', () => {
+    const ISSUED_FUNCTIONS = ['Onboarding', 'Certification', 'ProductOffering', 'System'];
+    const ISSUED_ACTIONS = ['Execute', 'Create', 'Update', 'Delete', 'Attest', 'Upload', 'Administration'];
+
+    it.each(['en', 'es', 'ca'])('%s bundle has a translation for every power function and action', (lang) => {
+      const bundle = JSON.parse(readFileSync(join(__dirname, `../../../assets/i18n/${lang}.json`), 'utf-8'));
+
+      const missing = [...ISSUED_FUNCTIONS, ...ISSUED_ACTIONS]
+        .filter(value => !bundle['vc-fields']?.power?.[value.toLowerCase()]);
+
+      expect(missing).toEqual([]);
     });
   });
 
