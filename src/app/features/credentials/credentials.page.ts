@@ -223,7 +223,7 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
         // alert for its own failures (e.g. offer expired) — or none on user
         // cancel. A second, generic "failed QR" alert here would bury it.
         catchError((err: ExtendedHttpErrorResponse | Error) => {
-          this.handleContentExecutionError(err, { notifyUser: false });
+          this.handleContentExecutionError(err, false);
           return EMPTY;
         }),
         switchMap((flowResult: FinalizeIssuancePayload) => {
@@ -491,7 +491,7 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   //todo review this (it is storing camera logs, but is used after API calls)
   private handleContentExecutionError(
     errorResponse: ExtendedHttpErrorResponse | Error,
-    { notifyUser }: { notifyUser: boolean } = { notifyUser: true }
+    notifyUser = true
   ): void{
     const httpErr = (errorResponse as ExtendedHttpErrorResponse)?.error;
     const message = httpErr?.message || (errorResponse as ExtendedHttpErrorResponse)?.message || errorResponse?.message || 'No error message';
