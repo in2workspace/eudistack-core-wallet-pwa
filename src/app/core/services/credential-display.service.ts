@@ -108,10 +108,10 @@ export class CredentialDisplayService {
 
   private formatObjectItem(obj: Record<string, unknown>): DisplayFieldItem {
     if ('function' in obj && 'domain' in obj) {
-      const fn = this.translatePower(String(obj['function'] ?? ''));
-      const domain = String(obj['domain'] ?? '');
-      const actions = (Array.isArray(obj['action']) ? obj['action'] : [obj['action'] ?? ''])
-        .map(action => this.translatePower(String(action)));
+      const fn = this.translatePower(stringifyValue(obj['function']));
+      const domain = stringifyValue(obj['domain']);
+      const actions = (Array.isArray(obj['action']) ? obj['action'] : [obj['action']])
+        .map(action => this.translatePower(stringifyValue(action)));
       return { label: `${fn} (${domain})`, value: actions.join(', '), values: actions };
     }
 
