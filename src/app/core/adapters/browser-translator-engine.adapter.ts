@@ -21,9 +21,6 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
   /** Memoized `Translator` instance promise per `source:target` pair (`??=`, same idiom as `WalletDiscoveryService`). */
   private readonly _translatorFor = new Map<string, Promise<TranslatorInstance>>();
 
-  /** Aborts the pending `Translator.create` (language-pack download) of each pair on `destroy()`. */
-  private readonly _abortFor = new Map<string, AbortController>();
-
   isSupported(): boolean {
     return typeof Translator !== 'undefined' && 'availability' in Translator;
   }
@@ -99,10 +96,6 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
   }
 
   destroy(): void {
-    for (const controller of this._abortFor.values()) {
-      controller.abort();
-    }
-    this._abortFor.clear();
     for (const translatorPromise of this._translatorFor.values()) {
       translatorPromise.then(translator => translator.destroy()).catch(() => {
         // Creation never resolved — nothing to release.
@@ -118,9 +111,7 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
     const cacheKey = `${pair.sourceLanguage}:${pair.targetLanguage}`;
     let memoized = this._translatorFor.get(cacheKey);
     if (!memoized) {
-      const controller = new AbortController();
-      this._abortFor.set(cacheKey, controller);
-      memoized = this.createTranslator(pair, controller.signal, onDownloadProgress);
+      memoized = this.createTranslator(pair, onDownloadProgress);
       this._translatorFor.set(cacheKey, memoized);
     }
     return memoized;
@@ -128,13 +119,11 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
 
   private createTranslator(
     pair: LanguagePair,
-    signal: AbortSignal,
     onDownloadProgress?: (loaded: number, total: number) => void,
   ): Promise<TranslatorInstance> {
     return Translator.create({
       sourceLanguage: pair.sourceLanguage,
       targetLanguage: pair.targetLanguage,
-      signal,
       monitor(monitor) {
         monitor.addEventListener('downloadprogress', event => {
           onDownloadProgress?.(event.loaded, event.total);

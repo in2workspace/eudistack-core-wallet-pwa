@@ -41,7 +41,6 @@ interface Window {
 
   interface TranslatorCreateOptions extends TranslatorLanguagePair {
     monitor?: (monitor: TranslatorCreateMonitor) => void;
-    signal?: AbortSignal;
   }
 
   interface TranslatorInstance {

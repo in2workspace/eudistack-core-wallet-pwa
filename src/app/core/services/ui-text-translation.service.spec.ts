@@ -399,14 +399,16 @@ describe('UiTextTranslationService', () => {
       expect(prefs.setUiTranslation).not.toHaveBeenCalledWith({ enabled: true, targetLanguage: 'el' });
     });
 
-    it('stays idle and records no failure when the pending download is aborted by the cancellation', async () => {
+    it('stays idle and records no failure when the pending preparation rejects after the cancellation', async () => {
+      let failDownload!: () => void;
       engine.prepare.mockImplementation(() => new Promise<void>((_resolve, reject) => {
-        engine.destroy.mockImplementationOnce(() => reject(new DOMException('aborted', 'AbortError')));
+        failDownload = () => reject(new Error('download interrupted'));
       }));
 
       const activation = service.activate('el');
       await flushMicrotasks();
       service.deactivate();
+      failDownload();
       await activation;
 
       expect(service.status()).toBe('idle');
