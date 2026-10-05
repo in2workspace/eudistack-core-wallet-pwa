@@ -222,9 +222,14 @@
         }
 
         @if (errorMessage) {
-          <div class="error-box">
+          <div class="error-box" role="alert">
             <ion-icon name="alert-circle-outline"></ion-icon>
             <span>{{ errorMessage }}</span>
+          </div>
+        } @else if (noticeMessage) {
+          <div class="error-box error-box--notice" role="status">
+            <ion-icon name="information-circle-outline"></ion-icon>
+            <span>{{ noticeMessage }}</span>
           </div>
         }
       </div>

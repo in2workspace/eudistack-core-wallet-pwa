@@ -1,12 +1,15 @@
 import { inject, Injectable } from '@angular/core';
 import { base64UrlEncode, base64UrlDecode } from '../utils/base64url';
 import { AppError } from '../models/error/AppError';
+import { PasskeyCeremony, PasskeyError, toPasskeyError } from '../models/error/PasskeyError';
 import { p256 } from '@noble/curves/nist.js';
 import { PasskeyStoreService } from './passkey-store.service';
 import { WEBAUTHN_CREATE_HINTS, WEBAUTHN_ASSERTION_HINTS } from '../constants/webauthn.constants';
 
 const HKDF_INFO = 'eudistack:p256:v1';
 const MASTER_SALT = new TextEncoder().encode('eudistack:master:v1');
+const ASSERTION_TIMEOUT_MS = 60_000;
+const CREATION_TIMEOUT_MS = 120_000;
 
 export type PrfSupportStatus = 'available' | 'unavailable';
 
@@ -54,7 +57,7 @@ export class PasskeyPrfService {
 
     const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer;
     const credentialIdBuffer = base64UrlDecode(credentialId).buffer as ArrayBuffer;
-    const assertion = await navigator.credentials.get({
+    await this.runCeremony('get', ASSERTION_TIMEOUT_MS, () => navigator.credentials.get({
       publicKey: {
         challenge,
         allowCredentials: [{
@@ -62,15 +65,11 @@ export class PasskeyPrfService {
           type: 'public-key',
         }],
         userVerification: 'required',
-        timeout: 60_000,
+        timeout: ASSERTION_TIMEOUT_MS,
         // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialRequestOptions (WebAuthn L3)
         hints: WEBAUTHN_ASSERTION_HINTS,
       },
-    });
-
-    if (!assertion) {
-      throw new Error('Authentication cancelled');
-    }
+    }));
   }
 
   /**
@@ -113,20 +112,14 @@ export class PasskeyPrfService {
         // @ts-ignore — PRF extension not yet in TS lib types
         prf: {},
       } as AuthenticationExtensionsClientInputs,
-      timeout: 120_000,
+      timeout: CREATION_TIMEOUT_MS,
       // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialCreationOptions (WebAuthn L3)
       hints: WEBAUTHN_CREATE_HINTS,
     };
 
-    const credential = (await navigator.credentials.create({
+    const credential = (await this.runCeremony('create', CREATION_TIMEOUT_MS, () => navigator.credentials.create({
       publicKey: options,
-    })) as PublicKeyCredential | null;
-
-    if (!credential) {
-      throw new AppError('Passkey creation was cancelled or failed', {
-        translationKey: 'errors.passkey-creation-failed',
-      });
-    }
+    }))) as PublicKeyCredential;
 
     const credentialId = base64UrlEncode(new Uint8Array(credential.rawId));
     await this.store.setCredentialId(credentialId);
@@ -174,13 +167,37 @@ export class PasskeyPrfService {
   // Private helpers
   // ---------------------------------------------------------------------------
 
+  /**
+   * Single entry point for WebAuthn ceremonies: whatever the browser rejects
+   * with (or a `null` result, which some engines return on dismissal) becomes a
+   * classified PasskeyError, so callers never surface a raw DOMException text.
+   */
+  private async runCeremony(
+    ceremony: PasskeyCeremony,
+    timeoutMs: number | undefined,
+    ceremonyFn: () => Promise<Credential | null>
+  ): Promise<Credential> {
+    const startedAt = Date.now();
+    let credential: Credential | null;
+    try {
+      credential = await ceremonyFn();
+    } catch (e: unknown) {
+      throw toPasskeyError(e, ceremony, Date.now() - startedAt, timeoutMs);
+    }
+    if (!credential) {
+      throw new PasskeyError('passkey_cancelled', ceremony);
+    }
+    return credential;
+  }
+
   private async evaluatePrf(
     credentialId: Uint8Array,
     salt: Uint8Array
   ): Promise<Uint8Array> {
     const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32));
 
-    const assertion = (await navigator.credentials.get({
+    // No `timeout` here: the browser default applies, so a timeout cannot be told apart from a cancel.
+    const assertion = (await this.runCeremony('get', undefined, () => navigator.credentials.get({
       publicKey: {
         challenge,
         allowCredentials: [{ id: credentialId.slice(), type: 'public-key' }],
@@ -192,13 +209,7 @@ export class PasskeyPrfService {
         // @ts-expect-error — `hints` not yet in this TS lib's PublicKeyCredentialRequestOptions (WebAuthn L3)
         hints: WEBAUTHN_ASSERTION_HINTS,
       },
-    })) as PublicKeyCredential | null;
-
-    if (!assertion) {
-      throw new AppError('Passkey authentication was cancelled', {
-        translationKey: 'errors.passkey-auth-cancelled',
-      });
-    }
+    }))) as PublicKeyCredential;
 
     const extensions = assertion.getClientExtensionResults() as any;
     const prfResults = extensions?.prf?.results;
