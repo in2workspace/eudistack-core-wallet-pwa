@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The PIN modal for credentials issued with pre-authorization had no way to submit the code except pressing Enter**: the modal only offered *Cancel*, so on mobile keyboards without an Enter key the user could not continue. It now has a primary **Validate** button, enabled once the whole PIN is typed, in addition to Enter.
+  - On narrow screens the buttons are stacked at full width.
+  - New i18n key `confirmation.validate` (es/ca/en).
+  - Tests: new `tx-code-modal.component.spec.ts`, now part of the coverage report.
 - **Credential powers were shown untranslated, ignoring the wallet language**: the function and actions of each power (e.g. `Onboarding`, `Execute`) were rendered exactly as issued, in the credential detail and in the acceptance modal, even though the `vc-fields.power.*` translations already existed in English, Spanish and Catalan. `CredentialDisplayService` now translates them into the language selected in the wallet.
   - Functions or actions without a translation, and the power domain, are shown as issued by the issuer.
   - Power actions are now kept as a list instead of being split from a comma-joined string, so a translation containing a comma is not broken into several actions.
