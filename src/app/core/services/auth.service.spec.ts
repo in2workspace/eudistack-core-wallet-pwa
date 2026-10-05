@@ -703,6 +703,34 @@ describe('RemoteAuthService', () => {
       req.flush(null);
     });
 
+    it('cancels an in-flight ping once polling stops, instead of leaving it to resolve into a disposed service', () => {
+      jest.useFakeTimers();
+      setDocumentHidden(false);
+
+      (service as any).handleTokenResponse(pollTokenResponse);
+      jest.advanceTimersByTime(MAX_POLL_DELAY_MS);
+      const req = httpMock.expectOne(`${AUTH_BASE}/session`);
+      expect(req.cancelled).toBeFalsy();
+
+      service.forceLogout();
+
+      expect(req.cancelled).toBe(true);
+    });
+
+    it('cancels a still-pending ping before firing a new one, so a focus/visibilitychange ping never overlaps a scheduled one', () => {
+      jest.useFakeTimers();
+      setDocumentHidden(false);
+
+      (service as any).handleTokenResponse(pollTokenResponse);
+      jest.advanceTimersByTime(MAX_POLL_DELAY_MS);
+      const firstReq = httpMock.expectOne(`${AUTH_BASE}/session`);
+
+      window.dispatchEvent(new Event('focus'));
+
+      expect(firstReq.cancelled).toBe(true);
+      httpMock.expectOne(`${AUTH_BASE}/session`).flush(null);
+    });
+
     it('removes the visibility/focus listeners once polling stops', () => {
       jest.useFakeTimers();
       setDocumentHidden(false);

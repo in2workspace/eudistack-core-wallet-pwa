@@ -1,6 +1,6 @@
 import { inject, Injectable, OnDestroy } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { BehaviorSubject, Observable, of, throwError, firstValueFrom } from 'rxjs';
+import { BehaviorSubject, Observable, of, throwError, firstValueFrom, Subscription } from 'rxjs';
 import { catchError, finalize, map, tap, shareReplay } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { PasskeyStoreService } from './passkey-store.service';
@@ -89,6 +89,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private sessionPollTimer: ReturnType<typeof setTimeout> | null = null;
   private sessionPollVisibilityListener: (() => void) | null = null;
+  private sessionPollRequestSub: Subscription | null = null;
   private disposed = false;
   private refreshInFlight$: Observable<TokenPairResponse> | null = null;
 
@@ -343,10 +344,15 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       window.removeEventListener('focus', this.sessionPollVisibilityListener);
       this.sessionPollVisibilityListener = null;
     }
+    this.sessionPollRequestSub?.unsubscribe();
+    this.sessionPollRequestSub = null;
   }
 
   private scheduleNextSessionPing(): void {
-    const delay = SESSION_POLL_INTERVAL_MS + Math.random() * SESSION_POLL_JITTER_MS;
+    // Timing-only jitter to spread background polls apart (anti-thundering-herd, see
+    // SESSION_POLL_JITTER_MS) — never used as a token, key, or anything an attacker
+    // could gain from predicting, so a CSPRNG buys nothing here.
+    const delay = SESSION_POLL_INTERVAL_MS + Math.random() * SESSION_POLL_JITTER_MS; // NOSONAR typescript:S2245
     this.sessionPollTimer = setTimeout(() => {
       if (this.disposed) return;
       if (!document.hidden) {
@@ -358,7 +364,12 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
   private pingSession(): void {
     if (this.disposed || !this.getToken()) return;
-    this.http.get<void>(`${this.authBase}/session`).subscribe({ error: () => undefined });
+    // Unsubscribe any still-in-flight ping first: a visibilitychange/focus ping
+    // can land while a scheduled one hasn't resolved yet, and this is the only
+    // handle that lets stopSessionPolling()/dispose() cancel a pending request
+    // instead of leaving it to resolve into a service that no longer cares.
+    this.sessionPollRequestSub?.unsubscribe();
+    this.sessionPollRequestSub = this.http.get<void>(`${this.authBase}/session`).subscribe({ error: () => undefined });
   }
 
   /**
