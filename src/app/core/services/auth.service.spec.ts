@@ -4,7 +4,7 @@ import { HttpClientTestingModule, HttpTestingController } from '@angular/common/
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { firstValueFrom, of } from 'rxjs';
-import { AuthService, isRefreshTokenRejected, RemoteAuthService, SESSION_POLL_INTERVAL_MS, TokenPairResponse } from './auth.service';
+import { AuthService, isRefreshTokenRejected, RemoteAuthService, SESSION_POLL_INTERVAL_MS, SESSION_POLL_JITTER_MS, TokenPairResponse } from './auth.service';
 import { AUTH_SERVICE_PROVIDER } from './auth-service.provider';
 import { PasskeyStoreService } from './passkey-store.service';
 import { PasskeyPrfService } from './passkey-prf.service';
@@ -602,11 +602,33 @@ describe('RemoteAuthService', () => {
       expiresIn: 900,
     };
 
+    // The real tick lands anywhere in [INTERVAL, INTERVAL + JITTER]; advancing
+    // past the far end of that window guarantees it has fired regardless of
+    // the random jitter drawn for that run.
+    const MAX_POLL_DELAY_MS = SESSION_POLL_INTERVAL_MS + SESSION_POLL_JITTER_MS;
+
+    let originalHidden: PropertyDescriptor | undefined;
+
+    const setDocumentHidden = (hidden: boolean) => {
+      Object.defineProperty(document, 'hidden', { configurable: true, value: hidden });
+    };
+
+    beforeEach(() => {
+      originalHidden = Object.getOwnPropertyDescriptor(document, 'hidden');
+    });
+
+    afterEach(() => {
+      if (originalHidden) {
+        Object.defineProperty(document, 'hidden', originalHidden);
+      }
+    });
+
     it('pings /session on an interval once authenticated, so a revoked session is noticed on an otherwise-idle tab', () => {
       jest.useFakeTimers();
+      setDocumentHidden(false);
 
       (service as any).handleTokenResponse(pollTokenResponse);
-      jest.advanceTimersByTime(SESSION_POLL_INTERVAL_MS);
+      jest.advanceTimersByTime(MAX_POLL_DELAY_MS);
 
       const req = httpMock.expectOne(`${AUTH_BASE}/session`);
       expect(req.request.method).toBe('GET');
@@ -615,23 +637,81 @@ describe('RemoteAuthService', () => {
 
     it('stops polling once forceLogout runs', () => {
       jest.useFakeTimers();
+      setDocumentHidden(false);
 
       (service as any).handleTokenResponse(pollTokenResponse);
       service.forceLogout();
 
-      jest.advanceTimersByTime(SESSION_POLL_INTERVAL_MS * 2);
+      jest.advanceTimersByTime(MAX_POLL_DELAY_MS * 2);
 
       httpMock.expectNone(`${AUTH_BASE}/session`);
     });
 
     it('stops polling once a soft logout() runs', () => {
       jest.useFakeTimers();
+      setDocumentHidden(false);
 
       (service as any).handleTokenResponse(pollTokenResponse);
       service.logout().subscribe();
       httpMock.expectOne(`${AUTH_BASE}/logout`).flush(null);
 
-      jest.advanceTimersByTime(SESSION_POLL_INTERVAL_MS * 2);
+      jest.advanceTimersByTime(MAX_POLL_DELAY_MS * 2);
+
+      httpMock.expectNone(`${AUTH_BASE}/session`);
+    });
+
+    it('skips the ping while the tab is hidden, so a backgrounded tab does not poll for nothing', () => {
+      jest.useFakeTimers();
+      setDocumentHidden(true);
+
+      (service as any).handleTokenResponse(pollTokenResponse);
+      jest.advanceTimersByTime(MAX_POLL_DELAY_MS * 2);
+
+      httpMock.expectNone(`${AUTH_BASE}/session`);
+    });
+
+    it('pings immediately on visibilitychange when the tab becomes visible again, instead of waiting out the interval', () => {
+      jest.useFakeTimers();
+      setDocumentHidden(true);
+
+      (service as any).handleTokenResponse(pollTokenResponse);
+      // Still hidden: no scheduled tick should fire a request.
+      jest.advanceTimersByTime(1_000);
+      httpMock.expectNone(`${AUTH_BASE}/session`);
+
+      setDocumentHidden(false);
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/session`);
+      expect(req.request.method).toBe('GET');
+      req.flush(null);
+    });
+
+    it('pings immediately when the window regains focus', () => {
+      jest.useFakeTimers();
+      setDocumentHidden(false);
+
+      (service as any).handleTokenResponse(pollTokenResponse);
+      // Drain the initial scheduled tick so only the focus-triggered ping remains.
+      jest.advanceTimersByTime(MAX_POLL_DELAY_MS);
+      httpMock.expectOne(`${AUTH_BASE}/session`).flush(null);
+
+      window.dispatchEvent(new Event('focus'));
+
+      const req = httpMock.expectOne(`${AUTH_BASE}/session`);
+      expect(req.request.method).toBe('GET');
+      req.flush(null);
+    });
+
+    it('removes the visibility/focus listeners once polling stops', () => {
+      jest.useFakeTimers();
+      setDocumentHidden(false);
+
+      (service as any).handleTokenResponse(pollTokenResponse);
+      service.forceLogout();
+
+      document.dispatchEvent(new Event('visibilitychange'));
+      window.dispatchEvent(new Event('focus'));
 
       httpMock.expectNone(`${AUTH_BASE}/session`);
     });

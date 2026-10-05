@@ -20,13 +20,23 @@ export interface ForceLogoutOptions {
 const REFRESH_TOKEN_KEY = 'wallet_refresh_token';
 
 /**
- * How often an authenticated tab pings the server to notice its own session was
- * revoked elsewhere. Without this, an otherwise-idle tab (no other request in
- * flight) sits "zombie" — still looking logged in — until the holder happens to
- * trigger a call that then 401s. This bounds that detection window instead of
- * leaving it open-ended.
+ * Minimum interval (plus up to SESSION_POLL_JITTER_MS extra) between background
+ * pings an authenticated tab sends to notice its own session was revoked
+ * elsewhere. Without this, an otherwise-idle tab (no other request in flight)
+ * sits "zombie" — still looking logged in — until the holder happens to trigger
+ * a call that then 401s. This bounds that detection window instead of leaving
+ * it open-ended, without polling so often that it outpaces
+ * SessionRevocationChecker's own 3s cache on the backend.
  */
-export const SESSION_POLL_INTERVAL_MS = 5_000;
+export const SESSION_POLL_INTERVAL_MS = 30_000;
+
+/**
+ * Random extra delay added on top of SESSION_POLL_INTERVAL_MS on every tick, so
+ * many tabs/users that authenticated around the same time don't stay in
+ * lock-step and hit the backend in synchronized bursts (thundering herd) —
+ * each tab's next ping lands somewhere in its own 30-36s window instead.
+ */
+export const SESSION_POLL_JITTER_MS = 6_000;
 
 /**
  * Whether a failed /refresh means the refresh token itself is no longer valid
@@ -77,7 +87,8 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private readonly broadcastChannel = new BroadcastChannel('auth');
   private static readonly BROADCAST_FORCE_LOGOUT = 'forceWalletLogout';
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
-  private sessionPollTimer: ReturnType<typeof setInterval> | null = null;
+  private sessionPollTimer: ReturnType<typeof setTimeout> | null = null;
+  private sessionPollVisibilityListener: (() => void) | null = null;
   private disposed = false;
   private refreshInFlight$: Observable<TokenPairResponse> | null = null;
 
@@ -304,20 +315,50 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
    * same `authInterceptor` as any other request, which already retries once via
    * refresh and then calls `forceLogout()`, so nothing extra is needed here beyond
    * firing the request and swallowing whatever it settles with.
+   *
+   * Backgrounded/minimized tabs skip the actual ping (nothing to show the user
+   * there) but keep rescheduling, and a visibilitychange/focus back to the tab
+   * pings immediately — so returning to the wallet surfaces a revoked session
+   * right away instead of waiting out the rest of the interval.
    */
   private startSessionPolling(): void {
-    if (this.sessionPollTimer) return;
-    this.sessionPollTimer = setInterval(() => {
-      if (this.disposed || !this.getToken()) return;
-      this.http.get<void>(`${this.authBase}/session`).subscribe({ error: () => undefined });
-    }, SESSION_POLL_INTERVAL_MS);
+    if (this.sessionPollTimer || this.sessionPollVisibilityListener) return;
+    this.scheduleNextSessionPing();
+    this.sessionPollVisibilityListener = () => {
+      if (!document.hidden) {
+        this.pingSession();
+      }
+    };
+    document.addEventListener('visibilitychange', this.sessionPollVisibilityListener);
+    window.addEventListener('focus', this.sessionPollVisibilityListener);
   }
 
   private stopSessionPolling(): void {
     if (this.sessionPollTimer) {
-      clearInterval(this.sessionPollTimer);
+      clearTimeout(this.sessionPollTimer);
       this.sessionPollTimer = null;
     }
+    if (this.sessionPollVisibilityListener) {
+      document.removeEventListener('visibilitychange', this.sessionPollVisibilityListener);
+      window.removeEventListener('focus', this.sessionPollVisibilityListener);
+      this.sessionPollVisibilityListener = null;
+    }
+  }
+
+  private scheduleNextSessionPing(): void {
+    const delay = SESSION_POLL_INTERVAL_MS + Math.random() * SESSION_POLL_JITTER_MS;
+    this.sessionPollTimer = setTimeout(() => {
+      if (this.disposed) return;
+      if (!document.hidden) {
+        this.pingSession();
+      }
+      this.scheduleNextSessionPing();
+    }, delay);
+  }
+
+  private pingSession(): void {
+    if (this.disposed || !this.getToken()) return;
+    this.http.get<void>(`${this.authBase}/session`).subscribe({ error: () => undefined });
   }
 
   /**
