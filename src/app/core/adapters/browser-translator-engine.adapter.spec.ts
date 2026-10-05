@@ -110,6 +110,36 @@ describe('BrowserTranslatorEngineAdapter', () => {
       expect(createFn).toHaveBeenCalledTimes(1);
     });
 
+    it('reports the language-pack download progress through the monitor', async () => {
+      const { createFn } = installFakeTranslator();
+      const onProgress = jest.fn();
+      createFn.mockImplementation(async (options: TranslatorCreateOptions) => {
+        options.monitor?.({
+          addEventListener: (_type, listener) => listener({ loaded: 0.4, total: 1 }),
+        });
+        return { translate: jest.fn(), destroy: jest.fn() };
+      });
+
+      await adapter.prepare(pair, onProgress);
+
+      expect(onProgress).toHaveBeenCalledWith(0.4, 1);
+    });
+
+    it('aborts a pending download when destroyed', async () => {
+      const { createFn } = installFakeTranslator();
+      let signal!: AbortSignal;
+      createFn.mockImplementation((options: TranslatorCreateOptions) => new Promise((_resolve, reject) => {
+        signal = options.signal!;
+        signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+      }));
+
+      const pending = adapter.prepare(pair);
+      adapter.destroy();
+
+      await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+      expect(signal.aborted).toBe(true);
+    });
+
     it('propagates the error when the Translator cannot be created', async () => {
       const { createFn } = installFakeTranslator();
       createFn.mockRejectedValue(new Error('download failed'));

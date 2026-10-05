@@ -119,13 +119,16 @@ export class UiTextTranslationService {
     }
     const generation = ++this._generation;
     this._inFlightTarget = target;
-    this._operation = this.runActivation(target, generation).finally(() => {
-      if (this._inFlightTarget === target) {
+    // Identity (not target) decides ownership: a cancelled operation that
+    // settles late must not clear a newer one started for the SAME target.
+    const operation: Promise<void> = this.runActivation(target, generation).finally(() => {
+      if (this._operation === operation) {
         this._operation = null;
         this._inFlightTarget = null;
       }
     });
-    return this._operation;
+    this._operation = operation;
+    return operation;
   }
 
   /**
@@ -230,7 +233,7 @@ export class UiTextTranslationService {
 
     try {
       await this.doActivate(target, generation);
-    } catch {
+    } catch (error) {
       if (!this.isCurrentGeneration(generation)) {
         return; // superseded — the newer operation owns the visible state
       }
@@ -239,7 +242,10 @@ export class UiTextTranslationService {
       this._progress.set(null);
       this.engine.destroy();
       this.restoreNativeLanguageDisplay();
-      this.telemetry.track('ui_translation_engine_failed', { targetLanguage: target });
+      this.telemetry.track('ui_translation_engine_failed', {
+        targetLanguage: target,
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      });
     }
   }
 
@@ -329,8 +335,13 @@ export class UiTextTranslationService {
     allowedKeys: ReadonlySet<UiTextKey>,
   ): Promise<ReadonlyArray<UiTextEntry>> {
     const pair = { sourceLanguage, targetLanguage };
-    await this.engine.prepare(pair);
+    await this.engine.prepare(pair, (loaded, total) => {
+      if (this.isCurrentGeneration(generation)) {
+        this._progress.set({ done: loaded, total });
+      }
+    });
     if (!this.isCurrentGeneration(generation)) return []; // cancelled while the language pack downloaded
+    this._progress.set({ done: 0, total: 0 }); // download finished — translation progress starts over
 
     const maskedEntries = entries.map(e => ({ key: e.key, text: maskPlaceholders(e.text) }));
 
@@ -378,10 +389,11 @@ export class UiTextTranslationService {
   /** Races `operation` against `TRANSLATION_BUDGET_MS` (ES-05) — rejects without cancelling the underlying work; generation guards make any late result a no-op. */
   private withBudget<T>(operation: Promise<T>): Promise<T> {
     return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(
-        () => reject(new Error('ui-translation: activation exceeded TRANSLATION_BUDGET_MS')),
-        TRANSLATION_BUDGET_MS,
-      );
+      const timer = setTimeout(() => {
+        const error = new Error('ui-translation: translation exceeded TRANSLATION_BUDGET_MS');
+        error.name = 'TranslationBudgetExceededError';
+        reject(error);
+      }, TRANSLATION_BUDGET_MS);
       operation.then(
         value => { clearTimeout(timer); resolve(value); },
         err => { clearTimeout(timer); reject(err); },

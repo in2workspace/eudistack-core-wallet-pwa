@@ -21,6 +21,9 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
   /** Memoized `Translator` instance promise per `source:target` pair (`??=`, same idiom as `WalletDiscoveryService`). */
   private readonly _translatorFor = new Map<string, Promise<TranslatorInstance>>();
 
+  /** Aborts the pending `Translator.create` (language-pack download) of each pair on `destroy()`. */
+  private readonly _abortFor = new Map<string, AbortController>();
+
   isSupported(): boolean {
     return typeof Translator !== 'undefined' && 'availability' in Translator;
   }
@@ -41,8 +44,8 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
     }
   }
 
-  async prepare(pair: LanguagePair): Promise<void> {
-    await this.translatorFor(pair);
+  async prepare(pair: LanguagePair, onDownloadProgress?: (loaded: number, total: number) => void): Promise<void> {
+    await this.translatorFor(pair, onDownloadProgress);
   }
 
   async translateEntries(
@@ -96,6 +99,10 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
   }
 
   destroy(): void {
+    for (const controller of this._abortFor.values()) {
+      controller.abort();
+    }
+    this._abortFor.clear();
     for (const translatorPromise of this._translatorFor.values()) {
       translatorPromise.then(translator => translator.destroy()).catch(() => {
         // Creation never resolved — nothing to release.
@@ -104,29 +111,33 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
     this._translatorFor.clear();
   }
 
-  private translatorFor(pair: LanguagePair): Promise<TranslatorInstance> {
+  private translatorFor(
+    pair: LanguagePair,
+    onDownloadProgress?: (loaded: number, total: number) => void,
+  ): Promise<TranslatorInstance> {
     const cacheKey = `${pair.sourceLanguage}:${pair.targetLanguage}`;
     let memoized = this._translatorFor.get(cacheKey);
     if (!memoized) {
-      memoized = this.createTranslator(pair);
+      const controller = new AbortController();
+      this._abortFor.set(cacheKey, controller);
+      memoized = this.createTranslator(pair, controller.signal, onDownloadProgress);
       this._translatorFor.set(cacheKey, memoized);
     }
     return memoized;
   }
 
-  private createTranslator(pair: LanguagePair): Promise<TranslatorInstance> {
+  private createTranslator(
+    pair: LanguagePair,
+    signal: AbortSignal,
+    onDownloadProgress?: (loaded: number, total: number) => void,
+  ): Promise<TranslatorInstance> {
     return Translator.create({
       sourceLanguage: pair.sourceLanguage,
       targetLanguage: pair.targetLanguage,
-      // Download progress (language-pack fetch on first use, AC-11) surfaces
-      // through the same telemetry channel as engine failures — the
-      // orchestrator's own onProgress (per-batch, translate-time) is reported
-      // separately in translateEntries() above.
+      signal,
       monitor(monitor) {
-        monitor.addEventListener('downloadprogress', () => {
-          // Intentionally no-op beyond the engine's own progress event —
-          // UiTextTranslationService (task 15) reports progress from the
-          // batch loop, which already spans the slower first-activation path.
+        monitor.addEventListener('downloadprogress', event => {
+          onDownloadProgress?.(event.loaded, event.total);
         });
       },
     });

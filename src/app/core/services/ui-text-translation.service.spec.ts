@@ -311,8 +311,39 @@ describe('UiTextTranslationService', () => {
     it('prepares the engine for the native/target pair before translating', async () => {
       await service.activate('el');
 
-      expect(engine.prepare).toHaveBeenCalledWith({ sourceLanguage: 'es', targetLanguage: 'el' });
+      expect(engine.prepare).toHaveBeenCalledWith({ sourceLanguage: 'es', targetLanguage: 'el' }, expect.any(Function));
       expect(engine.prepare.mock.invocationCallOrder[0]).toBeLessThan(engine.translateEntries.mock.invocationCallOrder[0]);
+    });
+
+    it('reflects the language-pack download progress while preparing', async () => {
+      let reportProgress!: (loaded: number, total: number) => void;
+      let finishDownload!: () => void;
+      engine.prepare.mockImplementation((_pair, onProgress) => new Promise<void>(resolve => {
+        reportProgress = onProgress!;
+        finishDownload = resolve;
+      }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      reportProgress(0.5, 1);
+      const duringDownload = service.progress();
+      finishDownload();
+      await activation;
+
+      expect(duringDownload).toEqual({ done: 0.5, total: 1 });
+      expect(service.progress()).toBeNull();
+    });
+
+    it('ignores download progress reported after the activation was cancelled', async () => {
+      let reportProgress!: (loaded: number, total: number) => void;
+      engine.prepare.mockImplementation((_pair, onProgress) => new Promise<void>(() => { reportProgress = onProgress!; }));
+
+      service.activate('el');
+      await flushMicrotasks();
+      service.deactivate();
+      reportProgress(0.7, 1);
+
+      expect(service.progress()).toBeNull();
     });
 
     it('does not prepare the engine on a cache hit', async () => {
@@ -363,6 +394,23 @@ describe('UiTextTranslationService', () => {
       expect(engine.translateEntries).not.toHaveBeenCalled();
       expect(service.status()).toBe('idle');
       expect(service.targetLanguage()).toBeNull();
+      expect(engine.destroy).toHaveBeenCalled();
+      expect(prefs.setUiTranslation).toHaveBeenLastCalledWith({ enabled: false, targetLanguage: 'el' });
+      expect(prefs.setUiTranslation).not.toHaveBeenCalledWith({ enabled: true, targetLanguage: 'el' });
+    });
+
+    it('stays idle and records no failure when the pending download is aborted by the cancellation', async () => {
+      engine.prepare.mockImplementation(() => new Promise<void>((_resolve, reject) => {
+        engine.destroy.mockImplementationOnce(() => reject(new DOMException('aborted', 'AbortError')));
+      }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      service.deactivate();
+      await activation;
+
+      expect(service.status()).toBe('idle');
+      expect(telemetry.track).not.toHaveBeenCalledWith('ui_translation_engine_failed', expect.anything());
     });
   });
 
@@ -384,7 +432,69 @@ describe('UiTextTranslationService', () => {
     });
   });
 
+  describe('activate — failure telemetry (root-cause diagnosis)', () => {
+    it('records only the error name when preparing the engine fails', async () => {
+      engine.prepare.mockRejectedValue(new DOMException('needs a user gesture', 'NotAllowedError'));
+
+      await service.activate('el');
+
+      expect(telemetry.track).toHaveBeenCalledWith('ui_translation_engine_failed', {
+        targetLanguage: 'el',
+        errorName: 'NotAllowedError',
+      });
+    });
+
+    it('records a dedicated error name when the translation exceeds TRANSLATION_BUDGET_MS', async () => {
+      jest.useFakeTimers();
+      engine.translateEntries.mockImplementation(() => new Promise(() => { /* never resolves */ }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      jest.advanceTimersByTime(20_000);
+      await activation;
+
+      expect(telemetry.track).toHaveBeenCalledWith('ui_translation_engine_failed', {
+        targetLanguage: 'el',
+        errorName: 'TranslationBudgetExceededError',
+      });
+    });
+
+    it('records a generic name when the failure is not an Error instance', async () => {
+      engine.prepare.mockRejectedValue('boom');
+
+      await service.activate('el');
+
+      expect(telemetry.track).toHaveBeenCalledWith('ui_translation_engine_failed', {
+        targetLanguage: 'el',
+        errorName: 'UnknownError',
+      });
+    });
+  });
+
   describe('activate — concurrency (EC-07, ES-03)', () => {
+    it('keeps coalescing the same target after a cancelled operation settles late', async () => {
+      let finishFirstDownload!: () => void;
+      engine.prepare.mockImplementationOnce(() => new Promise<void>(resolve => { finishFirstDownload = resolve; }));
+
+      const cancelled = service.activate('el');
+      await flushMicrotasks();
+      service.deactivate();
+      let finishSecondDownload!: () => void;
+      engine.prepare.mockImplementationOnce(() => new Promise<void>(resolve => { finishSecondDownload = resolve; }));
+      const reactivated = service.activate('el');
+      await flushMicrotasks();
+      finishFirstDownload(); // the cancelled operation settles while the new one is still preparing
+      await cancelled;
+      const coalesced = service.activate('el');
+      finishSecondDownload();
+      await Promise.all([reactivated, coalesced]);
+
+      expect(coalesced).toBe(reactivated);
+      expect(engine.prepare).toHaveBeenCalledTimes(2);
+      expect(engine.translateEntries).toHaveBeenCalledTimes(1);
+      expect(service.status()).toBe('active');
+    });
+
     it('a second call for the SAME target while preparing reuses the in-flight operation', async () => {
       // Block on a never-resolving engine call, activate twice with the same
       // target, and assert the engine is invoked only once — the second call

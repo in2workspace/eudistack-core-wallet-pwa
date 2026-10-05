@@ -339,14 +339,51 @@ describe('SettingsPage', () => {
       uiTranslation.availableTargets.set(['fr']);
       uiTranslation.status.set('idle');
       fixture.detectChanges();
-      const idleButtons = fixture.nativeElement.querySelectorAll('.translation-state--progress ion-button');
+      const idleButtons = fixture.nativeElement.querySelectorAll('.translation-cancel');
 
       uiTranslation.status.set('preparing');
       fixture.detectChanges();
-      const preparingButtons = fixture.nativeElement.querySelectorAll('.translation-state--progress ion-button');
+      const preparingButtons = fixture.nativeElement.querySelectorAll('.translation-cancel');
 
       expect(idleButtons).toHaveLength(0);
       expect(preparingButtons).toHaveLength(1);
+    });
+
+    it('cancels the translation when the cancel button is clicked', () => {
+      component.togglePanel('language');
+      uiTranslation.availableTargets.set(['fr']);
+      uiTranslation.status.set('preparing');
+      fixture.detectChanges();
+
+      fixture.nativeElement.querySelector('.translation-cancel').click();
+
+      expect(uiTranslation.deactivate).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the cancel button outside the live status region', () => {
+      component.togglePanel('language');
+      uiTranslation.availableTargets.set(['fr']);
+      uiTranslation.status.set('preparing');
+      fixture.detectChanges();
+
+      const insideOutput = fixture.nativeElement.querySelector('output .translation-cancel');
+
+      expect(insideOutput).toBeNull();
+    });
+
+    it.each([
+      [{ done: 0, total: 0 }, 'indeterminate'],
+      [{ done: 0.5, total: 1 }, 'determinate'],
+    ])('renders the progress bar for %j as %s', (progress, expectedType) => {
+      component.togglePanel('language');
+      uiTranslation.availableTargets.set(['fr']);
+      uiTranslation.status.set('preparing');
+      uiTranslation.progress.set(progress);
+      fixture.detectChanges();
+
+      const bar = fixture.nativeElement.querySelector('ion-progress-bar');
+
+      expect(bar.type).toBe(expectedType);
     });
   });
 

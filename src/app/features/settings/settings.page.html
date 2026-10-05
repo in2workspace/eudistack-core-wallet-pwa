@@ -93,12 +93,15 @@
                     <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
                     <span>{{ "ui-translation.state-preparing" | translate }}</span>
                     @if (translationProgress(); as progress) {
-                      <ion-progress-bar [value]="progress.total > 0 ? progress.done / progress.total : 0"></ion-progress-bar>
+                      <ion-progress-bar
+                        [type]="progress.total > 0 ? 'determinate' : 'indeterminate'"
+                        [value]="progress.total > 0 ? progress.done / progress.total : 0"
+                      ></ion-progress-bar>
                     }
-                    <ion-button fill="outline" size="small" (click)="cancelTranslation()">
-                      {{ "ui-translation.cancel" | translate }}
-                    </ion-button>
                   </output>
+                  <ion-button class="translation-cancel" fill="outline" size="small" (click)="cancelTranslation()">
+                    {{ "ui-translation.cancel" | translate }}
+                  </ion-button>
                 }
 
                 @if (translationStatus() === 'error') {

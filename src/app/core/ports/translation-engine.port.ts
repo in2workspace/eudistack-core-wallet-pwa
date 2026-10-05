@@ -48,9 +48,11 @@ export interface TranslationEnginePort {
    * language pack on first use. Deliberately has no timeout of its own: a
    * first-time download over a slow connection can take far longer than the
    * translation itself, so the caller bounds only the translation step and
-   * lets the user cancel this one.
+   * lets the user cancel this one (`destroy()` aborts a pending download).
+   * `onDownloadProgress` receives the language-pack download progress; its
+   * `loaded/total` ratio is in the 0..1 range.
    */
-  prepare(pair: LanguagePair): Promise<void>;
+  prepare(pair: LanguagePair, onDownloadProgress?: (loaded: number, total: number) => void): Promise<void>;
 
   /**
    * Translates `entries` for `pair`, invoking `onProgress` as batches
@@ -68,7 +70,7 @@ export interface TranslationEnginePort {
     onProgress?: (done: number, total: number) => void,
   ): Promise<ReadonlyArray<UiTextEntry>>;
 
-  /** Releases the underlying engine resource (ES-04/ES-05, table row 6 of §3.4.2). */
+  /** Releases the underlying engine resource and aborts any pending download (ES-04/ES-05, table row 6 of §3.4.2). */
   destroy(): void;
 }
 
