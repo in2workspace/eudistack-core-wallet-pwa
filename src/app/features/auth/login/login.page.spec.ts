@@ -1169,14 +1169,14 @@ describe('LoginPage (server mode)', () => {
       expect(mockPasskeyApi.registerPasskey).not.toHaveBeenCalled();
     });
 
-    it('renders the cancel notice as a status (not an alert)', async () => {
+    it('renders the cancel notice in an <output> live region (not an alert)', async () => {
       loginRejectsWith(new PasskeyError('passkey_cancelled', 'get'));
       await component.loginBrowserMode();
 
       fixture.detectChanges();
       const host = fixture.nativeElement as HTMLElement;
 
-      expect(host.querySelector('.error-box--notice[role="status"]')?.textContent)
+      expect(host.querySelector('output.error-box--notice')?.textContent)
         .toContain('auth.errors.passkey-login-cancelled');
       expect(host.querySelector('[role="alert"]')).toBeNull();
     });
