@@ -411,7 +411,9 @@
       "update": "Actualizar",
       "delete": "Eliminar",
       "attest": "Acreditar",
-      "upload": "Subir"
+      "upload": "Subir",
+      "system": "Sistema",
+      "administration": "Administración"
     },
     "issued-by": "Emitida por"
   },

@@ -478,7 +478,9 @@
       "update": "Actualitzar",
       "delete": "Eliminar",
       "attest": "Acreditar",
-      "upload": "Pujar"
+      "upload": "Pujar",
+      "system": "Sistema",
+      "administration": "Administració"
     },
     "issued-by": "Emesa per"
   },
