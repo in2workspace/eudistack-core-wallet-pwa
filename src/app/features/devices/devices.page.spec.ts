@@ -746,6 +746,21 @@ describe('EUD-144 T10: DevicesPage > revoke device — error/edge scenarios', ()
     expect(mockAuthService.forceLogout).not.toHaveBeenCalled();
   });
 
+  it('ES-04: should show a generic error alert when the backend responds 5xx', async () => {
+    mockPasskeyApi.deletePasskey.mockReturnValue(throwError(() => ({ status: 500 })));
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
+    await Promise.resolve();
+
+    expect(mockAlertController.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        header: 'devices.error-header',
+        message: 'devices.delete-error-generic',
+      })
+    );
+  });
+
   // --- ES-05 — timeout --------------------------------------------------
 
   it('ES-05: should not remove the device from the list when the request times out', async () => {
@@ -939,11 +954,54 @@ describe('DevicesPage > revokeSessions confirmation dialog', () => {
       pressAlertButton(opts, 'destructive');
       return Promise.resolve({ present: jest.fn() });
     });
+    // First call is the initial load (ngOnInit); the second is the background
+    // resync that follows the optimistic patch — both must agree it's revoked.
+    mockPasskeyApi.listPasskeys
+      .mockReturnValueOnce(of([REVOKABLE_PASSKEY]))
+      .mockReturnValueOnce(of([{ ...REVOKABLE_PASSKEY, activeSessions: 0 }]));
     const fixture = await createModule('server');
 
     await fixture.componentInstance.revokeSessions(REVOKABLE_PASSKEY);
 
     expect(fixture.componentInstance.passkeys()[0].activeSessions).toBe(0);
+  });
+
+  it('resyncs the list with the server in the background after a successful revoke, without the loading spinner', async () => {
+    mockAlertController.create.mockImplementation((opts) => {
+      pressAlertButton(opts, 'destructive');
+      return Promise.resolve({ present: jest.fn() });
+    });
+    // First call is the initial load (ngOnInit); the second is the post-revoke resync.
+    mockPasskeyApi.listPasskeys
+      .mockReturnValueOnce(of([REVOKABLE_PASSKEY]))
+      .mockReturnValueOnce(of([{ ...REVOKABLE_PASSKEY, activeSessions: 0, lastUsedAt: '2024-06-02T09:00:00Z' }]));
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.revokeSessions(REVOKABLE_PASSKEY);
+
+    expect(mockPasskeyApi.listPasskeys).toHaveBeenCalledTimes(2);
+    expect(fixture.componentInstance.loading()).toBe(false);
+    expect(fixture.componentInstance.passkeys()[0].lastUsedAt).toBe('2024-06-02T09:00:00Z');
+  });
+
+  it('shows a generic error and leaves the device marked active when revokeSessions fails', async () => {
+    mockAlertController.create.mockImplementation((opts) => {
+      pressAlertButton(opts, 'destructive');
+      return Promise.resolve({ present: jest.fn() });
+    });
+    mockPasskeyApi.revokeSessions.mockReturnValue(throwError(() => ({ status: 500 })));
+    const fixture = await createModule('server');
+
+    await fixture.componentInstance.revokeSessions(REVOKABLE_PASSKEY);
+    await Promise.resolve();
+
+    expect(mockAlertController.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        header: 'devices.revoke-error-header',
+        message: 'devices.revoke-error-generic',
+      })
+    );
+    expect(fixture.componentInstance.passkeys()[0].activeSessions).toBe(1);
   });
 });
 

@@ -174,7 +174,10 @@ export class DevicesPage implements OnInit {
                     buttons: [this.translate.instant('devices.ok')],
                   });
                   await errorAlert.present();
+                  return;
                 }
+                console.error('Failed to delete passkey:', err);
+                await this.showGenericError('devices.error-header', 'devices.delete-error-generic');
               }
             });
           },
@@ -202,14 +205,43 @@ export class DevicesPage implements OnInit {
                 this.passkeys.update(list =>
                   list.map(p => p.id === passkey.id ? { ...p, activeSessions: 0 } : p)
                 );
+                // The optimistic patch above only touches activeSessions; resync the
+                // rest of the row (e.g. lastUsedAt) with the server in the background,
+                // without the full-page spinner a loadPasskeys() would otherwise show.
+                this.refreshPasskeysSilently();
               },
-              error: (err) => console.error('Failed to revoke sessions:', err)
+              error: async (err) => {
+                console.error('Failed to revoke sessions:', err);
+                await this.showGenericError('devices.revoke-error-header', 'devices.revoke-error-generic');
+              }
             });
           },
         },
       ],
     });
     await alert.present();
+  }
+
+  /** Best-effort resync with the server after a mutation already applied an optimistic
+   * local update — errors are swallowed since that local update already reflects what
+   * the user asked for; this is purely to catch up on fields it didn't touch. */
+  private refreshPasskeysSilently(): void {
+    this.passkeyApi.listPasskeys().pipe(
+      timeout(PASSKEY_LIST_TIMEOUT_MS),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (passkeys) => this.passkeys.set(passkeys),
+      error: () => undefined,
+    });
+  }
+
+  private async showGenericError(headerKey: string, messageKey: string): Promise<void> {
+    const errorAlert = await this.alertController.create({
+      header: this.translate.instant(headerKey),
+      message: this.translate.instant(messageKey),
+      buttons: [this.translate.instant('devices.ok')],
+    });
+    await errorAlert.present();
   }
 
   /**
