@@ -33,6 +33,15 @@ describe('http-error-message helper', () => {
       expect(isCredentialRevokedResponse(new HttpErrorResponse({ status: 403, error: JSON.parse(body) }))).toBe(true);
     });
 
+    it('ignores a 403 that only mentions revocation in its detail', () => {
+      const other = '{"type":"wallet_attestation_revoked","detail":"The credential has been revoked"}';
+      expect(isCredentialRevokedResponse(new HttpErrorResponse({ status: 403, error: other }))).toBe(false);
+    });
+
+    it('ignores a non-JSON 403 body', () => {
+      expect(isCredentialRevokedResponse(new HttpErrorResponse({ status: 403, error: 'credential_revoked' }))).toBe(false);
+    });
+
     it('ignores other 403 errors', () => {
       expect(isCredentialRevokedResponse(new HttpErrorResponse({ status: 403, error: '{"type":"issuer_not_trusted"}' }))).toBe(false);
     });
