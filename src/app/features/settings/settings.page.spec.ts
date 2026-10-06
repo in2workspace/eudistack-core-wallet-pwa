@@ -95,6 +95,32 @@ describe('SettingsPage', () => {
     expect(component.isExpanded('language')).toBe(false);
   });
 
+  it('does not re-run the camera flow when devices are already listed with labels', () => {
+    camera['loadCamerasForSelector'] = jest.fn();
+    component.togglePanel('camera');
+
+    expect(camera['loadCamerasForSelector']).not.toHaveBeenCalled();
+  });
+
+  it('enumerates cameras when the camera panel opens with no devices listed', () => {
+    camera['loadCamerasForSelector'] = jest.fn().mockResolvedValue({ deviceId: 'cam-1' });
+    (camera['availableDevices$'] as ReturnType<typeof signal<unknown[]>>).set([]);
+
+    component.togglePanel('camera');
+
+    expect(camera['loadCamerasForSelector']).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not run the camera flow when the camera panel is collapsed', () => {
+    camera['loadCamerasForSelector'] = jest.fn();
+    (camera['availableDevices$'] as ReturnType<typeof signal<unknown[]>>).set([]);
+
+    component.togglePanel('camera');
+    component.togglePanel('camera');
+
+    expect(camera['loadCamerasForSelector']).toHaveBeenCalledTimes(1);
+  });
+
   it('persists the language and applies it on change', () => {
     component.languageChange('en');
 

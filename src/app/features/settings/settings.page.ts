@@ -79,6 +79,19 @@ export class SettingsPage implements OnInit {
 
   public togglePanel(panel: SettingsPanelId): void {
     this.expandedPanel.set(this.isExpanded(panel) ? null : panel);
+    if (panel === 'camera' && this.isExpanded('camera')) {
+      void this.loadCamerasIfNeeded();
+    }
+  }
+
+  // Before camera permission is granted the list is empty or has blank labels;
+  // the service enumerates them, asking for the permission only if it was not granted yet.
+  private async loadCamerasIfNeeded(): Promise<void> {
+    const devices = this.availableDevices$();
+    const hasUsableList = devices.length > 0 && devices.every((d) => !!d.label);
+    if (hasUsableList) return;
+
+    await this.cameraService.loadCamerasForSelector();
   }
 
   public languageChange(code: string): void {
