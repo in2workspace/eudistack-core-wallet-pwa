@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **The activity history CSV declared a "Details" column that was always empty**: the exported file had five columns in the header but the fifth never carried data, because no activity flow fills `details`. The export now has four columns (type, credential, counterparty and date), the same in the header and in every row.
+  - Removed the now unused `activity.csv-header-details` i18n key (es/ca/en).
+  - The `details` field itself is unchanged in the data model and in the API.
+  - Tests: updated `activity-export.service.spec.ts` and `activity.page.spec.ts`, with a new check that the header and every row have the same number of columns.
 - **Credential powers were shown untranslated, ignoring the wallet language**: the function and actions of each power (e.g. `Onboarding`, `Execute`) were rendered exactly as issued, in the credential detail and in the acceptance modal, even though the `vc-fields.power.*` translations already existed in English, Spanish and Catalan. `CredentialDisplayService` now translates them into the language selected in the wallet.
   - Functions or actions without a translation, and the power domain, are shown as issued by the issuer.
   - Power actions are now kept as a list instead of being split from a comma-joined string, so a translation containing a comma is not broken into several actions.
