@@ -93,6 +93,50 @@ describe('PrfClientService', () => {
     await expect(service.evaluateForWrap(PRF_SALT)).rejects.toBeInstanceOf(AppError);
   });
 
+  // ------------------------------------------------------------------ same WebAuthn entry point as login / PRF signing
+
+  it('classifies a cancelled assertion as passkey_cancelled (not a failure)', async () => {
+    mockCredentialsGet.mockRejectedValue(new DOMException('cancelled', 'NotAllowedError'));
+
+    await expect(service.evaluateForWrap(PRF_SALT)).rejects.toMatchObject({ code: 'passkey_cancelled' });
+  });
+
+  it('classifies SecurityError as passkey_security', async () => {
+    mockCredentialsGet.mockRejectedValue(new DOMException('rp id', 'SecurityError'));
+
+    await expect(service.evaluateForWrap(PRF_SALT)).rejects.toMatchObject({ code: 'passkey_security' });
+  });
+
+  it('reports a missing passkey as passkey_not_found', async () => {
+    mockGetCredentialId.mockReturnValue(null);
+
+    await expect(service.evaluateForWrap(PRF_SALT)).rejects.toMatchObject({ code: 'passkey_not_found' });
+  });
+
+  it('reports absent PRF output as prf_unavailable with a translated message', async () => {
+    mockCredentialsGet.mockResolvedValue(buildAssertion(null));
+
+    await expect(service.evaluateForWrap(PRF_SALT)).rejects.toMatchObject({
+      code: 'prf_unavailable',
+      translationKey: 'errors.prf-unsupported',
+    });
+  });
+
+  it('only uses translation keys that exist (no raw hybrid.error.* keys)', async () => {
+    mockCredentialsGet.mockRejectedValue(new Error('unexpected'));
+
+    await expect(service.evaluateForWrap(PRF_SALT)).rejects.toMatchObject({ translationKey: 'auth.errors.passkey-failed' });
+  });
+
+  it('decodes the base64url credential id for allowCredentials', async () => {
+    mockCredentialsGet.mockResolvedValue(buildAssertion(PRF_OUTPUT));
+
+    await service.evaluateForWrap(PRF_SALT);
+
+    const id = mockCredentialsGet.mock.calls[0][0].publicKey.allowCredentials[0].id as Uint8Array;
+    expect(new TextDecoder().decode(id)).toBe('test-credential-id');
+  });
+
   // ------------------------------------------------------------------ US-07: detectedPrf
   it('returns enabled when PRF output exists', async () => {
     mockCredentialsGet.mockResolvedValue(buildAssertion(PRF_OUTPUT));

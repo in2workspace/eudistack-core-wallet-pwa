@@ -285,7 +285,8 @@ export class Oid4vpEngineService {
 
   private errorToTranslationKey(e: unknown): string | null {
     if (e instanceof AppError) {
-      if (e.code === 'user_cancelled') return null;
+      // The user dismissed the prompt on purpose: nothing went wrong, nothing to alert.
+      if (e.code === 'user_cancelled' || e.code === 'passkey_cancelled') return null;
       return e.translationKey ?? 'errors.default';
     }
     return 'errors.default';

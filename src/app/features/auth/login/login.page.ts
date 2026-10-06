@@ -19,6 +19,7 @@ import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
+import { PasskeyError } from 'src/app/core/models/error/PasskeyError';
 
 const RESEND_COOLDOWN_SECONDS = 180;
 
@@ -57,6 +58,8 @@ export class LoginPage implements OnDestroy {
   private readonly theme = toSignal(this.themeService.getTheme());
   loading = false;
   errorMessage = '';
+  /** Neutral notice for expected outcomes (e.g. the user dismissed the passkey prompt). */
+  noticeMessage = '';
   readonly showInstallScreen = signal(!this.pwaInstall.isStandalone);
   showHelpModal = false;
   showMacStepsModal = false;
@@ -183,7 +186,7 @@ export class LoginPage implements OnDestroy {
 
   ionViewWillEnter(): void {
     this.loading = false;
-    this.errorMessage = '';
+    this.clearMessages();
     this.forceReady.set(false);
     this.startInitWatchdog();
 
@@ -290,14 +293,14 @@ export class LoginPage implements OnDestroy {
 
   async loginBrowserMode(): Promise<void> {
     this.loading = true;
-    this.errorMessage = '';
+    this.clearMessages();
 
     try {
       await this.authenticateLocally();
       (this.authService as LocalAuthService).markAuthenticated();
       this.navigateHome();
-    } catch (err: any) {
-      this.errorMessage = err?.message || 'Login failed';
+    } catch (err: unknown) {
+      this.showPasskeyFailure(err);
     } finally {
       this.loading = false;
     }
@@ -307,12 +310,12 @@ export class LoginPage implements OnDestroy {
 
   async createWalletBrowserMode(): Promise<void> {
     this.loading = true;
-    this.errorMessage = '';
+    this.clearMessages();
     try {
       await (this.authService as LocalAuthService).setupPasskey();
       this.navigateHome();
-    } catch (err: any) {
-      this.errorMessage = err?.message || 'Failed to create passkey';
+    } catch (err: unknown) {
+      this.showPasskeyFailure(err);
     } finally {
       this.loading = false;
     }
@@ -329,7 +332,7 @@ export class LoginPage implements OnDestroy {
 
   goBackToEmail(): void {
     this.step.set('email');
-    this.errorMessage = '';
+    this.clearMessages();
     this.otpValue = '';
     this.codeExpired.set(false);
     this.codeExhausted.set(false);
@@ -340,7 +343,7 @@ export class LoginPage implements OnDestroy {
     if (!this.email || this.loading || this.resendSecondsLeft() > 0) return;
 
     this.loading = true;
-    this.errorMessage = '';
+    this.clearMessages();
 
     (this.authService as RemoteAuthService).register(this.email, 'login').pipe(
       takeUntilDestroyed(this.destroyRef)
@@ -361,7 +364,7 @@ export class LoginPage implements OnDestroy {
     if (this.loading || this.resendSecondsLeft() > 0) return;
 
     this.loading = true;
-    this.errorMessage = '';
+    this.clearMessages();
 
     (this.authService as RemoteAuthService).register(this.email, 'login').pipe(
       takeUntilDestroyed(this.destroyRef)
@@ -405,7 +408,7 @@ export class LoginPage implements OnDestroy {
     if (this.otpValue.length < 6 || this.loading || this.codeExhausted() || this.verifyRateLimited()) return;
 
     this.loading = true;
-    this.errorMessage = '';
+    this.clearMessages();
 
     (this.authService as RemoteAuthService).verifyEmail(this.email, this.otpValue).pipe(
       takeUntilDestroyed(this.destroyRef)
@@ -521,12 +524,12 @@ export class LoginPage implements OnDestroy {
 
   async verifyPasskey(): Promise<void> {
     this.loading = true;
-    this.errorMessage = '';
+    this.clearMessages();
 
     try {
       await (this.authService as RemoteAuthService).unlockWithPasskey();
-    } catch (err: any) {
-      this.errorMessage = err?.message || 'Passkey verification failed';
+    } catch (err: unknown) {
+      this.showPasskeyFailure(err);
       this.loading = false;
       return;
     }
@@ -557,14 +560,14 @@ export class LoginPage implements OnDestroy {
 
   async createPasskeyForDevice(): Promise<void> {
     this.loading = true;
-    this.errorMessage = '';
+    this.clearMessages();
 
     let credentialId: string | null;
     try {
       await this.prfService.createPasskey(this.email || 'Wallet User');
       credentialId = this.passkeyStore.getCredentialId();
-    } catch (err: any) {
-      this.errorMessage = err?.message || 'Failed to create passkey';
+    } catch (err: unknown) {
+      this.showPasskeyFailure(err);
       this.loading = false;
       return;
     }
@@ -620,6 +623,34 @@ export class LoginPage implements OnDestroy {
     }
     this.resendSecondsLeft.set(0);
     this.verifyRateLimited.set(false);
+  }
+
+  private clearMessages(): void {
+    this.errorMessage = '';
+    this.noticeMessage = '';
+  }
+
+  /**
+   * Cancel/timeout of the OS passkey prompt is a normal user outcome: show a
+   * neutral notice (the button stays enabled to retry) and do not log it as an
+   * error. Anything else is a real fault: log it and show a translated message —
+   * never the raw DOMException text, which is technical and English-only.
+   */
+  private showPasskeyFailure(err: unknown): void {
+    if (err instanceof PasskeyError && err.isUserAbort) {
+      // PasskeyError's cancel text is context-neutral; here we know it was a sign-in.
+      const translationKey = err.code === 'passkey_cancelled' && err.ceremony === 'get'
+        ? 'auth.errors.passkey-login-cancelled'
+        : err.translationKey ?? 'auth.errors.passkey-failed';
+      this.noticeMessage = this.translate.instant(translationKey);
+      return;
+    }
+
+    console.error('[LoginPage] Passkey ceremony failed:', err);
+    const translationKey = err instanceof PasskeyError && err.translationKey
+      ? err.translationKey
+      : 'auth.errors.passkey-failed';
+    this.errorMessage = this.translate.instant(translationKey);
   }
 
   private async authenticateLocally(): Promise<void> {

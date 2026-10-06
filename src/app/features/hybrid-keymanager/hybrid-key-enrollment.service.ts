@@ -27,7 +27,7 @@ export interface HybridEnrollmentResult {
  * detectPrfSupport()` (a separate dummy-salt probe) is intentionally not used
  * here — running it before `evaluateForWrap()` forced two WebAuthn prompts per
  * credential for no AC-mandated reason; `evaluateForWrap()`'s own
- * `hybrid.error.prfUnavailable` failure is an equally valid "unsupported"
+ * `prf_unavailable` failure is an equally valid "unsupported"
  * signal and still fires strictly before any key material exists.
  *
  * Spec: EUDISTACK-534 (YARD-126) AC-01, AC-02, AC-03, AC-08, ES-04, ES-05.
@@ -104,7 +104,7 @@ export class HybridKeyEnrollmentService {
 
   /**
    * Runs the real PRF ceremony. If the authenticator confirms it has no PRF
-   * support (`hybrid.error.prfUnavailable`), records the block event and
+   * support (`prf_unavailable`), records the block event and
    * surfaces the same `errors.prf-unsupported` error the old two-ceremony gate
    * produced. Other failures (cancelled assertion, no registered passkey) are
    * not confirmed incapability — they propagate as-is so the holder can retry.
@@ -113,7 +113,7 @@ export class HybridKeyEnrollmentService {
     try {
       return await this.prfClientService.evaluateForWrap(prfSalt);
     } catch (err) {
-      if (err instanceof AppError && err.translationKey === 'hybrid.error.prfUnavailable') {
+      if (err instanceof AppError && err.code === 'prf_unavailable') {
         try {
           await this.api.block({ credential_id: credentialId, correlation_id: crypto.randomUUID() });
         } catch {
