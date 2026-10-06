@@ -167,9 +167,11 @@
       "code-validity": "The code is valid for a limited time.",
       "code-label": "Code",
       "resend-in": "Didn't receive the code? Resend available in {{time}}",
+      "new-code-in": "You can request a new code in {{time}}",
       "resend-prompt": "Didn't receive the code?",
       "resend-action": "Resend it",
       "code-expired-prompt": "Has your code expired?",
+      "code-exhausted-prompt": "Need a new code?",
       "continue": "Continue",
       "back": "Back"
     },
@@ -197,6 +199,7 @@
     "errors": {
       "too-many-attempts": "Too many attempts. Please try again later.",
       "too-many-attempts-otp": "Too many incorrect attempts. Please request a new code.",
+      "too-many-attempts-wait": "You have exceeded the allowed number of attempts. Wait for the countdown to end before requesting a new code.",
       "otp-expired": "The code has expired. Tap Resend to get a new one at your email.",
       "otp-invalid": "The code is incorrect. Check it and try again.",
       "passkey-register-failed": "Failed to register this device. Please try again.",

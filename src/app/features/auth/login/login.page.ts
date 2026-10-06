@@ -89,6 +89,12 @@ export class LoginPage implements OnDestroy {
   // Set when EBW answers verify-email with `expired_code` (#1061173): the code step
   // stays put and Resend is offered right away instead of sending the user back to email.
   readonly codeExpired = signal(false);
+  // Set when EBW answers verify-email with 429 `too_many_attempts` (W-17): this code has
+  // used up its attempts, so Continue stays disabled until a new one is requested.
+  readonly codeExhausted = signal(false);
+  // Set when verify-email is rate limited (429 with Retry-After, W-17): no code — not even
+  // a new one — can be checked until the countdown ends, so Continue and Resend both wait.
+  readonly verifyRateLimited = signal(false);
   private resendTimer: ReturnType<typeof setInterval> | null = null;
   private passkeyFromRefreshToken = false;
 
@@ -326,6 +332,7 @@ export class LoginPage implements OnDestroy {
     this.errorMessage = '';
     this.otpValue = '';
     this.codeExpired.set(false);
+    this.codeExhausted.set(false);
     this.stopResendCountdown();
   }
 
@@ -342,6 +349,7 @@ export class LoginPage implements OnDestroy {
         this.step.set('code');
         this.otpValue = '';
         this.codeExpired.set(false);
+        this.codeExhausted.set(false);
         this.loading = false;
         this.startResendCountdown();
       },
@@ -362,6 +370,7 @@ export class LoginPage implements OnDestroy {
         this.otpValue = '';
         this.otpInput?.reset();
         this.codeExpired.set(false);
+        this.codeExhausted.set(false);
         this.loading = false;
         this.startResendCountdown();
       },
@@ -393,7 +402,7 @@ export class LoginPage implements OnDestroy {
   }
 
   verifyCode(): void {
-    if (this.otpValue.length < 6 || this.loading) return;
+    if (this.otpValue.length < 6 || this.loading || this.codeExhausted() || this.verifyRateLimited()) return;
 
     this.loading = true;
     this.errorMessage = '';
@@ -411,9 +420,15 @@ export class LoginPage implements OnDestroy {
   }
 
   /**
-   * An expired code (401 `expired_code`) or an exhausted attempt budget (429) means the
-   * current OTP can never succeed, so any leftover resend cooldown is dropped and the user
-   * stays on the code step with the same email, one click away from a fresh code (#1061173).
+   * An expired code (401 `expired_code`) or an exhausted attempt budget (429
+   * `too_many_attempts`) means the current OTP can never succeed, so any leftover resend
+   * cooldown is dropped and the user stays on the code step with the same email, one click
+   * away from a fresh code (#1061173).
+   *
+   * Any other 429 is the per-email/IP rate limit (RateLimitWebFilter / EmailRateLimiter,
+   * ProblemDetail + Retry-After): a new code would be rejected too, so asking for one would
+   * contradict the disabled resend (W-17). The message asks the user to wait instead, and
+   * the resend countdown follows Retry-After.
    */
   private handleVerifyCodeError(err: any): void {
     const errorCode = err?.error?.error;
@@ -423,9 +438,16 @@ export class LoginPage implements OnDestroy {
       this.otpInput?.reset();
       this.stopResendCountdown();
       this.errorMessage = this.translate.instant('auth.errors.otp-expired');
-    } else if (err?.status === 429) {
+    } else if (err?.status === 429 && errorCode === 'too_many_attempts') {
+      this.codeExhausted.set(true);
+      this.otpValue = '';
+      this.otpInput?.reset();
       this.stopResendCountdown();
       this.errorMessage = this.translate.instant('auth.errors.too-many-attempts-otp');
+    } else if (err?.status === 429) {
+      this.startResendCountdown(this.parseRetryAfterSeconds(err));
+      this.verifyRateLimited.set(true);
+      this.errorMessage = this.translate.instant('auth.errors.too-many-attempts-wait');
     } else if (err?.status === 401 && errorCode === 'invalid_code') {
       this.errorMessage = this.translate.instant('auth.errors.otp-invalid');
     } else {
@@ -597,6 +619,7 @@ export class LoginPage implements OnDestroy {
       this.resendTimer = null;
     }
     this.resendSecondsLeft.set(0);
+    this.verifyRateLimited.set(false);
   }
 
   private async authenticateLocally(): Promise<void> {

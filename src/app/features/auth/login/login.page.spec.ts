@@ -1010,13 +1010,16 @@ describe('LoginPage (server mode)', () => {
     });
 
     it('covers verifyCode 429 and error detail branches', () => {
-      mockAuthService.verifyEmail.mockReturnValue(throwError(() => ({ status: 429 })));
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => ({ status: 429, error: { error: 'too_many_attempts' } })));
       component.email = 'user@example.com';
       component.otpValue = '123456';
       component.verifyCode();
       expect(component.errorMessage).toBe('auth.errors.too-many-attempts-otp');
 
       mockAuthService.verifyEmail.mockReturnValue(throwError(() => ({ status: 500, error: { detail: 'verify_failed_detail' } })));
+      // The exhausted code above keeps Continue disabled until a new code arrives.
+      component.codeExhausted.set(false);
+      component.otpValue = '123456';
       component.verifyCode();
       expect(component.errorMessage).toBe('verify_failed_detail');
     });
@@ -1346,7 +1349,7 @@ describe('LoginPage (server mode)', () => {
     });
 
     it('drops the resend cooldown once the attempt budget is exhausted (429)', () => {
-      mockAuthService.verifyEmail.mockReturnValue(throwError(() => ({ status: 429 })));
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => ({ status: 429, error: { error: 'too_many_attempts' } })));
 
       component.verifyCode();
 
@@ -1361,6 +1364,121 @@ describe('LoginPage (server mode)', () => {
       component.goBackToEmail();
 
       expect(component.codeExpired()).toBe(false);
+    });
+  });
+
+  describe('W-17: the 429 message on verify matches what the resend control allows', () => {
+    const exhaustedError = { status: 429, error: { error: 'too_many_attempts', message: 'Too many verification attempts' } };
+    const rateLimitedError = {
+      status: 429,
+      error: { type: 'urn:eudistack:error:rate-limit-exceeded', status: 429, detail: 'Rate limit exceeded' },
+      headers: { get: (name: string) => (name === 'Retry-After' ? '3600' : null) },
+    };
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      component.email = 'user@example.com';
+      component.sendCode();
+      component.otpValue = '123456';
+    });
+
+    afterEach(() => {
+      component.ngOnDestroy();
+      jest.useRealTimers();
+    });
+
+    it('asks for a new code and enables Resend at once when the code ran out of attempts', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => exhaustedError));
+
+      component.verifyCode();
+
+      expect(component.errorMessage).toBe('auth.errors.too-many-attempts-otp');
+      expect(component.resendSecondsLeft()).toBe(0);
+      expect(component.codeExhausted()).toBe(true);
+      expect(component.verifyRateLimited()).toBe(false);
+    });
+
+    it('does not submit the exhausted code again, so it cannot eat the per-email verify budget', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => exhaustedError));
+      component.verifyCode();
+      mockAuthService.verifyEmail.mockClear();
+
+      component.otpValue = '123456';
+      component.verifyCode();
+
+      expect(mockAuthService.verifyEmail).not.toHaveBeenCalled();
+    });
+
+    it('accepts a new code once it has been resent', () => {
+      mockAuthService.verifyEmail.mockReturnValueOnce(throwError(() => exhaustedError));
+      component.verifyCode();
+
+      component.resendCode();
+      component.otpValue = '654321';
+      component.verifyCode();
+
+      expect(component.codeExhausted()).toBe(false);
+      expect(mockAuthService.verifyEmail).toHaveBeenLastCalledWith('user@example.com', '654321');
+      expect(component.step()).toBe('passkey');
+    });
+
+    it('asks the user to wait, not to request a new code, when verify is rate limited', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => rateLimitedError));
+
+      component.verifyCode();
+
+      expect(component.errorMessage).toBe('auth.errors.too-many-attempts-wait');
+      expect(component.verifyRateLimited()).toBe(true);
+      expect(component.resendSecondsLeft()).toBe(3600);
+    });
+
+    it('keeps Resend and Continue blocked until the Retry-After countdown ends', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => rateLimitedError));
+      component.verifyCode();
+      mockAuthService.register.mockClear();
+      mockAuthService.verifyEmail.mockClear();
+
+      component.resendCode();
+      component.verifyCode();
+
+      expect(mockAuthService.register).not.toHaveBeenCalled();
+      expect(mockAuthService.verifyEmail).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(3600_000);
+
+      expect(component.verifyRateLimited()).toBe(false);
+      component.resendCode();
+      expect(mockAuthService.register).toHaveBeenCalledWith('user@example.com', 'login');
+    });
+
+    it('falls back to the default cooldown when the rate-limited response has no Retry-After', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => ({ status: 429 })));
+
+      component.verifyCode();
+
+      expect(component.errorMessage).toBe('auth.errors.too-many-attempts-wait');
+      expect(component.resendSecondsLeft()).toBe(180);
+    });
+
+    it('renders the wait countdown and disables Continue while rate limited', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => rateLimitedError));
+      component.verifyCode();
+      fixture.detectChanges();
+
+      const resend = fixture.nativeElement.querySelector('.auth-resend') as HTMLElement;
+      const continueButton = fixture.nativeElement.querySelector('.auth-button--code') as HTMLButtonElement;
+      expect(resend.textContent).toContain('auth.register.new-code-in');
+      expect(resend.querySelector('button')).toBeNull();
+      expect(continueButton.disabled).toBe(true);
+    });
+
+    it('clears the exhausted state when going back to the email step', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => exhaustedError));
+      component.verifyCode();
+
+      component.goBackToEmail();
+
+      expect(component.codeExhausted()).toBe(false);
     });
   });
 
