@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **I-04 — logging in to the Issuer with a revoked credential showed "We couldn't send the login response"**: when the verifier rejects the presentation with HTTP 403 `credential_revoked`, the wallet now shows a dedicated message (`errors.credential-revoked`, en/es/ca) instead of the generic `errors.verifier-post-failed`. Any other failure of that POST keeps the generic message. New helper `isCredentialRevokedResponse` (`http-error-message.ts`) with unit tests.
 - **Credential powers were shown untranslated, ignoring the wallet language**: the function and actions of each power (e.g. `Onboarding`, `Execute`) were rendered exactly as issued, in the credential detail and in the acceptance modal, even though the `vc-fields.power.*` translations already existed in English, Spanish and Catalan. `CredentialDisplayService` now translates them into the language selected in the wallet.
   - Functions or actions without a translation, and the power domain, are shown as issued by the issuer.
   - Power actions are now kept as a list instead of being split from a comma-joined string, so a translation containing a comma is not broken into several actions.

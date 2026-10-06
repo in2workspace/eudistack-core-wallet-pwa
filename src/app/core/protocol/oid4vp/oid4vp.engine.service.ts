@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 import { VerifiablePresentation } from '../../models/VerifiablePresentation';
 import { AppError } from 'src/app/core/models/error/AppError';
 import { Oid4vpError } from '../../models/error/Oid4vpError';
-import { wrapOid4vpHttpError } from 'src/app/shared/helpers/http-error-message';
+import { isCredentialRevokedResponse, wrapOid4vpHttpError } from 'src/app/shared/helpers/http-error-message';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { LoaderHandledFlowService } from 'src/app/shared/services/loader-handled-flow.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
@@ -306,7 +306,9 @@ export class Oid4vpEngineService {
       );
     } catch (e: unknown) {
       wrapOid4vpHttpError(e, 'Failed to post authorization response to verifier', {
-        translationKey: 'errors.verifier-post-failed',
+        translationKey: isCredentialRevokedResponse(e)
+          ? 'errors.credential-revoked'
+          : 'errors.verifier-post-failed',
       });
     }
   }

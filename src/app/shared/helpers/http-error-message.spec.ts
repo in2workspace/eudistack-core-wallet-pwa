@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { defaultHttpToTranslationKey } from './http-error-message';
+import { defaultHttpToTranslationKey, isCredentialRevokedResponse } from './http-error-message';
 
 describe('http-error-message helper', () => {
   it('should map 410 to errors.credential-offer-already-processed', () => {
@@ -20,5 +20,26 @@ describe('http-error-message helper', () => {
   it('should map other errors to errors.default', () => {
     const error = new HttpErrorResponse({ status: 418 });
     expect(defaultHttpToTranslationKey(error)).toBe('errors.default');
+  });
+
+  describe('isCredentialRevokedResponse', () => {
+    const body = '{"type":"credential_revoked","title":"Verifiable presentation failed","status":403,"detail":"The credential has been revoked"}';
+
+    it('detects a 403 revoked body received as text', () => {
+      expect(isCredentialRevokedResponse(new HttpErrorResponse({ status: 403, error: body }))).toBe(true);
+    });
+
+    it('detects a 403 revoked body received as an object', () => {
+      expect(isCredentialRevokedResponse(new HttpErrorResponse({ status: 403, error: JSON.parse(body) }))).toBe(true);
+    });
+
+    it('ignores other 403 errors', () => {
+      expect(isCredentialRevokedResponse(new HttpErrorResponse({ status: 403, error: '{"type":"issuer_not_trusted"}' }))).toBe(false);
+    });
+
+    it('ignores revoked text on non-403 statuses and non-HTTP errors', () => {
+      expect(isCredentialRevokedResponse(new HttpErrorResponse({ status: 500, error: body }))).toBe(false);
+      expect(isCredentialRevokedResponse(new Error('boom'))).toBe(false);
+    });
   });
 });
