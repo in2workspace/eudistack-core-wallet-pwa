@@ -183,6 +183,15 @@
       "otp-expired": "El codi ha caducat. Prem Reenviar per rebre'n un de nou al teu correu.",
       "otp-invalid": "El codi no és correcte. Revisa'l i torna-ho a provar.",
       "passkey-register-failed": "No s'ha pogut registrar aquest dispositiu. Torna-ho a provar.",
+      "passkey-login-cancelled": "Has cancel·lat l’inici de sessió amb Passkey. Pots tornar-ho a provar quan vulguis.",
+      "passkey-cancelled": "Has cancel·lat la verificació amb passkey. Pots tornar-ho a provar quan vulguis.",
+      "passkey-not-found": "No hi ha cap passkey registrada en aquest dispositiu.",
+      "passkey-creation-cancelled": "Has cancel·lat la creació de la passkey. Pots tornar-ho a provar quan vulguis.",
+      "passkey-timeout": "L’operació ha caducat. Torna-ho a provar.",
+      "passkey-already-registered": "Aquest dispositiu ja té una passkey registrada per a aquesta wallet.",
+      "passkey-not-supported": "Aquest dispositiu o navegador no admet el tipus de passkey necessari. Prova amb un altre navegador o dispositiu.",
+      "passkey-security": "No s’ha pogut fer servir la passkey en aquesta adreça. Assegura’t d’obrir la wallet des de la seva adreça oficial (HTTPS).",
+      "passkey-failed": "No s’ha pogut completar la verificació amb passkey. Torna-ho a provar.",
       "session-expired-request-code": "La teva sessió ha caducat. Sol·licita un codi de verificació per continuar obrint l'oferta de credencial."
     }
   },
@@ -474,7 +483,9 @@
       "update": "Actualitzar",
       "delete": "Eliminar",
       "attest": "Acreditar",
-      "upload": "Pujar"
+      "upload": "Pujar",
+      "system": "Sistema",
+      "administration": "Administració"
     },
     "issued-by": "Emesa per"
   },

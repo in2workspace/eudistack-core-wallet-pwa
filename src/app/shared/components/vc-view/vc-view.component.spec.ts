@@ -691,6 +691,26 @@ describe('VcViewComponent', () => {
   });
 
 
+  describe('powerActions', () => {
+    it('returns the translated action entries as provided', () => {
+      const actions = component.powerActions({ label: 'Alta (DOME)', value: 'Ejecutar, Crear', values: ['Ejecutar', 'Crear'] });
+
+      expect(actions).toEqual(['Ejecutar', 'Crear']);
+    });
+
+    it('keeps an entry containing a comma as a single action', () => {
+      const actions = component.powerActions({ label: 'Alta (DOME)', value: 'Leer, escribir, Crear', values: ['Leer, escribir', 'Crear'] });
+
+      expect(actions).toEqual(['Leer, escribir', 'Crear']);
+    });
+
+    it('falls back to splitting value when no entries are provided', () => {
+      const actions = component.powerActions({ label: 'Onboarding (DOME)', value: 'Execute, Create' });
+
+      expect(actions).toEqual(['Execute', 'Create']);
+    });
+  });
+
   describe('verifyOnKeydown', () => {
     function keydown(key: string): KeyboardEvent {
       const event = new KeyboardEvent('keydown', { key, cancelable: true });

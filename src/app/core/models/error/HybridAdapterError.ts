@@ -1,6 +1,6 @@
 import { AppError } from './AppError';
 
-export type HybridAdapterErrorCode = 'wrap_unavailable_on_this_device' | 'prepare_sign_failed';
+export type HybridAdapterErrorCode = 'wrap_unavailable_on_this_device' | 'prepare_sign_failed' | 'prf_unavailable';
 
 export class HybridAdapterError extends AppError {
   public override readonly code: HybridAdapterErrorCode;

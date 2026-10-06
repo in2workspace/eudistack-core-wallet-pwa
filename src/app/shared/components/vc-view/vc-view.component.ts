@@ -175,8 +175,7 @@ export class VcViewComponent implements OnDestroy {
   }
 
   public powerActions(item: DisplayFieldItem): string[] {
-    return (item.value ?? '')
-      .split(',')
+    return (item.values ?? (item.value ?? '').split(','))
       .map(action => action.trim())
       .filter(Boolean);
   }
