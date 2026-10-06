@@ -90,6 +90,7 @@ module.exports = {
     "src/app/shared/components/manual-code-modal/manual-code-modal.component.ts",
     "src/app/shared/components/credential-confirmation-modal/credential-confirmation-modal.component.ts",
     "src/app/shared/services/credential-cache.service.ts",
+    "src/app/shared/services/camera.service.ts",
     "src/app/shared/components/barcode-scanner/barcode-scanner.component.ts",
 
   ],
