@@ -1,5 +1,7 @@
 import { inject, Injectable } from '@angular/core';
-import { AppError } from 'src/app/core/models/error/AppError';
+import { HybridAdapterError } from 'src/app/core/models/error/HybridAdapterError';
+import { PasskeyError, runPasskeyCeremony } from 'src/app/core/models/error/PasskeyError';
+import { base64UrlDecode } from 'src/app/core/utils/base64url';
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
 import { WEBAUTHN_ASSERTION_HINTS } from 'src/app/core/constants/webauthn.constants';
 
@@ -32,115 +34,56 @@ export class PrfClientService {
     }
 
     try {
-      const result = await navigator.credentials.get({
-        publicKey: {
-          challenge: crypto.getRandomValues(new Uint8Array(32)),
-          allowCredentials: [
-            {
-              type: 'public-key',
-              id: Uint8Array.from(
-                atob(
-                  credentialId
-                    .replace(/-/g, '+')
-                    .replace(/_/g, '/')
-                ),
-                c => c.charCodeAt(0)
-              ),
-            },
-          ],
-          extensions: {
-            prf: {
-              eval: {
-                first: PRF_DETECTION_PROBE,
-              },
-            },
-          } as AuthenticationExtensionsClientInputs,
-          userVerification: 'required',
-          hints: WEBAUTHN_ASSERTION_HINTS,
-        },
-      } as CredentialRequestOptions);
-
-      if (!result) {
-        return 'inconclusive';
-      }
-
-      const assertion = result as PublicKeyCredential;
-
-      const prfResults =
-        assertion.getClientExtensionResults() as {
-          prf?: {
-            results?: {
-              first?: ArrayBuffer;
-            };
-          };
-        };
-
-      return prfResults?.prf?.results?.first
-        ? 'enabled'
-        : 'disabled';
-    } catch (err) {
-
-      if (err instanceof DOMException) {
-        return 'inconclusive';
-      }
-
+      const assertion = await this.assertWithPrf(credentialId, PRF_DETECTION_PROBE);
+      return this.readPrfOutput(assertion) ? 'enabled' : 'disabled';
+    } catch {
+      // Cancel, timeout or any WebAuthn failure: support could not be determined.
       return 'inconclusive';
     }
   }
 
+  /**
+   * Cancel/timeout/SecurityError surface as a classified PasskeyError (same
+   * contract as login and PRF signing). Only "the authenticator answered but
+   * produced no PRF output" is reported as `prf_unavailable`: that is the one
+   * outcome HybridKeyEnrollmentService treats as confirmed incapability.
+   */
   async evaluateForWrap(prfSalt: Uint8Array): Promise<Uint8Array> {
     const credentialId = this.prfService.getCredentialId();
     if (!credentialId) {
-      throw new AppError('No registered passkey found', {
-        code: 'unknown',
-        translationKey: 'hybrid.error.noPasskey',
-      });
+      throw new PasskeyError('passkey_not_found', 'get');
     }
 
-    let assertion: PublicKeyCredential;
-    try {
-      const result = await navigator.credentials.get({
-        publicKey: {
-          challenge: crypto.getRandomValues(new Uint8Array(32)),
-          allowCredentials: [
-            {
-              type: 'public-key',
-              id: Uint8Array.from(atob(credentialId.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
-            },
-          ],
-          extensions: {
-            prf: { eval: { first: prfSalt } },
-          } as AuthenticationExtensionsClientInputs,
-          userVerification: 'required',
-          hints: WEBAUTHN_ASSERTION_HINTS,
-        },
-      } as CredentialRequestOptions);
-
-      if (!result) {
-        throw new AppError('Passkey assertion was cancelled', {
-          code: 'unknown',
-          translationKey: 'hybrid.error.assertionCancelled',
-        });
-      }
-      assertion = result as PublicKeyCredential;
-    } catch (err) {
-      if (err instanceof AppError) throw err;
-      throw new AppError('Passkey assertion failed', {
-        code: 'unknown',
-        cause: err,
-        translationKey: 'hybrid.error.assertionFailed',
-      });
-    }
-
-    const prfResults = assertion.getClientExtensionResults() as { prf?: { results?: { first?: ArrayBuffer } } };
-    const prfOutput = prfResults?.prf?.results?.first;
+    const prfOutput = this.readPrfOutput(await this.assertWithPrf(credentialId, prfSalt));
     if (!prfOutput) {
-      throw new AppError('PRF extension not supported or returned no output', {
-        code: 'unknown',
-        translationKey: 'hybrid.error.prfUnavailable',
+      throw new HybridAdapterError('PRF extension not supported or returned no output', {
+        code: 'prf_unavailable',
+        translationKey: 'errors.prf-unsupported',
       });
     }
 
     return new Uint8Array(prfOutput);
+  }
+
+  private assertWithPrf(credentialId: string, salt: Uint8Array): Promise<Credential> {
+    // No `timeout`: the browser default applies, so a timeout reads as a cancel.
+    return runPasskeyCeremony('get', undefined, () => navigator.credentials.get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials: [{ type: 'public-key', id: base64UrlDecode(credentialId) }],
+        extensions: {
+          prf: { eval: { first: salt } },
+        } as AuthenticationExtensionsClientInputs,
+        userVerification: 'required',
+        hints: WEBAUTHN_ASSERTION_HINTS,
+      },
+    } as CredentialRequestOptions));
+  }
+
+  private readPrfOutput(credential: Credential): ArrayBuffer | undefined {
+    const results = (credential as PublicKeyCredential).getClientExtensionResults() as {
+      prf?: { results?: { first?: ArrayBuffer } };
+    };
+    return results?.prf?.results?.first;
   }
 }

@@ -31,6 +31,7 @@ module.exports = {
     "src/app/core/services/session-expiry-marker.service.ts",
     "src/app/core/services/hybrid-onboarding.service.ts",
     "src/app/core/models/error/HybridAdapterError.ts",
+    "src/app/core/models/error/PasskeyError.ts",
     "src/app/core/spi-impl/hybrid-key-storage.provider.ts",
     "src/app/features/hybrid-onboarding/hybrid-onboarding.page.ts",
     "src/app/features/signing/sign-prompt.component.ts",
