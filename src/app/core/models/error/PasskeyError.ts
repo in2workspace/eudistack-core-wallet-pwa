@@ -5,6 +5,7 @@ export type PasskeyCeremony = 'get' | 'create';
 export type PasskeyErrorCode =
   | 'passkey_cancelled'
   | 'passkey_timeout'
+  | 'passkey_not_found'
   | 'passkey_already_registered'
   | 'passkey_not_supported'
   | 'passkey_security'
@@ -19,8 +20,11 @@ export type PasskeyErrorCode =
 const TIMEOUT_MARGIN_MS = 2_000;
 
 const TRANSLATION_KEYS: Record<PasskeyErrorCode, string> = {
-  passkey_cancelled: 'auth.errors.passkey-login-cancelled',
+  // Context-neutral: the same assertion backs login, issuance and presentation
+  // signing. Screens that know the context (LoginPage) pick a more specific text.
+  passkey_cancelled: 'auth.errors.passkey-cancelled',
   passkey_timeout: 'auth.errors.passkey-timeout',
+  passkey_not_found: 'auth.errors.passkey-not-found',
   passkey_already_registered: 'auth.errors.passkey-already-registered',
   passkey_not_supported: 'auth.errors.passkey-not-supported',
   passkey_security: 'auth.errors.passkey-security',
@@ -90,4 +94,28 @@ function domExceptionName(error: unknown): string | undefined {
   if (typeof error !== 'object' || error === null) return undefined;
   const name = (error as { name?: unknown }).name;
   return typeof name === 'string' ? name : undefined;
+}
+
+/**
+ * Single entry point for WebAuthn ceremonies: whatever the browser rejects with
+ * (or a `null` result, which some engines return on dismissal) becomes a
+ * classified PasskeyError, so callers never surface a raw DOMException text.
+ * `timeoutMs` must be the `timeout` sent in the options (omit it when none was).
+ */
+export async function runPasskeyCeremony(
+  ceremony: PasskeyCeremony,
+  timeoutMs: number | undefined,
+  ceremonyFn: () => Promise<Credential | null>
+): Promise<Credential> {
+  const startedAt = Date.now();
+  let credential: Credential | null;
+  try {
+    credential = await ceremonyFn();
+  } catch (e: unknown) {
+    throw toPasskeyError(e, ceremony, Date.now() - startedAt, timeoutMs);
+  }
+  if (!credential) {
+    throw new PasskeyError('passkey_cancelled', ceremony);
+  }
+  return credential;
 }

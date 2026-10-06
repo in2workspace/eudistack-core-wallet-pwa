@@ -615,7 +615,11 @@ export class LoginPage implements OnDestroy {
    */
   private showPasskeyFailure(err: unknown): void {
     if (err instanceof PasskeyError && err.isUserAbort) {
-      this.noticeMessage = this.translate.instant(err.translationKey ?? 'auth.errors.passkey-login-cancelled');
+      // PasskeyError's cancel text is context-neutral; here we know it was a sign-in.
+      const translationKey = err.code === 'passkey_cancelled' && err.ceremony === 'get'
+        ? 'auth.errors.passkey-login-cancelled'
+        : err.translationKey ?? 'auth.errors.passkey-failed';
+      this.noticeMessage = this.translate.instant(translationKey);
       return;
     }
 

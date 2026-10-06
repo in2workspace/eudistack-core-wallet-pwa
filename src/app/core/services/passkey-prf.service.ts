@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { base64UrlEncode, base64UrlDecode } from '../utils/base64url';
 import { AppError } from '../models/error/AppError';
-import { PasskeyCeremony, PasskeyError, toPasskeyError } from '../models/error/PasskeyError';
+import { PasskeyError, runPasskeyCeremony } from '../models/error/PasskeyError';
 import { p256 } from '@noble/curves/nist.js';
 import { PasskeyStoreService } from './passkey-store.service';
 import { WEBAUTHN_CREATE_HINTS, WEBAUTHN_ASSERTION_HINTS } from '../constants/webauthn.constants';
@@ -52,12 +52,12 @@ export class PasskeyPrfService {
   async assertLocalPasskey(): Promise<void> {
     const credentialId = this.getCredentialId();
     if (!credentialId) {
-      throw new Error('No passkey found');
+      throw new PasskeyError('passkey_not_found', 'get');
     }
 
     const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer;
     const credentialIdBuffer = base64UrlDecode(credentialId).buffer as ArrayBuffer;
-    await this.runCeremony('get', ASSERTION_TIMEOUT_MS, () => navigator.credentials.get({
+    await runPasskeyCeremony('get', ASSERTION_TIMEOUT_MS, () => navigator.credentials.get({
       publicKey: {
         challenge,
         allowCredentials: [{
@@ -117,7 +117,7 @@ export class PasskeyPrfService {
       hints: WEBAUTHN_CREATE_HINTS,
     };
 
-    const credential = (await this.runCeremony('create', CREATION_TIMEOUT_MS, () => navigator.credentials.create({
+    const credential = (await runPasskeyCeremony('create', CREATION_TIMEOUT_MS, () => navigator.credentials.create({
       publicKey: options,
     }))) as PublicKeyCredential;
 
@@ -139,9 +139,7 @@ export class PasskeyPrfService {
 
     const credentialIdB64 = this.store.getCredentialId();
     if (!credentialIdB64) {
-      throw new AppError('No passkey registered on this device', {
-        translationKey: 'errors.no-passkey',
-      });
+      throw new PasskeyError('passkey_not_found', 'get');
     }
 
     const credentialIdBytes = base64UrlDecode(credentialIdB64);
@@ -167,29 +165,6 @@ export class PasskeyPrfService {
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  /**
-   * Single entry point for WebAuthn ceremonies: whatever the browser rejects
-   * with (or a `null` result, which some engines return on dismissal) becomes a
-   * classified PasskeyError, so callers never surface a raw DOMException text.
-   */
-  private async runCeremony(
-    ceremony: PasskeyCeremony,
-    timeoutMs: number | undefined,
-    ceremonyFn: () => Promise<Credential | null>
-  ): Promise<Credential> {
-    const startedAt = Date.now();
-    let credential: Credential | null;
-    try {
-      credential = await ceremonyFn();
-    } catch (e: unknown) {
-      throw toPasskeyError(e, ceremony, Date.now() - startedAt, timeoutMs);
-    }
-    if (!credential) {
-      throw new PasskeyError('passkey_cancelled', ceremony);
-    }
-    return credential;
-  }
-
   private async evaluatePrf(
     credentialId: Uint8Array,
     salt: Uint8Array
@@ -197,7 +172,7 @@ export class PasskeyPrfService {
     const challenge = globalThis.crypto.getRandomValues(new Uint8Array(32));
 
     // No `timeout` here: the browser default applies, so a timeout cannot be told apart from a cancel.
-    const assertion = (await this.runCeremony('get', undefined, () => navigator.credentials.get({
+    const assertion = (await runPasskeyCeremony('get', undefined, () => navigator.credentials.get({
       publicKey: {
         challenge,
         allowCredentials: [{ id: credentialId.slice(), type: 'public-key' }],
@@ -217,7 +192,7 @@ export class PasskeyPrfService {
     if (!prfResults?.first) {
       throw new AppError(
         'PRF extension not supported by this authenticator',
-        { translationKey: 'errors.prf-not-supported' }
+        { translationKey: 'auth.errors.passkey-not-supported' }
       );
     }
 

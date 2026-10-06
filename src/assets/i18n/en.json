@@ -201,6 +201,8 @@
       "otp-invalid": "The code is incorrect. Check it and try again.",
       "passkey-register-failed": "Failed to register this device. Please try again.",
       "passkey-login-cancelled": "You cancelled signing in with your passkey. You can try again whenever you like.",
+      "passkey-cancelled": "You cancelled the passkey verification. You can try again whenever you like.",
+      "passkey-not-found": "There is no passkey registered on this device.",
       "passkey-creation-cancelled": "You cancelled creating the passkey. You can try again whenever you like.",
       "passkey-timeout": "The operation timed out. Please try again.",
       "passkey-already-registered": "This device already has a passkey registered for this wallet.",

@@ -1,5 +1,5 @@
 import { AppError } from './AppError';
-import { PasskeyError, toPasskeyError } from './PasskeyError';
+import { PasskeyError, runPasskeyCeremony, toPasskeyError } from './PasskeyError';
 
 function domException(name: string): DOMException {
   return new DOMException('The operation either timed out or was not allowed.', name);
@@ -11,7 +11,9 @@ describe('PasskeyError', () => {
   });
 
   it.each([
-    ['passkey_cancelled', 'get', 'auth.errors.passkey-login-cancelled'],
+    // context-neutral: the same assertion backs login and issuance/presentation signing
+    ['passkey_cancelled', 'get', 'auth.errors.passkey-cancelled'],
+    ['passkey_not_found', 'get', 'auth.errors.passkey-not-found'],
     ['passkey_cancelled', 'create', 'auth.errors.passkey-creation-cancelled'],
     ['passkey_timeout', 'get', 'auth.errors.passkey-timeout'],
     ['passkey_already_registered', 'create', 'auth.errors.passkey-already-registered'],
@@ -85,5 +87,32 @@ describe('toPasskeyError', () => {
   it('returns an existing PasskeyError untouched', () => {
     const existing = new PasskeyError('passkey_timeout', 'get');
     expect(toPasskeyError(existing, 'get', 10)).toBe(existing);
+  });
+});
+
+describe('runPasskeyCeremony', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('returns the credential when the ceremony succeeds', async () => {
+    const credential = { id: 'cred' } as Credential;
+
+    await expect(runPasskeyCeremony('get', 60_000, async () => credential)).resolves.toBe(credential);
+  });
+
+  it('treats a null result as a cancellation', async () => {
+    await expect(runPasskeyCeremony('create', 120_000, async () => null))
+      .rejects.toMatchObject({ code: 'passkey_cancelled', ceremony: 'create' });
+  });
+
+  it('classifies the rejection using the elapsed time against the timeout', async () => {
+    jest.spyOn(Date, 'now').mockReturnValueOnce(1_000).mockReturnValueOnce(61_000);
+
+    await expect(runPasskeyCeremony('get', 60_000, () => Promise.reject(domException('NotAllowedError'))))
+      .rejects.toMatchObject({ code: 'passkey_timeout' });
+  });
+
+  it('never lets a raw DOMException through', async () => {
+    await expect(runPasskeyCeremony('get', undefined, () => Promise.reject(domException('SecurityError'))))
+      .rejects.toBeInstanceOf(PasskeyError);
   });
 });

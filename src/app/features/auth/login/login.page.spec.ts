@@ -1160,6 +1160,16 @@ describe('LoginPage (server mode)', () => {
       expect(component.noticeMessage).toBe('auth.errors.passkey-timeout');
     });
 
+    it('server mode: a missing local passkey says so instead of the generic failure', async () => {
+      Object.defineProperty(component, 'isBrowserMode', { value: false, configurable: true });
+      mockAuthService.unlockWithPasskey.mockRejectedValue(new PasskeyError('passkey_not_found', 'get'));
+
+      await component.verifyPasskey();
+
+      expect(component.errorMessage).toBe('auth.errors.passkey-not-found');
+      expect(component.noticeMessage).toBe('');
+    });
+
     it('server mode: an already-registered authenticator shows a specific error on device setup', async () => {
       mockPrfService.createPasskey.mockRejectedValue(new PasskeyError('passkey_already_registered', 'create'));
 

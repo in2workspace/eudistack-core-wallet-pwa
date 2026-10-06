@@ -98,7 +98,10 @@ describe('PasskeyPrfService', () => {
   describe('assertLocalPasskey', () => {
     it('throws if no credential id is stored', async () => {
       storeSpy.getCredentialId.mockReturnValue(null);
-      await expect(service.assertLocalPasskey()).rejects.toThrow('No passkey found');
+      await expect(service.assertLocalPasskey()).rejects.toMatchObject({
+        code: 'passkey_not_found',
+        translationKey: 'auth.errors.passkey-not-found',
+      });
     });
 
     it('sends client-device assertion hints, not hybrid-first', async () => {
