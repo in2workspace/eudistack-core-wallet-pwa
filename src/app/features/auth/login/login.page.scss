@@ -28,6 +28,11 @@
     background: rgba(var(--status-error-rgb, 220 38 38) / 0.12);
     border-color: rgba(var(--status-error-rgb, 220 38 38) / 0.35);
   }
+
+  .error-box.error-box--notice {
+    background: color-mix(in srgb, var(--status-info) 14%, transparent);
+    border-color: color-mix(in srgb, var(--status-info) 35%, transparent);
+  }
 }
 
 .auth-bg {
@@ -445,6 +450,14 @@
     font-size: 18px;
     flex-shrink: 0;
   }
+}
+
+// Expected outcome (e.g. passkey prompt dismissed): informative, not alarming.
+// color-mix keeps it legible in both themes from the single --status-info token.
+.error-box.error-box--notice {
+  border-color: color-mix(in srgb, var(--status-info) 35%, transparent);
+  background: color-mix(in srgb, var(--status-info) 10%, transparent);
+  color: var(--status-info);
 }
 
 // Mobile (< 768px)
