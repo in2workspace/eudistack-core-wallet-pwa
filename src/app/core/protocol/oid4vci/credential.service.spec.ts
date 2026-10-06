@@ -53,7 +53,7 @@ describe('CredentialService — credential endpoint errors', () => {
     await expect(requestCredential()).rejects.toBeInstanceOf(CredentialAlreadyIssuedError);
   });
 
-  it('shows the "already in your wallet" message instead of "cannot get VC"', async () => {
+  it('shows the "credential not available" message instead of "cannot get VC"', async () => {
     failWith(410, { type: 'credential_already_issued' });
 
     await expect(requestCredential()).rejects.toMatchObject({ translationKey: 'errors.credential-already-issued' });

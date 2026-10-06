@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Detailed OID4VCI error handling (RFC 7807 Problem Details)**: The wallet now recognizes and specifically handles machine-readable error types from the Issuer and EBW backends.
   - Introduced `ApiError` interface and parser to extract stable error identifiers (`type`) from RFC 7807 Problem Details responses.
   - New dedicated error classes: `CredentialOfferExpiredError` (HTTP 410), `CredentialOfferNotFoundError` (HTTP 404), and `CredentialAlreadyIssuedError`.
+  - `credential_already_issued` tells the holder the credential is no longer available and how to proceed ("La credencial no se encuentra disponible. Solicite una nueva o contacte con soporte.", with the tenant support link), instead of claiming it is already in the wallet — the Issuer also returns it for a consumed offer, so the wallet cannot assume the credential was stored on this device.
   - Added specific English, Spanish, and Catalan translations for these scenarios (e.g., distinguishing between an expired offer and one already processed).
   - Updated `HttpErrorInterceptor` and the core error mapping logic to prioritize these specific backend signals over generic HTTP status codes when showing alerts.
 - **Test coverage for error infrastructure**: Added unit and integration tests for `ApiError` parsing, `Oid4vciError` hierarchy, and the `CredentialOffer` service error paths. `jest.config.js` was updated to include these new components in coverage reports.

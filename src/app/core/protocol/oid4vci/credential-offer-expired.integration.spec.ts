@@ -229,11 +229,12 @@ describe('Integration: credential offer expired (HTTP 410 credential_offer_expir
       expect(error).toBeInstanceOf(CredentialAlreadyIssuedError);
     });
 
-    it('tells the user the credential is already in the wallet, in a single alert', async () => {
+    it('tells the user the credential is not available and links to support, in a single alert', async () => {
       await runFlowAnswering410(JSON.stringify(ALREADY_ISSUED));
 
       expect(alertCreate).toHaveBeenCalledTimes(1);
-      expect(shownAlertText()).toMatch(/ya se encuentra en tu wallet/i);
+      expect(shownAlertText()).toMatch(/no se encuentra disponible/i);
+      expect(shownAlertText()).toContain('href="https://support.test"');
     });
 
     it('never shows the generic, "cannot download" or "already processed" messages', async () => {

@@ -467,7 +467,7 @@
     "credential-offer-already-processed": "This credential offer has already been processed and can no longer be refreshed.",
     "credential-offer-expired": "This credential offer has expired. Request or scan a new QR code.",
     "credential-offer-not-found": "We couldn’t find this credential offer. Ask for a new one to be generated or contact {{supportLink}}.",
-    "credential-already-issued": "This credential can’t be added because it’s already in your wallet.",
+    "credential-already-issued": "The credential is not available. Please request a new one or contact {{supportLink}}.",
     "cannot-get-VC": "Issuer credential could not be obtained",
     "signing-failed": "We're experiencing a temporary technical issue. Please close this screen and try again in a few minutes using the link in the email you received.",
     "cannot-save-VC": "The credential could not be saved successfully",
