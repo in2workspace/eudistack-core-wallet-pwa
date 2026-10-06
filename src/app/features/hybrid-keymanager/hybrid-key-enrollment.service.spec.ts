@@ -6,6 +6,8 @@ import { PrfClientService } from './prf-client.service';
 import { OnboardingHybridApi } from './onboarding-hybrid.api';
 import { ProofBuilderService } from 'src/app/core/protocol/oid4vci/proof-builder.service';
 import { AppError } from 'src/app/core/models/error/AppError';
+import { HybridAdapterError } from 'src/app/core/models/error/HybridAdapterError';
+import { PasskeyError } from 'src/app/core/models/error/PasskeyError';
 import { OID4VCIKeyGenContext } from 'src/app/core/spi/key-storage.provider.service';
 
 // JSDOM does not implement crypto.subtle; polyfill with Node's built-in WebCrypto API.
@@ -141,8 +143,9 @@ describe('HybridKeyEnrollmentService', () => {
 
   it('calls block and surfaces errors.prf-unsupported when the ceremony confirms no PRF support', async () => {
     mockPrf.evaluateForWrap.mockRejectedValue(
-      new AppError('PRF extension not supported or returned no output', {
-        translationKey: 'hybrid.error.prfUnavailable',
+      new HybridAdapterError('PRF extension not supported or returned no output', {
+        code: 'prf_unavailable',
+        translationKey: 'errors.prf-unsupported',
       }),
     );
 
@@ -157,13 +160,9 @@ describe('HybridKeyEnrollmentService', () => {
   });
 
   it('does not call block for a cancelled assertion — not confirmed incapability, holder can retry', async () => {
-    mockPrf.evaluateForWrap.mockRejectedValue(
-      new AppError('Passkey assertion was cancelled', { translationKey: 'hybrid.error.assertionCancelled' }),
-    );
+    mockPrf.evaluateForWrap.mockRejectedValue(new PasskeyError('passkey_cancelled', 'get'));
 
-    await expect(service.enroll(CONTEXT)).rejects.toMatchObject({
-      translationKey: 'hybrid.error.assertionCancelled',
-    });
+    await expect(service.enroll(CONTEXT)).rejects.toMatchObject({ code: 'passkey_cancelled' });
     expect(mockApi.block).not.toHaveBeenCalled();
     expect(mockApi.commit).not.toHaveBeenCalled();
   });

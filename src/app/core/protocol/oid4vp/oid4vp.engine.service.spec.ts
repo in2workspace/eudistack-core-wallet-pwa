@@ -7,6 +7,7 @@ import { WalletService } from 'src/app/core/services/wallet.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { VCReply } from 'src/app/core/models/verifiable-credential-reply';
+import { PasskeyError } from 'src/app/core/models/error/PasskeyError';
 
 // [SIGN-OFF GATED — D-2] Shared-attribute capture at the OID4VP presentation point (AD-2):
 // deriveSharedAttributeNames() must exclude registered JWT/SD-JWT-VC claims and surface only
@@ -295,5 +296,24 @@ describe('Oid4vpEngineService — shared attributes flow into the "presented" ac
     const [type, , , , sharedAttributes] = activityService.log.mock.calls[0];
     expect(type).toBe('presented');
     expect(sharedAttributes).toBeUndefined();
+  });
+});
+
+describe('Oid4vpEngineService — passkey prompt outcomes in the flow alert', () => {
+  // errorToTranslationKey does not touch `this`: call it without the DI graph.
+  const toKey = (e: unknown): string | null =>
+    (Oid4vpEngineService.prototype as unknown as { errorToTranslationKey: (e: unknown) => string | null })
+      .errorToTranslationKey(e);
+
+  it('shows no alert when the user cancels the passkey prompt', () => {
+    expect(toKey(new PasskeyError('passkey_cancelled', 'get'))).toBeNull();
+  });
+
+  it('still explains a passkey timeout', () => {
+    expect(toKey(new PasskeyError('passkey_timeout', 'get'))).toBe('auth.errors.passkey-timeout');
+  });
+
+  it('still reports a real passkey failure', () => {
+    expect(toKey(new PasskeyError('passkey_security', 'get'))).toBe('auth.errors.passkey-security');
   });
 });

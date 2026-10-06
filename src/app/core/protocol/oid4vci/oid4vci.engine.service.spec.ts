@@ -14,6 +14,7 @@ import { AuthorizationCodeTokenService } from './authorization-code-token.servic
 import { NonceService } from './nonce.service';
 import { DpopService } from './dpop.service';
 import { PublicKeyInfo } from '../../models/StoredKeyRecord';
+import { PasskeyError } from 'src/app/core/models/error/PasskeyError';
 
 // EUDISTACK-645: the holder-key id must be minted once per issued credential (ADR-021),
 // never derived from the shared `{issuer}:{credentialConfigurationId}` pair — that shape
@@ -246,5 +247,24 @@ describe('performOid4vciFlow — holder-prefixed credentialId minting (EUDISTACK
 
     const { credentialId } = issueProofJwtSpy.mock.calls[0][0] as any;
     expect(credentialId).not.toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+  });
+});
+
+describe('Oid4vciEngineService — passkey prompt outcomes in the flow alert', () => {
+  // errorToTranslationKey does not touch `this`: call it without the DI graph.
+  const toKey = (e: unknown): string | null =>
+    (Oid4vciEngineService.prototype as unknown as { errorToTranslationKey: (e: unknown) => string | null })
+      .errorToTranslationKey(e);
+
+  it('shows no alert when the user cancels the passkey prompt', () => {
+    expect(toKey(new PasskeyError('passkey_cancelled', 'get'))).toBeNull();
+  });
+
+  it('still explains a passkey timeout', () => {
+    expect(toKey(new PasskeyError('passkey_timeout', 'get'))).toBe('auth.errors.passkey-timeout');
+  });
+
+  it('still reports a real passkey failure', () => {
+    expect(toKey(new PasskeyError('passkey_security', 'get'))).toBe('auth.errors.passkey-security');
   });
 });
