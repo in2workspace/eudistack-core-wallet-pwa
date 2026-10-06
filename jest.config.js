@@ -52,6 +52,7 @@ module.exports = {
     "src/app/core/services/credential-display.service.ts",
     "src/app/shared/components/vc-view/vc-view.component.ts",
     "src/app/shared/services/toast.service.ts",
+    "src/app/shared/helpers/http-error-message.ts",
     "src/app/features/credentials/credentials.page.ts",
     "src/app/features/auth/login/login.page.ts",
     "src/app/core/services/passkey-api.service.ts",
