@@ -6,5 +6,6 @@ export interface VCReply {
     state: string;
     redirectUri: string;
     clientId?: string;
+    clientName?: string;
     dcqlQuery?: DcqlQuery;
   }

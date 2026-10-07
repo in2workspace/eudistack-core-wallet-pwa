@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **About: legal documents still showed the connection error on DEV/PRO (S3 + CloudFront)**: a document that is not published is answered with **HTTP 403** by S3/CloudFront (no `ListBucket` permission ⇒ a missing key is indistinguishable from a forbidden one), not with the 404 nginx gives locally, so `LegalContentService` classified it as `unavailable` and the page kept showing "Check your connection" with a useless Retry. 403 is now treated like 404 for same-origin legal assets: single fallback to `es`, then `not-found` (truthful "not available yet — managed by EUDIStack" message, no Retry).
+
+- **Activity: the "Presented to" name was a technical identifier instead of a friendly name**: presentations were logged with the verifier's `client_id` (e.g. `x509_hash:…`, a `did:` or a URL), which is meaningless to the user. The activity history, the detail view and the CSV export now show the verifier's name.
+- The name is the verifier's `client_name` (localized as in the consent screen); when it is missing, the hostname of the verifier's response URI is used instead of the technical `client_id`.
+- The stored name is capped at 30 characters, and the subtitle in the activity list is truncated with an ellipsis on a single line.
+- Entries already stored are not migrated; the `details` field and the activity API contract are unchanged.
+- Tests: new `resolveCounterpartyName` cases in `activity-format.util.spec.ts`, and updated `oid4vp.engine.service.spec.ts` and `vc-selector.page.spec.ts`.
 
 - **#1061961 — "Cerrar sesiones" removed from the other devices in "Dispositivos conectados"**: each card under "Otros dispositivos" with live sessions offered a "Cerrar sesiones" action next to *Renombrar* and *Eliminar dispositivo*. It is no longer shown; the page's `revokeSessions()` handler and the `devices.close-sessions` i18n key (es/en/ca) are removed with it. `PasskeyApiService.revokeSessions()` and the EBW `revoke-sessions` endpoint are left untouched. "Última actividad" now reflects real device activity thanks to the matching `eudistack-core-wallet-ebw` fix; no change is needed here.
 
