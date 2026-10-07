@@ -7,6 +7,7 @@ import { LEGAL_DOCUMENT_TIMEOUT_MS } from 'src/app/core/constants/support.consta
 import { TelemetryService } from 'src/app/core/services/telemetry.service';
 import {
   LEGAL_FALLBACK_LANG,
+  LegalContentFailureReason,
   LegalContentResult,
   LegalDocumentId,
   LegalLang,
@@ -19,6 +20,12 @@ import {
  */
 function isMissingDocument(err: unknown): boolean {
   return err instanceof HttpErrorResponse && (err.status === 404 || err.status === 403);
+}
+
+function classifyFailure(err: unknown): LegalContentFailureReason {
+  if (err instanceof TimeoutError) return 'timeout';
+  if (isMissingDocument(err)) return 'not-found';
+  return 'unavailable';
 }
 
 /** Markers of a full HTML page (the SPA shell), never present in a legal fragment (ES-02/ES-06). */
@@ -106,12 +113,7 @@ export class LegalContentService {
   }
 
   private toFailure(docId: LegalDocumentId, lang: LegalLang, err: unknown): LegalContentResult {
-    const reason =
-      err instanceof TimeoutError
-        ? 'timeout'
-        : isMissingDocument(err)
-          ? 'not-found'
-          : 'unavailable';
+    const reason = classifyFailure(err);
     // ES-01 — the failure is recorded. Payload has no PII: only docId, lang and build.
     this.telemetry.track('about_legal_document_load_failed', {
       docId,
