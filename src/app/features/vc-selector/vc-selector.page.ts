@@ -113,7 +113,9 @@ export class VcSelectorPage {
     if (!metadata) {
       console.warn('ClientMetadata not found');
     }
-    this.clientName = this.getMetadataValue(metadata, 'client_name', currentLocale, this.requesterDomain);
+    const metadataClientName = this.getMetadataValue(metadata, 'client_name', currentLocale, '');
+    this._VCReply.clientName = metadataClientName;
+    this.clientName = metadataClientName || this.requesterDomain;
     this.clientUri = this.getMetadataValue(metadata, 'client_uri', currentLocale, this.requesterDomain);
     this.policyUri = this.getMetadataValue(metadata, 'policy_uri', currentLocale, '');
     this.tosUri = this.getMetadataValue(metadata, 'tos_uri', currentLocale, '');

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Activity: the "Presented to" name was a technical identifier instead of a friendly name**: presentations were logged with the verifier's `client_id` (e.g. `x509_hash:…`, a `did:` or a URL), which is meaningless to the user. The activity history, the detail view and the CSV export now show the verifier's name.
+- The name is the verifier's `client_name` (localized as in the consent screen); when it is missing, the hostname of the verifier's response URI is used instead of the technical `client_id`.
+- The stored name is capped at 30 characters, and the subtitle in the activity list is truncated with an ellipsis on a single line.
+- Entries already stored are not migrated; the `details` field and the activity API contract are unchanged.
+- Tests: new `resolveCounterpartyName` cases in `activity-format.util.spec.ts`, and updated `oid4vp.engine.service.spec.ts` and `vc-selector.page.spec.ts`.
+
 - **The activity history CSV declared a "Details" column that was always empty**: the exported file had five columns in the header but the fifth never carried data, because no activity flow fills `details`. The export now has four columns (type, credential, counterparty and date), the same in the header and in every row.
 - Removed the now unused `activity.csv-header-details` i18n key (es/ca/en).
 - The `details` field itself is unchanged in the data model and in the API.
