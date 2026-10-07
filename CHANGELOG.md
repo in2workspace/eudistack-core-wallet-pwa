@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **I-04 — logging in to the Issuer with a revoked credential showed "We couldn't send the login response"**: when the verifier rejects the presentation with HTTP 403 `credential_revoked`, the wallet now shows a dedicated message (`errors.credential-revoked`, en/es/ca) instead of the generic `errors.verifier-post-failed`. Any other failure of that POST keeps the generic message. New helper `isCredentialRevokedResponse` (`http-error-message.ts`) with unit tests.
-
 - **The PIN modal for credentials issued with pre-authorization had no way to submit the code except pressing Enter**: the modal only offered *Cancel*, so on mobile keyboards without an Enter key the user could not continue. It now has a primary **Validate** button, enabled once the whole PIN is typed, in addition to Enter.
 - On narrow screens the buttons are stacked at full width.
 - New i18n key `confirmation.validate` (es/ca/en).
