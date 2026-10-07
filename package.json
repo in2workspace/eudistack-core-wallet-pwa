@@ -1,6 +1,7 @@
 {
   "name": "eudistack-core-wallet-pwa",
   "version": "3.16.11",
+
   "author": "EUDIStack",
   "homepage": "https://ionicframework.com/",
   "scripts": {

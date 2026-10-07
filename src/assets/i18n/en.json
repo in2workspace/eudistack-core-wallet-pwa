@@ -610,6 +610,7 @@
     "pin": "Enter PIN",
     "description": "A PIN has been sent to your email. Check your inbox. Enter your PIN Code.",
     "send": "Send",
+    "validate": "Validate",
     "messageHtml": "{{description}}<br><small class=\"counter\">Time remaining: {{counter}} seconds</small>",
     "organization": "Organization: ",
     "holder": "Holder: ",
