@@ -256,6 +256,8 @@
     },
     "legal-document": {
       "back": "Volver",
+      "not-published-title": "El documento aún no está disponible",
+      "not-published-description": "Este documento todavía no se ha publicado. Lo gestiona EUDIStack. Para más información, contacta con soporte:",
       "loading": "Cargando documento...",
       "error-title": "No se ha podido cargar el documento",
       "error-description": "Comprueba tu conexión e inténtalo de nuevo.",
@@ -264,6 +266,8 @@
     },
     "oss-licenses": {
       "title": "Licencias de software de código abierto",
+      "sbom-frontend": "SBOM del frontend (última release)",
+      "sbom-backend": "SBOM del backend (última release)",
       "count-suffix": "dependencias",
       "empty-title": "Listado no disponible",
       "empty-description": "No hemos podido cargar el listado de licencias en este momento.",
@@ -517,7 +521,6 @@
     "csv-header-credential": "Credencial",
     "csv-header-counterparty": "Contraparte",
     "csv-header-date": "Fecha",
-    "csv-header-details": "Detalle",
     "export-error": "No se pudo exportar el historial",
     "type-issued": "Credencial recibida",
     "type-presented": "Credencial presentada",
@@ -549,7 +552,6 @@
     "last-active": "Última actividad",
     "added-on": "Añadido el",
     "remove-device": "Eliminar dispositivo",
-    "close-sessions": "Cerrar sesiones",
     "no-other-devices-title": "No hay otros dispositivos conectados",
     "no-other-devices-hint": "Tu wallet solo está disponible en este dispositivo.",
     "no-current-device-title": "Este dispositivo no está registrado",

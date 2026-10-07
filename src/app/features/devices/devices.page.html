@@ -121,12 +121,6 @@
               </dl>
 
               <div class="device-card__actions">
-                @if (passkey.activeSessions > 0) {
-                  <button type="button" class="device-action" (click)="revokeSessions(passkey)">
-                    <ion-icon name="log-out-outline" aria-hidden="true"></ion-icon>
-                    <span>{{ 'devices.close-sessions' | translate }}</span>
-                  </button>
-                }
                 <button
                   type="button"
                   class="device-action"
