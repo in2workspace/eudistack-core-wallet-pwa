@@ -195,8 +195,8 @@ describe('LoginPage (server mode)', () => {
 
   describe('EC-04: device name defaults when the user does not edit it', () => {
     it('prefills deviceName after verifyCode() and registers with that default', async () => {
-      component.email = 'user@example.com';
-      component.otpValue = '123456';
+      component.email.set('user@example.com');
+      component.otpValue.set('123456');
 
       component.verifyCode();
 
@@ -239,8 +239,8 @@ describe('LoginPage (server mode)', () => {
     it('forces device registration when the account has no server-side passkeys, even if the browser has a local one', () => {
       mockPrfService.hasPasskey.mockReturnValue(true);
       mockPasskeyApi.listPasskeys.mockReturnValue(of([]));
-      component.email = 'new-account@example.com';
-      component.otpValue = '123456';
+      component.email.set('new-account@example.com');
+      component.otpValue.set('123456');
 
       component.verifyCode();
 
@@ -254,8 +254,8 @@ describe('LoginPage (server mode)', () => {
       mockPasskeyApi.listPasskeys.mockReturnValue(of([
         { id: 'p1', credentialId: 'cred-local-1', displayName: 'This Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
       ]));
-      component.email = 'existing-account@example.com';
-      component.otpValue = '123456';
+      component.email.set('existing-account@example.com');
+      component.otpValue.set('123456');
 
       component.verifyCode();
 
@@ -267,8 +267,8 @@ describe('LoginPage (server mode)', () => {
       mockPasskeyApi.listPasskeys.mockReturnValue(of([
         { id: 'p1', credentialId: 'cred-on-phone', displayName: 'Phone', createdAt: '', lastUsedAt: null, activeSessions: 1 }
       ]));
-      component.email = 'existing-account@example.com';
-      component.otpValue = '123456';
+      component.email.set('existing-account@example.com');
+      component.otpValue.set('123456');
 
       component.verifyCode();
 
@@ -282,8 +282,8 @@ describe('LoginPage (server mode)', () => {
       mockPasskeyApi.listPasskeys.mockReturnValue(of([
         { id: 'p1', credentialId: 'cred-on-phone', displayName: 'Phone', createdAt: '', lastUsedAt: null, activeSessions: 1 }
       ]));
-      component.email = 'existing-account@example.com';
-      component.otpValue = '123456';
+      component.email.set('existing-account@example.com');
+      component.otpValue.set('123456');
 
       component.verifyCode();
 
@@ -296,8 +296,8 @@ describe('LoginPage (server mode)', () => {
       try {
         mockPasskeyApi.listPasskeys.mockReturnValue(throwError(() => ({ status: 500 })));
         (component as unknown as { matchedPasskeyId: string | null }).matchedPasskeyId = 'stale-id'; // must be cleared on the fail-safe
-        component.email = 'user@example.com';
-        component.otpValue = '123456';
+        component.email.set('user@example.com');
+        component.otpValue.set('123456');
 
         component.verifyCode();
 
@@ -322,8 +322,8 @@ describe('LoginPage (server mode)', () => {
       jest.useFakeTimers();
       try {
         mockPasskeyApi.listPasskeys.mockReturnValue(throwError(() => ({ status: 500 })));
-        component.email = 'user@example.com';
-        component.otpValue = '123456';
+        component.email.set('user@example.com');
+        component.otpValue.set('123456');
 
         component.verifyCode();
         expect(mockPasskeyApi.listPasskeys).toHaveBeenCalledTimes(1);
@@ -342,8 +342,8 @@ describe('LoginPage (server mode)', () => {
       mockPasskeyApi.listPasskeys.mockReturnValue(of([
         { id: 'p1', credentialId: 'cred-local-1', displayName: 'This Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
       ]));
-      component.email = 'user@example.com';
-      component.otpValue = '123456';
+      component.email.set('user@example.com');
+      component.otpValue.set('123456');
 
       component.verifyCode();
 
@@ -356,7 +356,7 @@ describe('LoginPage (server mode)', () => {
   describe('ES-04: recoverable error on register()/verifyEmail() failure', () => {
     it('shows an error and stays on the email step when register() fails', () => {
       mockAuthService.register.mockReturnValue(throwError(() => ({ status: 500, error: {} })));
-      component.email = 'user@example.com';
+      component.email.set('user@example.com');
 
       component.sendCode();
 
@@ -367,7 +367,7 @@ describe('LoginPage (server mode)', () => {
 
     it('shows the neutral rate-limit message when register() returns 429', () => {
       mockAuthService.register.mockReturnValue(throwError(() => ({ status: 429 })));
-      component.email = 'user@example.com';
+      component.email.set('user@example.com');
 
       component.sendCode();
 
@@ -378,8 +378,8 @@ describe('LoginPage (server mode)', () => {
     it('shows an error and stays on the code step when verifyEmail() fails', () => {
       mockAuthService.verifyEmail.mockReturnValue(throwError(() => ({ status: 401, error: { message: 'invalid_code' } })));
       component.step.set('code');
-      component.email = 'user@example.com';
-      component.otpValue = '000000';
+      component.email.set('user@example.com');
+      component.otpValue.set('000000');
 
       component.verifyCode();
 
@@ -444,8 +444,8 @@ describe('LoginPage (server mode)', () => {
   // by 'ES-05 / AD-1: passkey server-side registration failure' below.
   describe('EUD-104 EC-01: no navigation before a passkey is actually registered', () => {
     it('stays on the passkey-setup screen and does not navigate home right after verify', () => {
-      component.email = 'user@example.com';
-      component.otpValue = '123456';
+      component.email.set('user@example.com');
+      component.otpValue.set('123456');
 
       component.verifyCode();
 
@@ -491,8 +491,8 @@ describe('LoginPage (server mode)', () => {
       mockPasskeyApi.listPasskeys.mockReturnValue(of([
         { id: 'p-server-1', credentialId: 'cred-local-1', displayName: 'This Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
       ]));
-      component.email = 'user@example.com';
-      component.otpValue = '123456';
+      component.email.set('user@example.com');
+      component.otpValue.set('123456');
       component.verifyCode();
       expect(component.needsPasskeySetup).toBe(false);
 
@@ -537,8 +537,8 @@ describe('LoginPage (server mode)', () => {
         { id: 'p-server-1', credentialId: 'cred-local-1', displayName: 'This Laptop', createdAt: '', lastUsedAt: null, activeSessions: 1 }
       ]));
       mockPasskeyApi.confirmSession.mockReturnValue(throwError(() => ({ status: 500 })));
-      component.email = 'user@example.com';
-      component.otpValue = '123456';
+      component.email.set('user@example.com');
+      component.otpValue.set('123456');
       component.verifyCode();
 
       await component.verifyPasskey();
@@ -681,8 +681,8 @@ describe('LoginPage (server mode)', () => {
       expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBeTruthy();
 
       // 2. User re-authenticates via OTP
-      component.email = 'user@example.com';
-      component.otpValue = '123456';
+      component.email.set('user@example.com');
+      component.otpValue.set('123456');
       mockAuthService.verifyEmail.mockReturnValue(of({ accessToken: 'a', refreshToken: 'r', expiresIn: 900 }));
       mockPasskeyApi.listPasskeys.mockReturnValue(of([])); // Force needsPasskeySetup = true
 
@@ -827,7 +827,7 @@ describe('LoginPage (server mode)', () => {
     });
 
     it('handles passkey registration failure in createPasskeyForDevice', async () => {
-      component.email = 'test@example.com';
+      component.email.set('test@example.com');
       mockPrfService.createPasskey.mockRejectedValue(new Error('Hardware fail'));
       jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
@@ -838,7 +838,7 @@ describe('LoginPage (server mode)', () => {
     });
 
     it('handles case where createPasskey succeeds but getCredentialId returns null', async () => {
-      component.email = 'test@example.com';
+      component.email.set('test@example.com');
       mockPrfService.createPasskey.mockResolvedValue('ok');
       mockPasskeyStore.getCredentialId.mockReturnValue(null);
 
@@ -921,13 +921,13 @@ describe('LoginPage (server mode)', () => {
     it('OTP flow: onOtpCompleted and goBackToEmail', () => {
       const verifySpy = jest.spyOn(component, 'verifyCode').mockImplementation();
       component.onOtpCompleted('123456');
-      expect((component as any).otpValue).toBe('123456');
+      expect(component.otpValue()).toBe('123456');
       expect(verifySpy).toHaveBeenCalled();
 
       component.step.set('code');
       component.goBackToEmail();
       expect(component.step()).toBe('email');
-      expect((component as any).otpValue).toBe('');
+      expect(component.otpValue()).toBe('');
     });
 
     it('verifyPasskey: handles error when NOT using refresh token path', async () => {
@@ -968,7 +968,7 @@ describe('LoginPage (server mode)', () => {
     });
 
     it('sendCode: navigates to code step on success', () => {
-      component.email = 'test@example.com';
+      component.email.set('test@example.com');
       mockAuthService.register.mockReturnValue(of({ message: 'OK' }));
 
       component.sendCode();
@@ -979,8 +979,7 @@ describe('LoginPage (server mode)', () => {
 
     it('covers resendCode error branch', () => {
       const registerSpy = mockAuthService.register.mockReturnValue(throwError(() => ({ status: 500, error: { detail: 'resend_failed_detail' } })));
-      component.email = 'user@example.com';
-      component.resendSecondsLeft.set(0);
+      component.email.set('user@example.com');
 
       component.resendCode();
 
@@ -991,8 +990,7 @@ describe('LoginPage (server mode)', () => {
 
     it('covers resendCode 429 error branch', () => {
       mockAuthService.register.mockReturnValue(throwError(() => ({ status: 429 })));
-      component.email = 'user@example.com';
-      component.resendSecondsLeft.set(0);
+      component.email.set('user@example.com');
 
       component.resendCode();
 
@@ -1001,13 +999,13 @@ describe('LoginPage (server mode)', () => {
 
     it('covers sendCode 429 and error detail branches', () => {
       mockAuthService.register.mockReturnValue(throwError(() => ({ status: 429 })));
-      component.email = 'user@example.com';
+      component.email.set('user@example.com');
       component.sendCode();
       expect(component.errorMessage).toBe('auth.errors.too-many-attempts');
 
-      // The 429 above starts a retry cooldown (see the dedicated describe block below),
-      // so this second call needs it cleared first to reach the 500/detail branch at all.
-      component.resendSecondsLeft.set(0);
+      // The 429 above blocks this email (see the dedicated describe block below),
+      // so the 500/detail branch is reached with another one.
+      component.email.set('other@example.com');
       mockAuthService.register.mockReturnValue(throwError(() => ({ status: 500, error: { detail: 'send_failed_detail' } })));
       component.sendCode();
       expect(component.errorMessage).toBe('send_failed_detail');
@@ -1015,15 +1013,15 @@ describe('LoginPage (server mode)', () => {
 
     it('covers verifyCode 429 and error detail branches', () => {
       mockAuthService.verifyEmail.mockReturnValue(throwError(() => ({ status: 429, error: { error: 'too_many_attempts' } })));
-      component.email = 'user@example.com';
-      component.otpValue = '123456';
+      component.email.set('user@example.com');
+      component.otpValue.set('123456');
       component.verifyCode();
       expect(component.errorMessage).toBe('auth.errors.too-many-attempts-otp');
 
       mockAuthService.verifyEmail.mockReturnValue(throwError(() => ({ status: 500, error: { detail: 'verify_failed_detail' } })));
       // The exhausted code above keeps Continue disabled until a new code arrives.
-      component.codeExhausted.set(false);
-      component.otpValue = '123456';
+      component.codeState.set('active');
+      component.otpValue.set('123456');
       component.verifyCode();
       expect(component.errorMessage).toBe('verify_failed_detail');
     });
@@ -1204,7 +1202,7 @@ describe('LoginPage (server mode)', () => {
     });
 
     it('covers ionViewWillLeave and ngOnDestroy', () => {
-      const stopSpy = jest.spyOn(component as any, 'stopResendCountdown');
+      const stopSpy = jest.spyOn(component as any, 'stopTicker');
       component.ionViewWillLeave();
       expect(stopSpy).toHaveBeenCalled();
       component.ngOnDestroy();
@@ -1347,7 +1345,7 @@ describe('LoginPage (server mode)', () => {
   describe('verification-code resend cooldown', () => {
     beforeEach(() => {
       jest.useFakeTimers();
-      component.email = 'user@example.com';
+      component.email.set('user@example.com');
     });
 
     afterEach(() => {
@@ -1386,13 +1384,13 @@ describe('LoginPage (server mode)', () => {
       jest.advanceTimersByTime(180_000);
       expect(component.resendSecondsLeft()).toBe(0);
 
-      component.otpValue = '123456';
+      component.otpValue.set('123456');
       component.resendCode();
 
       expect(mockAuthService.register).toHaveBeenCalledTimes(2);
       expect(component.resendSecondsLeft()).toBe(180);
       // the stale code the user may have typed is cleared
-      expect(component.otpValue).toBe('');
+      expect(component.otpValue()).toBe('');
     });
 
     it('does not leave the cooldown running after leaving the code step', () => {
@@ -1407,7 +1405,7 @@ describe('LoginPage (server mode)', () => {
 
     it('stops the cooldown once the code has been verified', () => {
       component.sendCode();
-      component.otpValue = '123456';
+      component.otpValue.set('123456');
 
       component.verifyCode();
 
@@ -1422,9 +1420,9 @@ describe('LoginPage (server mode)', () => {
 
     beforeEach(() => {
       jest.useFakeTimers();
-      component.email = 'user@example.com';
+      component.email.set('user@example.com');
       component.sendCode();
-      component.otpValue = '123456';
+      component.otpValue.set('123456');
     });
 
     afterEach(() => {
@@ -1438,7 +1436,7 @@ describe('LoginPage (server mode)', () => {
       component.verifyCode();
 
       expect(component.step()).toBe('code');
-      expect(component.email).toBe('user@example.com');
+      expect(component.email()).toBe('user@example.com');
     });
 
     it('flags the code as expired and shows the expired message', () => {
@@ -1446,9 +1444,9 @@ describe('LoginPage (server mode)', () => {
 
       component.verifyCode();
 
-      expect(component.codeExpired()).toBe(true);
+      expect(component.codeState()).toBe('expired');
       expect(component.errorMessage).toBe('auth.errors.otp-expired');
-      expect(component.otpValue).toBe('');
+      expect(component.otpValue()).toBe('');
       expect(component.loading).toBe(false);
     });
 
@@ -1468,7 +1466,7 @@ describe('LoginPage (server mode)', () => {
       component.resendCode();
 
       expect(mockAuthService.register).toHaveBeenLastCalledWith('user@example.com', 'login');
-      expect(component.codeExpired()).toBe(false);
+      expect(component.codeState()).not.toBe('expired');
       expect(component.resendSecondsLeft()).toBe(180);
     });
 
@@ -1477,7 +1475,7 @@ describe('LoginPage (server mode)', () => {
       component.verifyCode();
       component.resendCode();
 
-      component.otpValue = '654321';
+      component.otpValue.set('654321');
       component.verifyCode();
 
       expect(mockAuthService.verifyEmail).toHaveBeenLastCalledWith('user@example.com', '654321');
@@ -1489,7 +1487,7 @@ describe('LoginPage (server mode)', () => {
 
       component.verifyCode();
 
-      expect(component.codeExpired()).toBe(false);
+      expect(component.codeState()).not.toBe('expired');
       expect(component.errorMessage).toBe('auth.errors.otp-invalid');
       expect(component.resendSecondsLeft()).toBe(180);
     });
@@ -1509,7 +1507,7 @@ describe('LoginPage (server mode)', () => {
 
       component.goBackToEmail();
 
-      expect(component.codeExpired()).toBe(false);
+      expect(component.codeState()).not.toBe('expired');
     });
   });
 
@@ -1523,9 +1521,9 @@ describe('LoginPage (server mode)', () => {
 
     beforeEach(() => {
       jest.useFakeTimers();
-      component.email = 'user@example.com';
+      component.email.set('user@example.com');
       component.sendCode();
-      component.otpValue = '123456';
+      component.otpValue.set('123456');
     });
 
     afterEach(() => {
@@ -1540,7 +1538,7 @@ describe('LoginPage (server mode)', () => {
 
       expect(component.errorMessage).toBe('auth.errors.too-many-attempts-otp');
       expect(component.resendSecondsLeft()).toBe(0);
-      expect(component.codeExhausted()).toBe(true);
+      expect(component.codeState()).toBe('exhausted');
       expect(component.verifyRateLimited()).toBe(false);
     });
 
@@ -1549,7 +1547,7 @@ describe('LoginPage (server mode)', () => {
       component.verifyCode();
       mockAuthService.verifyEmail.mockClear();
 
-      component.otpValue = '123456';
+      component.otpValue.set('123456');
       component.verifyCode();
 
       expect(mockAuthService.verifyEmail).not.toHaveBeenCalled();
@@ -1560,10 +1558,10 @@ describe('LoginPage (server mode)', () => {
       component.verifyCode();
 
       component.resendCode();
-      component.otpValue = '654321';
+      component.otpValue.set('654321');
       component.verifyCode();
 
-      expect(component.codeExhausted()).toBe(false);
+      expect(component.codeState()).not.toBe('exhausted');
       expect(mockAuthService.verifyEmail).toHaveBeenLastCalledWith('user@example.com', '654321');
       expect(component.step()).toBe('passkey');
     });
@@ -1624,14 +1622,124 @@ describe('LoginPage (server mode)', () => {
 
       component.goBackToEmail();
 
-      expect(component.codeExhausted()).toBe(false);
+      expect(component.codeState()).not.toBe('exhausted');
+    });
+
+    it('keeps the rate limit when going back, so Send code is not offered for the same email', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => rateLimitedError));
+      component.verifyCode();
+      mockAuthService.register.mockClear();
+
+      component.goBackToEmail();
+      component.sendCode();
+
+      expect(component.step()).toBe('email');
+      expect(component.resendSecondsLeft()).toBe(3600);
+      expect(mockAuthService.register).not.toHaveBeenCalled();
+    });
+
+    it('lets the user try another email after going back from a rate limit', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => rateLimitedError));
+      component.verifyCode();
+      component.goBackToEmail();
+
+      component.email.set('other@example.com');
+      component.sendCode();
+
+      expect(component.rateLimited()).toBe(false);
+      expect(mockAuthService.register).toHaveBeenLastCalledWith('other@example.com', 'login');
+      expect(component.step()).toBe('code');
+    });
+
+    it('restores the countdown when the rate-limited email is typed again', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => rateLimitedError));
+      component.verifyCode();
+      component.goBackToEmail();
+      component.email.set('other@example.com');
+      jest.advanceTimersByTime(600_000);
+
+      component.email.set(' User@Example.com ');
+
+      expect(component.resendSecondsLeft()).toBe(3000);
+    });
+
+    it('keeps the rate limit across leaving and re-entering the page', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => rateLimitedError));
+      component.verifyCode();
+
+      component.ionViewWillLeave();
+      jest.advanceTimersByTime(60_000);
+      component.ionViewWillEnter();
+      component.email.set('user@example.com');
+
+      expect(component.verifyRateLimited()).toBe(true);
+      expect(component.resendSecondsLeft()).toBe(3540);
+      jest.advanceTimersByTime(1_000);
+      expect(component.resendSecondsLeft()).toBe(3539);
+    });
+
+    it('does not block Continue after a send/resend 429: only sending is limited', () => {
+      jest.advanceTimersByTime(180_000);
+      mockAuthService.register.mockReturnValue(throwError(() => ({ status: 429 })));
+      component.resendCode();
+
+      component.otpValue.set('123456');
+
+      expect(component.rateLimited()).toBe(true);
+      expect(component.canSubmitCode()).toBe(true);
+      component.verifyCode();
+      expect(mockAuthService.verifyEmail).toHaveBeenCalledWith('user@example.com', '123456');
+    });
+
+    it('keeps the explanation visible while typing into a blocked code', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => exhaustedError));
+      component.verifyCode();
+
+      component.onOtpChanged('1');
+
+      expect(component.errorMessage).toBe('auth.errors.too-many-attempts-otp');
+    });
+  });
+
+  describe('N1: one gate for Continue and verifyCode()', () => {
+    const expiredError = { status: 401, error: { error: 'expired_code' } };
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      component.email.set('user@example.com');
+      component.sendCode();
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => expiredError));
+      component.otpValue.set('123456');
+      component.verifyCode();
+      mockAuthService.verifyEmail.mockClear();
+    });
+
+    afterEach(() => {
+      component.ngOnDestroy();
+      jest.useRealTimers();
+    });
+
+    it('does not submit a code typed after it expired (OTP `completed` auto-submit)', () => {
+      component.onOtpChanged('654321');
+      component.verifyCode();
+
+      expect(component.canSubmitCode()).toBe(false);
+      expect(mockAuthService.verifyEmail).not.toHaveBeenCalled();
+    });
+
+    it('disables Continue through the same gate', () => {
+      component.onOtpChanged('654321');
+      fixture.detectChanges();
+
+      const continueButton = fixture.nativeElement.querySelector('.auth-button--code') as HTMLButtonElement;
+      expect(continueButton.disabled).toBe(true);
     });
   });
 
   describe('EUD bug: 429 on send/resend code must disable the button with a real countdown', () => {
     beforeEach(() => {
       jest.useFakeTimers();
-      component.email = 'user@example.com';
+      component.email.set('user@example.com');
     });
 
     afterEach(() => {
@@ -1677,7 +1785,6 @@ describe('LoginPage (server mode)', () => {
         status: 429,
         headers: { get: (name: string) => (name === 'Retry-After' ? '30' : null) },
       })));
-      component.resendSecondsLeft.set(0);
 
       component.resendCode();
 
