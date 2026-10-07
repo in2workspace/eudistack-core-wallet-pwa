@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Detailed OID4VCI error handling (RFC 7807 Problem Details)**: The wallet now recognizes and specifically handles machine-readable error types from the Issuer and EBW backends.
+  - Introduced `ApiError` interface and parser to extract stable error identifiers (`type`) from RFC 7807 Problem Details responses.
+  - New dedicated error classes: `CredentialOfferExpiredError` (HTTP 410), `CredentialOfferNotFoundError` (HTTP 404), and `CredentialAlreadyIssuedError`.
+  - `credential_already_issued` tells the holder the credential is no longer available and how to proceed ("La credencial no se encuentra disponible. Solicite una nueva o contacte con soporte.", with the tenant support link), instead of claiming it is already in the wallet — the Issuer also returns it for a consumed offer, so the wallet cannot assume the credential was stored on this device.
+  - Added specific English, Spanish, and Catalan translations for these scenarios (e.g., distinguishing between an expired offer and one already processed).
+  - Updated `HttpErrorInterceptor` and the core error mapping logic to prioritize these specific backend signals over generic HTTP status codes when showing alerts.
+- **Test coverage for error infrastructure**: Added unit and integration tests for `ApiError` parsing, `Oid4vciError` hierarchy, and the `CredentialOffer` service error paths. `jest.config.js` was updated to include these new components in coverage reports.
+
+### Fixed
+
+- **Duplicate error alerts during credential activation**: `CredentialsPage` now avoids stacking generic "Failed QR" alerts when the underlying OID4VCI engine has already presented a specific, more informative error modal to the user.
+
 ### Fixed
 - **About: legal documents still showed the connection error on DEV/PRO (S3 + CloudFront)**: a document that is not published is answered with **HTTP 403** by S3/CloudFront (no `ListBucket` permission ⇒ a missing key is indistinguishable from a forbidden one), not with the 404 nginx gives locally, so `LegalContentService` classified it as `unavailable` and the page kept showing "Check your connection" with a useless Retry. 403 is now treated like 404 for same-origin legal assets: single fallback to `es`, then `not-found` (truthful "not available yet — managed by EUDIStack" message, no Retry).
 
