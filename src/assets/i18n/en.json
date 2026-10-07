@@ -266,6 +266,8 @@
     },
     "legal-document": {
       "back": "Back",
+      "not-published-title": "The document is not available yet",
+      "not-published-description": "This document has not been published yet. It is managed by EUDIStack. For more information, contact support:",
       "loading": "Loading document...",
       "error-title": "The document could not be loaded",
       "error-description": "Check your connection and try again.",
@@ -274,6 +276,8 @@
     },
     "oss-licenses": {
       "title": "Open-source software licenses",
+      "sbom-frontend": "Frontend SBOM (latest release)",
+      "sbom-backend": "Backend SBOM (latest release)",
       "count-suffix": "dependencies",
       "empty-title": "List not available",
       "empty-description": "We could not load the licenses list right now.",

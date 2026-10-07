@@ -13,6 +13,9 @@ import {
   isLegalLang,
 } from '../models/legal-document.model';
 
+/** Markers of a full HTML page (the SPA shell), never present in a legal fragment (ES-02/ES-06). */
+const APP_SHELL_PATTERN = /<app-root|<html[\s>]|<!doctype/i;
+
 /**
  * AC-04 / EC-01 / ES-01 / ES-02 / ES-04 / ES-05.
  * Resolves and fetches a legal document for the active interface language,
@@ -81,7 +84,17 @@ export class LegalContentService {
   private fetchRaw(docId: LegalDocumentId, lang: LegalLang): Observable<string> {
     return this.http
       .get(`assets/legal/${lang}/${docId}.html`, { responseType: 'text' })
-      .pipe(timeout(LEGAL_DOCUMENT_TIMEOUT_MS));
+      .pipe(
+        timeout(LEGAL_DOCUMENT_TIMEOUT_MS),
+        map((html) => {
+          // SPA hosting (nginx / CloudFront) answers a missing file with index.html and HTTP 200,
+          // so a document that was never published never produces a 404. Treat the app shell as one.
+          if (APP_SHELL_PATTERN.test(html)) {
+            throw new HttpErrorResponse({ status: 404, statusText: 'Not Found' });
+          }
+          return html;
+        })
+      );
   }
 
   private toFailure(docId: LegalDocumentId, lang: LegalLang, err: unknown): LegalContentResult {

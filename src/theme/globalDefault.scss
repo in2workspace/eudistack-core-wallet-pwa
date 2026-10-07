@@ -26,6 +26,12 @@ html, body {
   transform: translateY(-7%);
 }
 
+ion-toast {
+  --background: var(--surface-card);
+  --color: var(--text-primary);
+  --button-color: var(--text-primary);
+}
+
 ion-toast::part(container) {
   background-color: var(--surface-card) !important;
   border: 1px solid var(--border-default) !important;
