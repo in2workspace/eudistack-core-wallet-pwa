@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The activity history CSV declared a "Details" column that was always empty**: the exported file had five columns in the header but the fifth never carried data, because no activity flow fills `details`. The export now has four columns (type, credential, counterparty and date), the same in the header and in every row.
+- Removed the now unused `activity.csv-header-details` i18n key (es/ca/en).
+- The `details` field itself is unchanged in the data model and in the API.
+- Tests: updated `activity-export.service.spec.ts` and `activity.page.spec.ts`, with a new check that the header and every row have the same number of columns.
+
 - **The PIN modal for credentials issued with pre-authorization had no way to submit the code except pressing Enter**: the modal only offered *Cancel*, so on mobile keyboards without an Enter key the user could not continue. It now has a primary **Validate** button, enabled once the whole PIN is typed, in addition to Enter.
 - On narrow screens the buttons are stacked at full width.
 - New i18n key `confirmation.validate` (es/ca/en).
