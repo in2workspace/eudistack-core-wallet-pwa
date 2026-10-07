@@ -200,6 +200,15 @@
       "otp-expired": "The code has expired. Tap Resend to get a new one at your email.",
       "otp-invalid": "The code is incorrect. Check it and try again.",
       "passkey-register-failed": "Failed to register this device. Please try again.",
+      "passkey-login-cancelled": "You cancelled signing in with your passkey. You can try again whenever you like.",
+      "passkey-cancelled": "You cancelled the passkey verification. You can try again whenever you like.",
+      "passkey-not-found": "There is no passkey registered on this device.",
+      "passkey-creation-cancelled": "You cancelled creating the passkey. You can try again whenever you like.",
+      "passkey-timeout": "The operation timed out. Please try again.",
+      "passkey-already-registered": "This device already has a passkey registered for this wallet.",
+      "passkey-not-supported": "This device or browser doesn’t support the required type of passkey. Try another browser or device.",
+      "passkey-security": "The passkey can’t be used at this address. Make sure you open the wallet from its official (HTTPS) address.",
+      "passkey-failed": "We couldn’t complete the passkey verification. Please try again.",
       "session-expired-request-code": "Your session has expired. Request a new verification code to continue opening your credential offer."
     }
   },
@@ -606,6 +615,7 @@
     "pin": "Enter PIN",
     "description": "A PIN has been sent to your email. Check your inbox. Enter your PIN Code.",
     "send": "Send",
+    "validate": "Validate",
     "messageHtml": "{{description}}<br><small class=\"counter\">Time remaining: {{counter}} seconds</small>",
     "organization": "Organization: ",
     "holder": "Holder: ",

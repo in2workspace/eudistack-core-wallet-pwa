@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { PasskeyPrfService } from './passkey-prf.service';
 import { PasskeyStoreService } from './passkey-store.service';
 import { AppError } from '../models/error/AppError';
+import { PasskeyError } from '../models/error/PasskeyError';
 import { base64UrlDecode, base64UrlEncode } from '../utils/base64url';
 import { WEBAUTHN_CREATE_HINTS, WEBAUTHN_ASSERTION_HINTS } from '../constants/webauthn.constants';
 
@@ -97,7 +98,10 @@ describe('PasskeyPrfService', () => {
   describe('assertLocalPasskey', () => {
     it('throws if no credential id is stored', async () => {
       storeSpy.getCredentialId.mockReturnValue(null);
-      await expect(service.assertLocalPasskey()).rejects.toThrow('No passkey found');
+      await expect(service.assertLocalPasskey()).rejects.toMatchObject({
+        code: 'passkey_not_found',
+        translationKey: 'auth.errors.passkey-not-found',
+      });
     });
 
     it('sends client-device assertion hints, not hybrid-first', async () => {
@@ -111,11 +115,55 @@ describe('PasskeyPrfService', () => {
       expect(call.publicKey.hints[0]).not.toBe('hybrid');
     });
 
-    it('throws when the authenticator returns no assertion', async () => {
+    it('throws a cancellation when the authenticator returns no assertion', async () => {
       storeSpy.getCredentialId.mockReturnValue(base64UrlEncode(new Uint8Array([1, 2, 3])));
       (navigator.credentials.get as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.assertLocalPasskey()).rejects.toThrow('Authentication cancelled');
+      await expect(service.assertLocalPasskey()).rejects.toMatchObject({ code: 'passkey_cancelled' });
+    });
+
+    describe('when the OS passkey prompt rejects', () => {
+      const notAllowed = (): DOMException =>
+        new DOMException('The operation either timed out or was not allowed.', 'NotAllowedError');
+
+      beforeEach(() => {
+        storeSpy.getCredentialId.mockReturnValue(base64UrlEncode(new Uint8Array([1, 2, 3])));
+      });
+
+      afterEach(() => jest.restoreAllMocks());
+
+      it('turns a dismissed prompt (Windows "Cancel") into a PasskeyError, not a raw DOMException', async () => {
+        (navigator.credentials.get as jest.Mock).mockRejectedValue(notAllowed());
+
+        await expect(service.assertLocalPasskey()).rejects.toBeInstanceOf(PasskeyError);
+      });
+
+      it('classifies a quick NotAllowedError as a user cancellation', async () => {
+        (navigator.credentials.get as jest.Mock).mockRejectedValue(notAllowed());
+
+        await expect(service.assertLocalPasskey()).rejects.toMatchObject({ code: 'passkey_cancelled', ceremony: 'get' });
+      });
+
+      it('classifies a NotAllowedError after the 60s timeout as a timeout', async () => {
+        jest.spyOn(Date, 'now').mockReturnValueOnce(0).mockReturnValueOnce(60_000);
+        (navigator.credentials.get as jest.Mock).mockRejectedValue(notAllowed());
+
+        await expect(service.assertLocalPasskey()).rejects.toMatchObject({ code: 'passkey_timeout' });
+      });
+
+      it('sends the same timeout it uses to detect timeouts', async () => {
+        (navigator.credentials.get as jest.Mock).mockResolvedValue({ id: 'assertion' });
+
+        await service.assertLocalPasskey();
+
+        expect((navigator.credentials.get as jest.Mock).mock.calls[0][0].publicKey.timeout).toBe(60_000);
+      });
+
+      it('classifies SecurityError (wrong RP ID / origin) as a security failure', async () => {
+        (navigator.credentials.get as jest.Mock).mockRejectedValue(new DOMException('rp id', 'SecurityError'));
+
+        await expect(service.assertLocalPasskey()).rejects.toMatchObject({ code: 'passkey_security' });
+      });
     });
   });
 
@@ -143,6 +191,29 @@ describe('PasskeyPrfService', () => {
     it('should throw AppError if creation fails', async () => {
       (navigator.credentials.create as jest.Mock).mockResolvedValue(null);
       await expect(service.createPasskey('Test User')).rejects.toThrow(AppError);
+    });
+
+    it('classifies a cancelled creation with the creation-specific message', async () => {
+      (navigator.credentials.create as jest.Mock).mockRejectedValue(new DOMException('x', 'NotAllowedError'));
+
+      await expect(service.createPasskey('Test User')).rejects.toMatchObject({
+        code: 'passkey_cancelled',
+        translationKey: 'auth.errors.passkey-creation-cancelled',
+      });
+    });
+
+    it('classifies InvalidStateError as an authenticator that already holds this passkey', async () => {
+      (navigator.credentials.create as jest.Mock).mockRejectedValue(new DOMException('x', 'InvalidStateError'));
+
+      await expect(service.createPasskey('Test User')).rejects.toMatchObject({ code: 'passkey_already_registered' });
+    });
+
+    it('does not store a credential id when creation is cancelled', async () => {
+      (navigator.credentials.create as jest.Mock).mockRejectedValue(new DOMException('x', 'NotAllowedError'));
+
+      await service.createPasskey('Test User').catch(() => undefined);
+
+      expect(storeSpy.setCredentialId).not.toHaveBeenCalled();
     });
 
     describe('per-account WebAuthn user handle', () => {
@@ -242,6 +313,14 @@ describe('PasskeyPrfService', () => {
         });
 
         await expect(service.deriveSigningKey(new Uint8Array(32))).rejects.toThrow(AppError);
+    });
+
+    it('classifies a cancelled signing prompt as a user cancellation and releases the lock', async () => {
+      storeSpy.getCredentialId.mockReturnValue(base64UrlEncode(new Uint8Array([1, 2, 3])));
+      (navigator.credentials.get as jest.Mock).mockRejectedValue(new DOMException('x', 'NotAllowedError'));
+
+      await expect(service.deriveSigningKey(new Uint8Array(32))).rejects.toMatchObject({ code: 'passkey_cancelled' });
+      expect((service as unknown as { prfLock: unknown }).prfLock).toBeNull();
     });
 
     it('should wait for prfLock if another derivation is in progress', async () => {

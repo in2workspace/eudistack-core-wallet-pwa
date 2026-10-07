@@ -13,6 +13,7 @@ import { WalletService } from 'src/app/core/services/wallet.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
+import { PasskeyError } from 'src/app/core/models/error/PasskeyError';
 
 describe('LoginPage (server mode)', () => {
   let component: LoginPage;
@@ -715,7 +716,7 @@ describe('LoginPage (server mode)', () => {
     });
 
     it('stays on passkey step if WebAuthn is cancelled, without clearing the token', async () => {
-      mockAuthService.unlockWithPasskey.mockRejectedValue(new Error('Authentication cancelled'));
+      mockAuthService.unlockWithPasskey.mockRejectedValue(new PasskeyError('passkey_cancelled', 'get'));
 
       localStorage.setItem('wallet_refresh_token', 'stale-refresh');
       component.ionViewWillEnter();
@@ -724,7 +725,8 @@ describe('LoginPage (server mode)', () => {
       await component.verifyPasskey();
 
       expect(component.step()).toBe('passkey');
-      expect(component.errorMessage).toBe('Authentication cancelled');
+      expect(component.errorMessage).toBe('');
+      expect(component.noticeMessage).toBe('auth.errors.passkey-login-cancelled');
       expect(localStorage.getItem('wallet_refresh_token')).toBe('stale-refresh');
       expect(mockAuthService.refreshAccessToken).not.toHaveBeenCalled();
       expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
@@ -827,10 +829,11 @@ describe('LoginPage (server mode)', () => {
     it('handles passkey registration failure in createPasskeyForDevice', async () => {
       component.email = 'test@example.com';
       mockPrfService.createPasskey.mockRejectedValue(new Error('Hardware fail'));
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
       await component.createPasskeyForDevice();
 
-      expect(component.errorMessage).toBe('Hardware fail');
+      expect(component.errorMessage).toBe('auth.errors.passkey-failed');
       expect(component.loading).toBe(false);
     });
 
@@ -897,21 +900,22 @@ describe('LoginPage (server mode)', () => {
 
     it('Browser mode: handles failures in login and setup', async () => {
       Object.defineProperty(component, 'isBrowserMode', { value: true });
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
-      // Test default error message for setup
+      // Unclassified setup failure → generic translated message, never the raw text
       (mockAuthService as any).setupPasskey = jest.fn().mockRejectedValue({});
       await component.createWalletBrowserMode();
-      expect(component.errorMessage).toBe('Failed to create passkey');
+      expect(component.errorMessage).toBe('auth.errors.passkey-failed');
 
       // authenticateLocally fail
       jest.spyOn(component as any, 'authenticateLocally').mockRejectedValue(new Error('Local fail'));
       await component.loginBrowserMode();
-      expect(component.errorMessage).toBe('Local fail');
+      expect(component.errorMessage).toBe('auth.errors.passkey-failed');
 
-      // Test default error message for login
+      // Error without message
       jest.spyOn(component as any, 'authenticateLocally').mockRejectedValue({});
       await component.loginBrowserMode();
-      expect(component.errorMessage).toBe('Login failed');
+      expect(component.errorMessage).toBe('auth.errors.passkey-failed');
     });
 
     it('OTP flow: onOtpCompleted and goBackToEmail', () => {
@@ -1025,15 +1029,17 @@ describe('LoginPage (server mode)', () => {
       const translate = TestBed.inject(TranslateService);
       const translateSpy = jest.spyOn(translate, 'instant');
 
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
       // 1. unlockWithPasskey error (verifyPasskey branch)
       mockAuthService.unlockWithPasskey.mockRejectedValueOnce({});
       await component.verifyPasskey();
-      expect(component.errorMessage).toBe('Passkey verification failed');
+      expect(component.errorMessage).toBe('auth.errors.passkey-failed');
 
       // 2. createPasskey error branch (createPasskeyForDevice)
       mockPrfService.createPasskey.mockRejectedValueOnce({});
       await component.createPasskeyForDevice();
-      expect(component.errorMessage).toBe('Failed to create passkey');
+      expect(component.errorMessage).toBe('auth.errors.passkey-failed');
 
       // 3. registerPasskey error branch (createPasskeyForDevice fallback name)
       mockPrfService.createPasskey.mockResolvedValueOnce('ok');
@@ -1043,6 +1049,146 @@ describe('LoginPage (server mode)', () => {
       await component.createPasskeyForDevice();
       // It should use getDeviceName() as fallback and eventually fail with i18n key
       expect(translateSpy).toHaveBeenCalledWith('auth.errors.passkey-register-failed');
+    });
+  });
+
+  describe('Passkey prompt outcomes (cancel / timeout / real failures)', () => {
+    let consoleError: jest.SpyInstance;
+
+    beforeEach(() => {
+      // spyOn returns the spy an earlier test may have left on console.error: reset its calls.
+      consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      consoleError.mockClear();
+      Object.defineProperty(component, 'isBrowserMode', { value: true, configurable: true });
+      (mockAuthService as any).markAuthenticated = jest.fn();
+    });
+
+    function loginRejectsWith(error: unknown): void {
+      jest.spyOn(component as any, 'authenticateLocally').mockRejectedValue(error);
+    }
+
+    it('logs in and navigates home when the passkey is confirmed', async () => {
+      jest.spyOn(component as any, 'authenticateLocally').mockResolvedValue(undefined);
+
+      await component.loginBrowserMode();
+
+      expect(mockRouter.navigateByUrl).toHaveBeenCalledWith('/tabs/credentials');
+      expect(component.errorMessage).toBe('');
+      expect(component.noticeMessage).toBe('');
+    });
+
+    it('treats a dismissed prompt as a notice, not an error', async () => {
+      loginRejectsWith(new PasskeyError('passkey_cancelled', 'get'));
+
+      await component.loginBrowserMode();
+
+      expect(component.noticeMessage).toBe('auth.errors.passkey-login-cancelled');
+      expect(component.errorMessage).toBe('');
+    });
+
+    it('does not log a user cancellation as an error', async () => {
+      loginRejectsWith(new PasskeyError('passkey_cancelled', 'get'));
+
+      await component.loginBrowserMode();
+
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+
+    it('leaves the button enabled so the user can retry after cancelling', async () => {
+      loginRejectsWith(new PasskeyError('passkey_cancelled', 'get'));
+
+      await component.loginBrowserMode();
+
+      expect(component.loading).toBe(false);
+      expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('clears the cancel notice when the retry succeeds', async () => {
+      loginRejectsWith(new PasskeyError('passkey_cancelled', 'get'));
+      await component.loginBrowserMode();
+      jest.spyOn(component as any, 'authenticateLocally').mockResolvedValue(undefined);
+
+      await component.loginBrowserMode();
+
+      expect(component.noticeMessage).toBe('');
+      expect(mockRouter.navigateByUrl).toHaveBeenCalledWith('/tabs/credentials');
+    });
+
+    it('shows the timeout notice without logging it', async () => {
+      loginRejectsWith(new PasskeyError('passkey_timeout', 'get'));
+
+      await component.loginBrowserMode();
+
+      expect(component.noticeMessage).toBe('auth.errors.passkey-timeout');
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+
+    it('shows and logs a real WebAuthn failure (SecurityError)', async () => {
+      const failure = new PasskeyError('passkey_security', 'get');
+      loginRejectsWith(failure);
+
+      await component.loginBrowserMode();
+
+      expect(component.errorMessage).toBe('auth.errors.passkey-security');
+      expect(consoleError).toHaveBeenCalledWith('[LoginPage] Passkey ceremony failed:', failure);
+    });
+
+    it('never shows the raw DOMException text for an unexpected error', async () => {
+      loginRejectsWith(new Error('The operation either timed out or was not allowed.'));
+
+      await component.loginBrowserMode();
+
+      expect(component.errorMessage).toBe('auth.errors.passkey-failed');
+    });
+
+    it('uses the creation-specific notice when the user cancels creating the passkey', async () => {
+      (mockAuthService as any).setupPasskey = jest.fn().mockRejectedValue(new PasskeyError('passkey_cancelled', 'create'));
+
+      await component.createWalletBrowserMode();
+
+      expect(component.noticeMessage).toBe('auth.errors.passkey-creation-cancelled');
+    });
+
+    it('server mode: a cancelled device-passkey verification keeps the user on the passkey step', async () => {
+      Object.defineProperty(component, 'isBrowserMode', { value: false, configurable: true });
+      mockAuthService.unlockWithPasskey.mockRejectedValue(new PasskeyError('passkey_timeout', 'get'));
+      component.step.set('passkey');
+
+      await component.verifyPasskey();
+
+      expect(component.step()).toBe('passkey');
+      expect(component.noticeMessage).toBe('auth.errors.passkey-timeout');
+    });
+
+    it('server mode: a missing local passkey says so instead of the generic failure', async () => {
+      Object.defineProperty(component, 'isBrowserMode', { value: false, configurable: true });
+      mockAuthService.unlockWithPasskey.mockRejectedValue(new PasskeyError('passkey_not_found', 'get'));
+
+      await component.verifyPasskey();
+
+      expect(component.errorMessage).toBe('auth.errors.passkey-not-found');
+      expect(component.noticeMessage).toBe('');
+    });
+
+    it('server mode: an already-registered authenticator shows a specific error on device setup', async () => {
+      mockPrfService.createPasskey.mockRejectedValue(new PasskeyError('passkey_already_registered', 'create'));
+
+      await component.createPasskeyForDevice();
+
+      expect(component.errorMessage).toBe('auth.errors.passkey-already-registered');
+      expect(mockPasskeyApi.registerPasskey).not.toHaveBeenCalled();
+    });
+
+    it('renders the cancel notice in an <output> live region (not an alert)', async () => {
+      loginRejectsWith(new PasskeyError('passkey_cancelled', 'get'));
+      await component.loginBrowserMode();
+
+      fixture.detectChanges();
+      const host = fixture.nativeElement as HTMLElement;
+
+      expect(host.querySelector('output.error-box--notice')?.textContent)
+        .toContain('auth.errors.passkey-login-cancelled');
+      expect(host.querySelector('[role="alert"]')).toBeNull();
     });
   });
 
