@@ -1,11 +1,11 @@
-import { ChangeDetectorRef, Component, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IonicModule, ModalController, ViewWillEnter, ViewWillLeave } from '@ionic/angular';
+import { FormsModule } from '@angular/forms';
+import { IonicModule, ViewWillLeave } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { take } from 'rxjs';
 import { BarcodeScannerComponent } from 'src/app/shared/components/barcode-scanner/barcode-scanner.component';
-import { ManualCodeModalComponent } from 'src/app/shared/components/manual-code-modal/manual-code-modal.component';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
 import { HapticService } from 'src/app/shared/services/haptic.service';
 import { QrContentService } from 'src/app/core/services/qr-content.service';
@@ -17,26 +17,30 @@ import { QrContentService } from 'src/app/core/services/qr-content.service';
   imports: [
     IonicModule,
     CommonModule,
+    FormsModule,
     TranslateModule,
     BarcodeScannerComponent,
   ]
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
-export class ScanPage implements ViewWillEnter, ViewWillLeave {
+export class ScanPage implements ViewWillLeave {
   @ViewChild('scanner') private readonly barcodeScanner?: BarcodeScannerComponent;
 
   public showScanner = false;
+  public readonly code = signal('');
 
   private readonly router = inject(Router);
-  private readonly modalController = inject(ModalController);
   private readonly toastServiceHandler = inject(ToastServiceHandler);
   private readonly hapticService = inject(HapticService);
   private readonly qrContentService = inject(QrContentService);
   private readonly cdr = inject(ChangeDetectorRef);
 
-  public ionViewWillEnter(): void {
+  public get trimmedCode(): string {
+    return this.code().trim();
+  }
+
+  public startScanner(): void {
     this.showScanner = true;
-    this.cdr.detectChanges();
   }
 
   public ionViewWillLeave(): void {
@@ -65,17 +69,8 @@ export class ScanPage implements ViewWillEnter, ViewWillLeave {
       .catch(() => this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.navigation').subscribe());
   }
 
-  public async openManualCodeModal(): Promise<void> {
-    const modal = await this.modalController.create({
-      component: ManualCodeModalComponent,
-      cssClass: 'manual-code-modal',
-    });
-
-    await modal.present();
-
-    const { data, role } = await modal.onWillDismiss();
-    if (role === 'confirm' && typeof data === 'string' && data.trim()) {
-      this.qrCodeEmit(data.trim());
-    }
+  public submitCode(): void {
+    if (!this.trimmedCode) return;
+    this.qrCodeEmit(this.trimmedCode);
   }
 }

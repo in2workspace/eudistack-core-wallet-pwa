@@ -5,6 +5,24 @@
       <p class="scanner-subtitle">{{ "scanner.subtitle" | translate }}</p>
     </header>
 
+    <form class="code-entry" (ngSubmit)="submitCode()">
+      <label class="field-label" for="scan-code-input">{{ "scanner.manual-label" | translate }}</label>
+      <input
+        id="scan-code-input"
+        name="code"
+        class="field-input"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        [placeholder]="'scanner.manual-placeholder' | translate"
+        [ngModel]="code()"
+        (ngModelChange)="code.set($event)"
+      />
+      <button type="submit" class="btn-primary" [disabled]="!trimmedCode">
+        {{ "scanner.manual-continue" | translate }}
+      </button>
+    </form>
+
     @if (showScanner) {
       <div class="scanner-viewport">
         <app-barcode-scanner #scanner (qrCode)="qrCodeEmit($event)"></app-barcode-scanner>
@@ -15,13 +33,13 @@
           <span class="vf-corner vf-br"></span>
         </div>
       </div>
+    } @else {
+      <p class="scan-alternative">
+        {{ "scanner.scan-hint" | translate }}
+        <button type="button" class="scan-link" (click)="startScanner()">
+          {{ "scanner.scan-camera" | translate }}
+        </button>
+      </p>
     }
-
-    <p class="manual-hint">
-      {{ "scanner.manual-hint" | translate }}
-      <button type="button" class="manual-link" (click)="openManualCodeModal()">
-        {{ "scanner.manual-link" | translate }}
-      </button>
-    </p>
   </div>
 </ion-content>

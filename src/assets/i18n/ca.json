@@ -382,10 +382,10 @@
     "lifecycle-expired": "Caducada"
   },
   "scanner": {
-    "title": "Escaneja el teu codi QR",
-    "subtitle": "Utilitza la càmera del teu dispositiu per escanejar el codi QR",
-    "manual-hint": "No pots escanejar el codi QR?",
-    "manual-link": "Introdueix el codi manualment",
+    "title": "Afegeix una credencial",
+    "subtitle": "Enganxa el codi que has rebut o escaneja el seu codi QR",
+    "scan-hint": "Prefereixes escanejar?",
+    "scan-camera": "Escaneja amb la càmera",
     "manual-title": "Introdueix el codi manualment",
     "manual-description": "Si no pots escanejar el codi QR, introdueix el codi d'activació que t'han facilitat.",
     "manual-label": "Codi d'accés",

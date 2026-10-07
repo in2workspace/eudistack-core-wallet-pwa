@@ -315,10 +315,10 @@
     "lifecycle-expired": "Caducada"
   },
   "scanner": {
-    "title": "Escanea tu código QR",
-    "subtitle": "Usa la cámara de tu dispositivo para escanear el código QR",
-    "manual-hint": "¿No puedes escanear el código QR?",
-    "manual-link": "Introduce el código manualmente",
+    "title": "Añade una credencial",
+    "subtitle": "Pega el código que has recibido o escanea su código QR",
+    "scan-hint": "¿Prefieres escanear?",
+    "scan-camera": "Escanear con la cámara",
     "manual-title": "Introduce el código manualmente",
     "manual-description": "Si no puedes escanear el código QR, introduce el código de activación que te han facilitado.",
     "manual-label": "Código de acceso",

@@ -17,10 +17,10 @@
     "wallet": "Wallet"
   },
   "scanner": {
-    "title": "Scan your QR code",
-    "subtitle": "Use your device camera to scan the QR code",
-    "manual-hint": "Can't scan the QR code?",
-    "manual-link": "Enter code manually",
+    "title": "Add a credential",
+    "subtitle": "Paste the code you received or scan its QR code",
+    "scan-hint": "Prefer to scan?",
+    "scan-camera": "Scan with camera",
     "manual-title": "Enter code manually",
     "manual-description": "If you're unable to scan the QR code, enter the activation code provided to you.",
     "manual-label": "Access code",
