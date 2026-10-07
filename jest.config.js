@@ -88,6 +88,7 @@ module.exports = {
     "src/app/shared/services/pwa-install.service.ts",
     "src/app/shared/components/menu/menu.component.ts",
     "src/app/shared/components/manual-code-modal/manual-code-modal.component.ts",
+    "src/app/shared/components/tx-code-modal/tx-code-modal.component.ts",
     "src/app/shared/components/credential-confirmation-modal/credential-confirmation-modal.component.ts",
     "src/app/shared/services/credential-cache.service.ts",
     "src/app/shared/services/camera.service.ts",
