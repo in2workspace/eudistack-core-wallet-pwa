@@ -739,6 +739,90 @@ describe('CameraService', () => {
   });
 
 
+  
+  describe('CameraService - loadCamerasForSelector', () => {
+    const cam = (id: string) => ({ deviceId: id, label: 'Cam ' + id, kind: 'videoinput', groupId: 'g', toJSON: jest.fn() }) as unknown as MediaDeviceInfo;
+    const setPermission = (state: string | Error) => {
+      Object.defineProperty(window.navigator, 'permissions', {
+        value: { query: state instanceof Error ? jest.fn().mockRejectedValue(state) : jest.fn().mockResolvedValue({ state }) },
+        configurable: true,
+        writable: true,
+      });
+    };
+
+    beforeEach(() => {
+      jest.spyOn(cameraService, 'getCameraPermissionAndStopTracks').mockResolvedValue(true);
+      jest.spyOn(cameraService, 'handleCameraErrors').mockImplementation();
+      jest.spyOn(cameraService, 'getCameraFromStorage').mockResolvedValue(undefined);
+      jest.spyOn(cameraService, 'updateAvailableCameras').mockImplementation(async () => {
+        cameraService.availableDevices$.set([cam('a')]);
+        return [cam('a')];
+      });
+    });
+
+    it('only enumerates, without switching the camera on, when the permission is already granted', async () => {
+      setPermission('granted');
+
+      await cameraService.loadCamerasForSelector();
+
+      expect(cameraService.getCameraPermissionAndStopTracks).not.toHaveBeenCalled();
+      expect(cameraService.updateAvailableCameras).toHaveBeenCalledTimes(1);
+      expect(cameraService.availableDevices$()).toHaveLength(1);
+    });
+
+    it('asks for the permission once and then enumerates when it was not granted', async () => {
+      setPermission('prompt');
+
+      await cameraService.loadCamerasForSelector();
+
+      expect(cameraService.getCameraPermissionAndStopTracks).toHaveBeenCalledTimes(1);
+      expect(cameraService.updateAvailableCameras).toHaveBeenCalledTimes(1);
+    });
+
+    it('asks for the permission when the Permissions API is not available', async () => {
+      setPermission(new Error('unsupported'));
+
+      await cameraService.loadCamerasForSelector();
+
+      expect(cameraService.getCameraPermissionAndStopTracks).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports the error and does not enumerate when the permission is denied', async () => {
+      setPermission('prompt');
+      const denied = new Error('NotAllowedError');
+      jest.spyOn(cameraService, 'getCameraPermissionAndStopTracks').mockRejectedValue(denied);
+
+      await cameraService.loadCamerasForSelector();
+
+      expect(cameraService.handleCameraErrors).toHaveBeenCalledWith(denied, 'fetchError');
+      expect(cameraService.updateAvailableCameras).not.toHaveBeenCalled();
+    });
+
+    it('reports no camera available when enumeration returns nothing', async () => {
+      setPermission('granted');
+      jest.spyOn(cameraService, 'updateAvailableCameras').mockResolvedValue([]);
+
+      await cameraService.loadCamerasForSelector();
+
+      expect(cameraService.handleCameraErrors).toHaveBeenCalledWith({ name: 'CustomNoAvailable' }, 'fetchError');
+    });
+
+    it('selects the stored camera when it is among the listed ones and none is selected', async () => {
+      setPermission('granted');
+      jest.spyOn(cameraService, 'getCameraFromStorage').mockResolvedValue(cam('a'));
+
+      await cameraService.loadCamerasForSelector();
+
+      expect(cameraService.selectedCamera$()?.deviceId).toBe('a');
+    });
+
+    it('keeps the current selection when it is still available', async () => {
+      setPermission('granted');
+      cameraService.selectedCamera$.set(cam('a'));
+
+      await cameraService.loadCamerasForSelector();
+
+      expect(cameraService.getCameraFromStorage).not.toHaveBeenCalled();
+    });
   });
-
-
+});

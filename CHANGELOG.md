@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Settings did not list the cameras until "Sin dispositivo" was pressed**: opening Settings never enumerated the cameras — `CameraService.availableDevices$` was only filled by the scanner flow or by changing the selector — so on a device that had never opened the camera the selector showed "Sin dispositivo" (or blank labels, since Chrome hides device names until the permission is granted) and the cameras only appeared after pressing it. Expanding the camera panel now calls the new `CameraService.loadCamerasForSelector()` when the list is empty or unlabelled:
+  - With the camera permission already granted (Permissions API) it only enumerates devices, so the camera is never switched on and the browser's "camera in use" indicator does not appear.
+  - Otherwise it asks for the permission once and then enumerates; a denied permission or an empty list is reported like in the scanner flow. If the Permissions API is unavailable it falls back to asking.
+  - The stored camera is restored as the selected one when none is selected yet. Unlike `getCameraFlow()`, it does not probe the rear camera with `facingMode`, which would open the camera a second time.
+  - Tests: `loadCamerasForSelector` in `camera.service.spec.ts` and the panel trigger in `settings.page.spec.ts`.
+
 - **The PIN modal for credentials issued with pre-authorization had no way to submit the code except pressing Enter**: the modal only offered *Cancel*, so on mobile keyboards without an Enter key the user could not continue. It now has a primary **Validate** button, enabled once the whole PIN is typed, in addition to Enter.
 - On narrow screens the buttons are stacked at full width.
 - New i18n key `confirmation.validate` (es/ca/en).

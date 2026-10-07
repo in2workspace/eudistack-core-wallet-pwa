@@ -76,6 +76,42 @@ export class CameraService {
     return selectedCamera;
   }
 
+  // Lists the cameras for the settings selector. With the permission already granted it only
+  // enumerates (the camera is never switched on); otherwise it asks for the permission once.
+  public async loadCamerasForSelector(): Promise<void> {
+    if (!(await this.isCameraPermissionGranted())) {
+      try {
+        await this.getCameraPermissionAndStopTracks();
+      } catch (e: any) {
+        this.handleCameraErrors(e, 'fetchError');
+        return;
+      }
+    }
+
+    await this.updateAvailableCameras();
+    if (this.availableDevices$().length === 0) {
+      this.handleCameraErrors({ name: 'CustomNoAvailable' }, 'fetchError');
+      return;
+    }
+
+    const current = this.selectedCamera$();
+    if (current && this.isCameraAvailableById(current.deviceId)) return;
+
+    const stored = await this.getCameraFromStorage();
+    if (stored && this.isCameraAvailableById(stored.deviceId)) {
+      this.selectedCamera$.set(this.getAvailableCameraById(stored.deviceId));
+    }
+  }
+
+  private async isCameraPermissionGranted(): Promise<boolean> {
+    try {
+      const status = await navigator.permissions.query({ name: 'camera' as PermissionName });
+      return status.state === 'granted';
+    } catch {
+      return false;
+    }
+  }
+
   public async getCameraPermissionAndStopTracks(): Promise<true>{
     try{
       const stream = await navigator.mediaDevices.getUserMedia({video: true});
