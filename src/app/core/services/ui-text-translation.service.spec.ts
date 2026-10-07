@@ -186,80 +186,32 @@ describe('UiTextTranslationService', () => {
       expect(probedTargets()).not.toContain('es');
     });
 
-    it('never probes the language currently shown even if the tenant did not declare it', async () => {
-      translate.getLangs.mockReturnValue(['en']);
-      translate.currentLang = 'es';
+    it('always probes from English, whatever the native language is', async () => {
+      translate.currentLang = 'ca';
 
       await service.probeAvailability();
 
-      expect(probedTargets()).not.toContain('es');
+      const sources = new Set(engine.availability.mock.calls.map(([pair]) => pair.sourceLanguage));
+      expect(sources).toEqual(new Set(['en']));
     });
-  });
 
-  describe('probeAvailability — native language change', () => {
-    it('re-probes for the new native language when a probe had already run', async () => {
+    it('never offers English as a target, since it is the source', async () => {
+      translate.getLangs.mockReturnValue(['es']);
+
+      await service.probeAvailability();
+
+      expect(probedTargets()).not.toContain('en');
+    });
+
+    it('probes only once per session, even if the native language changes', async () => {
       await service.probeAvailability();
       engine.availability.mockClear();
-      translate.currentLang = 'en';
+      translate.currentLang = 'ca';
 
-      translate.onLangChange.emit({ lang: 'en', translations: {} });
-      await flushMicrotasks();
-
-      expect(engine.availability).toHaveBeenCalledWith(expect.objectContaining({ sourceLanguage: 'en' }));
-    });
-
-    it('does not probe on a language change when no probe was ever requested', async () => {
-      translate.currentLang = 'en';
-
-      translate.onLangChange.emit({ lang: 'en', translations: {} });
-      await flushMicrotasks();
+      translate.onLangChange.emit({ lang: 'ca', translations: {} });
+      await service.probeAvailability();
 
       expect(engine.availability).not.toHaveBeenCalled();
-    });
-
-    it('publishes the targets of the new native language, not those of the one it replaced', async () => {
-      engine.availability.mockImplementation(async ({ sourceLanguage, targetLanguage }) =>
-        (sourceLanguage === 'es' ? targetLanguage === 'fr' : targetLanguage === 'de') ? 'available' : 'unavailable');
-      await service.probeAvailability();
-      expect(service.availableTargets()).toEqual(['fr']);
-      translate.currentLang = 'ca';
-
-      translate.onLangChange.emit({ lang: 'ca', translations: {} });
-      await flushMicrotasks();
-
-      expect(service.availableTargets()).toEqual(['de']);
-    });
-
-    it('ignores a slower probe of the previous native language that settles after the newer one', async () => {
-      const releaseStale: Array<() => void> = [];
-      engine.availability.mockImplementation(({ sourceLanguage, targetLanguage }) => {
-        const result = (sourceLanguage === 'es' ? targetLanguage === 'fr' : targetLanguage === 'de') ? 'available' : 'unavailable';
-        return sourceLanguage === 'es'
-          ? new Promise(resolve => { releaseStale.push(() => resolve(result)); })
-          : Promise.resolve(result);
-      });
-      const staleProbe = service.probeAvailability();
-      await flushMicrotasks();
-      translate.currentLang = 'ca';
-
-      translate.onLangChange.emit({ lang: 'ca', translations: {} });
-      await flushMicrotasks();
-      releaseStale.forEach(release => release());
-      await staleProbe;
-
-      expect(service.availableTargets()).toEqual(['de']);
-    });
-
-    it('keeps an active translation active while re-probing', async () => {
-      await service.probeAvailability();
-      await service.activate('el');
-      translate.currentLang = 'en';
-      http.get.mockReturnValue(of(JSON.stringify({ menu: { scan: 'Scan QR', wallet: 'Wallet' } })));
-
-      translate.onLangChange.emit({ lang: 'en', translations: {} });
-      await flushMicrotasks();
-
-      expect(service.status()).toBe('active');
     });
   });
 
@@ -267,7 +219,7 @@ describe('UiTextTranslationService', () => {
     it('fetches the pristine bundle, translates via the engine, and applies atomically', async () => {
       await service.activate('el');
 
-      expect(http.get).toHaveBeenCalledWith('assets/i18n/es.json', { responseType: 'text' });
+      expect(http.get).toHaveBeenCalledWith('assets/i18n/en.json', { responseType: 'text' });
       expect(engine.translateEntries).toHaveBeenCalled();
       expect(translate.setTranslation).toHaveBeenCalledTimes(1);
       const [lang, bundle, shouldMerge] = translate.setTranslation.mock.calls[0];
@@ -282,10 +234,72 @@ describe('UiTextTranslationService', () => {
       await service.activate('el');
 
       expect(cache.write).toHaveBeenCalledWith(expect.objectContaining({
-        sourceLang: 'es',
+        sourceLang: 'en',
         targetLang: 'el',
         entries: expect.any(Array),
       }));
+    });
+
+    it('translates from English even when the native language is not English', async () => {
+      await service.activate('el');
+
+      expect(engine.translateEntries).toHaveBeenCalledWith(
+        expect.any(Array), { sourceLanguage: 'en', targetLanguage: 'el' }, expect.anything(), expect.anything());
+    });
+
+    it('fetches the English bundle and the native one to restore it later when they differ', async () => {
+      await service.activate('el');
+
+      expect(http.get).toHaveBeenCalledWith('assets/i18n/en.json', { responseType: 'text' });
+      expect(http.get).toHaveBeenCalledWith('assets/i18n/es.json', { responseType: 'text' });
+    });
+
+    it('fetches a single bundle when the native language already is English', async () => {
+      translate.currentLang = 'en';
+
+      await service.activate('el');
+
+      expect(http.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('applies the translation over the native language code, never switching the language', async () => {
+      translate.currentLang = 'ca';
+
+      await service.activate('el');
+
+      expect(translate.setTranslation.mock.calls[0][0]).toBe('ca');
+    });
+
+    it('reads the cache with English as the source so every native language shares it', async () => {
+      await service.activate('el');
+
+      expect(cache.read).toHaveBeenCalledWith('en', 'el', expect.any(String));
+    });
+
+    describe('with different English and native bundles', () => {
+      const EN_BUNDLE = { menu: { scan: 'Scan QR' }, 'vc-fields': { credentialInfo: { title: 'Credential' } } };
+      const ES_BUNDLE = { menu: { scan: 'Escáner QR' }, 'vc-fields': { credentialInfo: { title: 'Credencial' } } };
+
+      beforeEach(() => {
+        http.get.mockImplementation((url: string) =>
+          of(JSON.stringify(url.endsWith('en.json') ? EN_BUNDLE : ES_BUNDLE)));
+      });
+
+      it('keeps the excluded keys in the native language instead of the English source', async () => {
+        await service.activate('el');
+
+        const applied = translate.setTranslation.mock.calls[0][1] as typeof EN_BUNDLE;
+        expect(applied.menu.scan).toBe('[Scan QR]');
+        expect(applied['vc-fields'].credentialInfo.title).toBe('Credencial');
+      });
+
+      it('restores the native bundle, not the English source, when deactivated', async () => {
+        await service.activate('el');
+
+        service.deactivate();
+
+        expect(translate.setTranslation).toHaveBeenLastCalledWith('es', ES_BUNDLE, false);
+      });
     });
 
     it('syncs documentElement.lang to the target and persists the preference (AC-02, AC-06)', async () => {
@@ -433,7 +447,7 @@ describe('UiTextTranslationService', () => {
     it('prepares the engine for the native/target pair before translating', async () => {
       await service.activate('el');
 
-      expect(engine.prepare).toHaveBeenCalledWith({ sourceLanguage: 'es', targetLanguage: 'el' }, expect.any(Function));
+      expect(engine.prepare).toHaveBeenCalledWith({ sourceLanguage: 'en', targetLanguage: 'el' }, expect.any(Function));
       expect(engine.prepare.mock.invocationCallOrder[0]).toBeLessThan(engine.translateEntries.mock.invocationCallOrder[0]);
     });
 

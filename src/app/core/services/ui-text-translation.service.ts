@@ -5,7 +5,8 @@ import { TranslateService } from '@ngx-translate/core';
 import { EMPTY, firstValueFrom, from, switchMap, timeout } from 'rxjs';
 
 import {
-  BUNDLE_FETCH_TIMEOUT_MS, DEFAULT_NATIVE_LANGUAGES, DOWNLOAD_PROGRESS_WEIGHT, RTL_LANGUAGE_TAGS, RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES, TRANSLATION_STALL_TIMEOUT_MS,
+  BUNDLE_FETCH_TIMEOUT_MS, DEFAULT_NATIVE_LANGUAGES, DOWNLOAD_PROGRESS_WEIGHT, RTL_LANGUAGE_TAGS, RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES,
+  TRANSLATION_SOURCE_LANGUAGE, TRANSLATION_STALL_TIMEOUT_MS,
 } from '../constants/ui-translation.constants';
 import { LanguageTag, SCHEMA_VERSION, UiTextEntry, UiTextKey, UiTranslationStatus } from '../models/ui-text-translation.model';
 import { TRANSLATION_ENGINE } from '../ports/translation-engine.port';
@@ -67,12 +68,10 @@ export class UiTextTranslationService {
   private _operation: Promise<void> | null = null;
   /** Target the in-flight `_operation` is preparing — lets a call for a DIFFERENT target supersede it instead of being silently coalesced away. */
   private _inFlightTarget: LanguageTag | null = null;
-  /** Probe result, memoized per native language (EC-02) — reset whenever the native language changes. */
+  /** Probe result, memoized once per session (EC-02): every pair starts from `TRANSLATION_SOURCE_LANGUAGE`, so it never depends on the native language. */
   private _probePromise: Promise<ReadonlyArray<LanguageTag>> | null = null;
-  /** Bumped on every native-language change: a probe started under an older value is stale and must not publish its result. */
-  private _probeGeneration = 0;
-  /** In-memory copy of the last-fetched pristine bundle — lets `deactivate()` restore the native UI with 0 network requests (NFR-S-142-03). */
-  private _pristineBundle: UiTextBundle | null = null;
+  /** In-memory copy of the native bundle taken at activation — lets `deactivate()` restore the native UI with 0 network requests (NFR-S-142-03). */
+  private _nativeBundle: UiTextBundle | null = null;
 
   constructor() {
     // AD-6 (incidental fix) + ES-03: keep documentElement.lang/dir synced with
@@ -82,7 +81,6 @@ export class UiTextTranslationService {
     // Otherwise, just sync lang/dir to the new native language.
     this.translate.onLangChange.pipe(
       switchMap(event => {
-        this.invalidateProbe();
         const target = this._targetLanguage();
         if (target && this.isEngaged()) {
           return from(this.activate(target));
@@ -95,9 +93,8 @@ export class UiTextTranslationService {
   }
 
   /**
-   * Probes engine support and, if supported, every candidate pair against
-   * the current native language — memoized until the native language changes
-   * (EC-02): what the engine can translate depends on the source language. Sets
+   * Probes engine support and, if supported, every candidate pair from
+   * `TRANSLATION_SOURCE_LANGUAGE` — memoized for the session (EC-02). Sets
    * `status` to `'unavailable'` when the engine is absent or no candidate
    * is translatable, `'idle'` otherwise.
    */
@@ -220,36 +217,22 @@ export class UiTextTranslationService {
     if (!this.isEngaged()) {
       this._status.set('probing');
     }
-    const source = this.currentNativeLang();
-    const probeGeneration = this._probeGeneration;
 
     const probed = await Promise.all(
       this.candidateLanguages().map(async target => ({
         target,
-        availability: await this.engine.availability({ sourceLanguage: source, targetLanguage: target }),
+        availability: await this.engine.availability({ sourceLanguage: TRANSLATION_SOURCE_LANGUAGE, targetLanguage: target }),
       })),
     );
     const available = probed
       .filter(p => p.availability === 'available' || p.availability === 'downloadable')
       .map(p => p.target);
 
-    if (probeGeneration !== this._probeGeneration) {
-      return available; // the native language changed meanwhile — a newer probe owns the result
-    }
     this._availableTargets.set(available);
     if (!this.isEngaged()) {
       this._status.set(available.length > 0 ? 'idle' : 'unavailable');
     }
     return available;
-  }
-
-  /** Drops the memoized probe after a native-language change and, if one had been requested, re-runs it for the new source language. */
-  private invalidateProbe(): void {
-    this._probeGeneration++;
-    if (this._probePromise) {
-      this._probePromise = null;
-      void this.probeAvailability();
-    }
   }
 
   private isEngaged(): boolean {
@@ -282,24 +265,24 @@ export class UiTextTranslationService {
   private async doActivate(target: LanguageTag, generation: number): Promise<void> {
     const nativeLang = this.currentNativeLang();
 
-    // 1. Fetch the pristine bundle — same-origin, Service-Worker-cached (ES-02).
-    const bundleJson = await firstValueFrom(
-      this.http.get(`assets/i18n/${nativeLang}.json`, { responseType: 'text' }).pipe(
-        timeout(BUNDLE_FETCH_TIMEOUT_MS),
-      ),
-    );
+    // 1. Fetch the pristine source bundle (always English) plus, when the native
+    // language differs, the native one to restore on deactivation — same-origin,
+    // Service-Worker-cached (ES-02).
+    const sourceJson = await this.fetchBundle(TRANSLATION_SOURCE_LANGUAGE);
+    const nativeJson = nativeLang === TRANSLATION_SOURCE_LANGUAGE ? sourceJson : await this.fetchBundle(nativeLang);
     if (!this.isCurrentGeneration(generation)) return;
 
-    const pristineBundle = JSON.parse(bundleJson) as UiTextBundle;
-    this._pristineBundle = pristineBundle;
-    const bundleHash = hashUiBundle(bundleJson);
+    const pristineBundle = JSON.parse(sourceJson) as UiTextBundle;
+    const nativeBundle = JSON.parse(nativeJson) as UiTextBundle;
+    this._nativeBundle = nativeBundle;
+    const bundleHash = hashUiBundle(sourceJson);
 
     // 2. Flatten + exclude (AD-3 deny-list; provenance guarantee from flattenUiBundle).
     const translatableEntries = flattenUiBundle(pristineBundle).filter(e => !isExcludedKey(e.key));
 
     // 3. Cache lookup (EC-04: a hit means the engine is never invoked).
     const allowedKeys = new Set(translatableEntries.map(e => e.key));
-    let translatedEntries = await this.cache.read(nativeLang, target, bundleHash);
+    let translatedEntries = await this.cache.read(TRANSLATION_SOURCE_LANGUAGE, target, bundleHash);
     if (!this.isCurrentGeneration(generation)) return;
 
     if (translatedEntries) {
@@ -326,12 +309,12 @@ export class UiTextTranslationService {
           && isSafeTranslatedText(pristineText, e.text);
       });
     } else {
-      translatedEntries = await this.translateViaEngine(translatableEntries, nativeLang, target, generation, allowedKeys);
+      translatedEntries = await this.translateViaEngine(translatableEntries, TRANSLATION_SOURCE_LANGUAGE, target, generation, allowedKeys);
       if (!this.isCurrentGeneration(generation)) return;
 
       await this.cache.write({
         schemaVersion: SCHEMA_VERSION,
-        sourceLang: nativeLang,
+        sourceLang: TRANSLATION_SOURCE_LANGUAGE,
         targetLang: target,
         bundleHash,
         entries: translatedEntries,
@@ -342,8 +325,14 @@ export class UiTextTranslationService {
 
     // 4. Merge over the pristine bundle and apply ATOMICALLY (ES-04) — a
     // single setTranslation() call with the fully-built bundle; no partial
-    // application is ever visible.
-    const merged = mergeUiBundles(pristineBundle, inflateUiBundle(translatedEntries));
+    // application is ever visible. Excluded keys (AD-3: credential vocabulary,
+    // verification verdicts) are never machine-translated and stay in the
+    // user's native language, not in the English source.
+    const nativeExcluded = flattenUiBundle(nativeBundle).filter(e => isExcludedKey(e.key));
+    const merged = mergeUiBundles(
+      mergeUiBundles(pristineBundle, inflateUiBundle(translatedEntries)),
+      inflateUiBundle(nativeExcluded),
+    );
     if (!this.isCurrentGeneration(generation)) return;
 
     this.translate.setTranslation(nativeLang, merged, false);
@@ -408,23 +397,28 @@ export class UiTextTranslationService {
     });
   }
 
-  /** Restores the native UI from the in-memory pristine bundle — 0 network requests (NFR-S-142-03). */
+  private fetchBundle(lang: LanguageTag): Promise<string> {
+    return firstValueFrom(
+      this.http.get(`assets/i18n/${lang}.json`, { responseType: 'text' }).pipe(
+        timeout(BUNDLE_FETCH_TIMEOUT_MS),
+      ),
+    );
+  }
+
+  /** Restores the native UI from the in-memory native bundle — 0 network requests (NFR-S-142-03). */
   private restoreNativeLanguageDisplay(): void {
     const nativeLang = this.currentNativeLang();
-    if (this._pristineBundle) {
-      this.translate.setTranslation(nativeLang, this._pristineBundle, false);
+    if (this._nativeBundle) {
+      this.translate.setTranslation(nativeLang, this._nativeBundle, false);
     }
     this.document.documentElement.lang = nativeLang;
     this.document.documentElement.dir = 'ltr';
   }
 
-  /** Candidate targets: every language except the ones the tenant loaded natively and the one currently shown. */
+  /** Candidate targets: every language except the ones the tenant loaded natively (the source language is not a candidate). */
   private candidateLanguages(): ReadonlyArray<LanguageTag> {
     const loaded = this.translate.getLangs();
-    const native = new Set<LanguageTag>([
-      ...(loaded.length > 0 ? loaded : DEFAULT_NATIVE_LANGUAGES),
-      this.currentNativeLang(),
-    ]);
+    const native = new Set<LanguageTag>(loaded.length > 0 ? loaded : DEFAULT_NATIVE_LANGUAGES);
     return RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES.filter(language => !native.has(language));
   }
 

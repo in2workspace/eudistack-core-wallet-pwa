@@ -288,42 +288,6 @@ describe('SettingsPage', () => {
     });
   });
 
-  describe('selectableTarget', () => {
-    it('returns the selected target while it is still available', () => {
-      uiTranslation.availableTargets.set(['de', 'fr']);
-      component.selectedTargetLanguage = 'fr';
-
-      expect(component.selectableTarget()).toBe('fr');
-    });
-
-    it('returns null once the native language changed and the target is no longer available', () => {
-      uiTranslation.availableTargets.set(['de']);
-      component.selectedTargetLanguage = 'fr';
-
-      expect(component.selectableTarget()).toBeNull();
-    });
-
-    it('switches translation on with the first available target when the chosen one is stale', () => {
-      uiTranslation.availableTargets.set(['de']);
-      component.selectedTargetLanguage = 'fr';
-
-      component.onTranslationToggle(true);
-
-      expect(uiTranslation.activate).toHaveBeenCalledWith('de');
-      expect(component.selectedTargetLanguage).toBe('de');
-    });
-
-    it('retries with the first available target when the chosen one is stale', () => {
-      uiTranslation.availableTargets.set(['de']);
-      uiTranslation.targetLanguage.mockReturnValue(null);
-      component.selectedTargetLanguage = 'fr';
-
-      component.retryTranslation();
-
-      expect(uiTranslation.activate).toHaveBeenCalledWith('de');
-    });
-  });
-
   describe('targetLanguageName', () => {
     it('resolves the display name through Intl', () => {
       const of = jest.fn().mockReturnValue('English');
@@ -497,7 +461,6 @@ describe('SettingsPage', () => {
 
   describe('retryTranslation', () => {
     it('retries with the chosen target', () => {
-      uiTranslation.availableTargets.set(['fr']);
       component.selectedTargetLanguage = 'fr';
 
       component.retryTranslation();

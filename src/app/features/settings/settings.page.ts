@@ -88,12 +88,6 @@ export class SettingsPage implements OnInit {
     this.expandedPanel.set(this.isExpanded(panel) ? null : panel);
   }
 
-  /** The selected target, only while the engine can still translate to it from the current native language. */
-  public selectableTarget(): LanguageTag | null {
-    const target = this.selectedTargetLanguage;
-    return target && this.availableTargets().includes(target) ? target : null;
-  }
-
   public languageChange(code: string): void {
     if (!code) return;
 
@@ -118,7 +112,7 @@ export class SettingsPage implements OnInit {
 
   public onTranslationToggle(checked: boolean): void {
     if (checked) {
-      const target = this.selectableTarget() ?? this.availableTargets()[0];
+      const target = this.selectedTargetLanguage ?? this.availableTargets()[0];
       if (target) {
         this.selectedTargetLanguage = target;
         void this.uiTranslation.activate(target);
@@ -140,7 +134,7 @@ export class SettingsPage implements OnInit {
   }
 
   public retryTranslation(): void {
-    const target = this.selectableTarget() ?? this.uiTranslation.targetLanguage() ?? this.availableTargets()[0];
+    const target = this.selectedTargetLanguage ?? this.uiTranslation.targetLanguage() ?? this.availableTargets()[0];
     if (target) {
       void this.uiTranslation.activate(target);
     }

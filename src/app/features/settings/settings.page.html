@@ -77,7 +77,7 @@
                       labelPlacement="start"
                       interface="popover"
                       [disabled]="translationControlDisabled()"
-                      [value]="selectableTarget()"
+                      [value]="selectedTargetLanguage"
                       [attr.aria-label]="'ui-translation.target-language-label' | translate"
                       (ionChange)="onTargetLanguageChange($event.detail.value)"
                     >
