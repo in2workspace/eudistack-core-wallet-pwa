@@ -514,7 +514,6 @@
     "csv-header-credential": "Credencial",
     "csv-header-counterparty": "Contrapart",
     "csv-header-date": "Data",
-    "csv-header-details": "Detall",
     "export-error": "No s'ha pogut exportar l'historial",
     "type-issued": "Credencial rebuda",
     "type-presented": "Credencial presentada",
