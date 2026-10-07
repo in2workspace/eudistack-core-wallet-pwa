@@ -35,6 +35,12 @@ export class SettingsPage implements OnInit {
 
   public readonly translationStatus = this.uiTranslation.status;
   public readonly translationProgress = this.uiTranslation.progress;
+
+  public readonly translationStateKey = computed(() => {
+    const progress = this.translationProgress();
+    if (!progress) return 'ui-translation.state-preparing';
+    return progress.phase === 'downloading' ? 'ui-translation.state-downloading' : 'ui-translation.state-applying';
+  });
   public readonly availableTargets = this.uiTranslation.availableTargets;
 
   public readonly translationEnabled = computed(() =>

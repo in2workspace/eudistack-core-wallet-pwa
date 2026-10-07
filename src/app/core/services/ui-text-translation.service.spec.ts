@@ -195,7 +195,7 @@ describe('UiTextTranslationService', () => {
 
       await service.activate('el');
 
-      expect(capturedDuringActivation).toEqual({ done: 1, total: 2 });
+      expect(capturedDuringActivation).toEqual({ phase: 'applying', fraction: 0.75 });
       expect(service.progress()).toBeNull();
     });
 
@@ -330,8 +330,51 @@ describe('UiTextTranslationService', () => {
       finishDownload();
       await activation;
 
-      expect(duringDownload).toEqual({ done: 0.5, total: 1 });
+      expect(duringDownload).toEqual({ phase: 'downloading', fraction: 0.25 });
       expect(service.progress()).toBeNull();
+    });
+
+    it('never moves the bar backwards when the engine restarts its download counter for another pack', async () => {
+      let reportProgress!: (loaded: number, total: number) => void;
+      let finishDownload!: () => void;
+      engine.prepare.mockImplementation((_pair, onProgress) => new Promise<void>(resolve => {
+        reportProgress = onProgress!;
+        finishDownload = resolve;
+      }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      reportProgress(1, 1);
+      reportProgress(0.2, 1);
+      const afterSecondPackStarts = service.progress();
+      finishDownload();
+      await activation;
+
+      expect(afterSecondPackStarts).toEqual({ phase: 'downloading', fraction: 0.5 });
+    });
+
+    it('moves to the apply phase, starting where the download phase ended, once the engine is ready', async () => {
+      const phases: unknown[] = [];
+      engine.translateEntries.mockImplementation(async (entries) => {
+        phases.push(service.progress());
+        return entries.map((e: { key: UiTextKey; text: string }) => ({ key: e.key, text: `[${e.text}]` }));
+      });
+
+      await service.activate('el');
+
+      expect(phases[0]).toEqual({ phase: 'applying', fraction: 0.5 });
+    });
+
+    it('shows no progress before the engine is needed', async () => {
+      let progressWhileReadingCache: unknown = 'unset';
+      cache.read.mockImplementation(async () => {
+        progressWhileReadingCache = service.progress();
+        return null;
+      });
+
+      await service.activate('el');
+
+      expect(progressWhileReadingCache).toBeNull();
     });
 
     it('ignores download progress reported after the activation was cancelled', async () => {

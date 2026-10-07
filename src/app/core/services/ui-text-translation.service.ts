@@ -5,7 +5,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { EMPTY, firstValueFrom, from, switchMap, timeout } from 'rxjs';
 
 import {
-  BUNDLE_FETCH_TIMEOUT_MS, RTL_LANGUAGE_TAGS, RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES, TRANSLATION_BUDGET_MS,
+  BUNDLE_FETCH_TIMEOUT_MS, DOWNLOAD_PROGRESS_WEIGHT, RTL_LANGUAGE_TAGS, RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES, TRANSLATION_BUDGET_MS,
 } from '../constants/ui-translation.constants';
 import { LanguageTag, SCHEMA_VERSION, UiTextEntry, UiTextKey, UiTranslationStatus } from '../models/ui-text-translation.model';
 import { TRANSLATION_ENGINE } from '../ports/translation-engine.port';
@@ -17,10 +17,15 @@ import { UserPreferencesService } from '../../shared/services/user-preferences.s
 import { UiTranslationCacheService } from './ui-translation-cache.service';
 import { TelemetryService } from './telemetry.service';
 
-/** Progress snapshot for the current activation (AC-11). `null` when idle/active/error. */
+/**
+ * Progress snapshot for the current activation (AC-11): a single bar that
+ * only moves forward, split into a download phase and an apply phase.
+ * `null` when idle/active/error, or before the engine is first needed.
+ */
 export interface UiTranslationProgress {
-  readonly done: number;
-  readonly total: number;
+  readonly phase: 'downloading' | 'applying';
+  /** Overall progress in the 0..1 range; never decreases within an activation. */
+  readonly fraction: number;
 }
 
 /**
@@ -229,7 +234,7 @@ export class UiTextTranslationService {
   private async runActivation(target: LanguageTag, generation: number): Promise<void> {
     this._status.set('preparing');
     this._targetLanguage.set(target);
-    this._progress.set({ done: 0, total: 0 });
+    this._progress.set(null);
 
     try {
       await this.doActivate(target, generation);
@@ -335,13 +340,18 @@ export class UiTextTranslationService {
     allowedKeys: ReadonlySet<UiTextKey>,
   ): Promise<ReadonlyArray<UiTextEntry>> {
     const pair = { sourceLanguage, targetLanguage };
+    this._progress.set({ phase: 'downloading', fraction: 0 });
     await this.engine.prepare(pair, (loaded, total) => {
       if (this.isCurrentGeneration(generation)) {
-        this._progress.set({ done: loaded, total });
+        // The engine may report several packs, each from 0 to 1 — keep the
+        // furthest point reached so the bar never goes backwards.
+        const ratio = total > 0 ? Math.min(1, loaded / total) : 0;
+        const fraction = Math.max(this._progress()?.fraction ?? 0, ratio * DOWNLOAD_PROGRESS_WEIGHT);
+        this._progress.set({ phase: 'downloading', fraction });
       }
     });
     if (!this.isCurrentGeneration(generation)) return []; // cancelled while the language pack downloaded
-    this._progress.set({ done: 0, total: 0 }); // download finished — translation progress starts over
+    this._progress.set({ phase: 'applying', fraction: DOWNLOAD_PROGRESS_WEIGHT });
 
     const maskedEntries = entries.map(e => ({ key: e.key, text: maskPlaceholders(e.text) }));
 
@@ -351,7 +361,11 @@ export class UiTextTranslationService {
       allowedKeys,
       (done, total) => {
         if (this.isCurrentGeneration(generation)) {
-          this._progress.set({ done, total });
+          const ratio = total > 0 ? done / total : 0;
+          this._progress.set({
+            phase: 'applying',
+            fraction: DOWNLOAD_PROGRESS_WEIGHT + (1 - DOWNLOAD_PROGRESS_WEIGHT) * ratio,
+          });
         }
       },
     ));

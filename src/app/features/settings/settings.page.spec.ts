@@ -372,18 +372,39 @@ describe('SettingsPage', () => {
     });
 
     it.each([
-      [{ done: 0, total: 0 }, 'indeterminate'],
-      [{ done: 0.5, total: 1 }, 'determinate'],
-    ])('renders the progress bar for %j as %s', (progress, expectedType) => {
+      [null, 'ui-translation.state-preparing'],
+      [{ phase: 'downloading', fraction: 0.2 }, 'ui-translation.state-downloading'],
+      [{ phase: 'applying', fraction: 0.7 }, 'ui-translation.state-applying'],
+    ])('labels the preparing state for progress %j with %s', (progress, expectedKey) => {
+      uiTranslation.progress.set(progress);
+
+      expect(component.translationStateKey()).toBe(expectedKey);
+    });
+
+    it('renders a single determinate bar driven by the overall fraction', () => {
       component.togglePanel('language');
       uiTranslation.availableTargets.set(['fr']);
       uiTranslation.status.set('preparing');
-      uiTranslation.progress.set(progress);
+      uiTranslation.progress.set({ phase: 'applying', fraction: 0.7 });
       fixture.detectChanges();
 
-      const bar = fixture.nativeElement.querySelector('ion-progress-bar');
+      const bars = fixture.nativeElement.querySelectorAll('ion-progress-bar');
 
-      expect(bar.type).toBe(expectedType);
+      expect(bars).toHaveLength(1);
+      expect(bars[0].value).toBe(0.7);
+      expect(bars[0].type).not.toBe('indeterminate');
+    });
+
+    it('renders no bar until there is progress to show', () => {
+      component.togglePanel('language');
+      uiTranslation.availableTargets.set(['fr']);
+      uiTranslation.status.set('preparing');
+      uiTranslation.progress.set(null);
+      fixture.detectChanges();
+
+      const bars = fixture.nativeElement.querySelectorAll('ion-progress-bar');
+
+      expect(bars).toHaveLength(0);
     });
   });
 

@@ -59,6 +59,13 @@ export const RUNTIME_TRANSLATION_EXCLUDED_KEY_PREFIXES: readonly string[] = [
   'verification.check-expiration',
 ];
 
+/**
+ * Share of the single progress bar given to the language-pack download; the
+ * remaining share goes to applying the translation. A fixed convention, not
+ * a time estimate — the browser exposes neither pack count nor size.
+ */
+export const DOWNLOAD_PROGRESS_WEIGHT = 0.5;
+
 /** `StorageService` key prefix for cached translations (`UiTranslationCacheService`). */
 export const UI_TRANSLATION_CACHE_KEY_PREFIX = 'ui-translation-cache:';
 

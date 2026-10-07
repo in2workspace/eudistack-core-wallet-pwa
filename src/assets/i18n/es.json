@@ -74,6 +74,8 @@
     "toggle-label": "Activar traducción automática",
     "target-language-label": "Traducir a",
     "state-preparing": "Preparando la traducción…",
+    "state-downloading": "Descargando el idioma…",
+    "state-applying": "Aplicando la traducción…",
     "state-unavailable": "No disponible en este dispositivo",
     "state-unavailable-hint": "Tu navegador no ofrece traducción integrada en el dispositivo. Podrás usar esta función cuando esté disponible.",
     "state-error": "No se ha podido preparar la traducción",
