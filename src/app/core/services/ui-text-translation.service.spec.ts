@@ -231,11 +231,11 @@ describe('UiTextTranslationService', () => {
     });
 
     it('ignores a slower probe of the previous native language that settles after the newer one', async () => {
-      let releaseStale!: () => void;
+      const releaseStale: Array<() => void> = [];
       engine.availability.mockImplementation(({ sourceLanguage, targetLanguage }) => {
         const result = (sourceLanguage === 'es' ? targetLanguage === 'fr' : targetLanguage === 'de') ? 'available' : 'unavailable';
         return sourceLanguage === 'es'
-          ? new Promise(resolve => { releaseStale = () => resolve(result); })
+          ? new Promise(resolve => { releaseStale.push(() => resolve(result)); })
           : Promise.resolve(result);
       });
       const staleProbe = service.probeAvailability();
@@ -244,7 +244,7 @@ describe('UiTextTranslationService', () => {
 
       translate.onLangChange.emit({ lang: 'ca', translations: {} });
       await flushMicrotasks();
-      releaseStale();
+      releaseStale.forEach(release => release());
       await staleProbe;
 
       expect(service.availableTargets()).toEqual(['de']);
