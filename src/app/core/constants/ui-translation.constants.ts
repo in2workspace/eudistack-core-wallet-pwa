@@ -11,14 +11,24 @@
 import { LanguageTag } from '../models/ui-text-translation.model';
 
 /**
- * Candidate target languages for runtime translation — BCP 47, deliberately
- * excludes the natively-supported languages (`en`, `es`, `ca`, US-02/EUD-131):
- * this feature is an additional layer over the native language, never a
- * replacement (AC-07). There is no engine API to enumerate supported
- * languages (EC-02) — each pair is probed individually against this list.
+ * Languages the wallet ships natively (`en`, `es`, `ca`, US-02/EUD-131). A
+ * tenant enables a subset through `theme.i18n.available`; this is the set
+ * assumed when its theme declares none.
+ */
+export const DEFAULT_NATIVE_LANGUAGES: readonly LanguageTag[] = ['en', 'es', 'ca'];
+
+/**
+ * Candidate target languages for runtime translation — BCP 47. The languages
+ * the tenant has loaded natively are removed at runtime
+ * (`UiTextTranslationService.candidateLanguages()`): this feature is an
+ * additional layer over the native language, never a replacement (AC-07),
+ * but a language the wallet ships and the tenant did NOT enable (e.g. `ca` in
+ * a tenant that only loads `en`/`es`) is a legitimate target. There is no
+ * engine API to enumerate supported languages (EC-02) — each pair is probed
+ * individually, so one the browser cannot translate is simply never offered.
  */
 export const RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES: readonly LanguageTag[] = [
-  'ar', 'bg', 'bn', 'cs', 'da', 'de', 'el', 'fa', 'fi', 'fil', 'fr', 'he', 'hi',
+  'ar', 'bg', 'bn', 'ca', 'cs', 'da', 'de', 'el', 'en', 'es', 'fa', 'fi', 'fil', 'fr', 'he', 'hi',
   'hr', 'hu', 'id', 'it', 'ja', 'ko', 'lt', 'lv', 'ms', 'nl', 'no', 'pl', 'pt',
   'ro', 'ru', 'sk', 'sl', 'sr', 'sv', 'sw', 'th', 'tr', 'uk', 'ur', 'vi', 'zh',
 ];

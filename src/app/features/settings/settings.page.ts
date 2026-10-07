@@ -8,9 +8,16 @@ import { StorageService } from 'src/app/shared/services/storage.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { CameraService } from 'src/app/shared/services/camera.service';
 import { UiTextTranslationService } from 'src/app/core/services/ui-text-translation.service';
+import { DEFAULT_NATIVE_LANGUAGES } from 'src/app/core/constants/ui-translation.constants';
 import { LanguageTag } from 'src/app/core/models/ui-text-translation.model';
 
 type SettingsPanelId = 'language' | 'theme' | 'camera';
+
+const LANGUAGE_NAMES: Readonly<Record<string, string>> = {
+  en: 'English',
+  es: 'Castellano',
+  ca: 'Català',
+};
 
 @Component({
   selector: 'app-settings',
@@ -25,11 +32,8 @@ export class SettingsPage implements OnInit {
   public readonly cameraService = inject(CameraService);
   public readonly uiTranslation = inject(UiTextTranslationService);
 
-  public readonly languageList = [
-    { name: 'English', code: 'en' },
-    { name: 'Castellano', code: 'es' },
-    { name: 'Català', code: 'ca' },
-  ];
+  /** Languages the tenant actually loaded (`theme.i18n.available`); every known one when the theme declares none. */
+  public readonly languageList = this.buildLanguageList();
 
   public readonly expandedPanel = signal<SettingsPanelId | null>(null);
 
@@ -65,10 +69,7 @@ export class SettingsPage implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
 
   public ngOnInit(): void {
-    const fallbackLanguage = () => this.translate.currentLang ?? this.languageList[2].code;
-    this.storageService.get('language')
-      .then((stored) => this.languages.next((stored as string) ?? fallbackLanguage()))
-      .catch(() => this.languages.next(fallbackLanguage()));
+    this.resolveSelectedLanguage();
 
     void this.uiTranslation.probeAvailability();
     this.selectedTargetLanguage = this.uiTranslation.targetLanguage();
@@ -85,6 +86,12 @@ export class SettingsPage implements OnInit {
 
   public togglePanel(panel: SettingsPanelId): void {
     this.expandedPanel.set(this.isExpanded(panel) ? null : panel);
+  }
+
+  /** The selected target, only while the engine can still translate to it from the current native language. */
+  public selectableTarget(): LanguageTag | null {
+    const target = this.selectedTargetLanguage;
+    return target && this.availableTargets().includes(target) ? target : null;
   }
 
   public languageChange(code: string): void {
@@ -111,7 +118,7 @@ export class SettingsPage implements OnInit {
 
   public onTranslationToggle(checked: boolean): void {
     if (checked) {
-      const target = this.selectedTargetLanguage ?? this.availableTargets()[0];
+      const target = this.selectableTarget() ?? this.availableTargets()[0];
       if (target) {
         this.selectedTargetLanguage = target;
         void this.uiTranslation.activate(target);
@@ -133,10 +140,29 @@ export class SettingsPage implements OnInit {
   }
 
   public retryTranslation(): void {
-    const target = this.selectedTargetLanguage ?? this.uiTranslation.targetLanguage() ?? this.availableTargets()[0];
+    const target = this.selectableTarget() ?? this.uiTranslation.targetLanguage() ?? this.availableTargets()[0];
     if (target) {
       void this.uiTranslation.activate(target);
     }
+  }
+
+  private buildLanguageList(): { name: string; code: string }[] {
+    const loaded = this.translate.getLangs();
+    const codes = loaded.length > 0 ? loaded : DEFAULT_NATIVE_LANGUAGES;
+    return codes.map((code) => ({ code, name: LANGUAGE_NAMES[code] ?? code }));
+  }
+
+  /** The language actually shown wins over the stored one: the tenant may not have loaded the stored language. */
+  private resolveSelectedLanguage(): void {
+    const current = this.translate.currentLang;
+    if (current) {
+      this.languages.next(current);
+      return;
+    }
+    const fallbackLanguage = () => this.translate.getDefaultLang() ?? this.languageList[0].code;
+    this.storageService.get('language')
+      .then((stored) => this.languages.next((stored as string) ?? fallbackLanguage()))
+      .catch(() => this.languages.next(fallbackLanguage()));
   }
 
   public async onDeviceSelectChange(selectedDeviceId: string): Promise<void> {

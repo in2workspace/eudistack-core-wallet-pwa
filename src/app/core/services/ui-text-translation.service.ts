@@ -5,7 +5,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { EMPTY, firstValueFrom, from, switchMap, timeout } from 'rxjs';
 
 import {
-  BUNDLE_FETCH_TIMEOUT_MS, DOWNLOAD_PROGRESS_WEIGHT, RTL_LANGUAGE_TAGS, RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES, TRANSLATION_STALL_TIMEOUT_MS,
+  BUNDLE_FETCH_TIMEOUT_MS, DEFAULT_NATIVE_LANGUAGES, DOWNLOAD_PROGRESS_WEIGHT, RTL_LANGUAGE_TAGS, RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES, TRANSLATION_STALL_TIMEOUT_MS,
 } from '../constants/ui-translation.constants';
 import { LanguageTag, SCHEMA_VERSION, UiTextEntry, UiTextKey, UiTranslationStatus } from '../models/ui-text-translation.model';
 import { TRANSLATION_ENGINE } from '../ports/translation-engine.port';
@@ -67,8 +67,10 @@ export class UiTextTranslationService {
   private _operation: Promise<void> | null = null;
   /** Target the in-flight `_operation` is preparing — lets a call for a DIFFERENT target supersede it instead of being silently coalesced away. */
   private _inFlightTarget: LanguageTag | null = null;
-  /** Probe result, memoized once per session (EC-02). */
+  /** Probe result, memoized per native language (EC-02) — reset whenever the native language changes. */
   private _probePromise: Promise<ReadonlyArray<LanguageTag>> | null = null;
+  /** Bumped on every native-language change: a probe started under an older value is stale and must not publish its result. */
+  private _probeGeneration = 0;
   /** In-memory copy of the last-fetched pristine bundle — lets `deactivate()` restore the native UI with 0 network requests (NFR-S-142-03). */
   private _pristineBundle: UiTextBundle | null = null;
 
@@ -80,9 +82,9 @@ export class UiTextTranslationService {
     // Otherwise, just sync lang/dir to the new native language.
     this.translate.onLangChange.pipe(
       switchMap(event => {
+        this.invalidateProbe();
         const target = this._targetLanguage();
-        const isEngaged = this._status() === 'active' || this._status() === 'preparing';
-        if (target && isEngaged) {
+        if (target && this.isEngaged()) {
           return from(this.activate(target));
         }
         this.document.documentElement.lang = event.lang;
@@ -94,7 +96,8 @@ export class UiTextTranslationService {
 
   /**
    * Probes engine support and, if supported, every candidate pair against
-   * the current native language — memoized for the session (EC-02). Sets
+   * the current native language — memoized until the native language changes
+   * (EC-02): what the engine can translate depends on the source language. Sets
    * `status` to `'unavailable'` when the engine is absent or no candidate
    * is translatable, `'idle'` otherwise.
    */
@@ -178,7 +181,7 @@ export class UiTextTranslationService {
     // preference is user-editable storage — reject a target that isn't one
     // of the actual candidate languages before it can reach
     // documentElement.lang / Translator.create().
-    if (!RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES.includes(pref.targetLanguage)) {
+    if (!this.candidateLanguages().includes(pref.targetLanguage)) {
       return;
     }
     await this.waitForUserActivation();
@@ -214,11 +217,14 @@ export class UiTextTranslationService {
       this._availableTargets.set([]);
       return [];
     }
-    this._status.set('probing');
+    if (!this.isEngaged()) {
+      this._status.set('probing');
+    }
     const source = this.currentNativeLang();
+    const probeGeneration = this._probeGeneration;
 
     const probed = await Promise.all(
-      RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES.map(async target => ({
+      this.candidateLanguages().map(async target => ({
         target,
         availability: await this.engine.availability({ sourceLanguage: source, targetLanguage: target }),
       })),
@@ -227,9 +233,27 @@ export class UiTextTranslationService {
       .filter(p => p.availability === 'available' || p.availability === 'downloadable')
       .map(p => p.target);
 
+    if (probeGeneration !== this._probeGeneration) {
+      return available; // the native language changed meanwhile — a newer probe owns the result
+    }
     this._availableTargets.set(available);
-    this._status.set(available.length > 0 ? 'idle' : 'unavailable');
+    if (!this.isEngaged()) {
+      this._status.set(available.length > 0 ? 'idle' : 'unavailable');
+    }
     return available;
+  }
+
+  /** Drops the memoized probe after a native-language change and, if one had been requested, re-runs it for the new source language. */
+  private invalidateProbe(): void {
+    this._probeGeneration++;
+    if (this._probePromise) {
+      this._probePromise = null;
+      void this.probeAvailability();
+    }
+  }
+
+  private isEngaged(): boolean {
+    return this._status() === 'active' || this._status() === 'preparing';
   }
 
   private async runActivation(target: LanguageTag, generation: number): Promise<void> {
@@ -392,6 +416,16 @@ export class UiTextTranslationService {
     }
     this.document.documentElement.lang = nativeLang;
     this.document.documentElement.dir = 'ltr';
+  }
+
+  /** Candidate targets: every language except the ones the tenant loaded natively and the one currently shown. */
+  private candidateLanguages(): ReadonlyArray<LanguageTag> {
+    const loaded = this.translate.getLangs();
+    const native = new Set<LanguageTag>([
+      ...(loaded.length > 0 ? loaded : DEFAULT_NATIVE_LANGUAGES),
+      this.currentNativeLang(),
+    ]);
+    return RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES.filter(language => !native.has(language));
   }
 
   private currentNativeLang(): LanguageTag {

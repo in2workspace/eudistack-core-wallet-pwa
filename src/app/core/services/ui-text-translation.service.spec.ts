@@ -33,6 +33,7 @@ describe('UiTextTranslationService', () => {
   let translate: {
     currentLang: string;
     getDefaultLang: jest.Mock;
+    getLangs: jest.Mock;
     setTranslation: jest.Mock;
     onLangChange: EventEmitter<LangChangeEvent>;
   };
@@ -51,6 +52,7 @@ describe('UiTextTranslationService', () => {
     translate = {
       currentLang: 'es',
       getDefaultLang: jest.fn().mockReturnValue('es'),
+      getLangs: jest.fn().mockReturnValue(['en', 'es', 'ca']),
       setTranslation: jest.fn(),
       onLangChange: new EventEmitter<LangChangeEvent>(),
     };
@@ -138,6 +140,126 @@ describe('UiTextTranslationService', () => {
       const firstCallCount = (engine.availability as jest.Mock).mock.calls.length;
       await service.probeAvailability();
       expect((engine.availability as jest.Mock).mock.calls.length).toBe(firstCallCount);
+    });
+  });
+
+  describe('probeAvailability — candidate languages', () => {
+    const probedTargets = (): string[] =>
+      engine.availability.mock.calls.map(([pair]) => pair.targetLanguage);
+
+    it('never probes the languages the tenant loaded natively', async () => {
+      translate.getLangs.mockReturnValue(['en', 'es', 'ca']);
+
+      await service.probeAvailability();
+
+      expect(probedTargets()).not.toContain('en');
+      expect(probedTargets()).not.toContain('es');
+      expect(probedTargets()).not.toContain('ca');
+    });
+
+    it('probes a shipped language the tenant did not load, so it is offered when the engine can translate it', async () => {
+      translate.getLangs.mockReturnValue(['en', 'es']);
+
+      const targets = await service.probeAvailability();
+
+      expect(probedTargets()).toContain('ca');
+      expect(targets).toContain('ca');
+    });
+
+    it('does not offer a shipped language the engine cannot translate', async () => {
+      translate.getLangs.mockReturnValue(['en', 'es']);
+      engine.availability.mockImplementation(async ({ targetLanguage }) =>
+        targetLanguage === 'ca' ? 'unavailable' : 'available');
+
+      const targets = await service.probeAvailability();
+
+      expect(targets).not.toContain('ca');
+      expect(targets).toContain('fr');
+    });
+
+    it('assumes the three shipped languages are native when the tenant declares none', async () => {
+      translate.getLangs.mockReturnValue([]);
+
+      await service.probeAvailability();
+
+      expect(probedTargets()).not.toContain('ca');
+      expect(probedTargets()).not.toContain('es');
+    });
+
+    it('never probes the language currently shown even if the tenant did not declare it', async () => {
+      translate.getLangs.mockReturnValue(['en']);
+      translate.currentLang = 'es';
+
+      await service.probeAvailability();
+
+      expect(probedTargets()).not.toContain('es');
+    });
+  });
+
+  describe('probeAvailability — native language change', () => {
+    it('re-probes for the new native language when a probe had already run', async () => {
+      await service.probeAvailability();
+      engine.availability.mockClear();
+      translate.currentLang = 'en';
+
+      translate.onLangChange.emit({ lang: 'en', translations: {} });
+      await flushMicrotasks();
+
+      expect(engine.availability).toHaveBeenCalledWith(expect.objectContaining({ sourceLanguage: 'en' }));
+    });
+
+    it('does not probe on a language change when no probe was ever requested', async () => {
+      translate.currentLang = 'en';
+
+      translate.onLangChange.emit({ lang: 'en', translations: {} });
+      await flushMicrotasks();
+
+      expect(engine.availability).not.toHaveBeenCalled();
+    });
+
+    it('publishes the targets of the new native language, not those of the one it replaced', async () => {
+      engine.availability.mockImplementation(async ({ sourceLanguage, targetLanguage }) =>
+        (sourceLanguage === 'es' ? targetLanguage === 'fr' : targetLanguage === 'de') ? 'available' : 'unavailable');
+      await service.probeAvailability();
+      expect(service.availableTargets()).toEqual(['fr']);
+      translate.currentLang = 'ca';
+
+      translate.onLangChange.emit({ lang: 'ca', translations: {} });
+      await flushMicrotasks();
+
+      expect(service.availableTargets()).toEqual(['de']);
+    });
+
+    it('ignores a slower probe of the previous native language that settles after the newer one', async () => {
+      let releaseStale!: () => void;
+      engine.availability.mockImplementation(({ sourceLanguage, targetLanguage }) => {
+        const result = (sourceLanguage === 'es' ? targetLanguage === 'fr' : targetLanguage === 'de') ? 'available' : 'unavailable';
+        return sourceLanguage === 'es'
+          ? new Promise(resolve => { releaseStale = () => resolve(result); })
+          : Promise.resolve(result);
+      });
+      const staleProbe = service.probeAvailability();
+      await flushMicrotasks();
+      translate.currentLang = 'ca';
+
+      translate.onLangChange.emit({ lang: 'ca', translations: {} });
+      await flushMicrotasks();
+      releaseStale();
+      await staleProbe;
+
+      expect(service.availableTargets()).toEqual(['de']);
+    });
+
+    it('keeps an active translation active while re-probing', async () => {
+      await service.probeAvailability();
+      await service.activate('el');
+      translate.currentLang = 'en';
+      http.get.mockReturnValue(of(JSON.stringify({ menu: { scan: 'Scan QR', wallet: 'Wallet' } })));
+
+      translate.onLangChange.emit({ lang: 'en', translations: {} });
+      await flushMicrotasks();
+
+      expect(service.status()).toBe('active');
     });
   });
 
@@ -683,12 +805,21 @@ describe('UiTextTranslationService', () => {
       expect(service.status()).toBe('idle');
     });
 
-    it('rejects a natively-supported language smuggled in as a translation target (es/en/ca are never candidates, AC-07)', async () => {
+    it('rejects a natively-supported language smuggled in as a translation target (the tenant\'s own languages are never candidates, AC-07)', async () => {
       prefsStore = { enabled: true, targetLanguage: 'es' };
 
       await service.restoreFromPreference();
 
       expect(engine.translateEntries).not.toHaveBeenCalled();
+    });
+
+    it('accepts a persisted target that is shipped by the wallet but not loaded by the tenant', async () => {
+      translate.getLangs.mockReturnValue(['en', 'es']);
+      prefsStore = { enabled: true, targetLanguage: 'ca' };
+
+      await service.restoreFromPreference();
+
+      expect(service.targetLanguage()).toBe('ca');
     });
 
     describe('user-activation gate (Translator.create() needs a real gesture on a cold load)', () => {

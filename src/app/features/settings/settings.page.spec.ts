@@ -246,14 +246,81 @@ describe('SettingsPage', () => {
       expect(latestLanguage()).toBe('en');
     });
 
-    it('falls back to Catalan when there is neither stored nor active language', async () => {
+    it('falls back to the first language of the list when there is no stored, active nor default language', async () => {
       storage.get.mockResolvedValueOnce(null);
       TestBed.inject(TranslateService).currentLang = undefined as unknown as string;
 
       component.ngOnInit();
       await Promise.resolve();
 
-      expect(latestLanguage()).toBe('ca');
+      expect(latestLanguage()).toBe('en');
+    });
+
+    it('prefers the language actually shown over a stored one the tenant did not load', () => {
+      storage.get.mockResolvedValue('ca');
+      TestBed.inject(TranslateService).currentLang = 'en';
+
+      component.ngOnInit();
+
+      expect(latestLanguage()).toBe('en');
+    });
+  });
+
+  describe('languageList', () => {
+    it('lists every known language when the theme loaded none', () => {
+      expect(component.languageList.map((language) => language.code)).toEqual(['en', 'es', 'ca']);
+    });
+
+    it('lists only the languages the tenant loaded', () => {
+      TestBed.inject(TranslateService).addLangs(['en', 'es']);
+
+      const tenantPage = TestBed.createComponent(SettingsPage).componentInstance;
+
+      expect(tenantPage.languageList.map((language) => language.code)).toEqual(['en', 'es']);
+    });
+
+    it('falls back to the raw code for a language without a known name', () => {
+      TestBed.inject(TranslateService).addLangs(['fr']);
+
+      const tenantPage = TestBed.createComponent(SettingsPage).componentInstance;
+
+      expect(tenantPage.languageList).toEqual([{ code: 'fr', name: 'fr' }]);
+    });
+  });
+
+  describe('selectableTarget', () => {
+    it('returns the selected target while it is still available', () => {
+      uiTranslation.availableTargets.set(['de', 'fr']);
+      component.selectedTargetLanguage = 'fr';
+
+      expect(component.selectableTarget()).toBe('fr');
+    });
+
+    it('returns null once the native language changed and the target is no longer available', () => {
+      uiTranslation.availableTargets.set(['de']);
+      component.selectedTargetLanguage = 'fr';
+
+      expect(component.selectableTarget()).toBeNull();
+    });
+
+    it('switches translation on with the first available target when the chosen one is stale', () => {
+      uiTranslation.availableTargets.set(['de']);
+      component.selectedTargetLanguage = 'fr';
+
+      component.onTranslationToggle(true);
+
+      expect(uiTranslation.activate).toHaveBeenCalledWith('de');
+      expect(component.selectedTargetLanguage).toBe('de');
+    });
+
+    it('retries with the first available target when the chosen one is stale', () => {
+      uiTranslation.availableTargets.set(['de']);
+      uiTranslation.targetLanguage.mockReturnValue(null);
+      component.selectedTargetLanguage = 'fr';
+
+      component.retryTranslation();
+
+      expect(uiTranslation.activate).toHaveBeenCalledWith('de');
     });
   });
 
@@ -430,6 +497,7 @@ describe('SettingsPage', () => {
 
   describe('retryTranslation', () => {
     it('retries with the chosen target', () => {
+      uiTranslation.availableTargets.set(['fr']);
       component.selectedTargetLanguage = 'fr';
 
       component.retryTranslation();
