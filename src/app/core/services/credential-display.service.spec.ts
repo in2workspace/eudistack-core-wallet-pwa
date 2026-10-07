@@ -1,5 +1,8 @@
+/// <reference types="node" />
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { TestBed } from '@angular/core/testing';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { CredentialDisplayService } from './credential-display.service';
 import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
 import { CredentialMetadata } from '../models/dto/CredentialIssuerMetadata';
@@ -109,6 +112,141 @@ describe('CredentialDisplayService', () => {
       const fields = service.buildFieldsFromClaims(credential.credentialSubject, buildLabelLevelMetadata());
 
       expect(fields).toContainEqual({ label: 'Engine Version', value: '1.0' });
+    });
+  });
+
+  describe('power translation', () => {
+    const POWERS_ES = {
+      'vc-fields': { power: { onboarding: 'Alta', productoffering: 'Oferta de producto', execute: 'Ejecutar', create: 'Crear' } },
+    };
+    const POWERS_CA = {
+      'vc-fields': { power: { onboarding: 'Alta', productoffering: 'Oferta de producte', execute: 'Executar', create: 'Crear' } },
+    };
+
+    function buildPowersMetadata(): CredentialMetadata {
+      return {
+        display: [{ name: 'Employee', locale: 'en' }],
+        claims: [{ path: ['mandate', 'power'], display: [{ name: 'Powers', locale: 'en' }] }],
+      };
+    }
+
+    function buildSubject(power: unknown[]): any {
+      return { mandate: { power } };
+    }
+
+    function setupWithLanguage(lang: string) {
+      const service = setup(jest.fn());
+      const translate = TestBed.inject(TranslateService);
+      translate.setTranslation('es', POWERS_ES);
+      translate.setTranslation('ca', POWERS_CA);
+      translate.use(lang);
+      return service;
+    }
+
+    it('translates the power function and actions to the active language', () => {
+      const service = setupWithLanguage('es');
+      const subject = buildSubject([{ function: 'Onboarding', domain: 'DOME', action: ['Execute', 'Create'] }]);
+
+      const [field] = service.buildFieldsFromClaims(subject, buildPowersMetadata());
+
+      expect(field.structured).toEqual([
+        { label: 'Alta (DOME)', value: 'Ejecutar, Crear', values: ['Ejecutar', 'Crear'] },
+      ]);
+    });
+
+    it('follows the language selected in the wallet', () => {
+      const service = setupWithLanguage('ca');
+      const subject = buildSubject([{ function: 'ProductOffering', domain: 'DOME', action: ['Execute'] }]);
+
+      const [field] = service.buildFieldsFromClaims(subject, buildPowersMetadata());
+
+      expect(field.structured?.[0].label).toBe('Oferta de producte (DOME)');
+    });
+
+    it('matches the translation key regardless of the casing issued', () => {
+      const service = setupWithLanguage('es');
+      const subject = buildSubject([{ function: 'PRODUCTOFFERING', domain: 'DOME', action: 'execute' }]);
+
+      const [field] = service.buildFieldsFromClaims(subject, buildPowersMetadata());
+
+      expect(field.structured?.[0]).toEqual({
+        label: 'Oferta de producto (DOME)',
+        value: 'Ejecutar',
+        values: ['Ejecutar'],
+      });
+    });
+
+    it('keeps unknown functions and actions as issued', () => {
+      const service = setupWithLanguage('es');
+      const subject = buildSubject([{ function: 'Billing', domain: 'DOME', action: ['Execute', 'Archive'] }]);
+
+      const [field] = service.buildFieldsFromClaims(subject, buildPowersMetadata());
+
+      expect(field.structured?.[0]).toEqual({
+        label: 'Billing (DOME)',
+        value: 'Ejecutar, Archive',
+        values: ['Ejecutar', 'Archive'],
+      });
+    });
+
+    it('never translates the domain', () => {
+      const service = setupWithLanguage('es');
+      const subject = buildSubject([{ function: 'Onboarding', domain: 'Create', action: ['Execute'] }]);
+
+      const [field] = service.buildFieldsFromClaims(subject, buildPowersMetadata());
+
+      expect(field.structured?.[0].label).toBe('Alta (Create)');
+    });
+
+    it('shows the powers as issued when the language has no translations', () => {
+      const service = setup(jest.fn());
+      TestBed.inject(TranslateService).use('fr');
+      const subject = buildSubject([{ function: 'Onboarding', domain: 'DOME', action: ['Execute'] }]);
+
+      const [field] = service.buildFieldsFromClaims(subject, buildPowersMetadata());
+
+      expect(field.structured?.[0].label).toBe('Onboarding (DOME)');
+    });
+
+    it('renders a power without actions as an empty action list entry', () => {
+      const service = setupWithLanguage('es');
+      const subject = buildSubject([{ function: 'Onboarding', domain: 'DOME' }]);
+
+      const [field] = service.buildFieldsFromClaims(subject, buildPowersMetadata());
+
+      expect(field.structured?.[0]).toEqual({ label: 'Alta (DOME)', value: '', values: [''] });
+    });
+
+    it('translates the powers in the detail sections as well', () => {
+      const service = setupWithLanguage('es');
+      const subject = buildSubject([{ function: 'Onboarding', domain: 'DOME', action: ['Create'] }]);
+
+      const sections = service.createSectionsFromClaims(subject, buildPowersMetadata());
+
+      expect(sections[0].fields[0].structured?.[0].values).toEqual(['Crear']);
+    });
+
+    it('keeps the generic rendering for objects that are not powers', () => {
+      const service = setupWithLanguage('es');
+      const subject = buildSubject([{ type: 'x', name: 'Alice', role: 'Admin' }]);
+
+      const [field] = service.buildFieldsFromClaims(subject, buildPowersMetadata());
+
+      expect(field.structured).toEqual([{ label: 'Name', value: 'Alice — Admin' }]);
+    });
+  });
+
+  describe('power translation keys', () => {
+    const ISSUED_FUNCTIONS = ['Onboarding', 'Certification', 'ProductOffering', 'System'];
+    const ISSUED_ACTIONS = ['Execute', 'Create', 'Update', 'Delete', 'Attest', 'Upload', 'Administration'];
+
+    it.each(['en', 'es', 'ca'])('%s bundle has a translation for every power function and action', (lang) => {
+      const bundle = JSON.parse(readFileSync(join(__dirname, `../../../assets/i18n/${lang}.json`), 'utf-8'));
+
+      const missing = [...ISSUED_FUNCTIONS, ...ISSUED_ACTIONS]
+        .filter(value => !bundle['vc-fields']?.power?.[value.toLowerCase()]);
+
+      expect(missing).toEqual([]);
     });
   });
 

@@ -8,6 +8,8 @@
 export interface DisplayFieldItem {
   label: string;
   value: string;
+  /** Individual entries behind `value` when it is a joined list (e.g. power actions). */
+  values?: string[];
 }
 
 export interface DisplayField {

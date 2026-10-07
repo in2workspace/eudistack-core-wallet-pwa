@@ -187,6 +187,15 @@
       "otp-expired": "El código ha caducado. Pulsa Reenviar para recibir uno nuevo en tu email.",
       "otp-invalid": "El código no es correcto. Revísalo e inténtalo de nuevo.",
       "passkey-register-failed": "No se ha podido registrar este dispositivo. Inténtalo de nuevo.",
+      "passkey-login-cancelled": "Has cancelado el inicio de sesión con Passkey. Puedes intentarlo nuevamente cuando lo desees.",
+      "passkey-cancelled": "Has cancelado la verificación con passkey. Puedes intentarlo nuevamente cuando lo desees.",
+      "passkey-not-found": "No hay ninguna passkey registrada en este dispositivo.",
+      "passkey-creation-cancelled": "Has cancelado la creación de la passkey. Puedes intentarlo nuevamente cuando lo desees.",
+      "passkey-timeout": "La operación ha expirado. Inténtalo nuevamente.",
+      "passkey-already-registered": "Este dispositivo ya tiene una passkey registrada para esta wallet.",
+      "passkey-not-supported": "Este dispositivo o navegador no admite el tipo de passkey necesario. Prueba con otro navegador o dispositivo.",
+      "passkey-security": "No se ha podido usar la passkey en esta dirección. Asegúrate de abrir la wallet desde su dirección oficial (HTTPS).",
+      "passkey-failed": "No se ha podido completar la verificación con passkey. Inténtalo de nuevo.",
       "session-expired-request-code": "Tu sesión ha caducado. Solicita un código de verificación para seguir abriendo la oferta de credencial."
     }
   },
@@ -244,6 +253,8 @@
     },
     "legal-document": {
       "back": "Volver",
+      "not-published-title": "El documento aún no está disponible",
+      "not-published-description": "Este documento todavía no se ha publicado. Lo gestiona EUDIStack. Para más información, contacta con soporte:",
       "loading": "Cargando documento...",
       "error-title": "No se ha podido cargar el documento",
       "error-description": "Comprueba tu conexión e inténtalo de nuevo.",
@@ -252,6 +263,8 @@
     },
     "oss-licenses": {
       "title": "Licencias de software de código abierto",
+      "sbom-frontend": "SBOM del frontend (última release)",
+      "sbom-backend": "SBOM del backend (última release)",
       "count-suffix": "dependencias",
       "empty-title": "Listado no disponible",
       "empty-description": "No hemos podido cargar el listado de licencias en este momento.",
@@ -404,7 +417,9 @@
       "update": "Actualizar",
       "delete": "Eliminar",
       "attest": "Acreditar",
-      "upload": "Subir"
+      "upload": "Subir",
+      "system": "Sistema",
+      "administration": "Administración"
     },
     "issued-by": "Emitida por"
   },
@@ -503,7 +518,6 @@
     "csv-header-credential": "Credencial",
     "csv-header-counterparty": "Contraparte",
     "csv-header-date": "Fecha",
-    "csv-header-details": "Detalle",
     "export-error": "No se pudo exportar el historial",
     "type-issued": "Credencial recibida",
     "type-presented": "Credencial presentada",
@@ -599,6 +613,7 @@
     "pin": "Introduce el PIN",
     "description": "Se ha enviado un código PIN a tu email. Revísalo e introduce el PIN.",
     "send": "Enviar",
+    "validate": "Validar",
     "messageHtml": "{{description}}<br><small class=\"counter\">Tiempo restante: {{counter}} segundos</small>",
     "organization": "Organización: ",
     "holder": "Titular: ",
