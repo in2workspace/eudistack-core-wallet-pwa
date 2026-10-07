@@ -56,6 +56,19 @@ describe('LegalContentService', () => {
     });
   });
 
+  it('treats the SPA index.html served with 200 as a missing document: es fallback, then not-found', () => {
+    translateServiceMock.currentLang = 'en';
+    const shell = '<!doctype html><html><body><app-root></app-root></body></html>';
+    let result: LegalContentResult | undefined;
+
+    service.load('privacy-policy').subscribe((r) => (result = r));
+
+    httpMock.expectOne('assets/legal/en/privacy-policy.html').flush(shell);
+    httpMock.expectOne('assets/legal/es/privacy-policy.html').flush(shell);
+
+    expect(result).toEqual({ status: 'error', reason: 'not-found' });
+  });
+
   it('falls back to es on a 404 in the active language, marking isFallbackLanguage (EC-01)', () => {
     translateServiceMock.currentLang = 'ca';
     let result: LegalContentResult | undefined;
