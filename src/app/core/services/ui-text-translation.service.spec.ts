@@ -397,7 +397,7 @@ describe('UiTextTranslationService', () => {
       expect(engine.prepare).not.toHaveBeenCalled();
     });
 
-    it('does not apply the TRANSLATION_BUDGET_MS timeout while the language pack is still downloading', async () => {
+    it('does not apply the stall timeout while the language pack is still downloading', async () => {
       jest.useFakeTimers();
       let finishDownload!: () => void;
       engine.prepare.mockImplementation(() => new Promise<void>(resolve => { finishDownload = resolve; }));
@@ -459,16 +459,55 @@ describe('UiTextTranslationService', () => {
     });
   });
 
-  describe('activate — timeout (ES-05)', () => {
-    it('falls back to native and destroys the engine when the translation never settles within TRANSLATION_BUDGET_MS', async () => {
+  describe('activate — stall timeout (ES-05)', () => {
+    it('keeps a slow translation alive as long as batches keep completing', async () => {
+      jest.useFakeTimers();
+      let batchDone!: (done: number, total: number) => void;
+      let finishTranslation!: () => void;
+      engine.translateEntries.mockImplementation((entries, _pair, _allowedKeys, onProgress) => new Promise(resolve => {
+        batchDone = onProgress!;
+        finishTranslation = () => resolve(entries.map((e: { key: UiTextKey; text: string }) => ({ key: e.key, text: `[${e.text}]` })));
+      }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      jest.advanceTimersByTime(25_000);
+      batchDone(1, 2);
+      jest.advanceTimersByTime(25_000); // 50 s in total, but never 30 s without a batch
+      await flushMicrotasks();
+      expect(service.status()).toBe('preparing');
+      finishTranslation();
+      await activation;
+
+      expect(service.status()).toBe('active');
+    });
+
+    it('fails once no batch completes for TRANSLATION_STALL_TIMEOUT_MS even after earlier progress', async () => {
+      jest.useFakeTimers();
+      let batchDone!: (done: number, total: number) => void;
+      engine.translateEntries.mockImplementation((_entries, _pair, _allowedKeys, onProgress) => new Promise(() => {
+        batchDone = onProgress!;
+      }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      jest.advanceTimersByTime(20_000);
+      batchDone(1, 2);
+      jest.advanceTimersByTime(30_000);
+      await activation;
+
+      expect(service.status()).toBe('error');
+    });
+
+    it('falls back to native and destroys the engine when the translation never completes a batch within TRANSLATION_STALL_TIMEOUT_MS', async () => {
       jest.useFakeTimers();
       engine.translateEntries.mockImplementation(() => new Promise(() => { /* never resolves */ }));
 
       const activation = service.activate('el');
       // Flush the fetch + cache-read microtasks so doActivate() reaches the
-      // engine call and withBudget()'s timer is armed before we advance it.
+      // engine call and withStallGuard()'s timer is armed before we advance it.
       await flushMicrotasks();
-      jest.advanceTimersByTime(20_000);
+      jest.advanceTimersByTime(30_000);
       await activation;
 
       expect(service.status()).toBe('error');
@@ -489,18 +528,18 @@ describe('UiTextTranslationService', () => {
       });
     });
 
-    it('records a dedicated error name when the translation exceeds TRANSLATION_BUDGET_MS', async () => {
+    it('records a dedicated error name when the translation stalls', async () => {
       jest.useFakeTimers();
       engine.translateEntries.mockImplementation(() => new Promise(() => { /* never resolves */ }));
 
       const activation = service.activate('el');
       await flushMicrotasks();
-      jest.advanceTimersByTime(20_000);
+      jest.advanceTimersByTime(30_000);
       await activation;
 
       expect(telemetry.track).toHaveBeenCalledWith('ui_translation_engine_failed', {
         targetLanguage: 'el',
-        errorName: 'TranslationBudgetExceededError',
+        errorName: 'TranslationStalledError',
       });
     });
 

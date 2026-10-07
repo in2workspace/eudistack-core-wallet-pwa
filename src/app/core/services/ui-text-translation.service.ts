@@ -5,7 +5,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { EMPTY, firstValueFrom, from, switchMap, timeout } from 'rxjs';
 
 import {
-  BUNDLE_FETCH_TIMEOUT_MS, DOWNLOAD_PROGRESS_WEIGHT, RTL_LANGUAGE_TAGS, RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES, TRANSLATION_BUDGET_MS,
+  BUNDLE_FETCH_TIMEOUT_MS, DOWNLOAD_PROGRESS_WEIGHT, RTL_LANGUAGE_TAGS, RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES, TRANSLATION_STALL_TIMEOUT_MS,
 } from '../constants/ui-translation.constants';
 import { LanguageTag, SCHEMA_VERSION, UiTextEntry, UiTextKey, UiTranslationStatus } from '../models/ui-text-translation.model';
 import { TRANSLATION_ENGINE } from '../ports/translation-engine.port';
@@ -112,7 +112,8 @@ export class UiTextTranslationService {
    * completion a no-op (ES-03), so it never overwrites the newer choice —
    * without this, picking a different language before the first one
    * finishes preparing silently persisted the discarded choice instead.
-   * The translation step is bounded to `TRANSLATION_BUDGET_MS` (ES-05); the
+   * The translation step fails once it stalls for `TRANSLATION_STALL_TIMEOUT_MS`
+   * without completing a batch (ES-05); the
    * engine preparation (first-time language-pack download) is not, since it
    * can legitimately take longer — the user can cancel it via `deactivate()`.
    * On timeout or any failure, falls back to the native language
@@ -355,11 +356,12 @@ export class UiTextTranslationService {
 
     const maskedEntries = entries.map(e => ({ key: e.key, text: maskPlaceholders(e.text) }));
 
-    const rawTranslated = await this.withBudget(this.engine.translateEntries(
+    const rawTranslated = await this.withStallGuard(onBatchDone => this.engine.translateEntries(
       maskedEntries,
       pair,
       allowedKeys,
       (done, total) => {
+        onBatchDone();
         if (this.isCurrentGeneration(generation)) {
           const ratio = total > 0 ? done / total : 0;
           this._progress.set({
@@ -400,15 +402,26 @@ export class UiTextTranslationService {
     return generation === this._generation;
   }
 
-  /** Races `operation` against `TRANSLATION_BUDGET_MS` (ES-05) — rejects without cancelling the underlying work; generation guards make any late result a no-op. */
-  private withBudget<T>(operation: Promise<T>): Promise<T> {
+  /**
+   * Runs `start` and rejects if it goes `TRANSLATION_STALL_TIMEOUT_MS` without
+   * calling the `onBatchDone` it is given (ES-05) — the timer restarts on every
+   * batch, so only a stalled translation fails, never a slow one. Rejects
+   * without cancelling the underlying work; generation guards make any late
+   * result a no-op.
+   */
+  private withStallGuard<T>(start: (onBatchDone: () => void) => Promise<T>): Promise<T> {
     return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        const error = new Error('ui-translation: translation exceeded TRANSLATION_BUDGET_MS');
-        error.name = 'TranslationBudgetExceededError';
-        reject(error);
-      }, TRANSLATION_BUDGET_MS);
-      operation.then(
+      let timer: ReturnType<typeof setTimeout>;
+      const arm = (): void => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          const error = new Error('ui-translation: translation stalled for TRANSLATION_STALL_TIMEOUT_MS');
+          error.name = 'TranslationStalledError';
+          reject(error);
+        }, TRANSLATION_STALL_TIMEOUT_MS);
+      };
+      arm();
+      start(arm).then(
         value => { clearTimeout(timer); resolve(value); },
         err => { clearTimeout(timer); reject(err); },
       );

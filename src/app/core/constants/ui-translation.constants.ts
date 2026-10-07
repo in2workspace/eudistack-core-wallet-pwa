@@ -75,8 +75,14 @@ export const MAX_CACHED_TRANSLATIONS = 3;
 /** Max cached bytes per language — approximate, measured on the serialized entry (NFR-S-142-05). */
 export const MAX_CACHED_BYTES_PER_LANGUAGE = 200_000;
 
-/** Hard timeout for the translation step only — engine preparation (language-pack download) is excluded — ES-05, NFR-S-142-02. */
-export const TRANSLATION_BUDGET_MS = 20_000;
+/**
+ * Max time the translation step may go without completing a batch before it
+ * is considered stalled — ES-05, NFR-S-142-02. It is an inactivity limit, not
+ * a total one: a slow but advancing translation (e.g. a cold engine right
+ * after a language-pack download) is never cut. Engine preparation (the
+ * download itself) is excluded and cancellable by the user.
+ */
+export const TRANSLATION_STALL_TIMEOUT_MS = 30_000;
 
 /** Timeout fetching the pristine i18n bundle (`assets/i18n/<lang>.json`) — ES-02. */
 export const BUNDLE_FETCH_TIMEOUT_MS = 3_000;

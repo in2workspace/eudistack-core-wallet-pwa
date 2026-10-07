@@ -48,7 +48,7 @@ function initializePasskeyStore(store: PasskeyStoreService): () => Promise<void>
  * selector page.
  *
  * Deliberately fire-and-forget: bootstrap must not block on this (up to
- * TRANSLATION_BUDGET_MS = 20s on a cache miss) — AC-11 requires the app stay
+ * the language-pack download on a cache miss) — AC-11 requires the app stay
  * usable during preparation. The UI swaps to the target language reactively
  * once ready, via @ngx-translate's existing onTranslationChange subscription
  * — regardless of which page is on screen when it resolves. Must run after
