@@ -14,6 +14,7 @@ import { LoaderHandledFlowService } from 'src/app/shared/services/loader-handled
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { didKeyToJwk } from '../../utils/did-key.utils';
+import { resolveCounterpartyName } from 'src/app/shared/utils/activity-format.util';
 
 @Injectable({
   providedIn: 'root'
@@ -206,7 +207,7 @@ export class Oid4vpEngineService {
   private async logPresentedActivity(selectorResponse: VCReply, sharedAttributes?: string[]): Promise<void> {
     const selectedVc = selectorResponse.selectedVcList[0];
     const credName = selectedVc?.name ?? selectedVc?.type?.[0] ?? 'Unknown';
-    const counterparty = selectorResponse.clientId ?? selectorResponse.redirectUri ?? '';
+    const counterparty = resolveCounterpartyName(selectorResponse);
     await this.activityService.log('presented', credName, counterparty, undefined, sharedAttributes);
   }
 
