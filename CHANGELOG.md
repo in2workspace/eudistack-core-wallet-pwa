@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **About: legal documents still showed the connection error on DEV/PRO (S3 + CloudFront)**: a document that is not published is answered with **HTTP 403** by S3/CloudFront (no `ListBucket` permission ⇒ a missing key is indistinguishable from a forbidden one), not with the 404 nginx gives locally, so `LegalContentService` classified it as `unavailable` and the page kept showing "Check your connection" with a useless Retry. 403 is now treated like 404 for same-origin legal assets: single fallback to `es`, then `not-found` (truthful "not available yet — managed by EUDIStack" message, no Retry).
 
 - **Activity: the "Presented to" name was a technical identifier instead of a friendly name**: presentations were logged with the verifier's `client_id` (e.g. `x509_hash:…`, a `did:` or a URL), which is meaningless to the user. The activity history, the detail view and the CSV export now show the verifier's name.
 - The name is the verifier's `client_name` (localized as in the consent screen); when it is missing, the hostname of the verifier's response URI is used instead of the technical `client_id`.

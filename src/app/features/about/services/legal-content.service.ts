@@ -7,11 +7,26 @@ import { LEGAL_DOCUMENT_TIMEOUT_MS } from 'src/app/core/constants/support.consta
 import { TelemetryService } from 'src/app/core/services/telemetry.service';
 import {
   LEGAL_FALLBACK_LANG,
+  LegalContentFailureReason,
   LegalContentResult,
   LegalDocumentId,
   LegalLang,
   isLegalLang,
 } from '../models/legal-document.model';
+
+/**
+ * A missing object is a 404 on nginx, but a 403 on S3/CloudFront (no ListBucket permission ⇒ S3 hides
+ * whether the key exists). Both mean "this document is not published" for a same-origin static asset.
+ */
+function isMissingDocument(err: unknown): boolean {
+  return err instanceof HttpErrorResponse && (err.status === 404 || err.status === 403);
+}
+
+function classifyFailure(err: unknown): LegalContentFailureReason {
+  if (err instanceof TimeoutError) return 'timeout';
+  if (isMissingDocument(err)) return 'not-found';
+  return 'unavailable';
+}
 
 /** Markers of a full HTML page (the SPA shell), never present in a legal fragment (ES-02/ES-06). */
 const APP_SHELL_PATTERN = /<app-root|<html[\s>]|<!doctype/i;
@@ -19,7 +34,7 @@ const APP_SHELL_PATTERN = /<app-root|<html[\s>]|<!doctype/i;
 /**
  * AC-04 / EC-01 / ES-01 / ES-02 / ES-04 / ES-05.
  * Resolves and fetches a legal document for the active interface language,
- * falling back to LEGAL_FALLBACK_LANG on a single 404, cancelling any
+ * falling back to LEGAL_FALLBACK_LANG on a single 404/403, cancelling any
  * in-flight request when the language changes, and timing out at
  * LEGAL_DOCUMENT_TIMEOUT_MS.
  */
@@ -56,8 +71,8 @@ export class LegalContentService {
         })
       ),
       catchError((err: unknown) => {
-        // EC-01: 404 on the active language ⇒ a SINGLE retry in the fallback language. No third attempt.
-        if (lang !== LEGAL_FALLBACK_LANG && err instanceof HttpErrorResponse && err.status === 404) {
+        // EC-01: 404/403 on the active language ⇒ a SINGLE retry in the fallback language. No third attempt.
+        if (lang !== LEGAL_FALLBACK_LANG && isMissingDocument(err)) {
           return this.fetchRaw(docId, LEGAL_FALLBACK_LANG).pipe(
             map(
               (html): LegalContentResult => ({
@@ -98,12 +113,7 @@ export class LegalContentService {
   }
 
   private toFailure(docId: LegalDocumentId, lang: LegalLang, err: unknown): LegalContentResult {
-    const reason =
-      err instanceof TimeoutError
-        ? 'timeout'
-        : err instanceof HttpErrorResponse && err.status === 404
-          ? 'not-found'
-          : 'unavailable';
+    const reason = classifyFailure(err);
     // ES-01 — the failure is recorded. Payload has no PII: only docId, lang and build.
     this.telemetry.track('about_legal_document_load_failed', {
       docId,
