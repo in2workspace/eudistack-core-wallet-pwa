@@ -23,7 +23,7 @@ import { OtpInputComponent } from '../otp-input/otp-input.component';
         [autofocus]="true"
         [error]="!!error"
         (completed)="onCompleted($event)"
-        (changed)="error = ''"
+        (changed)="onChanged($event)"
       ></app-otp-input>
 
       <p class="tx-code-counter" *ngIf="remainingSeconds > 0">
@@ -35,6 +35,14 @@ import { OtpInputComponent } from '../otp-input/otp-input.component';
       <div class="tx-code-actions">
         <button class="tx-code-btn tx-code-btn-cancel" (click)="onCancel()">
           {{ 'confirmation.cancel' | translate }}
+        </button>
+        <button
+          type="button"
+          class="tx-code-btn tx-code-btn-confirm"
+          [disabled]="code.length < txCodeLength"
+          (click)="onCompleted(code)"
+        >
+          {{ 'confirmation.validate' | translate }}
         </button>
       </div>
     </div>
@@ -97,7 +105,28 @@ import { OtpInputComponent } from '../otp-input/otp-input.component';
       cursor: pointer;
       transition: opacity 0.2s;
 
-      &:hover { opacity: 0.85; }
+      &:hover:not(:disabled) { opacity: 0.85; }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    .tx-code-btn-confirm {
+      background: var(--primary-color);
+      color: var(--primary-contrast-color);
+      border: 0;
+    }
+
+    @media (max-width: 480px) {
+      .tx-code-actions {
+        flex-direction: column-reverse;
+      }
+
+      .tx-code-btn {
+        width: 100%;
+      }
     }
 
     .tx-code-btn-cancel {
@@ -117,6 +146,7 @@ export class TxCodeModalComponent {
 
   remainingSeconds = 0;
   error = '';
+  code = '';
   private interval: ReturnType<typeof globalThis.setInterval> | undefined;
 
   constructor(private modalCtrl: ModalController) {}
@@ -128,6 +158,11 @@ export class TxCodeModalComponent {
 
   ionViewWillLeave(): void {
     this.clearCountdown();
+  }
+
+  onChanged(value: string): void {
+    this.code = value;
+    this.error = '';
   }
 
   onCompleted(code: string): void {
