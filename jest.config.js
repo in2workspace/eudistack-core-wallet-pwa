@@ -74,6 +74,7 @@ module.exports = {
     "src/app/features/devices/devices.page.ts",
     "src/app/features/protocol-callback/protocol-callback.page.ts",
     "src/app/features/vc-selector/vc-selector.page.ts",
+    "src/app/shared/utils/activity-format.util.ts",
     "src/app/core/services/qr-content.service.ts",
     "src/app/core/services/theme.service.ts",
     "src/app/core/services/environment.service.ts",

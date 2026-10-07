@@ -258,7 +258,7 @@ describe('Oid4vpEngineService — shared attributes flow into the "presented" ac
     const [type, credName, counterparty, details, sharedAttributes] = activityService.log.mock.calls[0];
     expect(type).toBe('presented');
     expect(credName).toBe('Empleado ACME');
-    expect(counterparty).toBe('https://verifier.example.com');
+    expect(counterparty).toBe('verifier.example.com');
     expect(details).toBeUndefined();
     expect([...(sharedAttributes as string[])].sort()).toEqual(['family_name', 'given_name']);
   });
@@ -296,6 +296,40 @@ describe('Oid4vpEngineService — shared attributes flow into the "presented" ac
     const [type, , , , sharedAttributes] = activityService.log.mock.calls[0];
     expect(type).toBe('presented');
     expect(sharedAttributes).toBeUndefined();
+  });
+});
+
+describe('Oid4vpEngineService — friendly counterparty name in the "presented" activity log', () => {
+  function plainJwtFor(): string {
+    const header = b64urlJson({ alg: 'ES256', typ: 'JWT' });
+    const payload = b64urlJson({ iss: 'did:key:zHolder', credentialSubject: { id: 'did:key:zHolder' }, cnf: HOLDER_CNF });
+    return `${header}.${payload}.sig`;
+  }
+
+  it('logs the verifier client_name as the counterparty when it is available', async () => {
+    const { service, credentialCacheService, activityService } = setup();
+    const plainJwt = plainJwtFor();
+    credentialCacheService.extractSignedJwt.mockReturnValue(plainJwt);
+
+    await service.buildVerifiablePresentationWithSelectedVCs(
+      selectorResponseFor(plainJwt, { clientName: 'DOME Marketplace', clientId: 'x509_hash:abc123' })
+    );
+
+    const [, , counterparty] = activityService.log.mock.calls[0];
+    expect(counterparty).toBe('DOME Marketplace');
+  });
+
+  it('falls back to the response URI hostname instead of a technical client_id when there is no client_name', async () => {
+    const { service, credentialCacheService, activityService } = setup();
+    const plainJwt = plainJwtFor();
+    credentialCacheService.extractSignedJwt.mockReturnValue(plainJwt);
+
+    await service.buildVerifiablePresentationWithSelectedVCs(
+      selectorResponseFor(plainJwt, { clientName: '', clientId: 'x509_hash:abc123', redirectUri: 'https://www.verifier.example.com/oid4vp/auth-response' })
+    );
+
+    const [, , counterparty] = activityService.log.mock.calls[0];
+    expect(counterparty).toBe('verifier.example.com');
   });
 });
 
