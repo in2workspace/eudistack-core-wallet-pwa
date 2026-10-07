@@ -229,6 +229,9 @@
 .activity-subtitle {
   font-size: 14px;
   color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .activity-card-footer {
