@@ -517,7 +517,6 @@
     "csv-header-credential": "Credential",
     "csv-header-counterparty": "Counterparty",
     "csv-header-date": "Date",
-    "csv-header-details": "Details",
     "export-error": "The history could not be exported",
     "type-issued": "Credential received",
     "type-presented": "Credential presented",
