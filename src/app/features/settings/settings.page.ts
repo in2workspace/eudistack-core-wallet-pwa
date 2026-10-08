@@ -103,8 +103,12 @@ export class SettingsPage implements OnInit {
   }
 
   public targetLanguageName(code: LanguageTag): string {
+    // Names follow the language actually displayed: the translated one once the
+    // translation is applied (the native bundle is overwritten, so `currentLang`
+    // alone would keep naming them in the native language), the native one otherwise.
+    const displayed = this.translationStatus() === 'active' ? this.uiTranslation.targetLanguage() : null;
     try {
-      return new Intl.DisplayNames([this.translate.currentLang], { type: 'language' }).of(code) ?? code;
+      return new Intl.DisplayNames([displayed ?? this.translate.currentLang], { type: 'language' }).of(code) ?? code;
     } catch {
       return code;
     }

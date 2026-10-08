@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClient } from '@angular/common/http';
 import { EventEmitter } from '@angular/core';
 import { LangChangeEvent, TranslateService } from '@ngx-translate/core';
-import { of, throwError } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
 
 import { UiTextTranslationService } from './ui-text-translation.service';
 import { UiTranslationCacheService } from './ui-translation-cache.service';
@@ -10,6 +10,7 @@ import { TelemetryService } from './telemetry.service';
 import { TRANSLATION_ENGINE, TranslationEnginePort } from '../ports/translation-engine.port';
 import { UserPreferencesService } from '../../shared/services/user-preferences.service';
 import { UiTextKey } from '../models/ui-text-translation.model';
+import { ThemeService } from './theme.service';
 
 const PRISTINE_BUNDLE = { menu: { scan: 'Escáner QR', wallet: 'Cartera' } };
 const PRISTINE_JSON = JSON.stringify(PRISTINE_BUNDLE);
@@ -42,6 +43,7 @@ describe('UiTextTranslationService', () => {
   let prefsStore: { enabled: boolean; targetLanguage: string | null };
   let prefs: { uiTranslation: jest.Mock; setUiTranslation: jest.Mock };
   let telemetry: { track: jest.Mock };
+  let theme: { ready: Promise<void> };
 
   beforeEach(() => {
     document.documentElement.lang = 'es';
@@ -78,6 +80,7 @@ describe('UiTextTranslationService', () => {
     };
 
     telemetry = { track: jest.fn() };
+    theme = { ready: Promise.resolve() };
 
     TestBed.configureTestingModule({
       providers: [
@@ -87,6 +90,7 @@ describe('UiTextTranslationService', () => {
         { provide: TRANSLATION_ENGINE, useValue: engine },
         { provide: UserPreferencesService, useValue: prefs },
         { provide: TelemetryService, useValue: telemetry },
+        { provide: ThemeService, useValue: theme },
       ],
     });
     service = TestBed.inject(UiTextTranslationService);
@@ -291,6 +295,21 @@ describe('UiTextTranslationService', () => {
         const applied = translate.setTranslation.mock.calls[0][1] as typeof EN_BUNDLE;
         expect(applied.menu.scan).toBe('[Scan QR]');
         expect(applied['vc-fields'].credentialInfo.title).toBe('Credencial');
+      });
+
+      it('does not restore a bundle taken under another native language when cancelled before the new one arrives', async () => {
+        jest.useFakeTimers();
+        await service.activate('el');
+        service.deactivate();
+        translate.currentLang = 'ca';
+        http.get.mockReturnValue(NEVER);
+
+        service.activate('el');
+        await flushMicrotasks();
+        translate.setTranslation.mockClear();
+        service.deactivate();
+
+        expect(translate.setTranslation).not.toHaveBeenCalled();
       });
 
       it('restores the native bundle, not the English source, when deactivated', async () => {
@@ -825,6 +844,49 @@ describe('UiTextTranslationService', () => {
       await service.restoreFromPreference();
 
       expect(engine.translateEntries).not.toHaveBeenCalled();
+    });
+
+    describe('startup race with the theme (APP_INITIALIZERs run concurrently)', () => {
+      let releaseTheme!: () => void;
+
+      beforeEach(() => {
+        theme.ready = new Promise<void>(resolve => { releaseTheme = resolve; });
+        translate.getLangs.mockReturnValue([]); // the tenant's languages are not registered yet
+        prefsStore = { enabled: true, targetLanguage: 'ca' };
+      });
+
+      it('does nothing until the theme has loaded', async () => {
+        const restoration = service.restoreFromPreference();
+        await flushMicrotasks();
+
+        expect(engine.translateEntries).not.toHaveBeenCalled();
+        expect(service.status()).toBe('idle');
+        releaseTheme();
+        await restoration;
+      });
+
+      it('restores a target the tenant does not load natively once the theme registered its languages', async () => {
+        const restoration = service.restoreFromPreference();
+        await flushMicrotasks();
+
+        translate.getLangs.mockReturnValue(['en', 'es']);
+        releaseTheme();
+        await restoration;
+
+        expect(service.targetLanguage()).toBe('ca');
+        expect(service.status()).toBe('active');
+      });
+
+      it('still rejects a target the tenant does load natively once its languages are known', async () => {
+        const restoration = service.restoreFromPreference();
+        await flushMicrotasks();
+
+        translate.getLangs.mockReturnValue(['en', 'es', 'ca']);
+        releaseTheme();
+        await restoration;
+
+        expect(engine.translateEntries).not.toHaveBeenCalled();
+      });
     });
 
     it('accepts a persisted target that is shipped by the wallet but not loaded by the tenant', async () => {

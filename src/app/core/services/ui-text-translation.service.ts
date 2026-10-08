@@ -15,6 +15,7 @@ import {
   isExcludedKey, isSafeTranslatedText, maskPlaceholders, mergeUiBundles, unmaskPlaceholders,
 } from '../../shared/helpers/ui-text-bundle';
 import { UserPreferencesService } from '../../shared/services/user-preferences.service';
+import { ThemeService } from './theme.service';
 import { UiTranslationCacheService } from './ui-translation-cache.service';
 import { TelemetryService } from './telemetry.service';
 
@@ -50,6 +51,7 @@ export class UiTextTranslationService {
   private readonly engine = inject(TRANSLATION_ENGINE);
   private readonly prefs = inject(UserPreferencesService);
   private readonly telemetry = inject(TelemetryService);
+  private readonly theme = inject(ThemeService);
   private readonly document = inject(DOCUMENT);
 
   private readonly _status = signal<UiTranslationStatus>('idle');
@@ -70,8 +72,12 @@ export class UiTextTranslationService {
   private _inFlightTarget: LanguageTag | null = null;
   /** Probe result, memoized once per session (EC-02): every pair starts from `TRANSLATION_SOURCE_LANGUAGE`, so it never depends on the native language. */
   private _probePromise: Promise<ReadonlyArray<LanguageTag>> | null = null;
-  /** In-memory copy of the native bundle taken at activation — lets `deactivate()` restore the native UI with 0 network requests (NFR-S-142-03). */
-  private _nativeBundle: UiTextBundle | null = null;
+  /**
+   * In-memory copy of the native bundle taken at activation, with the language it belongs to — lets
+   * `deactivate()` restore the native UI with 0 network requests (NFR-S-142-03). The language is kept
+   * so a copy taken under a previous native language is never restored over the current one.
+   */
+  private _nativeBundle: { readonly lang: LanguageTag; readonly bundle: UiTextBundle } | null = null;
 
   constructor() {
     // AD-6 (incidental fix) + ES-03: keep documentElement.lang/dir synced with
@@ -168,12 +174,17 @@ export class UiTextTranslationService {
    * screen stuck on the native language until the Holder actually
    * interacted with the page (e.g. by logging in) — this gate makes that
    * deterministic instead of accidental.
+   *
+   * Waits for the theme first: it registers the tenant's languages and sets the
+   * native one, and APP_INITIALIZERs run concurrently, so reading them earlier
+   * would mistake a language the tenant does not load for a native one.
    */
   async restoreFromPreference(): Promise<void> {
     const pref = this.prefs.uiTranslation();
     if (!pref.enabled || !pref.targetLanguage) {
       return;
     }
+    await this.theme.ready;
     // Defence-in-depth (security-auditor full-mode review, EUD-142 F7): the
     // preference is user-editable storage — reject a target that isn't one
     // of the actual candidate languages before it can reach
@@ -274,7 +285,7 @@ export class UiTextTranslationService {
 
     const pristineBundle = JSON.parse(sourceJson) as UiTextBundle;
     const nativeBundle = JSON.parse(nativeJson) as UiTextBundle;
-    this._nativeBundle = nativeBundle;
+    this._nativeBundle = { lang: nativeLang, bundle: nativeBundle };
     const bundleHash = hashUiBundle(sourceJson);
 
     // 2. Flatten + exclude (AD-3 deny-list; provenance guarantee from flattenUiBundle).
@@ -408,8 +419,8 @@ export class UiTextTranslationService {
   /** Restores the native UI from the in-memory native bundle — 0 network requests (NFR-S-142-03). */
   private restoreNativeLanguageDisplay(): void {
     const nativeLang = this.currentNativeLang();
-    if (this._nativeBundle) {
-      this.translate.setTranslation(nativeLang, this._nativeBundle, false);
+    if (this._nativeBundle?.lang === nativeLang) {
+      this.translate.setTranslation(nativeLang, this._nativeBundle.bundle, false);
     }
     this.document.documentElement.lang = nativeLang;
     this.document.documentElement.dir = 'ltr';

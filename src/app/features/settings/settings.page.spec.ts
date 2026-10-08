@@ -301,6 +301,36 @@ describe('SettingsPage', () => {
       spy.mockRestore();
     });
 
+    describe('language of the names', () => {
+      let spy: jest.SpyInstance;
+
+      beforeEach(() => {
+        spy = jest
+          .spyOn(Intl, 'DisplayNames')
+          .mockImplementation(() => ({ of: () => 'name' }) as unknown as Intl.DisplayNames);
+        TestBed.inject(TranslateService).currentLang = 'ca';
+        uiTranslation.targetLanguage.mockReturnValue('id');
+      });
+
+      afterEach(() => spy.mockRestore());
+
+      it('uses the translated language while the translation is active', () => {
+        uiTranslation.status.set('active');
+
+        component.targetLanguageName('ja');
+
+        expect(spy).toHaveBeenCalledWith(['id'], { type: 'language' });
+      });
+
+      it.each(['idle', 'preparing', 'error'])('uses the native language while the translation is %s', (status) => {
+        uiTranslation.status.set(status);
+
+        component.targetLanguageName('ja');
+
+        expect(spy).toHaveBeenCalledWith(['ca'], { type: 'language' });
+      });
+    });
+
     it('returns the raw code when Intl has no name for it', () => {
       const spy = jest
         .spyOn(Intl, 'DisplayNames')
