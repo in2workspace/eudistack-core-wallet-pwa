@@ -23,7 +23,11 @@ module.exports = {
     "!src/environments/**",
     "!src/app/app.routes.ts",
     "!src/app/core/constants/**",
-    "!src/app/features/credentials/credentials.page.ts"
+    "!src/app/features/credentials/credentials.page.ts",
+    "!src/app/features/tabs/tabs.routes.ts",
+    "!src/main.ts",
+    "!src/polyfills.ts",
+    "!src/zone-flags.ts"
   ],
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/',
