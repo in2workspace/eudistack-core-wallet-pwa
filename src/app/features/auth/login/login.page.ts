@@ -117,6 +117,8 @@ export class LoginPage implements OnDestroy {
   private readonly rateLimit = signal<RateLimit | null>(null);
   private readonly now = signal(Date.now());
   private ticker: ReturnType<typeof setInterval> | null = null;
+  // The message a rate limit put on screen: it no longer applies once the deadline passes.
+  private rateLimitMessage: string | null = null;
   private passkeyFromRefreshToken = false;
 
   private readonly authService = inject(AuthService);
@@ -450,8 +452,8 @@ export class LoginPage implements OnDestroy {
    */
   private handleSendCodeError(err: any): void {
     if (err?.status === 429) {
-      this.errorMessage = this.translate.instant('auth.errors.too-many-attempts');
       this.applyRateLimit(this.parseRetryAfterSeconds(err), false);
+      this.showRateLimitMessage('auth.errors.too-many-attempts');
     } else {
       this.errorMessage = err?.error?.message || err?.error?.detail || 'Failed to send verification code';
     }
@@ -505,7 +507,7 @@ export class LoginPage implements OnDestroy {
       this.errorMessage = this.translate.instant('auth.errors.too-many-attempts-otp');
     } else if (err?.status === 429) {
       this.applyRateLimit(this.parseRetryAfterSeconds(err), true);
-      this.errorMessage = this.translate.instant('auth.errors.too-many-attempts-wait');
+      this.showRateLimitMessage('auth.errors.too-many-attempts-wait');
     } else if (err?.status === 401 && errorCode === 'invalid_code') {
       this.errorMessage = this.translate.instant('auth.errors.otp-invalid');
     } else {
@@ -689,6 +691,7 @@ export class LoginPage implements OnDestroy {
     if (this.ticker !== null || !this.hasPendingDeadline()) return;
     this.ticker = setInterval(() => {
       this.now.set(Date.now());
+      this.clearExpiredRateLimitMessage();
       if (!this.hasPendingDeadline()) {
         this.stopTicker();
       }
@@ -706,6 +709,24 @@ export class LoginPage implements OnDestroy {
   private hasPendingDeadline(): boolean {
     const until = Math.max(this.resendAvailableAt(), this.rateLimit()?.until ?? 0);
     return until > this.now();
+  }
+
+  private showRateLimitMessage(key: string): void {
+    this.errorMessage = this.translate.instant(key);
+    this.rateLimitMessage = this.errorMessage;
+  }
+
+  /**
+   * Once the rate limit runs out, its message ("wait for the countdown to end") is stale:
+   * drop it, unless something else has replaced it on screen since.
+   */
+  private clearExpiredRateLimitMessage(): void {
+    const rateLimit = this.rateLimit();
+    if (this.rateLimitMessage === null || (rateLimit !== null && this.now() < rateLimit.until)) return;
+    if (this.errorMessage === this.rateLimitMessage) {
+      this.errorMessage = '';
+    }
+    this.rateLimitMessage = null;
   }
 
   private clearMessages(): void {

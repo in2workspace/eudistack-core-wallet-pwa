@@ -1595,6 +1595,30 @@ describe('LoginPage (server mode)', () => {
       expect(mockAuthService.register).toHaveBeenCalledWith('user@example.com', 'login');
     });
 
+    it('drops the "wait for the countdown" message once the countdown ends', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => rateLimitedError));
+      component.verifyCode();
+
+      jest.advanceTimersByTime(3599_000);
+      expect(component.errorMessage).toBe('auth.errors.too-many-attempts-wait');
+
+      jest.advanceTimersByTime(1_000);
+      expect(component.errorMessage).toBe('');
+    });
+
+    it('keeps a later message when the rate limit ends', () => {
+      mockAuthService.verifyEmail.mockReturnValue(throwError(() => rateLimitedError));
+      component.verifyCode();
+      component.goBackToEmail();
+      component.email.set('other@example.com');
+      mockAuthService.register.mockReturnValue(throwError(() => ({ status: 500, error: { detail: 'Mail server down' } })));
+      component.sendCode();
+
+      jest.advanceTimersByTime(3600_000);
+
+      expect(component.errorMessage).toBe('Mail server down');
+    });
+
     it('falls back to the default cooldown when the rate-limited response has no Retry-After', () => {
       mockAuthService.verifyEmail.mockReturnValue(throwError(() => ({ status: 429 })));
 
@@ -1767,6 +1791,7 @@ describe('LoginPage (server mode)', () => {
 
       jest.advanceTimersByTime(45_000);
       expect(component.resendSecondsLeft()).toBe(0);
+      expect(component.errorMessage).toBe('');
 
       component.sendCode();
       expect(mockAuthService.register).toHaveBeenCalled();
