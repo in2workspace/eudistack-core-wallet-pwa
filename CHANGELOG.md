@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Duplicate error alerts during credential activation**: `CredentialsPage` now avoids stacking generic "Failed QR" alerts when the underlying OID4VCI engine has already presented a specific, more informative error modal to the user.
+- **iOS Safari install wizard was shown in server mode**: the wizard was always shown on iOS Safari before login, even when the credentials live in the backend and nothing is lost by signing up in Safari and installing the app later. It is now shown only in browser mode; in server mode the user goes straight to login/register, `/ios-install` redirects to `/`, and "Continue in browser" no longer asks for confirmation.
+- The decision is centralized in `IosInstallService.shouldShowInstallWizard()`, shared by `iosInstallGuard` and `authLandingGuard` (now exported from `ios-install.guard.ts`).
+- **Wrong wizard texts**: "Why is this necessary?" now explains the real browser-mode reason (Safari deletes the data of a website not opened for 7 days; the installed app does not), instead of claiming that all data would be lost. The subtitles now state that on iOS links and QR codes from the camera or email always open in Safari, never in the installed app. Updated in es/en/ca.
+- Tests: updated the guard, service, onboarding page and routing specs to cover both wallet modes.
 
 ### Fixed
 - **About: legal documents still showed the connection error on DEV/PRO (S3 + CloudFront)**: a document that is not published is answered with **HTTP 403** by S3/CloudFront (no `ListBucket` permission ⇒ a missing key is indistinguishable from a forbidden one), not with the 404 nginx gives locally, so `LegalContentService` classified it as `unavailable` and the page kept showing "Check your connection" with a useless Retry. 403 is now treated like 404 for same-origin legal assets: single fallback to `es`, then `not-found` (truthful "not available yet — managed by EUDIStack" message, no Retry).

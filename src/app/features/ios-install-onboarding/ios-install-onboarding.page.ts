@@ -54,6 +54,10 @@ export class IosInstallOnboardingPage implements OnInit {
   }
 
   async continueAnyway(): Promise<void> {
+    if (this.iosInstall.isServerMode()) {
+      this.handleDismiss();
+      return;
+    }
     const confirmAlert = await this.alertController.create({
       header: this.translate.instant('ios-install.confirm-title'),
       message: this.translate.instant('ios-install.confirm-message'),
