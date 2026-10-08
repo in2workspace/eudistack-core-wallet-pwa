@@ -82,10 +82,13 @@
     "toggle-label": "Turn on automatic translation",
     "target-language-label": "Translate to",
     "state-preparing": "Preparing translation…",
+    "state-downloading": "Downloading language…",
+    "state-applying": "Applying translation…",
     "state-unavailable": "Not available on this device",
     "state-unavailable-hint": "Your browser doesn't offer on-device translation yet. You'll be able to use this feature once it's available.",
     "state-error": "Translation could not be prepared",
-    "retry": "Retry"
+    "retry": "Retry",
+    "cancel": "Cancel"
   },
   "language-selector": {
     "title": "Language",
