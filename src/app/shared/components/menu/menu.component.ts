@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { Router, RouterModule } from '@angular/router';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { NavigationStart, Router, RouterModule } from '@angular/router';
+import { filter } from 'rxjs';
 import { AuthService } from 'src/app/core/services/auth.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 import { IonicModule, PopoverController } from '@ionic/angular';
@@ -28,6 +29,15 @@ export class MenuComponent {
     const snapshot = this.discoverySnapshot();
     return !(snapshot?.mode === 'browser' && snapshot.source === 'discovery');
   });
+
+  public constructor() {
+    // The entries navigate through routerLink, which does not close the popover:
+    // dismiss it (and its backdrop) as soon as any navigation starts. It may already
+    // be closed (e.g. logout dismisses it first), so a rejected dismiss is ignored.
+    this.router.events
+      .pipe(filter(event => event instanceof NavigationStart), takeUntilDestroyed())
+      .subscribe(() => this.popOverController.dismiss().catch(() => undefined));
+  }
 
   public logoutOnKeydown(event: KeyboardEvent): void {
     if (event.key === 'Enter' || event.key === ' ') {
