@@ -8,6 +8,7 @@ import { authGuard } from './core/guards/auth.guard';
 import { hybridOnboardingGuard, hybridOnboardingRouteGuard } from './core/guards/hybrid-onboarding.guard';
 import { PasskeyStoreService } from './core/services/passkey-store.service';
 import { TenantService } from './core/services/tenant.service';
+import { WalletDiscoveryService } from './core/services/wallet-discovery.service';
 import { PENDING_DEEP_LINK_KEY } from './core/constants/deep-link.constants';
 import { of } from 'rxjs';
 
@@ -19,6 +20,7 @@ describe('App Routing', () => {
   const mockHybridOnboardingGuard = jest.fn().mockReturnValue(true);
   const mockHybridOnboardingRouteGuard = jest.fn().mockReturnValue(true);
   const mockPasskeyStore = { hasPasskey: jest.fn().mockReturnValue(true), getCredentialId: jest.fn() };
+  const mockWalletDiscovery = { mode: () => 'browser' };
   const mockTenantService = { tenant: () => 'sandbox', resolve: () => Promise.resolve(), buildFallbackUrl: () => '' };
 
   beforeEach(async () => {
@@ -34,6 +36,7 @@ describe('App Routing', () => {
         { provide: hybridOnboardingRouteGuard, useValue: mockHybridOnboardingRouteGuard },
         { provide: PasskeyStoreService, useValue: mockPasskeyStore },
         { provide: TenantService, useValue: mockTenantService },
+        { provide: WalletDiscoveryService, useValue: mockWalletDiscovery },
       ],
     }).compileComponents();
 
