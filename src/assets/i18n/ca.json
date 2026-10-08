@@ -157,9 +157,11 @@
       "code-validity": "El codi és vàlid durant un temps limitat.",
       "code-label": "Codi",
       "resend-in": "No has rebut el codi? Reenviament disponible en {{time}}",
+      "new-code-in": "Podràs sol·licitar un nou codi en {{time}}",
       "resend-prompt": "No has rebut el codi?",
       "resend-action": "Reenviar",
       "code-expired-prompt": "El teu codi ha caducat?",
+      "code-exhausted-prompt": "Necessites un codi nou?",
       "continue": "Continuar",
       "back": "Enrere"
     },
@@ -183,6 +185,7 @@
     "errors": {
       "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",
       "too-many-attempts-otp": "Massa intents incorrectes. Si us plau, sol·licita un nou codi.",
+      "too-many-attempts-wait": "Has superat el nombre d'intents permesos. Espera que acabi el compte enrere per sol·licitar un nou codi.",
       "otp-expired": "El codi ha caducat. Prem Reenviar per rebre'n un de nou al teu correu.",
       "otp-invalid": "El codi no és correcte. Revisa'l i torna-ho a provar.",
       "passkey-register-failed": "No s'ha pogut registrar aquest dispositiu. Torna-ho a provar.",
