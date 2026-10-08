@@ -14,6 +14,15 @@ export class ThemeService {
   private readonly tenantService = inject(TenantService);
   private readonly environment = inject(EnvironmentService);
   private theme$ = new BehaviorSubject<Theme | null>(null);
+  private resolveReady!: () => void;
+
+  /**
+   * Settles when `load()` has finished — tenant theme applied and the tenant's
+   * languages registered (`addLangs`). APP_INITIALIZERs start concurrently and
+   * none waits for another, so anything that reads the tenant's languages or
+   * the active language at startup must await this first.
+   */
+  readonly ready = new Promise<void>(resolve => { this.resolveReady = resolve; });
 
   constructor(
     private http: HttpClient,
@@ -23,6 +32,14 @@ export class ThemeService {
   ) {}
 
   async load(): Promise<void> {
+    try {
+      await this.loadTheme();
+    } finally {
+      this.resolveReady();
+    }
+  }
+
+  private async loadTheme(): Promise<void> {
     await this.tenantService.resolve();
     const tenant = this.tenantService.tenant() ?? FALLBACK_TENANT;
     const assetsBase = `/assets/tenants/${tenant}`;

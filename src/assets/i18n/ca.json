@@ -74,10 +74,13 @@
     "toggle-label": "Activa la traducció automàtica",
     "target-language-label": "Tradueix a",
     "state-preparing": "S'està preparant la traducció…",
+    "state-downloading": "S'està baixant l'idioma…",
+    "state-applying": "S'està aplicant la traducció…",
     "state-unavailable": "No disponible en aquest dispositiu",
     "state-unavailable-hint": "El teu navegador no ofereix traducció integrada al dispositiu. Podràs utilitzar aquesta funció quan estigui disponible.",
     "state-error": "No s'ha pogut preparar la traducció",
-    "retry": "Torna-ho a provar"
+    "retry": "Torna-ho a provar",
+    "cancel": "Cancel·la"
   },
   "logs-selector": {
     "title": "Veure logs",

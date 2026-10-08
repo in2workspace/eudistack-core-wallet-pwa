@@ -11,14 +11,32 @@
 import { LanguageTag } from '../models/ui-text-translation.model';
 
 /**
- * Candidate target languages for runtime translation — BCP 47, deliberately
- * excludes the natively-supported languages (`en`, `es`, `ca`, US-02/EUD-131):
- * this feature is an additional layer over the native language, never a
- * replacement (AC-07). There is no engine API to enumerate supported
- * languages (EC-02) — each pair is probed individually against this list.
+ * Languages the wallet ships natively (`en`, `es`, `ca`, US-02/EUD-131). A
+ * tenant enables a subset through `theme.i18n.available`; this is the set
+ * assumed when its theme declares none.
+ */
+export const DEFAULT_NATIVE_LANGUAGES: readonly LanguageTag[] = ['en', 'es', 'ca'];
+
+/**
+ * Language the automatic translation always starts from, whatever native
+ * language is shown: English is the one the browser engine covers best, and
+ * its bundle always ships. The probe, the cache and the engine all use it.
+ */
+export const TRANSLATION_SOURCE_LANGUAGE: LanguageTag = 'en';
+
+/**
+ * Candidate target languages for runtime translation — BCP 47. The languages
+ * the tenant has loaded natively are removed at runtime
+ * (`UiTextTranslationService.candidateLanguages()`): this feature is an
+ * additional layer over the native language, never a replacement (AC-07),
+ * but a language the wallet ships and the tenant did NOT enable (e.g. `ca` in
+ * a tenant that only loads `en`/`es`) is a legitimate target. The source
+ * language (`en`) is never a target. There is no engine API to enumerate
+ * supported languages (EC-02) — each pair is probed individually, so one the
+ * browser cannot translate is simply never offered.
  */
 export const RUNTIME_TRANSLATION_CANDIDATE_LANGUAGES: readonly LanguageTag[] = [
-  'ar', 'bg', 'bn', 'cs', 'da', 'de', 'el', 'fa', 'fi', 'fil', 'fr', 'he', 'hi',
+  'ar', 'bg', 'bn', 'ca', 'cs', 'da', 'de', 'el', 'es', 'fa', 'fi', 'fil', 'fr', 'he', 'hi',
   'hr', 'hu', 'id', 'it', 'ja', 'ko', 'lt', 'lv', 'ms', 'nl', 'no', 'pl', 'pt',
   'ro', 'ru', 'sk', 'sl', 'sr', 'sv', 'sw', 'th', 'tr', 'uk', 'ur', 'vi', 'zh',
 ];
@@ -59,6 +77,13 @@ export const RUNTIME_TRANSLATION_EXCLUDED_KEY_PREFIXES: readonly string[] = [
   'verification.check-expiration',
 ];
 
+/**
+ * Share of the single progress bar given to the language-pack download; the
+ * remaining share goes to applying the translation. A fixed convention, not
+ * a time estimate — the browser exposes neither pack count nor size.
+ */
+export const DOWNLOAD_PROGRESS_WEIGHT = 0.5;
+
 /** `StorageService` key prefix for cached translations (`UiTranslationCacheService`). */
 export const UI_TRANSLATION_CACHE_KEY_PREFIX = 'ui-translation-cache:';
 
@@ -68,8 +93,14 @@ export const MAX_CACHED_TRANSLATIONS = 3;
 /** Max cached bytes per language — approximate, measured on the serialized entry (NFR-S-142-05). */
 export const MAX_CACHED_BYTES_PER_LANGUAGE = 200_000;
 
-/** Hard timeout for a full activation (probe → engine → apply) — ES-05, NFR-S-142-02. */
-export const TRANSLATION_BUDGET_MS = 20_000;
+/**
+ * Max time the translation step may go without completing a batch before it
+ * is considered stalled — ES-05, NFR-S-142-02. It is an inactivity limit, not
+ * a total one: a slow but advancing translation (e.g. a cold engine right
+ * after a language-pack download) is never cut. Engine preparation (the
+ * download itself) is excluded and cancellable by the user.
+ */
+export const TRANSLATION_STALL_TIMEOUT_MS = 30_000;
 
 /** Timeout fetching the pristine i18n bundle (`assets/i18n/<lang>.json`) — ES-02. */
 export const BUNDLE_FETCH_TIMEOUT_MS = 3_000;
