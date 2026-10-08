@@ -96,4 +96,80 @@ describe('CredentialConfirmationModalComponent', () => {
       expect(val.getAttribute('translate')).toBe('no');
     });
   });
+
+  describe('user decision', () => {
+    it('dismisses with the confirm role and stops the countdown on accept', async () => {
+      const fixture = await createFixture(BASE_PREVIEW);
+      const component = fixture.componentInstance;
+      component.ionViewDidEnter();
+
+      component.onAccept();
+
+      expect(mockModalController.dismiss).toHaveBeenCalledWith(null, 'confirm');
+      expect((component as any).interval).toBeUndefined();
+    });
+
+    it('dismisses with the cancel role on reject', async () => {
+      const fixture = await createFixture(BASE_PREVIEW);
+
+      fixture.componentInstance.onReject();
+
+      expect(mockModalController.dismiss).toHaveBeenCalledWith(null, 'cancel');
+    });
+  });
+
+  describe('ionViewDidEnter', () => {
+    it('resolves the format label, the expiration and seeds the countdown', async () => {
+      const fixture = await createFixture({
+        ...BASE_PREVIEW,
+        format: 'vc+sd-jwt',
+        expirationDate: '2027-03-15T00:00:00.000Z',
+      });
+      const component = fixture.componentInstance;
+
+      component.ionViewDidEnter();
+
+      expect(component.animateIn).toBe(true);
+      expect(component.formatLabel).toBe('SD-JWT');
+      expect(component.formattedExpiration).not.toBe('');
+      expect(component.remainingSeconds).toBe(80);
+    });
+  });
+
+  describe('countdown', () => {
+    it('ticks down each second and dismisses with the timeout role when it runs out', async () => {
+      jest.useFakeTimers();
+      const fixture = await createFixture(BASE_PREVIEW);
+      const component = fixture.componentInstance;
+      component.timeoutSeconds = 2;
+
+      component.ionViewDidEnter();
+      expect(component.remainingSeconds).toBe(2);
+
+      jest.advanceTimersByTime(1000);
+      expect(component.remainingSeconds).toBe(1);
+
+      jest.advanceTimersByTime(1000);
+      expect(mockModalController.dismiss).toHaveBeenCalledWith(null, 'timeout');
+      expect((component as any).interval).toBeUndefined();
+
+      jest.useRealTimers();
+    });
+
+  });
+
+  describe('resolveFormatLabel', () => {
+    it('collapses the SD-JWT and JWT families and uppercases anything else', async () => {
+      const fixture = await createFixture(BASE_PREVIEW);
+      const label = (format: string) =>
+        (fixture.componentInstance as any).resolveFormatLabel(format);
+
+      expect(label('dc+sd-jwt')).toBe('SD-JWT');
+      expect(label('SD_JWT')).toBe('SD-JWT');
+      expect(label('jwt_vc_json')).toBe('JWT');
+      expect(label('mso_mdoc')).toBe('MSO_MDOC');
+      expect(label('')).toBe('');
+    });
+  });
+
 });

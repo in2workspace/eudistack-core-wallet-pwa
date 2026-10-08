@@ -25,6 +25,7 @@ import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engi
 import { StorageService } from 'src/app/shared/services/storage.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { VerifiableCredential } from 'src/app/core/models/verifiable-credential';
+import { InvalidQrError } from 'src/app/core/protocol/oid4vp/authorization-request.service';
 
 const mockModalController = {
   create: jest.fn().mockResolvedValue({
@@ -434,6 +435,222 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
 
       // Assert
       expect(mockToastServiceHandler.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.failed-qr-process');
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
+    }));
+  });
+
+  // Revocation must survive a list refresh: the backend may still report the credential
+  // as VALID, so the page remembers locally-confirmed revocations and re-applies them.
+  describe('onCredentialStatusChanged', () => {
+    it('patches the cache and only remembers a revocation', () => {
+      component.onCredentialStatusChanged({ id: 'vc-1', status: 'REVOKED' });
+      expect(mockCredentialCacheService.patchStatus).toHaveBeenCalledWith('vc-1', 'REVOKED');
+      expect((component as any).revokedCredentialIds.has('vc-1')).toBe(true);
+
+      component.onCredentialStatusChanged({ id: 'vc-2', status: 'EXPIRED' });
+      expect((component as any).revokedCredentialIds.has('vc-2')).toBe(false);
+    });
+
+    it('re-applies a remembered revocation after a pull-to-refresh', () => {
+      const complete = jest.fn();
+      (component as any).revokedCredentialIds.add('vc-revoked');
+
+      component.handleRefresh({ target: { complete } });
+
+      expect(mockCredentialCacheService.patchStatus).toHaveBeenCalledWith('vc-revoked', 'REVOKED');
+      expect(complete).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('credentialActivationFlow — user decision (OID4VCI)', () => {
+    const flowResult = (overrides: Record<string, unknown> = {}) =>
+      ({
+        credentialConfigurationId: 'doctorid.sd.1',
+        format: 'dc+sd-jwt',
+        issuerMetadata: {
+          credentialIssuer: 'https://issuer.example',
+          notification_endpoint: 'https://issuer.example/notify',
+          credential_configurations_supported: {
+            'doctorid.sd.1': {
+              format: 'dc+sd-jwt',
+              credential_metadata: {
+                display: [{ name: 'Carné colegial', locale: 'es' }],
+                claims: [],
+              },
+            },
+          },
+        },
+        tokenResponse: { access_token: 'at-123' },
+        credentialResponseWithStatus: {
+          statusCode: 200,
+          credentialResponse: { credentials: [{ credential: 'jwt' }], notification_id: 'n-1' },
+        },
+        ...overrides,
+      }) as any;
+
+    let engine: any;
+    let decision: any;
+    let wallet: any;
+    let notifications: any;
+    let activity: any;
+
+    beforeEach(() => {
+      engine = TestBed.inject(Oid4vciEngineService) as any;
+      decision = TestBed.inject(CredentialDecisionService) as any;
+      wallet = TestBed.inject(WalletService) as any;
+      wallet.finalizeCredentialIssuance = jest.fn().mockReturnValue(of(undefined));
+      notifications = TestBed.inject(IssuerNotificationService) as any;
+      activity = TestBed.inject(ActivityService) as any;
+    });
+
+    it('saves a deferred (202) credential without asking the user', fakeAsync(() => {
+      engine.performOid4vciFlow.mockResolvedValue(
+        flowResult({ credentialResponseWithStatus: { statusCode: 202, credentialResponse: {} } })
+      );
+
+      (component as any).credentialActivationFlow('offer-uri');
+      tick();
+
+      expect(wallet.finalizeCredentialIssuance).toHaveBeenCalled();
+      expect(decision.showDecisionDialog).not.toHaveBeenCalled();
+    }));
+
+    it('finalises, notifies the issuer and logs the activity when the user accepts', fakeAsync(() => {
+      engine.performOid4vciFlow.mockResolvedValue(flowResult());
+      decision.showDecisionDialog.mockResolvedValue('ACCEPTED');
+
+      (component as any).credentialActivationFlow('offer-uri');
+      tick();
+
+      expect(wallet.finalizeCredentialIssuance).toHaveBeenCalled();
+      expect(notifications.notifyIssuer).toHaveBeenCalledWith(
+        'https://issuer.example/notify',
+        'at-123',
+        'n-1',
+        'credential_accepted',
+        'Credential accepted by user'
+      );
+      expect(decision.showTempMessage).toHaveBeenCalledWith('home.ok-msg');
+      expect(activity.log).toHaveBeenCalledWith(
+        'issued',
+        'Carné colegial',
+        'https://issuer.example'
+      );
+    }));
+
+    it('notifies a deletion on rejection and a failure on timeout', fakeAsync(() => {
+      engine.performOid4vciFlow.mockResolvedValue(flowResult());
+      decision.showDecisionDialog.mockResolvedValue('REJECTED');
+
+      (component as any).credentialActivationFlow('offer-uri');
+      tick();
+
+      expect(notifications.notifyIssuer).toHaveBeenCalledWith(
+        'https://issuer.example/notify',
+        'at-123',
+        'n-1',
+        'credential_deleted',
+        'User rejected credential'
+      );
+      expect(decision.showTempMessage).toHaveBeenCalledWith('home.rejected-msg', 'error');
+
+      decision.showDecisionDialog.mockResolvedValue('TIMEOUT');
+      (component as any).credentialActivationFlow('offer-uri');
+      tick();
+
+      expect(notifications.notifyIssuer).toHaveBeenCalledWith(
+        'https://issuer.example/notify',
+        'at-123',
+        'n-1',
+        'credential_failure',
+        'Timeout waiting for user decision'
+      );
+    }));
+
+    it('does not break the issuance when the issuer notification fails', fakeAsync(() => {
+      const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      engine.performOid4vciFlow.mockResolvedValue(flowResult());
+      decision.showDecisionDialog.mockResolvedValue('ACCEPTED');
+      notifications.notifyIssuer.mockReturnValue(throwError(() => new Error('notify down')));
+
+      (component as any).credentialActivationFlow('offer-uri');
+      tick();
+
+      expect(decision.showTempMessage).toHaveBeenCalledWith('home.ok-msg');
+      error.mockRestore();
+    }));
+  });
+
+  describe('verifiablePresentationFlow — credential selection strategy', () => {
+    it('filters by the DCQL query when present and by scope otherwise', fakeAsync(() => {
+      mockAuthorizationRequestService.parseAuthorizationRequestFromQr.mockResolvedValue({
+        ...mockAuthRequest,
+        dcqlQuery: { credentials: [{ id: 'q1', format: 'dc+sd-jwt' }] },
+      });
+      mockCredentialCacheService.findCredentialsByDcqlQuery.mockReturnValue([mockValidVc]);
+
+      (component as any).verifiablePresentationFlow(vpQrCode);
+      tick();
+
+      expect(mockCredentialCacheService.findCredentialsByDcqlQuery).toHaveBeenCalled();
+      expect(mockCredentialCacheService.getAll).not.toHaveBeenCalled();
+
+      mockAuthorizationRequestService.parseAuthorizationRequestFromQr.mockResolvedValue({
+        ...mockAuthRequest,
+        scope: 'doctorid',
+      });
+      mockCredentialCacheService.findCredentialsByScope.mockReturnValue([mockValidVc]);
+
+      (component as any).verifiablePresentationFlow(vpQrCode);
+      tick();
+
+      expect(mockCredentialCacheService.findCredentialsByScope).toHaveBeenCalledWith('doctorid');
+    }));
+  });
+
+  describe('checkCredentialStatuses — expiry detection', () => {
+    const withCredentials = (credentials: unknown[]) =>
+      mockCredentialCacheService.snapshot.mockReturnValue({ status: 'loaded', credentials });
+
+    it('expires a VALID credential whose validUntil has passed and persists it', async () => {
+      withCredentials([
+        { id: 'vc-old', lifeCycleStatus: 'VALID', validUntil: '2020-01-01T00:00:00.000Z' },
+      ]);
+
+      await (component as any).checkCredentialStatuses();
+
+      expect(mockCredentialCacheService.patchStatus).toHaveBeenCalledWith('vc-old', 'EXPIRED');
+      expect(mockWalletService.updateCredentialStatus).toHaveBeenCalledWith('vc-old', 'EXPIRED');
+    });
+
+    it('leaves a future, unparseable or absent validUntil untouched', async () => {
+      withCredentials([
+        { id: 'vc-new', lifeCycleStatus: 'VALID', validUntil: '2099-01-01T00:00:00.000Z' },
+        { id: 'vc-bad', lifeCycleStatus: 'VALID', validUntil: 'not-a-date' },
+        { id: 'vc-none', lifeCycleStatus: 'VALID' },
+      ]);
+
+      await (component as any).checkCredentialStatuses();
+
+      expect(mockCredentialCacheService.patchStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleContentExecutionError', () => {
+    it('uses the invalid-qr label, and stays silent when asked not to notify', fakeAsync(() => {
+      jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      (component as any).handleContentExecutionError(new InvalidQrError('bad qr'));
+      tick(1000);
+      expect(mockToastServiceHandler.showErrorAlertByTranslateLabel).toHaveBeenCalledWith(
+        'errors.invalid-qr'
+      );
+
+      mockToastServiceHandler.showErrorAlertByTranslateLabel.mockClear();
+      (component as any).handleContentExecutionError(new Error('quiet'), false);
+      tick(1000);
+
+      expect(mockToastServiceHandler.showErrorAlertByTranslateLabel).not.toHaveBeenCalled();
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
     }));
   });
