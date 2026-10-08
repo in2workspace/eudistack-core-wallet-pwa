@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A camera already in use blocked the Scan page with an error modal**: when another application (e.g. a video call) was holding the camera, opening Scan showed the blocking "camera not readable" alert, which had to be dismissed before the manual code entry could be used. `CameraService` now treats it like a denied permission — a dismissible, non-blocking toast — so the page stays usable; the rest of the camera errors keep the blocking alert.
 - **Duplicate error alerts during credential activation**: `CredentialsPage` now avoids stacking generic "Failed QR" alerts when the underlying OID4VCI engine has already presented a specific, more informative error modal to the user.
 
 ### Fixed
