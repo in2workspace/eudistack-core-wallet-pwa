@@ -127,6 +127,59 @@ describe('SettingsPage', () => {
     expect(storage.set).toHaveBeenCalledWith('language', 'en');
   });
 
+  describe('mutual exclusion between native languages and automatic translation', () => {
+    it('deactivates an active translation before applying the picked native language', () => {
+      uiTranslation.status.set('active');
+
+      component.languageChange('ca');
+
+      expect(uiTranslation.deactivate).toHaveBeenCalledTimes(1);
+      expect(uiTranslation.deactivate.mock.invocationCallOrder[0]).toBeLessThan(translateUse.mock.invocationCallOrder[0]);
+      expect(translateUse).toHaveBeenCalledWith('ca');
+    });
+
+    it('deactivates a translation that is still preparing when a native language is picked', () => {
+      uiTranslation.status.set('preparing');
+
+      component.languageChange('en');
+
+      expect(uiTranslation.deactivate).toHaveBeenCalledTimes(1);
+      expect(translateUse).toHaveBeenCalledWith('en');
+    });
+
+    it('does not deactivate anything when translation is off', () => {
+      uiTranslation.status.set('idle');
+
+      component.languageChange('en');
+
+      expect(uiTranslation.deactivate).not.toHaveBeenCalled();
+      expect(translateUse).toHaveBeenCalledWith('en');
+    });
+
+    it('shows a native language card as selected while translation is off', async () => {
+      component.togglePanel('language');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const checked = fixture.nativeElement.querySelectorAll('.language-card--selected');
+
+      expect(checked).toHaveLength(1);
+    });
+
+    it('shows no native language card as selected while translation is active', async () => {
+      uiTranslation.status.set('active');
+      component.togglePanel('language');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const checked = fixture.nativeElement.querySelectorAll('.language-card--selected');
+
+      expect(checked).toHaveLength(0);
+    });
+  });
+
   it('ignores an empty language code', () => {
     component.languageChange('');
 
@@ -193,14 +246,45 @@ describe('SettingsPage', () => {
       expect(latestLanguage()).toBe('en');
     });
 
-    it('falls back to Catalan when there is neither stored nor active language', async () => {
+    it('falls back to the first language of the list when there is no stored, active nor default language', async () => {
       storage.get.mockResolvedValueOnce(null);
       TestBed.inject(TranslateService).currentLang = undefined as unknown as string;
 
       component.ngOnInit();
       await Promise.resolve();
 
-      expect(latestLanguage()).toBe('ca');
+      expect(latestLanguage()).toBe('en');
+    });
+
+    it('prefers the language actually shown over a stored one the tenant did not load', () => {
+      storage.get.mockResolvedValue('ca');
+      TestBed.inject(TranslateService).currentLang = 'en';
+
+      component.ngOnInit();
+
+      expect(latestLanguage()).toBe('en');
+    });
+  });
+
+  describe('languageList', () => {
+    it('lists every known language when the theme loaded none', () => {
+      expect(component.languageList.map((language) => language.code)).toEqual(['en', 'es', 'ca']);
+    });
+
+    it('lists only the languages the tenant loaded', () => {
+      TestBed.inject(TranslateService).addLangs(['en', 'es']);
+
+      const tenantPage = TestBed.createComponent(SettingsPage).componentInstance;
+
+      expect(tenantPage.languageList.map((language) => language.code)).toEqual(['en', 'es']);
+    });
+
+    it('falls back to the raw code for a language without a known name', () => {
+      TestBed.inject(TranslateService).addLangs(['fr']);
+
+      const tenantPage = TestBed.createComponent(SettingsPage).componentInstance;
+
+      expect(tenantPage.languageList).toEqual([{ code: 'fr', name: 'fr' }]);
     });
   });
 
@@ -215,6 +299,36 @@ describe('SettingsPage', () => {
       expect(of).toHaveBeenCalledWith('en');
 
       spy.mockRestore();
+    });
+
+    describe('language of the names', () => {
+      let spy: jest.SpyInstance;
+
+      beforeEach(() => {
+        spy = jest
+          .spyOn(Intl, 'DisplayNames')
+          .mockImplementation(() => ({ of: () => 'name' }) as unknown as Intl.DisplayNames);
+        TestBed.inject(TranslateService).currentLang = 'ca';
+        uiTranslation.targetLanguage.mockReturnValue('id');
+      });
+
+      afterEach(() => spy.mockRestore());
+
+      it('uses the translated language while the translation is active', () => {
+        uiTranslation.status.set('active');
+
+        component.targetLanguageName('ja');
+
+        expect(spy).toHaveBeenCalledWith(['id'], { type: 'language' });
+      });
+
+      it.each(['idle', 'preparing', 'error'])('uses the native language while the translation is %s', (status) => {
+        uiTranslation.status.set(status);
+
+        component.targetLanguageName('ja');
+
+        expect(spy).toHaveBeenCalledWith(['ca'], { type: 'language' });
+      });
     });
 
     it('returns the raw code when Intl has no name for it', () => {
@@ -271,6 +385,87 @@ describe('SettingsPage', () => {
 
       expect(uiTranslation.deactivate).toHaveBeenCalled();
       expect(uiTranslation.activate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('cancelTranslation', () => {
+    it('deactivates the translation that is being prepared', () => {
+      component.cancelTranslation();
+
+      expect(uiTranslation.deactivate).toHaveBeenCalledTimes(1);
+    });
+
+    it('renders the cancel button only while the translation is preparing', () => {
+      component.togglePanel('language');
+      uiTranslation.availableTargets.set(['fr']);
+      uiTranslation.status.set('idle');
+      fixture.detectChanges();
+      const idleButtons = fixture.nativeElement.querySelectorAll('.translation-cancel');
+
+      uiTranslation.status.set('preparing');
+      fixture.detectChanges();
+      const preparingButtons = fixture.nativeElement.querySelectorAll('.translation-cancel');
+
+      expect(idleButtons).toHaveLength(0);
+      expect(preparingButtons).toHaveLength(1);
+    });
+
+    it('cancels the translation when the cancel button is clicked', () => {
+      component.togglePanel('language');
+      uiTranslation.availableTargets.set(['fr']);
+      uiTranslation.status.set('preparing');
+      fixture.detectChanges();
+
+      fixture.nativeElement.querySelector('.translation-cancel').click();
+
+      expect(uiTranslation.deactivate).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the cancel button outside the live status region', () => {
+      component.togglePanel('language');
+      uiTranslation.availableTargets.set(['fr']);
+      uiTranslation.status.set('preparing');
+      fixture.detectChanges();
+
+      const insideOutput = fixture.nativeElement.querySelector('output .translation-cancel');
+
+      expect(insideOutput).toBeNull();
+    });
+
+    it.each([
+      [null, 'ui-translation.state-preparing'],
+      [{ phase: 'downloading', fraction: 0.2 }, 'ui-translation.state-downloading'],
+      [{ phase: 'applying', fraction: 0.7 }, 'ui-translation.state-applying'],
+    ])('labels the preparing state for progress %j with %s', (progress, expectedKey) => {
+      uiTranslation.progress.set(progress);
+
+      expect(component.translationStateKey()).toBe(expectedKey);
+    });
+
+    it('renders a single determinate bar driven by the overall fraction', () => {
+      component.togglePanel('language');
+      uiTranslation.availableTargets.set(['fr']);
+      uiTranslation.status.set('preparing');
+      uiTranslation.progress.set({ phase: 'applying', fraction: 0.7 });
+      fixture.detectChanges();
+
+      const bars = fixture.nativeElement.querySelectorAll('ion-progress-bar');
+
+      expect(bars).toHaveLength(1);
+      expect(bars[0].value).toBe(0.7);
+      expect(bars[0].type).not.toBe('indeterminate');
+    });
+
+    it('renders no bar until there is progress to show', () => {
+      component.togglePanel('language');
+      uiTranslation.availableTargets.set(['fr']);
+      uiTranslation.status.set('preparing');
+      uiTranslation.progress.set(null);
+      fixture.detectChanges();
+
+      const bars = fixture.nativeElement.querySelectorAll('ion-progress-bar');
+
+      expect(bars).toHaveLength(0);
     });
   });
 
