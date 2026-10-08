@@ -93,6 +93,11 @@ module.exports = {
     "src/app/shared/components/credential-confirmation-modal/credential-confirmation-modal.component.ts",
     "src/app/shared/services/credential-cache.service.ts",
     "src/app/shared/components/barcode-scanner/barcode-scanner.component.ts",
+    // --- credential_offer_expired (HTTP 410) handling ---
+    "src/app/core/models/error/ApiError.ts",
+    "src/app/core/models/error/Oid4vciError.ts",
+    "src/app/shared/helpers/http-error-message.ts",
+    "src/app/core/protocol/oid4vci/credential-offer.service.ts",
 
   ],
   coveragePathIgnorePatterns: [
