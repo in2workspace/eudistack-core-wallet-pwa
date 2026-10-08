@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The three-dots menu stayed open after choosing an option**: Activity, Connected devices, Settings and About navigate through `routerLink`, which does not close the Ionic popover, so the dropdown and its grey backdrop remained on top of the destination screen. `MenuComponent` now dismisses the popover as soon as any navigation starts (mouse or keyboard); a dismiss on an already closed popover (e.g. after *Log out*) is ignored.
+- Tests: new "closing the menu on navigation" cases in `menu.component.spec.ts`.
+
 - **Duplicate error alerts during credential activation**: `CredentialsPage` now avoids stacking generic "Failed QR" alerts when the underlying OID4VCI engine has already presented a specific, more informative error modal to the user.
 
 ### Fixed

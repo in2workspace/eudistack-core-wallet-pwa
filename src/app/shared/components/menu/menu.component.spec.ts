@@ -4,7 +4,7 @@ import { By } from '@angular/platform-browser';
 import { MenuComponent } from './menu.component';
 import { IonicModule, PopoverController } from '@ionic/angular';
 import { AuthService } from 'src/app/core/services/auth.service';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, NavigationStart, Router } from '@angular/router';
 import { of, Subject } from 'rxjs';
 import { TranslateModule } from '@ngx-translate/core';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
@@ -61,7 +61,6 @@ describe('MenuComponent', () => {
 
     fixture = TestBed.createComponent(MenuComponent);
     component = fixture.componentInstance;
-    console.log(component['popOverController']);
     fixture.detectChanges();
   });
 
@@ -120,6 +119,46 @@ describe('MenuComponent', () => {
 
     it('should not navigate on load', () => {
       expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('closing the menu on navigation', () => {
+    it('should not dismiss the popover while no navigation happens', () => {
+      expect(popoverController.dismiss).not.toHaveBeenCalled();
+    });
+
+    it.each(['/tabs/activity', '/tabs/devices', '/tabs/settings', '/tabs/about'])(
+      'should dismiss the popover when navigation to %s starts',
+      (url) => {
+        mockRouter.events.next(new NavigationStart(1, url));
+
+        expect(popoverController.dismiss).toHaveBeenCalledTimes(1);
+      }
+    );
+
+    it('should ignore router events other than NavigationStart', () => {
+      mockRouter.events.next(new NavigationEnd(1, '/tabs/home', '/tabs/home'));
+
+      expect(popoverController.dismiss).not.toHaveBeenCalled();
+    });
+
+    it('should handle the rejected dismiss when the popover is already closed', async () => {
+      const rejectedDismiss = Promise.reject('overlay does not exist');
+      const catchSpy = jest.spyOn(rejectedDismiss, 'catch');
+      popoverController.dismiss.mockReturnValueOnce(rejectedDismiss);
+
+      mockRouter.events.next(new NavigationStart(1, '/auth/login'));
+
+      expect(catchSpy).toHaveBeenCalledTimes(1);
+      await expect(catchSpy.mock.results[0].value).resolves.toBeUndefined();
+    });
+
+    it('should stop listening once the menu is destroyed', () => {
+      fixture.destroy();
+
+      mockRouter.events.next(new NavigationStart(1, '/tabs/settings'));
+
+      expect(popoverController.dismiss).not.toHaveBeenCalled();
     });
   });
 
