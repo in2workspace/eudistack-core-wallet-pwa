@@ -175,6 +175,10 @@ function selectorResponseFor(credentialEncoded: string, overrides: Partial<VCRep
   };
 }
 
+function buildJwtVc(payload: Record<string, unknown>): string {
+  return `${b64urlJson({ alg: 'ES256', typ: 'JWT' })}.${b64urlJson(payload)}.sig`;
+}
+
 afterEach(() => {
   jest.clearAllMocks();
   TestBed.resetTestingModule();
@@ -349,5 +353,73 @@ describe('Oid4vpEngineService — passkey prompt outcomes in the flow alert', ()
 
   it('still reports a real passkey failure', () => {
     expect(toKey(new PasskeyError('passkey_security', 'get'))).toBe('auth.errors.passkey-security');
+  });
+});
+
+describe('Oid4vpEngineService — presentation guards', () => {
+  it('rejects a selection with no credential, and one with no signed JWT', async () => {
+    const { service, credentialCacheService } = setup();
+
+    await expect(
+      service.buildVerifiablePresentationWithSelectedVCs({
+        ...selectorResponseFor('unused'),
+        selectedVcList: [],
+      })
+    ).rejects.toMatchObject({ translationKey: 'errors.no-credentials-available' });
+
+    credentialCacheService.extractSignedJwt.mockReturnValue(undefined);
+
+    await expect(
+      service.buildVerifiablePresentationWithSelectedVCs(selectorResponseFor('unused'))
+    ).rejects.toMatchObject({ translationKey: 'errors.credential-validation-failed' });
+  });
+
+  it('aborts when the credential carries no holder key', async () => {
+    const { service, credentialCacheService } = setup();
+    const jwtVc = buildJwtVc({ vc: { credentialSubject: { id: 'did:key:subject' } } });
+    credentialCacheService.extractSignedJwt.mockReturnValue(jwtVc);
+
+    await expect(
+      service.buildVerifiablePresentationWithSelectedVCs(selectorResponseFor(jwtVc))
+    ).rejects.toMatchObject({ translationKey: 'errors.credential-validation-failed' });
+  });
+
+  it('aborts when no local key matches the holder key thumbprint', async () => {
+    const { service, keyStorageProvider, credentialCacheService } = setup();
+    keyStorageProvider.resolveKeyIdByKid.mockResolvedValue(null as any);
+    const jwtVc = buildJwtVc({ cnf: HOLDER_CNF, sub: 'did:key:holder' });
+    credentialCacheService.extractSignedJwt.mockReturnValue(jwtVc);
+
+    await expect(
+      service.buildVerifiablePresentationWithSelectedVCs(selectorResponseFor(jwtVc))
+    ).rejects.toMatchObject({ translationKey: 'errors.key-not-found' });
+  });
+
+  it('rejects a raw signature that is not a 64-byte P-256 pair', async () => {
+    const { service, keyStorageProvider } = setup();
+    keyStorageProvider.sign.mockResolvedValue(new Uint8Array(70));
+
+    await expect((service as any).signJwt({ alg: 'ES256' }, {}, 'key-1')).rejects.toMatchObject({
+      translationKey: 'errors.browser-storage-operation-failed',
+    });
+  });
+});
+
+describe('Oid4vpEngineService.logPresentedActivity — credential naming', () => {
+  it('names the credential by its name, then its first type, then Unknown', async () => {
+    const { service, activityService } = setup();
+    const base = selectorResponseFor('unused');
+
+    await (service as any).logPresentedActivity(base);
+    expect(activityService.log.mock.calls[0][1]).toBe('Empleado ACME');
+
+    await (service as any).logPresentedActivity({
+      ...base,
+      selectedVcList: [{ type: ['LEARCredentialEmployee'] } as any],
+    });
+    expect(activityService.log.mock.calls[1][1]).toBe('LEARCredentialEmployee');
+
+    await (service as any).logPresentedActivity({ ...base, selectedVcList: [{} as any] });
+    expect(activityService.log.mock.calls[2][1]).toBe('Unknown');
   });
 });
