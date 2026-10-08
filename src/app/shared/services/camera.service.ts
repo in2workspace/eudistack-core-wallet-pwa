@@ -14,6 +14,11 @@ export class CameraService {
   private readonly storageService = inject(StorageService);
   private readonly toastService = inject(ToastServiceHandler);
 
+  private readonly recoverableErrorLabels = [
+    { name: 'NotAllowedError', label: 'errors.camera.not-allowed' },
+    { name: 'NotReadableError', label: 'errors.camera.not-readable' },
+  ];
+
   public selectedCamera$ = signal<MediaDeviceInfo|undefined>(undefined);
   public computedSelectedCameraLabel$ = computed(() => this.selectedCamera$()?.label);
   public availableDevices$ = signal<MediaDeviceInfo[]>([]);
@@ -200,19 +205,19 @@ public async getCameraFromAvailables(): Promise<MediaDeviceInfo|'NO_CAMERA_AVAIL
   }
 
   public alertCameraErrorsByErrorName(errMsg: string) {
-    // Permission denied is user-recoverable (grant it and retry) — a centered
-    // red error modal reads as "something broke". A dismissible top toast is
-    // enough here; every other camera failure keeps the blocking alert.
-    if (errMsg.startsWith('NotAllowedError')) {
-      this.toastService.showInfoToastByTranslateLabel('errors.camera.not-allowed');
+    // Permission denied and camera-in-use are user-recoverable (grant it / close
+    // the other app and retry) — a centered red error modal reads as "something
+    // broke" and blocks the page, including the manual code entry. A dismissible
+    // top toast is enough here; every other camera failure keeps the blocking alert.
+    const recoverableLabel = this.recoverableErrorLabels.find(({ name }) => errMsg.startsWith(name))?.label;
+    if (recoverableLabel) {
+      this.toastService.showInfoToastByTranslateLabel(recoverableLabel);
       return;
     }
 
     let errorLabel = 'errors.camera.default';
 
-    if (errMsg.startsWith('NotReadableError')) {
-      errorLabel = 'errors.camera.not-readable';
-    } else if (errMsg.startsWith('NotFoundError') || errMsg.startsWith('CustomNoAvailable')) {
+    if (errMsg.startsWith('NotFoundError') || errMsg.startsWith('CustomNoAvailable')) {
       errorLabel = 'errors.camera.not-found';
     } else if (errMsg.startsWith('OverconstrainedError')) {
       errorLabel = 'errors.camera.overconstrained';

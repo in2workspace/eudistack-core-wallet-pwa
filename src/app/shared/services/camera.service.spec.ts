@@ -618,10 +618,14 @@ describe('CameraService', () => {
   });
 
   describe('should show error by label', ()=>{
-    it('should display "errors.camera.not-readable" if the error is NotReadableError', () => {
+    it('should display "errors.camera.not-readable" as a non-blocking info toast if the error is NotReadableError', () => {
+      // Arrange
+      // Act
       cameraService.alertCameraErrorsByErrorName('NotReadableError: Could not start video source');
-  
-      expect(mockToastService.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.camera.not-readable');
+
+      // Assert
+      expect(mockToastService.showInfoToastByTranslateLabel).toHaveBeenCalledWith('errors.camera.not-readable');
+      expect(mockToastService.showErrorAlertByTranslateLabel).not.toHaveBeenCalled();
     });
   
     it('should display "errors.camera.not-allowed" as an info toast if the error is NotAllowedError', () => {
