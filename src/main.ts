@@ -111,12 +111,14 @@ bootstrapApplication(AppComponent, {
       deps: [PasskeyStoreService],
       multi: true
     },
-    // Must run after initializeTheme (native language already active).
+    // Fire-and-forget: restoreFromPreference() reads the tenant's languages
+    // and the native language, so it awaits ThemeService.ready itself —
+    // APP_INITIALIZERs start in provider order but run concurrently, so its
+    // position after initializeTheme guarantees nothing.
     // Uses provideAppInitializer() (Angular 19+), not the legacy
     // { provide: APP_INITIALIZER, useFactory, deps, multi: true } object
     // literal used by the sibling initializers above — both resolve to the
-    // same underlying APP_INITIALIZER multi-token and run in provider-array
-    // order, so the "after initializeTheme" ordering guarantee is preserved.
+    // same underlying APP_INITIALIZER multi-token.
     provideAppInitializer(restoreUiTranslation),
     importProvidersFrom(
       TranslateModule.forRoot({
