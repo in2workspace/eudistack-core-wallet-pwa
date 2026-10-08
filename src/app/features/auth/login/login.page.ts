@@ -42,6 +42,28 @@ const WATERMARK_VIEWBOX_WIDTH = 672;
 
 const WATERMARK_CROP_TOP = 200;
 
+/**
+ * Whether the code the user holds can still be checked (#1061173, W-17): `expired`
+ * (401 `expired_code`) and `exhausted` (429 `too_many_attempts`, its 5 attempts used up)
+ * both need a new code, so Continue stays disabled and Resend is offered right away.
+ */
+type CodeState = 'active' | 'expired' | 'exhausted';
+
+/**
+ * A 429 + Retry-After from EBW (RateLimitWebFilter / EmailRateLimiter): until `until`
+ * no new code can be sent to `email` and, when it came from verify-email, no code can be
+ * checked either. Kept as a deadline per email, apart from the visual countdown, so going
+ * Back or leaving the page doesn't offer a request the server will reject, while another
+ * email can still be tried.
+ */
+interface RateLimit {
+  email: string;
+  until: number;
+  blocksVerify: boolean;
+}
+
+const sameEmail = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
+
 @Component({
     selector: 'app-login',
     templateUrl: './login.page.html',
@@ -81,18 +103,22 @@ export class LoginPage implements OnDestroy {
   private failInitTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Server mode: multi-step flow
-  email = '';
-  otpValue = '';
+  readonly email = signal('');
+  readonly otpValue = signal('');
   readonly step = signal<'email' | 'code' | 'passkey'>('email');
   needsPasskeySetup = false;
   deviceName = '';
   private matchedPasskeyId: string | null = null;
   private passkeyRetryTimer: ReturnType<typeof setTimeout> | null = null;
-  readonly resendSecondsLeft = signal(0);
-  // Set when EBW answers verify-email with `expired_code` (#1061173): the code step
-  // stays put and Resend is offered right away instead of sending the user back to email.
-  readonly codeExpired = signal(false);
-  private resendTimer: ReturnType<typeof setInterval> | null = null;
+  readonly codeState = signal<CodeState>('active');
+  // Deadlines (epoch ms) behind the resend countdown; `now` is refreshed by `ticker`
+  // only while one of them is still ahead.
+  private readonly resendAvailableAt = signal(0);
+  private readonly rateLimit = signal<RateLimit | null>(null);
+  private readonly now = signal(Date.now());
+  private ticker: ReturnType<typeof setInterval> | null = null;
+  // The message a rate limit put on screen: it no longer applies once the deadline passes.
+  private rateLimitMessage: string | null = null;
   private passkeyFromRefreshToken = false;
 
   private readonly authService = inject(AuthService);
@@ -165,6 +191,25 @@ export class LoginPage implements OnDestroy {
     };
   });
 
+  /** The rate limit that applies to the email currently typed, if it hasn't run out yet. */
+  private readonly activeRateLimit = computed(() => {
+    const rateLimit = this.rateLimit();
+    return rateLimit && sameEmail(rateLimit.email, this.email()) && this.now() < rateLimit.until ? rateLimit : null;
+  });
+
+  readonly rateLimited = computed(() => this.activeRateLimit() !== null);
+
+  readonly verifyRateLimited = computed(() => this.activeRateLimit()?.blocksVerify ?? false);
+
+  readonly resendSecondsLeft = computed(() => {
+    const until = Math.max(this.resendAvailableAt(), this.activeRateLimit()?.until ?? 0);
+    return Math.max(0, Math.ceil((until - this.now()) / 1000));
+  });
+
+  /** Single gate for Continue and verifyCode(), which the OTP `completed` event also reaches. */
+  readonly canSubmitCode = computed(() =>
+    this.otpValue().length === 6 && this.codeState() === 'active' && !this.verifyRateLimited());
+
   readonly resendCountdown = computed(() => {
     const total = this.resendSecondsLeft();
     // A 429 cooldown is driven by the backend's Retry-After (its rate-limit
@@ -183,6 +228,8 @@ export class LoginPage implements OnDestroy {
     this.clearMessages();
     this.forceReady.set(false);
     this.startInitWatchdog();
+    // A rate limit outlives leaving the page: resume its countdown.
+    this.startTicker();
 
     if (!this.isBrowserMode && localStorage.getItem('wallet_refresh_token')) {
       this.step.set('passkey');
@@ -206,9 +253,13 @@ export class LoginPage implements OnDestroy {
     this.teardownTimers();
   }
 
-  /** Cancels every pending timer this page owns (resend cooldown, init watchdog, passkey retry). */
+  /**
+   * Cancels every pending timer this page owns (resend cooldown, init watchdog, passkey retry).
+   * The rate-limit deadline is kept: the server keeps rejecting until then.
+   */
   private teardownTimers(): void {
-    this.stopResendCountdown();
+    this.resendAvailableAt.set(0);
+    this.stopTicker();
     this.clearInitWatchdog();
     this.clearPasskeyRetryTimer();
   }
@@ -319,32 +370,48 @@ export class LoginPage implements OnDestroy {
 
   onOtpCompleted(code: string): void {
     if (!this.loading) {
-      this.otpValue = code;
+      this.otpValue.set(code);
       this.verifyCode();
     }
   }
 
+  /**
+   * While the code can't be checked, typing doesn't clear the message explaining why,
+   * so the user isn't left with a silently ignored code.
+   */
+  onOtpChanged(code: string): void {
+    this.otpValue.set(code);
+    if (this.codeState() === 'active' && !this.verifyRateLimited()) {
+      this.errorMessage = '';
+    }
+  }
+
+  /**
+   * Leaves the code step with a clean slate, except for a rate limit: the server keeps
+   * rejecting that email until Retry-After, so its countdown stays on Send code — typing
+   * another email lifts it.
+   */
   goBackToEmail(): void {
     this.step.set('email');
     this.clearMessages();
-    this.otpValue = '';
-    this.codeExpired.set(false);
-    this.stopResendCountdown();
+    this.otpValue.set('');
+    this.codeState.set('active');
+    this.resendAvailableAt.set(0);
   }
 
   sendCode(): void {
-    if (!this.email || this.loading || this.resendSecondsLeft() > 0) return;
+    if (!this.email() || this.loading || this.resendSecondsLeft() > 0) return;
 
     this.loading = true;
     this.clearMessages();
 
-    (this.authService as RemoteAuthService).register(this.email, 'login').pipe(
+    (this.authService as RemoteAuthService).register(this.email(), 'login').pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: () => {
         this.step.set('code');
-        this.otpValue = '';
-        this.codeExpired.set(false);
+        this.otpValue.set('');
+        this.codeState.set('active');
         this.loading = false;
         this.startResendCountdown();
       },
@@ -358,13 +425,13 @@ export class LoginPage implements OnDestroy {
     this.loading = true;
     this.clearMessages();
 
-    (this.authService as RemoteAuthService).register(this.email, 'login').pipe(
+    (this.authService as RemoteAuthService).register(this.email(), 'login').pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: () => {
-        this.otpValue = '';
+        this.otpValue.set('');
         this.otpInput?.reset();
-        this.codeExpired.set(false);
+        this.codeState.set('active');
         this.loading = false;
         this.startResendCountdown();
       },
@@ -378,11 +445,15 @@ export class LoginPage implements OnDestroy {
    * (RateLimitWebFilter), not just show a message the user can immediately
    * dismiss by clicking again. Retry-After carries that real cooldown; fall
    * back to the existing resend window if it's ever missing.
+   *
+   * Retry-After is readable because the PWA calls EBW on its own origin (`server_url`
+   * is empty, so `/business-wallet/api/*` is routed by nginx locally and by CloudFront
+   * in DEV/PRO): no CORS header exposure is involved.
    */
   private handleSendCodeError(err: any): void {
     if (err?.status === 429) {
-      this.errorMessage = this.translate.instant('auth.errors.too-many-attempts');
-      this.startResendCountdown(this.parseRetryAfterSeconds(err));
+      this.applyRateLimit(this.parseRetryAfterSeconds(err), false);
+      this.showRateLimitMessage('auth.errors.too-many-attempts');
     } else {
       this.errorMessage = err?.error?.message || err?.error?.detail || 'Failed to send verification code';
     }
@@ -396,16 +467,18 @@ export class LoginPage implements OnDestroy {
   }
 
   verifyCode(): void {
-    if (this.otpValue.length < 6 || this.loading) return;
+    if (!this.canSubmitCode() || this.loading) return;
 
     this.loading = true;
     this.clearMessages();
 
-    (this.authService as RemoteAuthService).verifyEmail(this.email, this.otpValue).pipe(
+    (this.authService as RemoteAuthService).verifyEmail(this.email(), this.otpValue()).pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: () => {
-        this.stopResendCountdown();
+        this.resendAvailableAt.set(0);
+        this.rateLimit.set(null);
+        this.stopTicker();
         this.passkeyFromRefreshToken = false;
         this.resolvePasskeySetupStep();
       },
@@ -414,21 +487,27 @@ export class LoginPage implements OnDestroy {
   }
 
   /**
-   * An expired code (401 `expired_code`) or an exhausted attempt budget (429) means the
-   * current OTP can never succeed, so any leftover resend cooldown is dropped and the user
-   * stays on the code step with the same email, one click away from a fresh code (#1061173).
+   * An expired code (401 `expired_code`) or an exhausted attempt budget (429
+   * `too_many_attempts`) means the current OTP can never succeed, so any leftover resend
+   * cooldown is dropped and the user stays on the code step with the same email, one click
+   * away from a fresh code (#1061173).
+   *
+   * Any other 429 is the per-email/IP rate limit (RateLimitWebFilter / EmailRateLimiter,
+   * ProblemDetail + Retry-After): a new code would be rejected too, so asking for one would
+   * contradict the disabled resend (W-17). The message asks the user to wait instead, and
+   * the resend countdown follows Retry-After.
    */
   private handleVerifyCodeError(err: any): void {
     const errorCode = err?.error?.error;
     if (err?.status === 401 && errorCode === 'expired_code') {
-      this.codeExpired.set(true);
-      this.otpValue = '';
-      this.otpInput?.reset();
-      this.stopResendCountdown();
+      this.discardCode('expired');
       this.errorMessage = this.translate.instant('auth.errors.otp-expired');
-    } else if (err?.status === 429) {
-      this.stopResendCountdown();
+    } else if (err?.status === 429 && errorCode === 'too_many_attempts') {
+      this.discardCode('exhausted');
       this.errorMessage = this.translate.instant('auth.errors.too-many-attempts-otp');
+    } else if (err?.status === 429) {
+      this.applyRateLimit(this.parseRetryAfterSeconds(err), true);
+      this.showRateLimitMessage('auth.errors.too-many-attempts-wait');
     } else if (err?.status === 401 && errorCode === 'invalid_code') {
       this.errorMessage = this.translate.instant('auth.errors.otp-invalid');
     } else {
@@ -542,7 +621,7 @@ export class LoginPage implements OnDestroy {
 
     let credentialId: string | null;
     try {
-      await this.prfService.createPasskey(this.email || 'Wallet User');
+      await this.prfService.createPasskey(this.email() ||'Wallet User');
       credentialId = this.passkeyStore.getCredentialId();
     } catch (err: unknown) {
       this.showPasskeyFailure(err);
@@ -583,23 +662,71 @@ export class LoginPage implements OnDestroy {
 
   // --- Private helpers ---
 
-  private startResendCountdown(seconds: number = RESEND_COOLDOWN_SECONDS): void {
-    this.stopResendCountdown();
-    this.resendSecondsLeft.set(seconds);
-    this.resendTimer = setInterval(() => {
-      this.resendSecondsLeft.update(seconds => seconds - 1);
-      if (this.resendSecondsLeft() <= 0) {
-        this.stopResendCountdown();
+  /** The current code can never succeed: clear it and drop the residual resend cooldown. */
+  private discardCode(state: Exclude<CodeState, 'active'>): void {
+    this.codeState.set(state);
+    this.otpValue.set('');
+    this.otpInput?.reset();
+    this.resendAvailableAt.set(0);
+  }
+
+  private startResendCountdown(): void {
+    this.resendAvailableAt.set(Date.now() + RESEND_COOLDOWN_SECONDS * 1000);
+    this.startTicker();
+  }
+
+  /** Records a 429 for the current email; a later send 429 never lifts an active verify block. */
+  private applyRateLimit(seconds: number, blocksVerify: boolean): void {
+    const current = this.activeRateLimit();
+    this.rateLimit.set({
+      email: this.email().trim(),
+      until: Math.max(Date.now() + seconds * 1000, current?.until ?? 0),
+      blocksVerify: blocksVerify || (current?.blocksVerify ?? false),
+    });
+    this.startTicker();
+  }
+
+  private startTicker(): void {
+    this.now.set(Date.now());
+    if (this.ticker !== null || !this.hasPendingDeadline()) return;
+    this.ticker = setInterval(() => {
+      this.now.set(Date.now());
+      this.clearExpiredRateLimitMessage();
+      if (!this.hasPendingDeadline()) {
+        this.stopTicker();
       }
     }, 1000);
   }
 
-  private stopResendCountdown(): void {
-    if (this.resendTimer !== null) {
-      clearInterval(this.resendTimer);
-      this.resendTimer = null;
+  private stopTicker(): void {
+    if (this.ticker !== null) {
+      clearInterval(this.ticker);
+      this.ticker = null;
     }
-    this.resendSecondsLeft.set(0);
+  }
+
+  // Any email's rate limit counts, so typing that email again shows a live countdown.
+  private hasPendingDeadline(): boolean {
+    const until = Math.max(this.resendAvailableAt(), this.rateLimit()?.until ?? 0);
+    return until > this.now();
+  }
+
+  private showRateLimitMessage(key: string): void {
+    this.errorMessage = this.translate.instant(key);
+    this.rateLimitMessage = this.errorMessage;
+  }
+
+  /**
+   * Once the rate limit runs out, its message ("wait for the countdown to end") is stale:
+   * drop it, unless something else has replaced it on screen since.
+   */
+  private clearExpiredRateLimitMessage(): void {
+    const rateLimit = this.rateLimit();
+    if (this.rateLimitMessage === null || (rateLimit !== null && this.now() < rateLimit.until)) return;
+    if (this.errorMessage === this.rateLimitMessage) {
+      this.errorMessage = '';
+    }
+    this.rateLimitMessage = null;
   }
 
   private clearMessages(): void {

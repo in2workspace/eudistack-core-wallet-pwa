@@ -157,9 +157,11 @@
       "code-validity": "El código es válido durante un tiempo limitado.",
       "code-label": "Código",
       "resend-in": "¿No has recibido el código? Reenvío disponible en {{time}}",
+      "new-code-in": "Podrás solicitar un nuevo código en {{time}}",
       "resend-prompt": "¿No has recibido el código?",
       "resend-action": "Reenviar",
       "code-expired-prompt": "¿Tu código ha caducado?",
+      "code-exhausted-prompt": "¿Necesitas un código nuevo?",
       "continue": "Continuar",
       "back": "Atrás"
     },
@@ -187,6 +189,7 @@
     "errors": {
       "too-many-attempts": "Demasiados intentos. Por favor, inténtalo más tarde.",
       "too-many-attempts-otp": "Demasiados intentos incorrectos. Por favor, solicita un nuevo código.",
+      "too-many-attempts-wait": "Has superado el número de intentos permitidos. Espera a que termine la cuenta atrás para solicitar un nuevo código.",
       "otp-expired": "El código ha caducado. Pulsa Reenviar para recibir uno nuevo en tu email.",
       "otp-invalid": "El código no es correcto. Revísalo e inténtalo de nuevo.",
       "passkey-register-failed": "No se ha podido registrar este dispositivo. Inténtalo de nuevo.",
