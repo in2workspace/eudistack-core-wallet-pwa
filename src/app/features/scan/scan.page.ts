@@ -43,6 +43,10 @@ export class ScanPage implements ViewWillLeave {
     this.showScanner = true;
   }
 
+  public stopScanner(): void {
+    this.showScanner = false;
+  }
+
   public ionViewWillLeave(): void {
     this.showScanner = false;
     this.cdr.detectChanges();

@@ -319,6 +319,7 @@
     "subtitle": "Pega el código que has recibido o escanea su código QR",
     "scan-hint": "¿Prefieres escanear?",
     "scan-camera": "Escanear con la cámara",
+    "scan-back": "Pegar el código en su lugar",
     "manual-title": "Introduce el código manualmente",
     "manual-description": "Si no puedes escanear el código QR, introduce el código de activación que te han facilitado.",
     "manual-label": "Código de acceso",

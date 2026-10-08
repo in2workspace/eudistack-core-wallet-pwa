@@ -76,6 +76,31 @@ describe('ScanPage', () => {
     expect(fixture.nativeElement.querySelector('app-barcode-scanner')).toBeTruthy();
   });
 
+  it('hides the code form while the camera is active', () => {
+    // Arrange
+    component.startScanner();
+
+    // Act
+    fixture.detectChanges();
+
+    // Assert
+    expect(fixture.nativeElement.querySelector('.code-entry')).toBeNull();
+  });
+
+  it('goes back to the code form and removes the scanner when the user stops scanning', () => {
+    // Arrange
+    component.startScanner();
+    fixture.detectChanges();
+
+    // Act
+    fixture.nativeElement.querySelector('.scan-link').click();
+    fixture.detectChanges();
+
+    // Assert
+    expect(fixture.nativeElement.querySelector('app-barcode-scanner')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.code-entry')).toBeTruthy();
+  });
+
   it('removes the scanner element from the DOM on leave, releasing the camera', () => {
     // Arrange
     component.startScanner();
