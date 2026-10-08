@@ -44,20 +44,14 @@ export function defaultHttpToTranslationKey(http: HttpErrorResponse): string {
 
 /**
  * True when the verifier rejected the presentation because the credential is revoked
- * (HTTP 403 whose RFC 7807 `type` is `credential_revoked`). The body may arrive as a raw
- * string (responseType 'text') or as an already-parsed object.
+ * (HTTP 403 whose Problem Details `type` is `credential_revoked`).
  */
 export function isCredentialRevokedResponse(e: unknown): boolean {
-  if (!(e instanceof HttpErrorResponse) || e.status !== 403) return false;
-  let body: unknown = e.error;
-  if (typeof body === 'string') {
-    try {
-      body = JSON.parse(body);
-    } catch {
-      return false;
-    }
-  }
-  return (body as { type?: unknown } | null)?.type === 'credential_revoked';
+  return (
+    e instanceof HttpErrorResponse &&
+    e.status === 403 &&
+    parseApiError(e.error)?.type === API_ERROR_TYPE.CREDENTIAL_REVOKED
+  );
 }
 
 export function wrapOid4vciHttpError(
