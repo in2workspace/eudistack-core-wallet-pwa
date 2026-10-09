@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.16.12] - 2026-10-09
+
+### Added
+- **OID4VCI errors from the Issuer are shown as a specific message** when an offer is expired, missing or already issued, instead of a generic failure. credential_already_issued tells the holder the credential is no longer available.
+
+### Fixed
+- **#1061961 — "Cerrar sesiones" is no longer offered on other devices.** "Última actividad" follows the matching EBW change.
+- **Credential powers are translated into the wallet language**, including System / Administration. A translation that contains a comma is no longer split into several actions.
+- **Cancelling the operating-system passkey prompt no longer shows a raw browser error.** Every WebAuthn ceremony is classified (passkey_cancelled, passkey_timeout, passkey_not_found, and the other PasskeyError cases) and shown with a translated message.
+- **The pre-authorization PIN modal has a Validate button**, so the code can be submitted on a mobile keyboard that has no Enter key.
+- **The activity-history CSV no longer has an empty Details column.**
+- **Dark mode on iOS keeps contrast in alerts and toasts.** The rename-device alert no longer draws a dark button on a dark surface, and the alert input follows the app theme.
+- **About: a legal document that is not published says so.** S3/CloudFront 403 is treated like a missing document (no useless Retry). Open-source licences link the published frontend and backend SBOMs.
+- **Activity "Presented to" shows the verifier's name** (client_name, or the response-URI host) instead of a technical client_id.
+- **W-17 — a 429 while checking the email code distinguishes two cases.** too_many_attempts asks for a new code and enables resend. The rate limit asks the user to wait for the Retry-After countdown and keeps resend disabled.
+- **Automatic translation in Settings can be cancelled and no longer fails on the first slow download.** Preparation is not under the translation timeout, and the interface is always translated from English.
+
 ## [Unreleased]
 
 ### Added
