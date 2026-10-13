@@ -29,8 +29,8 @@ export class MenuComponent {
     return !(snapshot?.mode === 'browser' && snapshot.source === 'discovery');
   });
 
-  public close(): void {
-    this.popOverController.dismiss();
+  public async close(): Promise<void> {
+    await this.popOverController.dismiss();
   }
 
   public logoutOnKeydown(event: KeyboardEvent): void {
