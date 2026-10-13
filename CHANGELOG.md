@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.16.13] - 2026-10-13
+
+### Fixed
+
+- **#1061983 — logging in to the Issuer with a revoked credential showed "We couldn't send the login response".** When the verifier rejects the presentation with HTTP 403 `credential_revoked`, the wallet shows `errors.credential-revoked` (en/es/ca) instead of the generic `errors.verifier-post-failed`. Any other failure of that POST keeps the generic message. New helper `isCredentialRevokedResponse` (`http-error-message.ts`) with unit tests.
+
+- **Credential offer lost when opening the wallet from "Open in wallet" on hybrid key-manager tenants**: with the wallet closed, the hybrid onboarding screen dropped the incoming offer, so after accepting it the user landed on the credentials list with no issuance started.
+  - The hybrid onboarding guard now keeps the original destination and the onboarding resumes it once accepted.
+  - The pending deep link is read and cleared through a single shared helper, also used by the login page.
+- **Credential offer redeemed and passkey requested in a tab the user was not looking at**: when the link was opened while the wallet was already running, the issuance (and its passkey prompt) started in the hidden wallet tab, and cancelling it lost the one-shot offer. The flow now waits until the wallet tab is visible.
+
 ## [Unreleased]
 
 ### Added
@@ -22,8 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Duplicate error alerts during credential activation**: `CredentialsPage` now avoids stacking generic "Failed QR" alerts when the underlying OID4VCI engine has already presented a specific, more informative error modal to the user.
 
 ### Fixed
-- **I-04 — logging in to the Issuer with a revoked credential showed "We couldn't send the login response"**: when the verifier rejects the presentation with HTTP 403 `credential_revoked`, the wallet now shows a dedicated message (`errors.credential-revoked`, en/es/ca) instead of the generic `errors.verifier-post-failed`. Any other failure of that POST keeps the generic message. New helper `isCredentialRevokedResponse` (`http-error-message.ts`) with unit tests.
-
 - **About: legal documents still showed the connection error on DEV/PRO (S3 + CloudFront)**: a document that is not published is answered with **HTTP 403** by S3/CloudFront (no `ListBucket` permission ⇒ a missing key is indistinguishable from a forbidden one), not with the 404 nginx gives locally, so `LegalContentService` classified it as `unavailable` and the page kept showing "Check your connection" with a useless Retry. 403 is now treated like 404 for same-origin legal assets: single fallback to `es`, then `not-found` (truthful "not available yet — managed by EUDIStack" message, no Retry).
 
 - **Activity: the "Presented to" name was a technical identifier instead of a friendly name**: presentations were logged with the verifier's `client_id` (e.g. `x509_hash:…`, a `did:` or a URL), which is meaningless to the user. The activity history, the detail view and the CSV export now show the verifier's name.
@@ -225,15 +234,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fail-safe: if that check fails (network error), `needsPasskeySetup` defaults to `true` — registration is never silently skipped.
   - `WalletDiscoveryService` (`wallet_mode` discovery/fallback) was investigated and ruled out as the cause.
 - **Revocation status check failed open: a failed status-list request was shown as "not revoked"**: `CredentialVerificationService.isRevoked()`/`checkStatusList()` caught any failure of the HTTP request to the bitstring status list (network down, 5xx, CORS, timeout) and silently collapsed it into "not revoked" — a network error rendered as a successful check, both in the explicit "Verify Credential" modal and in the passive background check in `credentials.page.ts`. Both methods now share a single `checkRevocationStatus()`, which resolves to a tri-state result (`'revoked' | 'not-revoked' | 'unknown'`); a request failure is never reported as `'not-revoked'`. The modal now shows an explicit third state ("Revocation status could not be checked", amber) that neither persists a false `REVOKED` nor gets confused with a confirmed revocation; the background check leaves the cached status untouched under uncertainty. A credential already known locally as `REVOKED` stays `REVOKED` even if the network fails afterwards.
-
-## [3.16.13] - 2026-10-13
-
-### Fixed
-
-- **Credential offer lost when opening the wallet from "Open in wallet" on hybrid key-manager tenants**: with the wallet closed, the hybrid onboarding screen dropped the incoming offer, so after accepting it the user landed on the credentials list with no issuance started.
-  - The hybrid onboarding guard now keeps the original destination and the onboarding resumes it once accepted.
-  - The pending deep link is read and cleared through a single shared helper, also used by the login page.
-- **Credential offer redeemed and passkey requested in a tab the user was not looking at**: when the link was opened while the wallet was already running, the issuance (and its passkey prompt) started in the hidden wallet tab, and cancelling it lost the one-shot offer. The flow now waits until the wallet tab is visible.
 
 ## [3.15.0] - 2026-08-07
 
