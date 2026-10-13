@@ -38,7 +38,7 @@ export class HybridOnboardingPage implements OnInit {
   accept(): void {
     this.hybridOnboarding.markAccepted();
     this.telemetry.track('hybrid_onboarding_accepted');
-    this.router.navigateByUrl(takePendingDeepLink() ?? '/tabs');
+    void this.router.navigateByUrl(takePendingDeepLink() ?? '/tabs');
     this.hybridAudit.recordConstraintAccepted().pipe(catchError(() => of(null))).subscribe();
   }
 
