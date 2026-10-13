@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Oid4vpError } from '../../models/error/Oid4vpError';
 import { Oid4vpEngineService } from './oid4vp.engine.service';
 import { KeyStorageProvider } from '../../spi/key-storage.provider.service';
 import { LoaderHandledFlowService } from 'src/app/shared/services/loader-handled-flow.service';
@@ -421,5 +423,40 @@ describe('Oid4vpEngineService.logPresentedActivity — credential naming', () =>
 
     await (service as any).logPresentedActivity({ ...base, selectedVcList: [{} as any] });
     expect(activityService.log.mock.calls[2][1]).toBe('Unknown');
+  });
+});
+
+describe('Oid4vpEngineService.postAuthorizationResponse — verifier rejection mapping (I-04)', () => {
+  async function postAndCatch(error: HttpErrorResponse): Promise<Oid4vpError> {
+    const { service, walletService } = setup();
+    walletService.postOid4vpAuthorizationResponse.mockReturnValue(throwError(() => error));
+    try {
+      await (service as any).postAuthorizationResponse('https://verifier.example.com/callback', 'state-1', 'vp');
+    } catch (e) {
+      return e as Oid4vpError;
+    }
+    throw new Error('expected postAuthorizationResponse to reject');
+  }
+
+  it('uses errors.credential-revoked for a 403 credential_revoked response', async () => {
+    const err = await postAndCatch(new HttpErrorResponse({
+      status: 403,
+      error: '{"type":"credential_revoked","title":"Verifiable presentation failed","status":403,"detail":"The credential has been revoked"}',
+    }));
+
+    expect(err).toBeInstanceOf(Oid4vpError);
+    expect(err.translationKey).toBe('errors.credential-revoked');
+  });
+
+  it('keeps errors.verifier-post-failed for a 500', async () => {
+    const err = await postAndCatch(new HttpErrorResponse({ status: 500, error: 'boom' }));
+
+    expect(err.translationKey).toBe('errors.verifier-post-failed');
+  });
+
+  it('keeps errors.verifier-post-failed for a 403 that is not a revocation', async () => {
+    const err = await postAndCatch(new HttpErrorResponse({ status: 403, error: '{"type":"issuer_not_trusted"}' }));
+
+    expect(err.translationKey).toBe('errors.verifier-post-failed');
   });
 });

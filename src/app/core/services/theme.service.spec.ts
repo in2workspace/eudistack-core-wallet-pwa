@@ -52,6 +52,37 @@ describe('ThemeService', () => {
     root.removeAttribute('style');
   });
 
+  describe('ready', () => {
+    const stubLoadTheme = (impl: () => Promise<void>): void => {
+      jest.spyOn(service as unknown as { loadTheme: () => Promise<void> }, 'loadTheme').mockImplementation(impl);
+    };
+
+    it('stays pending until load() has finished', async () => {
+      let finishLoading!: () => void;
+      stubLoadTheme(() => new Promise<void>(resolve => { finishLoading = resolve; }));
+      let settled = false;
+      void service.ready.then(() => { settled = true; });
+
+      const loading = service.load();
+      await Promise.resolve();
+      const settledWhileLoading = settled;
+      finishLoading();
+      await loading;
+      await service.ready;
+
+      expect(settledWhileLoading).toBe(false);
+      expect(settled).toBe(true);
+    });
+
+    it('settles even when loading the theme fails, so dependants never wait forever', async () => {
+      stubLoadTheme(() => Promise.reject(new Error('theme unavailable')));
+
+      await expect(service.load()).rejects.toThrow('theme unavailable');
+
+      await expect(service.ready).resolves.toBeUndefined();
+    });
+  });
+
   describe('isValidCssColor', () => {
     const validate = (v: string) => (service as any).isValidCssColor(v);
 

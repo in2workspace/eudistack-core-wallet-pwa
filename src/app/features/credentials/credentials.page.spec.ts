@@ -315,6 +315,70 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     });
   });
 
+  describe('runPendingProtocolFlow — waits for the tab to be visible', () => {
+    let activationFlow: jest.SpyInstance;
+
+    function setVisibility(state: 'visible' | 'hidden'): void {
+      Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+    }
+
+    beforeEach(() => {
+      activationFlow = jest
+        .spyOn(component as unknown as { credentialActivationFlow: () => void }, 'credentialActivationFlow')
+        .mockImplementation();
+      component.credentialOfferUri = 'https://issuer.example/credential-offer/abc';
+    });
+
+    afterEach(() => setVisibility('visible'));
+
+    it('starts the offer flow immediately when the tab is visible', () => {
+      setVisibility('visible');
+
+      (component as any).runPendingProtocolFlow();
+
+      expect(activationFlow).toHaveBeenCalledWith('https://issuer.example/credential-offer/abc');
+    });
+
+    it('does not start the offer flow while the tab is hidden', () => {
+      setVisibility('hidden');
+
+      (component as any).runPendingProtocolFlow();
+
+      expect(activationFlow).not.toHaveBeenCalled();
+    });
+
+    it('starts the offer flow once when the hidden tab becomes visible', () => {
+      setVisibility('hidden');
+      (component as any).runPendingProtocolFlow();
+
+      setVisibility('visible');
+      document.dispatchEvent(new Event('visibilitychange'));
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(activationFlow).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps waiting when visibility changes but the tab is still hidden', () => {
+      setVisibility('hidden');
+      (component as any).runPendingProtocolFlow();
+
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(activationFlow).not.toHaveBeenCalled();
+    });
+
+    it('does not start the flow twice when a second request arrives while hidden', () => {
+      setVisibility('hidden');
+      (component as any).runPendingProtocolFlow();
+      (component as any).runPendingProtocolFlow();
+
+      setVisibility('visible');
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(activationFlow).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('credentialActivationFlow — engine failures (credential_offer_expired)', () => {
     let performOid4vciFlow: jest.Mock;
 

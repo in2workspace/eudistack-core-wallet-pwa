@@ -74,10 +74,13 @@
     "toggle-label": "Activar traducción automática",
     "target-language-label": "Traducir a",
     "state-preparing": "Preparando la traducción…",
+    "state-downloading": "Descargando el idioma…",
+    "state-applying": "Aplicando la traducción…",
     "state-unavailable": "No disponible en este dispositivo",
     "state-unavailable-hint": "Tu navegador no ofrece traducción integrada en el dispositivo. Podrás usar esta función cuando esté disponible.",
     "state-error": "No se ha podido preparar la traducción",
-    "retry": "Reintentar"
+    "retry": "Reintentar",
+    "cancel": "Cancelar"
   },
   "logs-selector": {
     "title": "Ver logs",
@@ -154,9 +157,11 @@
       "code-validity": "El código es válido durante un tiempo limitado.",
       "code-label": "Código",
       "resend-in": "¿No has recibido el código? Reenvío disponible en {{time}}",
+      "new-code-in": "Podrás solicitar un nuevo código en {{time}}",
       "resend-prompt": "¿No has recibido el código?",
       "resend-action": "Reenviar",
       "code-expired-prompt": "¿Tu código ha caducado?",
+      "code-exhausted-prompt": "¿Necesitas un código nuevo?",
       "continue": "Continuar",
       "back": "Atrás"
     },
@@ -184,6 +189,7 @@
     "errors": {
       "too-many-attempts": "Demasiados intentos. Por favor, inténtalo más tarde.",
       "too-many-attempts-otp": "Demasiados intentos incorrectos. Por favor, solicita un nuevo código.",
+      "too-many-attempts-wait": "Has superado el número de intentos permitidos. Espera a que termine la cuenta atrás para solicitar un nuevo código.",
       "otp-expired": "El código ha caducado. Pulsa Reenviar para recibir uno nuevo en tu email.",
       "otp-invalid": "El código no es correcto. Revísalo e inténtalo de nuevo.",
       "passkey-register-failed": "No se ha podido registrar este dispositivo. Inténtalo de nuevo.",
@@ -463,6 +469,7 @@
     "resource-not-found": "No se ha encontrado el recurso solicitado. Vuelve a intentarlo.",
     "server-error": "El servidor ha encontrado un error. Vuelve a intentarlo más tarde.",
     "verifier-post-failed": "No hemos podido enviar la respuesta de login. Inténtalo de nuevo.",
+    "credential-revoked": "La credencial seleccionada ha sido revocada y no es válida para iniciar sesión.",
     "signature-failed": "No hemos podido firmar la presentación. Inténtalo de nuevo.",
     "failed-qr-process": "Ha habido un error al procesar QR. Puede que sea inválido o que ya haya sido usado antes. Refrésquelo, por favor. Si el problema persiste, póngase en contacto con {{supportLink}}",
     "invalid-qr": "El QR presentado es inválido",

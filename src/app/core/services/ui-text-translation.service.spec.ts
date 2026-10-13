@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClient } from '@angular/common/http';
 import { EventEmitter } from '@angular/core';
 import { LangChangeEvent, TranslateService } from '@ngx-translate/core';
-import { of, throwError } from 'rxjs';
+import { NEVER, of, throwError } from 'rxjs';
 
 import { UiTextTranslationService } from './ui-text-translation.service';
 import { UiTranslationCacheService } from './ui-translation-cache.service';
@@ -10,9 +10,16 @@ import { TelemetryService } from './telemetry.service';
 import { TRANSLATION_ENGINE, TranslationEnginePort } from '../ports/translation-engine.port';
 import { UserPreferencesService } from '../../shared/services/user-preferences.service';
 import { UiTextKey } from '../models/ui-text-translation.model';
+import { ThemeService } from './theme.service';
 
 const PRISTINE_BUNDLE = { menu: { scan: 'Escáner QR', wallet: 'Cartera' } };
 const PRISTINE_JSON = JSON.stringify(PRISTINE_BUNDLE);
+
+async function flushMicrotasks(): Promise<void> {
+  for (let i = 0; i < 10; i++) {
+    await Promise.resolve();
+  }
+}
 
 function flatEntries() {
   return [
@@ -27,6 +34,7 @@ describe('UiTextTranslationService', () => {
   let translate: {
     currentLang: string;
     getDefaultLang: jest.Mock;
+    getLangs: jest.Mock;
     setTranslation: jest.Mock;
     onLangChange: EventEmitter<LangChangeEvent>;
   };
@@ -35,6 +43,7 @@ describe('UiTextTranslationService', () => {
   let prefsStore: { enabled: boolean; targetLanguage: string | null };
   let prefs: { uiTranslation: jest.Mock; setUiTranslation: jest.Mock };
   let telemetry: { track: jest.Mock };
+  let theme: { ready: Promise<void> };
 
   beforeEach(() => {
     document.documentElement.lang = 'es';
@@ -45,6 +54,7 @@ describe('UiTextTranslationService', () => {
     translate = {
       currentLang: 'es',
       getDefaultLang: jest.fn().mockReturnValue('es'),
+      getLangs: jest.fn().mockReturnValue(['en', 'es', 'ca']),
       setTranslation: jest.fn(),
       onLangChange: new EventEmitter<LangChangeEvent>(),
     };
@@ -57,6 +67,7 @@ describe('UiTextTranslationService', () => {
     engine = {
       isSupported: jest.fn().mockReturnValue(true),
       availability: jest.fn().mockResolvedValue('available'),
+      prepare: jest.fn().mockResolvedValue(undefined),
       translateEntries: jest.fn().mockImplementation(async (entries) =>
         entries.map((e: { key: UiTextKey; text: string }) => ({ key: e.key, text: `[${e.text}]` }))),
       destroy: jest.fn(),
@@ -69,6 +80,7 @@ describe('UiTextTranslationService', () => {
     };
 
     telemetry = { track: jest.fn() };
+    theme = { ready: Promise.resolve() };
 
     TestBed.configureTestingModule({
       providers: [
@@ -78,6 +90,7 @@ describe('UiTextTranslationService', () => {
         { provide: TRANSLATION_ENGINE, useValue: engine },
         { provide: UserPreferencesService, useValue: prefs },
         { provide: TelemetryService, useValue: telemetry },
+        { provide: ThemeService, useValue: theme },
       ],
     });
     service = TestBed.inject(UiTextTranslationService);
@@ -134,11 +147,83 @@ describe('UiTextTranslationService', () => {
     });
   });
 
+  describe('probeAvailability — candidate languages', () => {
+    const probedTargets = (): string[] =>
+      engine.availability.mock.calls.map(([pair]) => pair.targetLanguage);
+
+    it('never probes the languages the tenant loaded natively', async () => {
+      translate.getLangs.mockReturnValue(['en', 'es', 'ca']);
+
+      await service.probeAvailability();
+
+      expect(probedTargets()).not.toContain('en');
+      expect(probedTargets()).not.toContain('es');
+      expect(probedTargets()).not.toContain('ca');
+    });
+
+    it('probes a shipped language the tenant did not load, so it is offered when the engine can translate it', async () => {
+      translate.getLangs.mockReturnValue(['en', 'es']);
+
+      const targets = await service.probeAvailability();
+
+      expect(probedTargets()).toContain('ca');
+      expect(targets).toContain('ca');
+    });
+
+    it('does not offer a shipped language the engine cannot translate', async () => {
+      translate.getLangs.mockReturnValue(['en', 'es']);
+      engine.availability.mockImplementation(async ({ targetLanguage }) =>
+        targetLanguage === 'ca' ? 'unavailable' : 'available');
+
+      const targets = await service.probeAvailability();
+
+      expect(targets).not.toContain('ca');
+      expect(targets).toContain('fr');
+    });
+
+    it('assumes the three shipped languages are native when the tenant declares none', async () => {
+      translate.getLangs.mockReturnValue([]);
+
+      await service.probeAvailability();
+
+      expect(probedTargets()).not.toContain('ca');
+      expect(probedTargets()).not.toContain('es');
+    });
+
+    it('always probes from English, whatever the native language is', async () => {
+      translate.currentLang = 'ca';
+
+      await service.probeAvailability();
+
+      const sources = new Set(engine.availability.mock.calls.map(([pair]) => pair.sourceLanguage));
+      expect(sources).toEqual(new Set(['en']));
+    });
+
+    it('never offers English as a target, since it is the source', async () => {
+      translate.getLangs.mockReturnValue(['es']);
+
+      await service.probeAvailability();
+
+      expect(probedTargets()).not.toContain('en');
+    });
+
+    it('probes only once per session, even if the native language changes', async () => {
+      await service.probeAvailability();
+      engine.availability.mockClear();
+      translate.currentLang = 'ca';
+
+      translate.onLangChange.emit({ lang: 'ca', translations: {} });
+      await service.probeAvailability();
+
+      expect(engine.availability).not.toHaveBeenCalled();
+    });
+  });
+
   describe('activate — cache miss (happy path)', () => {
     it('fetches the pristine bundle, translates via the engine, and applies atomically', async () => {
       await service.activate('el');
 
-      expect(http.get).toHaveBeenCalledWith('assets/i18n/es.json', { responseType: 'text' });
+      expect(http.get).toHaveBeenCalledWith('assets/i18n/en.json', { responseType: 'text' });
       expect(engine.translateEntries).toHaveBeenCalled();
       expect(translate.setTranslation).toHaveBeenCalledTimes(1);
       const [lang, bundle, shouldMerge] = translate.setTranslation.mock.calls[0];
@@ -153,10 +238,87 @@ describe('UiTextTranslationService', () => {
       await service.activate('el');
 
       expect(cache.write).toHaveBeenCalledWith(expect.objectContaining({
-        sourceLang: 'es',
+        sourceLang: 'en',
         targetLang: 'el',
         entries: expect.any(Array),
       }));
+    });
+
+    it('translates from English even when the native language is not English', async () => {
+      await service.activate('el');
+
+      expect(engine.translateEntries).toHaveBeenCalledWith(
+        expect.any(Array), { sourceLanguage: 'en', targetLanguage: 'el' }, expect.anything(), expect.anything());
+    });
+
+    it('fetches the English bundle and the native one to restore it later when they differ', async () => {
+      await service.activate('el');
+
+      expect(http.get).toHaveBeenCalledWith('assets/i18n/en.json', { responseType: 'text' });
+      expect(http.get).toHaveBeenCalledWith('assets/i18n/es.json', { responseType: 'text' });
+    });
+
+    it('fetches a single bundle when the native language already is English', async () => {
+      translate.currentLang = 'en';
+
+      await service.activate('el');
+
+      expect(http.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('applies the translation over the native language code, never switching the language', async () => {
+      translate.currentLang = 'ca';
+
+      await service.activate('el');
+
+      expect(translate.setTranslation.mock.calls[0][0]).toBe('ca');
+    });
+
+    it('reads the cache with English as the source so every native language shares it', async () => {
+      await service.activate('el');
+
+      expect(cache.read).toHaveBeenCalledWith('en', 'el', expect.any(String));
+    });
+
+    describe('with different English and native bundles', () => {
+      const EN_BUNDLE = { menu: { scan: 'Scan QR' }, 'vc-fields': { credentialInfo: { title: 'Credential' } } };
+      const ES_BUNDLE = { menu: { scan: 'Escáner QR' }, 'vc-fields': { credentialInfo: { title: 'Credencial' } } };
+
+      beforeEach(() => {
+        http.get.mockImplementation((url: string) =>
+          of(JSON.stringify(url.endsWith('en.json') ? EN_BUNDLE : ES_BUNDLE)));
+      });
+
+      it('keeps the excluded keys in the native language instead of the English source', async () => {
+        await service.activate('el');
+
+        const applied = translate.setTranslation.mock.calls[0][1] as typeof EN_BUNDLE;
+        expect(applied.menu.scan).toBe('[Scan QR]');
+        expect(applied['vc-fields'].credentialInfo.title).toBe('Credencial');
+      });
+
+      it('does not restore a bundle taken under another native language when cancelled before the new one arrives', async () => {
+        jest.useFakeTimers();
+        await service.activate('el');
+        service.deactivate();
+        translate.currentLang = 'ca';
+        http.get.mockReturnValue(NEVER);
+
+        service.activate('el');
+        await flushMicrotasks();
+        translate.setTranslation.mockClear();
+        service.deactivate();
+
+        expect(translate.setTranslation).not.toHaveBeenCalled();
+      });
+
+      it('restores the native bundle, not the English source, when deactivated', async () => {
+        await service.activate('el');
+
+        service.deactivate();
+
+        expect(translate.setTranslation).toHaveBeenLastCalledWith('es', ES_BUNDLE, false);
+      });
     });
 
     it('syncs documentElement.lang to the target and persists the preference (AC-02, AC-06)', async () => {
@@ -188,7 +350,7 @@ describe('UiTextTranslationService', () => {
 
       await service.activate('el');
 
-      expect(capturedDuringActivation).toEqual({ done: 1, total: 2 });
+      expect(capturedDuringActivation).toEqual({ phase: 'applying', fraction: 0.75 });
       expect(service.progress()).toBeNull();
     });
 
@@ -300,16 +462,207 @@ describe('UiTextTranslationService', () => {
     });
   });
 
-  describe('activate — timeout (ES-05)', () => {
-    it('falls back to native and destroys the engine when the engine never settles within TRANSLATION_BUDGET_MS', async () => {
+  describe('activate — engine preparation (first-time language-pack download)', () => {
+    it('prepares the engine for the native/target pair before translating', async () => {
+      await service.activate('el');
+
+      expect(engine.prepare).toHaveBeenCalledWith({ sourceLanguage: 'en', targetLanguage: 'el' }, expect.any(Function));
+      expect(engine.prepare.mock.invocationCallOrder[0]).toBeLessThan(engine.translateEntries.mock.invocationCallOrder[0]);
+    });
+
+    it('reflects the language-pack download progress while preparing', async () => {
+      let reportProgress!: (loaded: number, total: number) => void;
+      let finishDownload!: () => void;
+      engine.prepare.mockImplementation((_pair, onProgress) => new Promise<void>(resolve => {
+        reportProgress = onProgress!;
+        finishDownload = resolve;
+      }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      reportProgress(0.5, 1);
+      const duringDownload = service.progress();
+      finishDownload();
+      await activation;
+
+      expect(duringDownload).toEqual({ phase: 'downloading', fraction: 0.25 });
+      expect(service.progress()).toBeNull();
+    });
+
+    it('never moves the bar backwards when the engine restarts its download counter for another pack', async () => {
+      let reportProgress!: (loaded: number, total: number) => void;
+      let finishDownload!: () => void;
+      engine.prepare.mockImplementation((_pair, onProgress) => new Promise<void>(resolve => {
+        reportProgress = onProgress!;
+        finishDownload = resolve;
+      }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      reportProgress(1, 1);
+      reportProgress(0.2, 1);
+      const afterSecondPackStarts = service.progress();
+      finishDownload();
+      await activation;
+
+      expect(afterSecondPackStarts).toEqual({ phase: 'downloading', fraction: 0.5 });
+    });
+
+    it('moves to the apply phase, starting where the download phase ended, once the engine is ready', async () => {
+      const phases: unknown[] = [];
+      engine.translateEntries.mockImplementation(async (entries) => {
+        phases.push(service.progress());
+        return entries.map((e: { key: UiTextKey; text: string }) => ({ key: e.key, text: `[${e.text}]` }));
+      });
+
+      await service.activate('el');
+
+      expect(phases[0]).toEqual({ phase: 'applying', fraction: 0.5 });
+    });
+
+    it('shows no progress before the engine is needed', async () => {
+      let progressWhileReadingCache: unknown = 'unset';
+      cache.read.mockImplementation(async () => {
+        progressWhileReadingCache = service.progress();
+        return null;
+      });
+
+      await service.activate('el');
+
+      expect(progressWhileReadingCache).toBeNull();
+    });
+
+    it('ignores download progress reported after the activation was cancelled', async () => {
+      let reportProgress!: (loaded: number, total: number) => void;
+      engine.prepare.mockImplementation((_pair, onProgress) => new Promise<void>(() => { reportProgress = onProgress!; }));
+
+      service.activate('el');
+      await flushMicrotasks();
+      service.deactivate();
+      reportProgress(0.7, 1);
+
+      expect(service.progress()).toBeNull();
+    });
+
+    it('does not prepare the engine on a cache hit', async () => {
+      cache.read.mockResolvedValue([{ key: 'menu.scan', text: 'QR' }]);
+
+      await service.activate('el');
+
+      expect(engine.prepare).not.toHaveBeenCalled();
+    });
+
+    it('does not apply the stall timeout while the language pack is still downloading', async () => {
+      jest.useFakeTimers();
+      let finishDownload!: () => void;
+      engine.prepare.mockImplementation(() => new Promise<void>(resolve => { finishDownload = resolve; }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      jest.advanceTimersByTime(60_000);
+      await flushMicrotasks();
+      expect(service.status()).toBe('preparing');
+      finishDownload();
+      await flushMicrotasks();
+      await activation;
+
+      expect(service.status()).toBe('active');
+    });
+
+    it('falls back to native with status "error" when preparing the engine fails', async () => {
+      engine.prepare.mockRejectedValue(new Error('download failed'));
+
+      await service.activate('el');
+
+      expect(service.status()).toBe('error');
+      expect(engine.translateEntries).not.toHaveBeenCalled();
+      expect(engine.destroy).toHaveBeenCalled();
+    });
+
+    it('does not translate nor leave a stale state when cancelled while the language pack downloads', async () => {
+      let finishDownload!: () => void;
+      engine.prepare.mockImplementation(() => new Promise<void>(resolve => { finishDownload = resolve; }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      service.deactivate();
+      finishDownload();
+      await activation;
+
+      expect(engine.translateEntries).not.toHaveBeenCalled();
+      expect(service.status()).toBe('idle');
+      expect(service.targetLanguage()).toBeNull();
+      expect(engine.destroy).toHaveBeenCalled();
+      expect(prefs.setUiTranslation).toHaveBeenLastCalledWith({ enabled: false, targetLanguage: 'el' });
+      expect(prefs.setUiTranslation).not.toHaveBeenCalledWith({ enabled: true, targetLanguage: 'el' });
+    });
+
+    it('stays idle and records no failure when the pending preparation rejects after the cancellation', async () => {
+      let failDownload!: () => void;
+      engine.prepare.mockImplementation(() => new Promise<void>((_resolve, reject) => {
+        failDownload = () => reject(new Error('download interrupted'));
+      }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      service.deactivate();
+      failDownload();
+      await activation;
+
+      expect(service.status()).toBe('idle');
+      expect(telemetry.track).not.toHaveBeenCalledWith('ui_translation_engine_failed', expect.anything());
+    });
+  });
+
+  describe('activate — stall timeout (ES-05)', () => {
+    it('keeps a slow translation alive as long as batches keep completing', async () => {
+      jest.useFakeTimers();
+      let batchDone!: (done: number, total: number) => void;
+      let finishTranslation!: () => void;
+      engine.translateEntries.mockImplementation((entries, _pair, _allowedKeys, onProgress) => new Promise(resolve => {
+        batchDone = onProgress!;
+        finishTranslation = () => resolve(entries.map((e: { key: UiTextKey; text: string }) => ({ key: e.key, text: `[${e.text}]` })));
+      }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      jest.advanceTimersByTime(25_000);
+      batchDone(1, 2);
+      jest.advanceTimersByTime(25_000); // 50 s in total, but never 30 s without a batch
+      await flushMicrotasks();
+      expect(service.status()).toBe('preparing');
+      finishTranslation();
+      await activation;
+
+      expect(service.status()).toBe('active');
+    });
+
+    it('fails once no batch completes for TRANSLATION_STALL_TIMEOUT_MS even after earlier progress', async () => {
+      jest.useFakeTimers();
+      let batchDone!: (done: number, total: number) => void;
+      engine.translateEntries.mockImplementation((_entries, _pair, _allowedKeys, onProgress) => new Promise(() => {
+        batchDone = onProgress!;
+      }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      jest.advanceTimersByTime(20_000);
+      batchDone(1, 2);
+      jest.advanceTimersByTime(30_000);
+      await activation;
+
+      expect(service.status()).toBe('error');
+    });
+
+    it('falls back to native and destroys the engine when the translation never completes a batch within TRANSLATION_STALL_TIMEOUT_MS', async () => {
       jest.useFakeTimers();
       engine.translateEntries.mockImplementation(() => new Promise(() => { /* never resolves */ }));
 
       const activation = service.activate('el');
       // Flush the fetch + cache-read microtasks so doActivate() reaches the
-      // engine call and withBudget()'s timer is armed before we advance it.
-      await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
-      jest.advanceTimersByTime(20_000);
+      // engine call and withStallGuard()'s timer is armed before we advance it.
+      await flushMicrotasks();
+      jest.advanceTimersByTime(30_000);
       await activation;
 
       expect(service.status()).toBe('error');
@@ -318,7 +671,69 @@ describe('UiTextTranslationService', () => {
     });
   });
 
+  describe('activate — failure telemetry (root-cause diagnosis)', () => {
+    it('records only the error name when preparing the engine fails', async () => {
+      engine.prepare.mockRejectedValue(new DOMException('needs a user gesture', 'NotAllowedError'));
+
+      await service.activate('el');
+
+      expect(telemetry.track).toHaveBeenCalledWith('ui_translation_engine_failed', {
+        targetLanguage: 'el',
+        errorName: 'NotAllowedError',
+      });
+    });
+
+    it('records a dedicated error name when the translation stalls', async () => {
+      jest.useFakeTimers();
+      engine.translateEntries.mockImplementation(() => new Promise(() => { /* never resolves */ }));
+
+      const activation = service.activate('el');
+      await flushMicrotasks();
+      jest.advanceTimersByTime(30_000);
+      await activation;
+
+      expect(telemetry.track).toHaveBeenCalledWith('ui_translation_engine_failed', {
+        targetLanguage: 'el',
+        errorName: 'TranslationStalledError',
+      });
+    });
+
+    it('records a generic name when the failure is not an Error instance', async () => {
+      engine.prepare.mockRejectedValue('boom');
+
+      await service.activate('el');
+
+      expect(telemetry.track).toHaveBeenCalledWith('ui_translation_engine_failed', {
+        targetLanguage: 'el',
+        errorName: 'UnknownError',
+      });
+    });
+  });
+
   describe('activate — concurrency (EC-07, ES-03)', () => {
+    it('keeps coalescing the same target after a cancelled operation settles late', async () => {
+      let finishFirstDownload!: () => void;
+      engine.prepare.mockImplementationOnce(() => new Promise<void>(resolve => { finishFirstDownload = resolve; }));
+
+      const cancelled = service.activate('el');
+      await flushMicrotasks();
+      service.deactivate();
+      let finishSecondDownload!: () => void;
+      engine.prepare.mockImplementationOnce(() => new Promise<void>(resolve => { finishSecondDownload = resolve; }));
+      const reactivated = service.activate('el');
+      await flushMicrotasks();
+      finishFirstDownload(); // the cancelled operation settles while the new one is still preparing
+      await cancelled;
+      const coalesced = service.activate('el');
+      finishSecondDownload();
+      await Promise.all([reactivated, coalesced]);
+
+      expect(coalesced).toBe(reactivated);
+      expect(engine.prepare).toHaveBeenCalledTimes(2);
+      expect(engine.translateEntries).toHaveBeenCalledTimes(1);
+      expect(service.status()).toBe('active');
+    });
+
     it('a second call for the SAME target while preparing reuses the in-flight operation', async () => {
       // Block on a never-resolving engine call, activate twice with the same
       // target, and assert the engine is invoked only once — the second call
@@ -331,7 +746,7 @@ describe('UiTextTranslationService', () => {
       const first = service.activate('el');
       const second = service.activate('el');
 
-      await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+      await flushMicrotasks();
       releaseEngine();
       await Promise.all([first, second]);
 
@@ -349,7 +764,7 @@ describe('UiTextTranslationService', () => {
       }));
 
       const first = service.activate('bg'); // e.g. an accidental default, not what the user wanted
-      await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+      await flushMicrotasks();
 
       const second = service.activate('fr'); // the user's actual, deliberate choice
       releaseFirstEngine(); // the stale 'bg' operation finally settles...
@@ -423,12 +838,64 @@ describe('UiTextTranslationService', () => {
       expect(service.status()).toBe('idle');
     });
 
-    it('rejects a natively-supported language smuggled in as a translation target (es/en/ca are never candidates, AC-07)', async () => {
+    it('rejects a natively-supported language smuggled in as a translation target (the tenant\'s own languages are never candidates, AC-07)', async () => {
       prefsStore = { enabled: true, targetLanguage: 'es' };
 
       await service.restoreFromPreference();
 
       expect(engine.translateEntries).not.toHaveBeenCalled();
+    });
+
+    describe('startup race with the theme (APP_INITIALIZERs run concurrently)', () => {
+      let releaseTheme!: () => void;
+
+      beforeEach(() => {
+        theme.ready = new Promise<void>(resolve => { releaseTheme = resolve; });
+        translate.getLangs.mockReturnValue([]); // the tenant's languages are not registered yet
+        prefsStore = { enabled: true, targetLanguage: 'ca' };
+      });
+
+      it('does nothing until the theme has loaded', async () => {
+        const restoration = service.restoreFromPreference();
+        await flushMicrotasks();
+
+        expect(engine.translateEntries).not.toHaveBeenCalled();
+        expect(service.status()).toBe('idle');
+        releaseTheme();
+        await restoration;
+      });
+
+      it('restores a target the tenant does not load natively once the theme registered its languages', async () => {
+        const restoration = service.restoreFromPreference();
+        await flushMicrotasks();
+
+        translate.getLangs.mockReturnValue(['en', 'es']);
+        releaseTheme();
+        await restoration;
+
+        expect(service.targetLanguage()).toBe('ca');
+        expect(service.status()).toBe('active');
+      });
+
+      it('still rejects a target the tenant does load natively once its languages are known', async () => {
+        const restoration = service.restoreFromPreference();
+        await flushMicrotasks();
+
+        translate.getLangs.mockReturnValue(['en', 'es', 'ca']);
+        releaseTheme();
+        await restoration;
+
+        expect(engine.translateEntries).not.toHaveBeenCalled();
+      });
+    });
+
+    it('accepts a persisted target that is shipped by the wallet but not loaded by the tenant', async () => {
+      translate.getLangs.mockReturnValue(['en', 'es']);
+      prefsStore = { enabled: true, targetLanguage: 'ca' };
+
+      await service.restoreFromPreference();
+
+      expect(service.targetLanguage()).toBe('ca');
     });
 
     describe('user-activation gate (Translator.create() needs a real gesture on a cold load)', () => {

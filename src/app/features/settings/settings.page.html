@@ -33,13 +33,13 @@
 
             <div class="language-options" role="radiogroup" [attr.aria-label]="'language-selector.title' | translate">
               @for (language of languageList; track language.code) {
-                <label class="language-card" [class.language-card--selected]="currentLanguage === language.code">
+                <label class="language-card" [class.language-card--selected]="currentLanguage === language.code && !translationEnabled()">
                   <input
                     type="radio"
                     class="language-card__input"
                     name="app-language"
                     [value]="language.code"
-                    [checked]="currentLanguage === language.code"
+                    [checked]="currentLanguage === language.code && !translationEnabled()"
                     (change)="languageChange(language.code)"
                   />
                   <span>{{ language.name }}</span>
@@ -47,7 +47,7 @@
               }
             </div>
 
-            <section class="translation-box">
+            <div class="translation-options">
               <h3 class="translation-box__title">{{ "ui-translation.title" | translate }}</h3>
               <p class="settings-desc">{{ "ui-translation.description" | translate }}</p>
 
@@ -91,11 +91,14 @@
                 @if (translationStatus() === 'preparing') {
                   <output class="translation-state translation-state--progress">
                     <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
-                    <span>{{ "ui-translation.state-preparing" | translate }}</span>
+                    <span>{{ translationStateKey() | translate }}</span>
                     @if (translationProgress(); as progress) {
-                      <ion-progress-bar [value]="progress.total > 0 ? progress.done / progress.total : 0"></ion-progress-bar>
+                      <ion-progress-bar [value]="progress.fraction"></ion-progress-bar>
                     }
                   </output>
+                  <ion-button class="translation-cancel" fill="outline" size="small" (click)="cancelTranslation()">
+                    {{ "ui-translation.cancel" | translate }}
+                  </ion-button>
                 }
 
                 @if (translationStatus() === 'error') {
@@ -107,7 +110,7 @@
                   </div>
                 }
               }
-            </section>
+            </div>
           </section>
         }
       </article>

@@ -90,6 +90,49 @@ describe('BrowserTranslatorEngineAdapter', () => {
     });
   });
 
+  describe('prepare', () => {
+    const pair = { sourceLanguage: 'es', targetLanguage: 'el' };
+
+    it('creates the Translator for the pair', async () => {
+      const { createFn } = installFakeTranslator();
+
+      await adapter.prepare(pair);
+
+      expect(createFn).toHaveBeenCalledWith(expect.objectContaining({ sourceLanguage: 'es', targetLanguage: 'el' }));
+    });
+
+    it('lets translateEntries reuse the prepared Translator instead of creating another', async () => {
+      const { createFn } = installFakeTranslator();
+
+      await adapter.prepare(pair);
+      await adapter.translateEntries([entry('a', 'A')], pair, allow('a'), undefined);
+
+      expect(createFn).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports the language-pack download progress through the monitor', async () => {
+      const { createFn } = installFakeTranslator();
+      const onProgress = jest.fn();
+      createFn.mockImplementation(async (options: TranslatorCreateOptions) => {
+        options.monitor?.({
+          addEventListener: (_type, listener) => listener({ loaded: 0.4, total: 1 }),
+        });
+        return { translate: jest.fn(), destroy: jest.fn() };
+      });
+
+      await adapter.prepare(pair, onProgress);
+
+      expect(onProgress).toHaveBeenCalledWith(0.4, 1);
+    });
+
+    it('propagates the error when the Translator cannot be created', async () => {
+      const { createFn } = installFakeTranslator();
+      createFn.mockRejectedValue(new Error('download failed'));
+
+      await expect(adapter.prepare(pair)).rejects.toThrow('download failed');
+    });
+  });
+
   describe('translateEntries', () => {
     const pair = { sourceLanguage: 'es', targetLanguage: 'el' };
 

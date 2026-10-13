@@ -8,9 +8,16 @@ import { StorageService } from 'src/app/shared/services/storage.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { CameraService } from 'src/app/shared/services/camera.service';
 import { UiTextTranslationService } from 'src/app/core/services/ui-text-translation.service';
+import { DEFAULT_NATIVE_LANGUAGES } from 'src/app/core/constants/ui-translation.constants';
 import { LanguageTag } from 'src/app/core/models/ui-text-translation.model';
 
 type SettingsPanelId = 'language' | 'theme' | 'camera';
+
+const LANGUAGE_NAMES: Readonly<Record<string, string>> = {
+  en: 'English',
+  es: 'Castellano',
+  ca: 'Català',
+};
 
 @Component({
   selector: 'app-settings',
@@ -25,16 +32,19 @@ export class SettingsPage implements OnInit {
   public readonly cameraService = inject(CameraService);
   public readonly uiTranslation = inject(UiTextTranslationService);
 
-  public readonly languageList = [
-    { name: 'English', code: 'en' },
-    { name: 'Castellano', code: 'es' },
-    { name: 'Català', code: 'ca' },
-  ];
+  /** Languages the tenant actually loaded (`theme.i18n.available`); every known one when the theme declares none. */
+  public readonly languageList = this.buildLanguageList();
 
   public readonly expandedPanel = signal<SettingsPanelId | null>(null);
 
   public readonly translationStatus = this.uiTranslation.status;
   public readonly translationProgress = this.uiTranslation.progress;
+
+  public readonly translationStateKey = computed(() => {
+    const progress = this.translationProgress();
+    if (!progress) return 'ui-translation.state-preparing';
+    return progress.phase === 'downloading' ? 'ui-translation.state-downloading' : 'ui-translation.state-applying';
+  });
   public readonly availableTargets = this.uiTranslation.availableTargets;
 
   public readonly translationEnabled = computed(() =>
@@ -59,10 +69,7 @@ export class SettingsPage implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
 
   public ngOnInit(): void {
-    const fallbackLanguage = () => this.translate.currentLang ?? this.languageList[2].code;
-    this.storageService.get('language')
-      .then((stored) => this.languages.next((stored as string) ?? fallbackLanguage()))
-      .catch(() => this.languages.next(fallbackLanguage()));
+    this.resolveSelectedLanguage();
 
     void this.uiTranslation.probeAvailability();
     this.selectedTargetLanguage = this.uiTranslation.targetLanguage();
@@ -84,14 +91,24 @@ export class SettingsPage implements OnInit {
   public languageChange(code: string): void {
     if (!code) return;
 
+    // A native language and the automatic translation are mutually exclusive.
+    // deactivate() must run before use(): it restores the pristine bundle of
+    // the CURRENT language and would otherwise overwrite the one just loaded.
+    if (this.translationEnabled()) {
+      this.uiTranslation.deactivate();
+    }
     this.languages.next(code);
     this.translate.use(code);
     void this.storageService.set('language', code);
   }
 
   public targetLanguageName(code: LanguageTag): string {
+    // Names follow the language actually displayed: the translated one once the
+    // translation is applied (the native bundle is overwritten, so `currentLang`
+    // alone would keep naming them in the native language), the native one otherwise.
+    const displayed = this.translationStatus() === 'active' ? this.uiTranslation.targetLanguage() : null;
     try {
-      return new Intl.DisplayNames([this.translate.currentLang], { type: 'language' }).of(code) ?? code;
+      return new Intl.DisplayNames([displayed ?? this.translate.currentLang], { type: 'language' }).of(code) ?? code;
     } catch {
       return code;
     }
@@ -116,11 +133,34 @@ export class SettingsPage implements OnInit {
     }
   }
 
+  public cancelTranslation(): void {
+    this.uiTranslation.deactivate();
+  }
+
   public retryTranslation(): void {
     const target = this.selectedTargetLanguage ?? this.uiTranslation.targetLanguage() ?? this.availableTargets()[0];
     if (target) {
       void this.uiTranslation.activate(target);
     }
+  }
+
+  private buildLanguageList(): { name: string; code: string }[] {
+    const loaded = this.translate.getLangs();
+    const codes = loaded.length > 0 ? loaded : DEFAULT_NATIVE_LANGUAGES;
+    return codes.map((code) => ({ code, name: LANGUAGE_NAMES[code] ?? code }));
+  }
+
+  /** The language actually shown wins over the stored one: the tenant may not have loaded the stored language. */
+  private resolveSelectedLanguage(): void {
+    const current = this.translate.currentLang;
+    if (current) {
+      this.languages.next(current);
+      return;
+    }
+    const fallbackLanguage = () => this.translate.getDefaultLang() ?? this.languageList[0].code;
+    this.storageService.get('language')
+      .then((stored) => this.languages.next((stored as string) ?? fallbackLanguage()))
+      .catch(() => this.languages.next(fallbackLanguage()));
   }
 
   public async onDeviceSelectChange(selectedDeviceId: string): Promise<void> {

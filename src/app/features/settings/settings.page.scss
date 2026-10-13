@@ -199,10 +199,8 @@
   white-space: nowrap;
 }
 
-.translation-box {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-default);
+.translation-options {
+  margin-top: 16px;
 }
 
 .translation-box__title {
@@ -232,6 +230,10 @@
   --track-background-checked: var(--neutral-medium);
   --handle-background: var(--neutral-white);
   --handle-background-checked: var(--neutral-white);
+}
+
+.translation-cancel {
+  margin-top: 8px;
 }
 
 .translation-state--progress {

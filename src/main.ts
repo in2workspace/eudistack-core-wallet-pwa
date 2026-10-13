@@ -47,13 +47,16 @@ function initializePasskeyStore(store: PasskeyStoreService): () => Promise<void>
  * activación") — not just when the Holder happens to revisit the language
  * selector page.
  *
- * Deliberately fire-and-forget: bootstrap must not block on this (up to
- * TRANSLATION_BUDGET_MS = 20s on a cache miss) — AC-11 requires the app stay
- * usable during preparation. The UI swaps to the target language reactively
- * once ready, via @ngx-translate's existing onTranslationChange subscription
- * — regardless of which page is on screen when it resolves. Must run after
- * initializeTheme so the native language is already active when
- * restoreFromPreference()'s internal activate() call reads it.
+ * Deliberately fire-and-forget: bootstrap must not block on this (the
+ * language-pack download can take a long time on a cache miss) — AC-11
+ * requires the app stay usable during preparation. The UI swaps to the target
+ * language reactively once ready, via @ngx-translate's existing
+ * onTranslationChange subscription — regardless of which page is on screen
+ * when it resolves. APP_INITIALIZERs start in provider order but run
+ * concurrently — none waits for the previous one — so ordering alone does not
+ * guarantee the theme is loaded: restoreFromPreference() awaits
+ * `ThemeService.ready` itself before reading the tenant's languages or the
+ * native language.
  */
 function restoreUiTranslation(): Promise<void> {
   const service = inject(UiTextTranslationService);
@@ -108,12 +111,14 @@ bootstrapApplication(AppComponent, {
       deps: [PasskeyStoreService],
       multi: true
     },
-    // Must run after initializeTheme (native language already active).
+    // Fire-and-forget: restoreFromPreference() reads the tenant's languages
+    // and the native language, so it awaits ThemeService.ready itself —
+    // APP_INITIALIZERs start in provider order but run concurrently, so its
+    // position after initializeTheme guarantees nothing.
     // Uses provideAppInitializer() (Angular 19+), not the legacy
     // { provide: APP_INITIALIZER, useFactory, deps, multi: true } object
     // literal used by the sibling initializers above — both resolve to the
-    // same underlying APP_INITIALIZER multi-token and run in provider-array
-    // order, so the "after initializeTheme" ordering guarantee is preserved.
+    // same underlying APP_INITIALIZER multi-token.
     provideAppInitializer(restoreUiTranslation),
     importProvidersFrom(
       TranslateModule.forRoot({
