@@ -34,6 +34,7 @@ module.exports = {
     "src/app/core/models/error/PasskeyError.ts",
     "src/app/core/spi-impl/hybrid-key-storage.provider.ts",
     "src/app/features/hybrid-onboarding/hybrid-onboarding.page.ts",
+    "src/app/shared/helpers/pending-deep-link.ts",
     "src/app/features/signing/sign-prompt.component.ts",
     "src/app/features/hybrid-keymanager/hybrid-kdf.const.ts",
     "src/app/features/hybrid-keymanager/hybrid-key-enrollment.service.ts",

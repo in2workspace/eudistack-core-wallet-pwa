@@ -4,6 +4,7 @@ import { AlertController } from '@ionic/angular';
 import { TranslateModule } from '@ngx-translate/core';
 import { of, throwError } from 'rxjs';
 import { HybridOnboardingPage } from './hybrid-onboarding.page';
+import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 import { HybridAuditService } from 'src/app/core/services/hybrid-audit.service';
 import { HybridOnboardingService } from 'src/app/core/services/hybrid-onboarding.service';
 import { TelemetryService } from 'src/app/core/services/telemetry.service';
@@ -18,6 +19,7 @@ describe('HybridOnboardingPage', () => {
   let alertController: { create: jest.Mock };
 
   beforeEach(async () => {
+    sessionStorage.clear();
     router = { navigateByUrl: jest.fn() };
     hybridOnboarding = { markAccepted: jest.fn(), isAccepted: jest.fn() };
     hybridAudit = { recordConstraintAccepted: jest.fn().mockReturnValue(of(undefined)) };
@@ -51,6 +53,15 @@ describe('HybridOnboardingPage', () => {
     expect(telemetry.track).toHaveBeenCalledWith('hybrid_onboarding_accepted');
     expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs');
     expect(hybridAudit.recordConstraintAccepted).toHaveBeenCalled();
+  });
+
+  it('resumes the pending deep link instead of /tabs after accepting', () => {
+    sessionStorage.setItem(PENDING_DEEP_LINK_KEY, '/tabs/credentials?credentialOfferUri=abc');
+
+    component.accept();
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs/credentials?credentialOfferUri=abc');
+    expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBeNull();
   });
 
   it('navigates even when audit call fails', () => {
