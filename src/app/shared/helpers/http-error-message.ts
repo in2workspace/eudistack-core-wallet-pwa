@@ -42,6 +42,18 @@ export function defaultHttpToTranslationKey(http: HttpErrorResponse): string {
   return 'errors.default';
 }
 
+/**
+ * True when the verifier rejected the presentation because the credential is revoked
+ * (HTTP 403 whose Problem Details `type` is `credential_revoked`).
+ */
+export function isCredentialRevokedResponse(e: unknown): boolean {
+  return (
+    e instanceof HttpErrorResponse &&
+    e.status === 403 &&
+    parseApiError(e.error)?.type === API_ERROR_TYPE.CREDENTIAL_REVOKED
+  );
+}
+
 export function wrapOid4vciHttpError(
   e: unknown,
   technicalBaseMessage: string,

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { defaultHttpToTranslationKey, mapApiError, wrapOid4vciHttpError, wrapOid4vpHttpError } from './http-error-message';
+import { defaultHttpToTranslationKey, isCredentialRevokedResponse, mapApiError, wrapOid4vciHttpError, wrapOid4vpHttpError } from './http-error-message';
 import { CredentialAlreadyIssuedError, CredentialOfferExpiredError, CredentialOfferNotFoundError, Oid4vciError } from '../../core/models/error/Oid4vciError';
 import { Oid4vpError } from '../../core/models/error/Oid4vpError';
 
@@ -188,6 +188,36 @@ describe('http-error-message helper', () => {
       const thrown = captureThrown(() => wrapOid4vpHttpError(new HttpErrorResponse({ status: 404 }), 'x')) as Oid4vpError;
 
       expect(thrown.translationKey).toBe('errors.resource-not-found');
+    });
+  });
+
+  describe('isCredentialRevokedResponse', () => {
+    const body = '{"type":"credential_revoked","title":"Verifiable presentation failed","status":403,"detail":"The credential has been revoked"}';
+
+    it('detects a 403 revoked body received as text', () => {
+      expect(isCredentialRevokedResponse(new HttpErrorResponse({ status: 403, error: body }))).toBe(true);
+    });
+
+    it('detects a 403 revoked body received as an object', () => {
+      expect(isCredentialRevokedResponse(new HttpErrorResponse({ status: 403, error: JSON.parse(body) }))).toBe(true);
+    });
+
+    it('ignores a 403 that only mentions revocation in its detail', () => {
+      const other = '{"type":"wallet_attestation_revoked","detail":"The credential has been revoked"}';
+      expect(isCredentialRevokedResponse(new HttpErrorResponse({ status: 403, error: other }))).toBe(false);
+    });
+
+    it('ignores a non-JSON 403 body', () => {
+      expect(isCredentialRevokedResponse(new HttpErrorResponse({ status: 403, error: 'credential_revoked' }))).toBe(false);
+    });
+
+    it('ignores other 403 errors', () => {
+      expect(isCredentialRevokedResponse(new HttpErrorResponse({ status: 403, error: '{"type":"issuer_not_trusted"}' }))).toBe(false);
+    });
+
+    it('ignores revoked text on non-403 statuses and non-HTTP errors', () => {
+      expect(isCredentialRevokedResponse(new HttpErrorResponse({ status: 500, error: body }))).toBe(false);
+      expect(isCredentialRevokedResponse(new Error('boom'))).toBe(false);
     });
   });
 });
