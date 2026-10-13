@@ -7,6 +7,7 @@ import { catchError, of } from 'rxjs';
 import { HybridAuditService } from 'src/app/core/services/hybrid-audit.service';
 import { HybridOnboardingService } from 'src/app/core/services/hybrid-onboarding.service';
 import { TelemetryService } from 'src/app/core/services/telemetry.service';
+import { takePendingDeepLink } from 'src/app/shared/helpers/pending-deep-link';
 
 @Component({
   selector: 'app-hybrid-onboarding',
@@ -37,7 +38,7 @@ export class HybridOnboardingPage implements OnInit {
   accept(): void {
     this.hybridOnboarding.markAccepted();
     this.telemetry.track('hybrid_onboarding_accepted');
-    this.router.navigateByUrl('/tabs');
+    this.router.navigateByUrl(takePendingDeepLink() ?? '/tabs');
     this.hybridAudit.recordConstraintAccepted().pipe(catchError(() => of(null))).subscribe();
   }
 
