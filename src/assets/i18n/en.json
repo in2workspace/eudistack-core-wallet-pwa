@@ -469,6 +469,7 @@
     "resource-not-found": "The requested resource was not found. Please try again.",
     "server-error": "The server encountered an error. Please try again later.",
     "verifier-post-failed": "We couldn’t send the login response. Please try again.",
+    "credential-revoked": "The selected credential has been revoked and is not valid for login.",
     "signature-failed": "We couldn’t sign the presentation. Please try again.",
     "failed-qr-process": "We couldn't process the QR code. It might be invalid or already used. Please refresh it. If the problem persists, report it to {{supportLink}}.",
     "invalid-qr": "The presented QR code is not valid",
