@@ -29,6 +29,10 @@ export class MenuComponent {
     return !(snapshot?.mode === 'browser' && snapshot.source === 'discovery');
   });
 
+  public close(): void {
+    this.popOverController.dismiss();
+  }
+
   public logoutOnKeydown(event: KeyboardEvent): void {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();

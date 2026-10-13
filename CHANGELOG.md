@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Burger menu stayed open after navigating**: choosing Activity, Connected devices, Settings or About in the header menu navigated to the page but left the popover open, forcing the user to close it manually. Those entries now dismiss the popover on click (new `MenuComponent.close()`), as Log out already did. New unit tests cover that each navigation entry dismisses the popover.
+
 - **Duplicate error alerts during credential activation**: `CredentialsPage` now avoids stacking generic "Failed QR" alerts when the underlying OID4VCI engine has already presented a specific, more informative error modal to the user.
 
 ### Fixed

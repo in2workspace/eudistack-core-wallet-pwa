@@ -118,6 +118,12 @@ describe('MenuComponent', () => {
       expect(mockRouter.navigateByUrl).toHaveBeenCalledTimes(1);
     });
 
+    it.each([...navigationItems, { label: 'menu.about', route: '/tabs/about' }])('should dismiss the popover when $label is clicked', ({ label }) => {
+      menuItemByLabel(label)!.nativeElement.click();
+
+      expect(popoverController.dismiss).toHaveBeenCalledTimes(1);
+    });
+
     it('should not navigate on load', () => {
       expect(mockRouter.navigateByUrl).not.toHaveBeenCalled();
     });
