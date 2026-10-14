@@ -1,821 +1,356 @@
-import { Injectable } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Router } from '@angular/router';
-import { firstValueFrom, of } from 'rxjs';
-import { AuthService, isRefreshTokenRejected, RemoteAuthService, TokenPairResponse } from './auth.service';
+import { firstValueFrom } from 'rxjs';
+import { AuthService, isRefreshTokenRejected, RemoteAuthService, SESSION_REFRESH_LOCK } from './auth.service';
 import { AUTH_SERVICE_PROVIDER } from './auth-service.provider';
-import { PasskeyStoreService } from './passkey-store.service';
-import { PasskeyPrfService } from './passkey-prf.service';
-import { WalletDiscoveryService } from './wallet-discovery.service';
-import { WALLET_DISCOVERY_GATEWAY } from '../gateways/wallet-discovery.gateway';
 import { LocalAuthService } from './local-auth.service';
-import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
-import { TenantService } from './tenant.service';
-import { ToastServiceHandler } from '../../shared/services/toast.service';
-import { environment } from 'src/environments/environment';
+import { WalletDiscoveryService } from './wallet-discovery.service';
+import { RegistrationTicketService } from './registration-ticket.service';
+import { SessionPasskeyService } from './session-passkey.service';
+import {
+  accessToken,
+  answerStartupRefresh,
+  AUTH_BASE,
+  AuthHarness,
+  BroadcastChannelMock,
+  createAuthHarness,
+  passkeySession,
+  session,
+  settle,
+} from './auth.service.testing';
 
-class MockToastServiceHandler {
-  showErrorAlert(_message: string) { return of(undefined); }
-  showErrorAlertByTranslateLabel(_message: string) { return of(undefined); }
-  showInfoAlertByTranslateLabel(_message: string) { return of(undefined); }
-}
-
-/**
- * Minimal stub for IssuerMetadataCacheService. RemoteAuthService schedules a
- * `fetchAndCacheIfMissing` after a successful token exchange (login-time
- * metadata preload). Tests don't exercise that path, so a resolved-promise
- * stub keeps the constructor happy and the test surface focused.
- */
-function issuerMetadataCacheStub(): Pick<IssuerMetadataCacheService, 'fetchAndCacheIfMissing'> {
-  return { fetchAndCacheIfMissing: jest.fn().mockResolvedValue(undefined) };
-}
-
-/**
- * Stub for TenantService. RemoteAuthService resolves the issuer base URL via
- * `resolveIssuerBaseUrl()` before preloading metadata; a fixed resolved value
- * keeps that path from issuing a real HTTP request to custom-domain.json.
- */
-function tenantServiceStub(): Pick<TenantService, 'resolveIssuerBaseUrl'> {
-  return { resolveIssuerBaseUrl: jest.fn().mockResolvedValue('https://issuer.example/issuer') };
-}
-
-const AUTH_BASE = `${environment.server_url}/api/v1/auth`;
-
-class BroadcastChannelMock {
-  name: string;
-  onmessage: ((this: BroadcastChannel, ev: MessageEvent) => any) | null = null;
-  constructor(name: string) {
-    this.name = name;
-  }
-  postMessage(_message: any) {}
-  close() {}
-}
-
-describe('RemoteAuthService', () => {
+describe('RemoteAuthService (EUD-8)', () => {
+  let harness: AuthHarness;
   let service: RemoteAuthService;
-  let httpMock: HttpTestingController;
-  let routerMock: jest.Mocked<Router>;
-  let passkeyStoreMock: jest.Mocked<Pick<PasskeyStoreService, 'hasPasskey'>>;
-  let toastServiceHandlerMock: MockToastServiceHandler;
-  let prfServiceMock: { getCredentialId: jest.Mock; assertLocalPasskey: jest.Mock };
-
-  beforeAll(() => {
-    (globalThis as any).BroadcastChannel = BroadcastChannelMock;
-  });
 
   beforeEach(() => {
     localStorage.clear();
-
-    routerMock = {
-      navigate: jest.fn(),
-    } as unknown as jest.Mocked<Router>;
-
-    passkeyStoreMock = {
-      hasPasskey: jest.fn().mockReturnValue(false),
-    };
-
-    toastServiceHandlerMock = new MockToastServiceHandler();
-
-    prfServiceMock = {
-      getCredentialId: jest.fn().mockReturnValue('cred-local-1'),
-      assertLocalPasskey: jest.fn().mockResolvedValue(undefined),
-    };
-
-    TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      providers: [
-        RemoteAuthService,
-        { provide: Router, useValue: routerMock },
-        { provide: PasskeyStoreService, useValue: passkeyStoreMock },
-        { provide: IssuerMetadataCacheService, useValue: issuerMetadataCacheStub() },
-        { provide: TenantService, useValue: tenantServiceStub() },
-        { provide: ToastServiceHandler, useValue: toastServiceHandlerMock },
-        { provide: PasskeyPrfService, useValue: prfServiceMock },
-      ],
-    });
-
-    service = TestBed.inject(RemoteAuthService);
-    httpMock = TestBed.inject(HttpTestingController);
+    sessionStorage.clear();
+    harness = createAuthHarness();
+    service = harness.service;
   });
 
   afterEach(() => {
-    jest.useRealTimers();
-    httpMock.verify();
-    localStorage.clear();
+    service.dispose();
+    harness.http.verify();
+    TestBed.resetTestingModule();
   });
 
-  it('should be created', () => {
-    expect(service).toBeTruthy();
-  });
+  describe('start-up resume (FR-19)', () => {
+    it('continues the session of the refresh cookie and loads its attestations', async () => {
+      const resumed = service.resumeSession();
+      await answerStartupRefresh(harness, session());
 
-  describe('register', () => {
-    it('should POST to /register', (done) => {
-      service.register('test@example.com').subscribe((res) => {
-        expect(res.message).toBe('ok');
-        done();
-      });
-
-      const req = httpMock.expectOne(`${AUTH_BASE}/register`);
-      expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ email: 'test@example.com', mode: 'register' });
-      req.flush({ message: 'ok' });
-    });
-  });
-
-  describe('verifyEmail', () => {
-    it('should POST to /verify-email and store tokens', (done) => {
-      const tokenResponse: TokenPairResponse = {
-        accessToken: 'eyJhbGciOiJSUzI1NiJ9.' + btoa(JSON.stringify({ sub: 'uuid-1', email: 'user@test.com' })) + '.sig',
-        refreshToken: 'refresh-xyz',
-        expiresIn: 900,
-      };
-
-      service.verifyEmail('test@example.com', '123456').subscribe(() => {
-        expect(service.getToken()).toBe(tokenResponse.accessToken);
-        expect(service.isLoggedIn()).toBe(true);
-        done();
-      });
-
-      const req = httpMock.expectOne(`${AUTH_BASE}/verify-email`);
-      expect(req.request.body).toEqual({ email: 'test@example.com', code: '123456' });
-      req.flush(tokenResponse);
-    });
-  });
-
-  describe('logout', () => {
-    it('clears access token and authenticated state without HTTP call', (done) => {
-      const broadcastSpy = jest.spyOn((service as any).broadcastChannel, 'postMessage');
-      (service as any).refreshTokenValue = 'refresh-123';
-      (service as any).accessToken = 'access-456';
-      (service as any).authenticated$.next(true);
-      localStorage.setItem('wallet_refresh_token', 'refresh-123');
-
-      service.logout().subscribe(() => {
-        expect(service.getToken()).toBe('');
-        expect(service.isLoggedIn()).toBe(false);
-        expect(broadcastSpy).toHaveBeenCalledWith('softWalletLogout');
-        // refreshToken must be preserved so the user only needs their passkey to resume
-        expect((service as any).refreshTokenValue).toBe('refresh-123');
-        expect(localStorage.getItem('wallet_refresh_token')).toBe('refresh-123');
-        done();
-      });
-      httpMock.expectNone(`${AUTH_BASE}/logout`);
+      expect(await resumed).toBe(true);
+      expect(service.isLoggedIn()).toBe(true);
+      expect(service.getToken()).toBe(accessToken());
+      expect(harness.sessionData.sessionStarted).toHaveBeenCalled();
+      expect(await firstValueFrom(service.getName$())).toBe('ana@example.com');
     });
 
-    it('preserves refresh token when logging out with no active access token', (done) => {
-      (service as any).refreshTokenValue = 'stored-rt';
-      localStorage.setItem('wallet_refresh_token', 'stored-rt');
+    it('marks the service initialized only once the attempt has settled', async () => {
+      const initialized: boolean[] = [];
+      service.isInitialized$().subscribe(value => initialized.push(value));
 
-      service.logout().subscribe(() => {
-        expect(service.isLoggedIn()).toBe(false);
-        expect((service as any).refreshTokenValue).toBe('stored-rt');
-        expect(localStorage.getItem('wallet_refresh_token')).toBe('stored-rt');
-        done();
-      });
+      await answerStartupRefresh(harness, session());
+
+      expect(initialized).toEqual([false, true]);
     });
-  });
 
-  describe('loadStoredTokens', () => {
-    it('keeps refresh token in memory but does not auto-authenticate', () => {
-      localStorage.setItem('wallet_refresh_token', 'persisted-rt');
+    it('leaves the user signed out when there is no session, and drops the local attestations of the ended one', async () => {
+      const resumed = service.resumeSession();
+      await answerStartupRefresh(harness, 'rejected');
 
-      (service as any).loadStoredTokens();
-
-      httpMock.expectNone(`${AUTH_BASE}/refresh`);
+      expect(await resumed).toBe(false);
       expect(service.isLoggedIn()).toBe(false);
-      expect((service as any).refreshTokenValue).toBe('persisted-rt');
+      expect(harness.sessionData.sessionEnded).toHaveBeenCalled();
+      expect(harness.router.navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('sends the renewal with no body: the refresh token travels only in the cookie', async () => {
+      await settle();
+      const request = harness.http.expectOne(`${AUTH_BASE}/refresh`);
+
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toBeNull();
+      request.flush(session());
+      await settle();
+    });
+
+    it('never stores a token in localStorage or sessionStorage', async () => {
+      await answerStartupRefresh(harness, session());
+
+      expect(localStorage.length).toBe(0);
+      expect(sessionStorage.length).toBe(0);
+    });
+  });
+
+  describe('renewal', () => {
+    beforeEach(async () => answerStartupRefresh(harness, 'rejected'));
+
+    it('shares one renewal between concurrent callers in the tab', async () => {
+      const first = firstValueFrom(service.refreshAccessToken());
+      const second = firstValueFrom(service.refreshAccessToken());
+      await settle();
+
+      harness.http.expectOne(`${AUTH_BASE}/refresh`).flush(session());
+
+      await expect(Promise.all([first, second])).resolves.toHaveLength(2);
+    });
+
+    it('serializes renewals across tabs with a Web Lock, so the same cookie is never presented twice', async () => {
+      const request = jest.fn((_name: string, callback: () => Promise<unknown>) => callback());
+      Object.defineProperty(navigator, 'locks', { value: { request }, configurable: true });
+      try {
+        const renewal = firstValueFrom(service.refreshAccessToken());
+        await settle();
+        harness.http.expectOne(`${AUTH_BASE}/refresh`).flush(session());
+        await renewal;
+
+        expect(request).toHaveBeenCalledWith(SESSION_REFRESH_LOCK, expect.any(Function));
+      } finally {
+        delete (navigator as unknown as { locks?: unknown }).locks;
+      }
+    });
+
+    it('a rejected renewal goes to the access screen with the session-expired notice (FR-18)', async () => {
+      const renewal = firstValueFrom(service.refreshAccessToken()).catch(err => err);
+      await settle();
+      harness.http.expectOne(`${AUTH_BASE}/refresh`)
+        .flush({ type: 'invalid_session', status: 401 }, { status: 401, statusText: 'Unauthorized' });
+
+      expect(await renewal).toBeInstanceOf(HttpErrorResponse);
+      expect(harness.router.navigateByUrl).toHaveBeenCalledWith('/auth/access');
+      expect(service.consumeSessionExpiredNotice()).toBe(true);
+      expect(service.consumeSessionExpiredNotice()).toBe(false);
+    });
+
+    it('a transient failure (offline) keeps the session', async () => {
+      service['applySession'](session());
+      const renewal = firstValueFrom(service.refreshAccessToken()).catch(err => err);
+      await settle();
+      harness.http.expectOne(`${AUTH_BASE}/refresh`).error(new ProgressEvent('offline'), { status: 0 });
+      await renewal;
+
+      expect(service.isLoggedIn()).toBe(true);
+      expect(harness.router.navigateByUrl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('email verification (FR-03, FR-16)', () => {
+    beforeEach(async () => answerStartupRefresh(harness, 'rejected'));
+
+    it('asks for a code with the email only', async () => {
+      const sent = firstValueFrom(service.requestEmailCode('ana@example.com'));
+      const request = harness.http.expectOne(`${AUTH_BASE}/register`);
+      request.flush(null, { status: 202, statusText: 'Accepted' });
+      await sent;
+
+      expect(request.request.body).toEqual({ email: 'ana@example.com' });
+    });
+
+    it('keeps the registration ticket in memory and opens no session', async () => {
+      const verified = firstValueFrom(service.verifyEmailCode('ana@example.com', '123456'));
+      harness.http.expectOne(`${AUTH_BASE}/verify-email`)
+        .flush({ registrationTicket: 'rt_1', expiresIn: 300, hasPasskeys: true });
+
+      expect(await verified).toEqual({ hasPasskeys: true });
+      expect(TestBed.inject(RegistrationTicketService).get()).toBe('rt_1');
+      expect(service.isLoggedIn()).toBe(false);
+      expect(service.getToken()).toBe('');
+      expect(localStorage.length + sessionStorage.length).toBe(0);
+    });
+
+    it('forgets the ticket when leaving the email flow', () => {
+      TestBed.inject(RegistrationTicketService).set('rt_1', 300);
+
+      service.leaveEmailFlow();
+
+      expect(TestBed.inject(RegistrationTicketService).get()).toBeNull();
+    });
+  });
+
+  describe('sessions opened with a verified passkey', () => {
+    beforeEach(async () => answerStartupRefresh(harness, 'rejected'));
+
+    it('opens the session bound to the passkey, consumes the ticket and loads the attestations (FR-15)', async () => {
+      TestBed.inject(RegistrationTicketService).set('rt_1', 300);
+      harness.ceremony.signIn.mockResolvedValue(passkeySession());
+
+      await service.signInWithPasskey();
+
+      expect(service.isLoggedIn()).toBe(true);
+      expect(TestBed.inject(SessionPasskeyService).passkeyId()).toBe('pk-1');
+      expect(TestBed.inject(RegistrationTicketService).get()).toBeNull();
+      expect(harness.sessionData.sessionStarted).toHaveBeenCalled();
+    });
+
+    it('signals the accepted passkeys and the account email to the passkey manager (FR-17)', async () => {
+      harness.ceremony.signIn.mockResolvedValue(passkeySession());
+
+      await service.signInWithPasskey();
+      await settle();
+
+      expect(harness.webAuthn.signalAllAcceptedCredentials)
+        .toHaveBeenCalledWith('sandbox.stg.eudistack.net', 'dXNlcg', ['cred-1']);
+      expect(harness.webAuthn.signalCurrentUserDetails)
+        .toHaveBeenCalledWith('sandbox.stg.eudistack.net', 'dXNlcg', 'ana@example.com');
+    });
+
+    it('registers a new passkey and opens the session with it', async () => {
+      harness.ceremony.register.mockResolvedValue(passkeySession({ credentialId: 'cred-new' }));
+
+      await service.registerPasskey('Mac');
+
+      expect(harness.ceremony.register).toHaveBeenCalledWith('Mac');
+      expect(service.isLoggedIn()).toBe(true);
+    });
+
+    it('opens no session when the ceremony fails', async () => {
+      harness.ceremony.signIn.mockRejectedValue(new Error('rejected'));
+
+      await expect(service.signInWithPasskey()).rejects.toThrow('rejected');
+      expect(service.isLoggedIn()).toBe(false);
+    });
+
+    it('ends every other session of the account (FR-11)', async () => {
+      const ended = firstValueFrom(service.endOtherSessions(), { defaultValue: undefined });
+      const request = harness.http.expectOne(`${AUTH_BASE}/sessions/others`);
+      request.flush(null, { status: 204, statusText: 'No Content' });
+      await ended;
+
+      expect(request.request.method).toBe('DELETE');
+    });
+  });
+
+  describe('logout (FR-20)', () => {
+    beforeEach(async () => answerStartupRefresh(harness, session()));
+
+    it('ends the session in the service, then locally', async () => {
+      const done = firstValueFrom(service.logout(), { defaultValue: undefined });
+      const request = harness.http.expectOne(`${AUTH_BASE}/sessions/current`);
+      expect(request.request.method).toBe('DELETE');
+      request.flush(null, { status: 204, statusText: 'No Content' });
+      await done;
+
+      expect(service.isLoggedIn()).toBe(false);
+      expect(service.getToken()).toBe('');
+      expect(harness.sessionData.sessionEnded).toHaveBeenCalled();
+    });
+
+    it('still closes the session locally when the service cannot be reached', async () => {
+      const done = firstValueFrom(service.logout(), { defaultValue: undefined });
+      harness.http.expectOne(`${AUTH_BASE}/sessions/current`).error(new ProgressEvent('offline'), { status: 0 });
+      await done;
+
+      expect(service.isLoggedIn()).toBe(false);
+    });
+
+    it('renews an access token left to expire before ending the session', async () => {
+      service['accessToken'] = null;
+
+      const done = firstValueFrom(service.logout(), { defaultValue: undefined });
+      await settle();
+      harness.http.expectOne(`${AUTH_BASE}/refresh`).flush(session());
+      await settle();
+      harness.http.expectOne(`${AUTH_BASE}/sessions/current`).flush(null, { status: 204, statusText: 'No Content' });
+      await done;
+
+      expect(service.isLoggedIn()).toBe(false);
+    });
+
+    it('takes the other tabs of the container to the access screen too', async () => {
+      const otherTab = new BroadcastChannelMock('auth');
+
+      const done = firstValueFrom(service.logout(), { defaultValue: undefined });
+      const posted = jest.spyOn(BroadcastChannelMock.prototype, 'postMessage');
+      harness.http.expectOne(`${AUTH_BASE}/sessions/current`).flush(null, { status: 204, statusText: 'No Content' });
+      await done;
+
+      expect(posted).toHaveBeenCalledWith('walletSessionEnded');
+      posted.mockRestore();
+      otherTab.close();
+    });
+  });
+
+  describe('other tabs', () => {
+    beforeEach(async () => answerStartupRefresh(harness, session()));
+
+    it('ends this tab session when another tab ends it', () => {
+      new BroadcastChannelMock('auth').postMessage('walletSessionEnded');
+
+      expect(service.isLoggedIn()).toBe(false);
+      expect(harness.router.navigateByUrl).toHaveBeenCalledWith('/auth/access');
+    });
+
+    it('resumes the new session when another tab opens one (FR-21)', async () => {
+      new BroadcastChannelMock('auth').postMessage('walletSessionOpened');
+      expect(service.getToken()).toBe('');
+
+      await settle();
+      harness.http.expectOne(`${AUTH_BASE}/refresh`).flush(session({ accessToken: accessToken('bea@example.com') }));
+      await settle();
+
+      expect(service.getToken()).toBe(accessToken('bea@example.com'));
+      expect(harness.sessionData.sessionStarted).toHaveBeenCalledTimes(2);
     });
   });
 
   describe('forceLogout', () => {
-    it('should clear state and navigate to register when no passkey', () => {
-      (service as any).accessToken = 'some-token';
-      (service as any).authenticated$.next(true);
-      passkeyStoreMock.hasPasskey.mockReturnValue(false);
+    beforeEach(async () => answerStartupRefresh(harness, session()));
 
+    it('ends the session and goes to the access screen without the expired notice by default', () => {
       service.forceLogout();
 
-      expect(service.getToken()).toBe('');
       expect(service.isLoggedIn()).toBe(false);
-      expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/register']);
+      expect(harness.router.navigateByUrl).toHaveBeenCalledWith('/auth/access');
+      expect(service.consumeSessionExpiredNotice()).toBe(false);
     });
 
-    it('should clear state and navigate to login when has passkey', () => {
-      (service as any).accessToken = 'some-token';
-      (service as any).authenticated$.next(true);
-      passkeyStoreMock.hasPasskey.mockReturnValue(true);
-
-      service.forceLogout();
-
-      expect(service.getToken()).toBe('');
-      expect(service.isLoggedIn()).toBe(false);
-      expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/login']);
-    });
-
-    it('forceLogout_keepRefreshToken_endsSessionKeepingTheDeviceTokenAndGoesToLogin', () => {
-      // Arrange
-      (service as any).accessToken = 'some-token';
-      (service as any).refreshTokenValue = 'device-refresh';
-      (service as any).authenticated$.next(true);
-      localStorage.setItem('wallet_refresh_token', 'device-refresh');
-      passkeyStoreMock.hasPasskey.mockReturnValue(false);
-
-      // Act
+    it('ignores keepRefreshToken: the cookie is not the app\'s to keep', () => {
       service.forceLogout({ keepRefreshToken: true });
 
-      // Assert
-      expect(service.getToken()).toBe('');
       expect(service.isLoggedIn()).toBe(false);
-      expect(service.hasRefreshToken()).toBe(true);
-      expect(localStorage.getItem('wallet_refresh_token')).toBe('device-refresh');
-      expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/login']);
-    });
-  });
-
-  describe('getToken', () => {
-    it('should return empty string when not authenticated', () => {
-      expect(service.getToken()).toBe('');
-    });
-  });
-
-  describe('refreshAccessToken', () => {
-    it('should POST to /refresh and update tokens on success', (done) => {
-      const tokenResponse: TokenPairResponse = {
-        accessToken: 'eyJhbGciOiJSUzI1NiJ9.' + btoa(JSON.stringify({ sub: 'uuid-1' })) + '.sig',
-        refreshToken: 'new-refresh',
-        expiresIn: 900,
-      };
-      (service as any).refreshTokenValue = 'old-refresh';
-
-      service.refreshAccessToken().subscribe(() => {
-        expect(service.getToken()).toBe(tokenResponse.accessToken);
-        expect((service as any).refreshTokenValue).toBe('new-refresh');
-        expect(localStorage.getItem('wallet_refresh_token')).toBe('new-refresh');
-        done();
-      });
-
-      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
-      expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ refreshToken: 'old-refresh' });
-      req.flush(tokenResponse);
-    });
-
-    it('should trigger forceLogout and navigation by default on 401 failure', (done) => {
-      (service as any).refreshTokenValue = 'stale-rt';
-      (service as any).authenticated$.next(true);
-      passkeyStoreMock.hasPasskey.mockReturnValue(true);
-
-      service.refreshAccessToken().subscribe({
-        error: () => {
-          expect(service.getToken()).toBe('');
-          expect(service.isLoggedIn()).toBe(false);
-          expect(localStorage.getItem('wallet_refresh_token')).toBeNull();
-          expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/login']);
-          done();
-        }
-      });
-
-      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
-      req.flush({ detail: 'invalid_grant' }, { status: 401, statusText: 'Unauthorized' });
-    });
-
-    it('should ONLY clear state without navigation when onAuthFailure is "clear-only"', (done) => {
-      (service as any).refreshTokenValue = 'stale-rt';
-      (service as any).authenticated$.next(true);
-      localStorage.setItem('wallet_refresh_token', 'stale-rt');
-
-      service.refreshAccessToken({ onAuthFailure: 'clear-only' }).subscribe({
-        error: () => {
-          expect(service.getToken()).toBe('');
-          expect(service.isLoggedIn()).toBe(false);
-          expect(localStorage.getItem('wallet_refresh_token')).toBeNull();
-          expect(routerMock.navigate).not.toHaveBeenCalled();
-          done();
-        }
-      });
-
-      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
-      req.flush({ detail: 'invalid_grant' }, { status: 401, statusText: 'Unauthorized' });
-    });
-
-    it('clears refresh timer in clearState and softClearState', () => {
-      const timer = setTimeout(() => {}, 60_000);
-      (service as any).refreshTimer = timer;
-
-      (service as any).softClearState();
-      expect((service as any).refreshTimer).toBeNull();
-
-      const timer2 = setTimeout(() => {}, 60_000);
-      (service as any).refreshTimer = timer2;
-      (service as any).clearState();
-      expect((service as any).refreshTimer).toBeNull();
-    });
-
-    it('returns error if refreshAccessToken is called without a token', (done) => {
-      (service as any).refreshTokenValue = null;
-      service.refreshAccessToken().subscribe({
-        error: (err) => {
-          expect(err.message).toBe('No refresh token');
-          done();
-        }
-      });
-    });
-
-    it('handles cross-tab logout messages via BroadcastChannel (forceLogout)', () => {
-      const clearSpy = jest.spyOn(service as any, 'clearState');
-      const navigateSpy = jest.spyOn(routerMock, 'navigate');
-      passkeyStoreMock.hasPasskey.mockReturnValue(true);
-
-      // Simulate forced logout message
-      const channel = (service as any).broadcastChannel;
-      channel.onmessage({ data: 'forceWalletLogout' });
-
-      expect(clearSpy).toHaveBeenCalled();
-      expect(navigateSpy).toHaveBeenCalledWith(['/auth/login']);
-    });
-
-    it('handles cross-tab logout messages via BroadcastChannel (forceLogout) when no passkey', () => {
-      const clearSpy = jest.spyOn(service as any, 'clearState');
-      const navigateSpy = jest.spyOn(routerMock, 'navigate');
-      passkeyStoreMock.hasPasskey.mockReturnValue(false);
-
-      const channel = (service as any).broadcastChannel;
-      channel.onmessage({ data: 'forceWalletLogout' });
-
-      expect(clearSpy).toHaveBeenCalled();
-      expect(navigateSpy).toHaveBeenCalledWith(['/auth/register']);
-    });
-
-    it('listenToCrossTabLogout: returns if disposed', () => {
-      const clearSpy = jest.spyOn(service as any, 'clearState');
-      service.dispose();
-
-      const channel = (service as any).broadcastChannel;
-      channel.onmessage({ data: 'forceWalletLogout' });
-
-      expect(clearSpy).not.toHaveBeenCalled();
-    });
-
-    it('handles cross-tab logout messages via BroadcastChannel (softWalletLogout)', () => {
-      const softClearSpy = jest.spyOn(service as any, 'softClearState');
-      const navigateSpy = jest.spyOn(routerMock, 'navigate');
-
-      const channel = (service as any).broadcastChannel;
-      channel.onmessage({ data: 'softWalletLogout' });
-
-      expect(softClearSpy).toHaveBeenCalled();
-      expect(navigateSpy).toHaveBeenCalledWith(['/auth/login']);
-    });
-  });
-
-  describe('getName$', () => {
-    it('should emit empty string initially', (done) => {
-      service.getName$().subscribe((name) => {
-        expect(name).toBe('');
-        done();
-      });
-    });
-  });
-
-  describe('cross-tab logout', () => {
-    it('should listen to broadcast channel messages', () => {
-      const channel = (service as any).broadcastChannel;
-      expect(channel.onmessage).toBeTruthy();
-    });
-  });
-
-  it('should close broadcast channel on destroy', () => {
-    const closeSpy = jest.spyOn((service as any).broadcastChannel, 'close');
-    service.ngOnDestroy();
-    expect(closeSpy).toHaveBeenCalled();
-  });
-
-  describe('dispose', () => {
-    it('sets disposed flag, clears refresh timer and closes broadcast channel', () => {
-      const closeSpy = jest.spyOn((service as any).broadcastChannel, 'close');
-      const timer = setTimeout(() => {}, 60_000);
-      (service as any).refreshTimer = timer;
-
-      service.dispose();
-
-      expect((service as any).disposed).toBe(true);
-      expect((service as any).refreshTimer).toBeNull();
-      expect(closeSpy).toHaveBeenCalled();
-    });
-
-    it('is idempotent — calling twice does not throw', () => {
-      const closeSpy = jest.spyOn((service as any).broadcastChannel, 'close');
-
-      expect(() => {
-        service.dispose();
-        service.dispose();
-      }).not.toThrow();
-
-      expect(closeSpy).toHaveBeenCalledTimes(1);
-    });
-
-    it('after dispose(), refresh failure does not trigger forceLogout or navigation', () => {
-      (service as any).refreshTokenValue = 'refresh-abc';
-      service.dispose();
-
-      service.refreshAccessToken().subscribe({ error: () => {} });
-
-      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
-      req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
-
-      expect(routerMock.navigate).not.toHaveBeenCalled();
-    });
-
-    it('ngOnDestroy() delegates to dispose()', () => {
-      const disposeSpy = jest.spyOn(service, 'dispose');
-      service.ngOnDestroy();
-      expect(disposeSpy).toHaveBeenCalled();
-    });
-
-    describe('Coverage improvements', () => {
-      it('handleTokenResponse: uses name if email is missing in JWT payload', (done) => {
-        const payload = { name: 'John Doe' };
-        const token = `abc.${btoa(JSON.stringify(payload))}.xyz`;
-
-        (service as any).handleTokenResponse({
-          accessToken: token,
-          refreshToken: 'ref',
-          expiresIn: 3600
-        });
-
-        service.getName$().subscribe(name => {
-          expect(name).toBe('John Doe');
-          done();
-        });
-      });
-
-      it('handleTokenResponse: uses empty string if both email and name are missing', (done) => {
-        const payload = {};
-        const token = `abc.${btoa(JSON.stringify(payload))}.xyz`;
-
-        (service as any).handleTokenResponse({
-          accessToken: token,
-          refreshToken: 'ref',
-          expiresIn: 3600
-        });
-
-        service.getName$().subscribe(name => {
-          expect(name).toBe('');
-          done();
-        });
-      });
-
-      it('handleTokenResponse: handles malformed JWT payload', (done) => {
-        const token = `abc.invalid-base64.xyz`;
-        (service as any).handleTokenResponse({
-          accessToken: token,
-          refreshToken: 'ref',
-          expiresIn: 3600
-        });
-        service.getName$().subscribe(name => {
-          expect(name).toBe('');
-          done();
-        });
-      });
-
-      it('isLoggedIn$ and isInitialized$ observables', (done) => {
-        let count = 0;
-        service.isLoggedIn$().subscribe(val => {
-          if (count === 0) expect(val).toBe(false);
-          if (count === 1) {
-            expect(val).toBe(true);
-            done();
-          }
-          count++;
-        });
-        service.isInitialized$().subscribe(val => expect(val).toBe(true));
-        (service as any).authenticated$.next(true);
-      });
-
-      it('handleTokenResponse: returns if disposed', () => {
-        service.dispose();
-        const spy = jest.spyOn(Storage.prototype, 'setItem');
-        (service as any).handleTokenResponse({ accessToken: 'a.b.c', refreshToken: 'r', expiresIn: 10 });
-        expect(spy).not.toHaveBeenCalled();
-        spy.mockRestore();
-      });
-
-      it('preloadIssuerMetadata: handles resolution error gracefully', async () => {
-        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
-        const tenantServiceMock = TestBed.inject(TenantService);
-        jest.spyOn(tenantServiceMock, 'resolveIssuerBaseUrl').mockRejectedValue(new Error('Resolution failed'));
-
-        await (service as any).preloadIssuerMetadata();
-
-        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to resolve issuer URL'), expect.any(Error));
-        consoleSpy.mockRestore();
-      });
-
-      it('preloadIssuerMetadata: returns if disposed after async call', async () => {
-        const issuerMetadataCacheMock = TestBed.inject(IssuerMetadataCacheService);
-        const tenantServiceMock = TestBed.inject(TenantService);
-        const cacheSpy = jest.spyOn(issuerMetadataCacheMock, 'fetchAndCacheIfMissing');
-        jest.spyOn(tenantServiceMock, 'resolveIssuerBaseUrl').mockImplementation(async () => {
-          service.dispose();
-          return 'https://issuer.com';
-        });
-
-        await (service as any).preloadIssuerMetadata();
-        expect(cacheSpy).not.toHaveBeenCalled();
-      });
-
-      it('scheduleTokenRefresh: clears existing timer before setting new one', () => {
-        const clearSpy = jest.spyOn(globalThis, 'clearTimeout');
-        (service as any).refreshTimer = 123;
-        (service as any).scheduleTokenRefresh(3600);
-        expect(clearSpy).toHaveBeenCalledWith(123);
-      });
-
-      it('scheduleTokenRefresh: a 500 on refresh logs out softly and keeps the device refresh token', () => {
-        jest.useFakeTimers();
-        const forceLogoutSpy = jest.spyOn(service, 'forceLogout').mockImplementation();
-
-        (service as any).refreshTokenValue = 'valid-refresh';
-        localStorage.setItem('wallet_refresh_token', 'valid-refresh');
-        (service as any).authenticated$.next(true);
-        (service as any).scheduleTokenRefresh(60); // refreshInMs = 0
-
-        jest.runAllTimers();
-
-        const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
-        req.flush('Error', { status: 500, statusText: 'Server Error' });
-
-        expect(forceLogoutSpy).not.toHaveBeenCalled();
-        expect(service.isLoggedIn()).toBe(false);
-        expect(localStorage.getItem('wallet_refresh_token')).toBe('valid-refresh');
-        expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/login']);
-      });
-    });
-  });
-
-  describe('scheduleTokenRefresh', () => {
-    it('E-02: background refresh failure shows the session-expired toast exactly once and does not double-call forceLogout', () => {
-      jest.useFakeTimers();
-      const toastSpy = jest.spyOn(toastServiceHandlerMock, 'showInfoAlertByTranslateLabel').mockReturnValue(of(undefined) as any);
-      const forceLogoutSpy = jest.spyOn(service, 'forceLogout');
-      (service as any).refreshTokenValue = 'refresh-abc';
-
-      (service as any).scheduleTokenRefresh(65);
-      jest.advanceTimersByTime(5_000);
-
-      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
-      req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
-
-      expect(toastSpy).toHaveBeenCalledWith('errors.session-expired');
-      // refreshAccessToken()'s own catchError is the single source of forceLogout() —
-      // the timer's error callback used to call it a second time on the same failure.
-      expect(forceLogoutSpy).toHaveBeenCalledTimes(1);
-    });
-
-  });
-
-  describe('unlockWithPasskey', () => {
-    const tokenResponse: TokenPairResponse = {
-      accessToken: 'eyJhbGciOiJSUzI1NiJ9.' + btoa(JSON.stringify({ sub: 'uuid-1' })) + '.sig',
-      refreshToken: 'new-refresh',
-      expiresIn: 900,
-    };
-
-    it('POSTs /refresh when there is a refresh token and no access token', async () => {
-      (service as any).refreshTokenValue = 'old-refresh';
-
-      const pending = service.unlockWithPasskey();
-      await Promise.resolve();
-      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
-      expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ refreshToken: 'old-refresh' });
-      req.flush(tokenResponse);
-      await pending;
-
-      expect(prfServiceMock.assertLocalPasskey).toHaveBeenCalled();
-      expect(service.getToken()).toBe(tokenResponse.accessToken);
-    });
-
-    it('does not POST /refresh when WebAuthn is cancelled', async () => {
-      prfServiceMock.assertLocalPasskey.mockRejectedValue(new Error('Authentication cancelled'));
-      (service as any).refreshTokenValue = 'old-refresh';
-
-      await expect(service.unlockWithPasskey()).rejects.toThrow('Authentication cancelled');
-      httpMock.expectNone(`${AUTH_BASE}/refresh`);
-    });
-
-    it('swallows refresh 401 after successful WebAuthn and leaves getToken empty (clear-only)', async () => {
-      (service as any).refreshTokenValue = 'stale-rt';
-      localStorage.setItem('wallet_refresh_token', 'stale-rt');
-
-      const pending = service.unlockWithPasskey();
-      await Promise.resolve();
-      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
-      req.flush({ detail: 'invalid_grant' }, { status: 401, statusText: 'Unauthorized' });
-      await pending;
-
-      expect(service.getToken()).toBe('');
-      expect(service.hasRefreshToken()).toBe(false);
-      expect(routerMock.navigate).not.toHaveBeenCalled();
-    });
-
-    it('keeps the refresh token when /refresh is unreachable so the passkey can be retried', async () => {
-      localStorage.setItem('wallet_refresh_token', 'valid-rt');
-
-      const pending = service.unlockWithPasskey();
-      await Promise.resolve();
-      httpMock.expectOne(`${AUTH_BASE}/refresh`).error(new ProgressEvent('error'), { status: 0 });
-      await pending;
-
-      expect(service.getToken()).toBe('');
-      expect(service.hasRefreshToken()).toBe(true);
-      expect(localStorage.getItem('wallet_refresh_token')).toBe('valid-rt');
-      expect(routerMock.navigate).not.toHaveBeenCalled();
-    });
-  });
-
-  // Dedalo QA: "tras cerrar sesión, al segundo intento vuelve a pedir correo + OTP".
-  describe('logout + re-entry with the local passkey', () => {
-    const tokenPair = (refreshToken: string): TokenPairResponse => ({
-      accessToken: 'eyJhbGciOiJSUzI1NiJ9.' + btoa(JSON.stringify({ sub: 'uuid-1' })) + '.sig',
-      refreshToken,
-      expiresIn: 900,
-    });
-
-    async function unlock(expectedRefreshToken: string, rotatedTo: string): Promise<void> {
-      const pending = service.unlockWithPasskey();
-      await Promise.resolve();
-      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
-      expect(req.request.body).toEqual({ refreshToken: expectedRefreshToken });
-      req.flush(tokenPair(rotatedTo));
-      await pending;
-    }
-
-    it('resumes with the passkey on every logout, always presenting the latest rotated token', async () => {
-      localStorage.setItem('wallet_refresh_token', 'rt-1');
-      (service as any).loadStoredTokens();
-
-      await unlock('rt-1', 'rt-2');
-      expect(service.isLoggedIn()).toBe(true);
-
-      await firstValueFrom(service.logout());
-      // Before the fix the second unlock replayed the first (already rotated) request.
-      await unlock('rt-2', 'rt-3');
-      expect(service.isLoggedIn()).toBe(true);
-
-      await firstValueFrom(service.logout());
-      await unlock('rt-3', 'rt-4');
-
-      expect(service.isLoggedIn()).toBe(true);
-      expect(localStorage.getItem('wallet_refresh_token')).toBe('rt-4');
-    });
-
-    it('the scheduled refresh after a passkey resume sends the rotated token, not the replayed one', async () => {
-      localStorage.setItem('wallet_refresh_token', 'rt-1');
-      (service as any).loadStoredTokens();
-      await unlock('rt-1', 'rt-2');
-
-      service.refreshAccessToken().subscribe();
-
-      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
-      expect(req.request.body).toEqual({ refreshToken: 'rt-2' });
-      req.flush(tokenPair('rt-3'));
-    });
-
-    it('uses the token another tab rotated into localStorage instead of the stale in-memory one', () => {
-      (service as any).refreshTokenValue = 'rt-stale';
-      localStorage.setItem('wallet_refresh_token', 'rt-from-other-tab');
-
-      service.refreshAccessToken().subscribe();
-
-      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
-      expect(req.request.body).toEqual({ refreshToken: 'rt-from-other-tab' });
-      req.flush(tokenPair('rt-next'));
-    });
-
-    it('coalesces concurrent refreshes into a single request', () => {
-      localStorage.setItem('wallet_refresh_token', 'rt-1');
-      const received: string[] = [];
-
-      service.refreshAccessToken().subscribe(r => received.push(r.refreshToken));
-      service.refreshAccessToken().subscribe(r => received.push(r.refreshToken));
-
-      httpMock.expectOne(`${AUTH_BASE}/refresh`).flush(tokenPair('rt-2'));
-      expect(received).toEqual(['rt-2', 'rt-2']);
-    });
-  });
-
-  describe('isRefreshTokenRejected', () => {
-    it.each([400, 401, 403])('treats HTTP %i as a rejected refresh token', (status) => {
-      expect(isRefreshTokenRejected(new HttpErrorResponse({ status }))).toBe(true);
-    });
-
-    it.each([0, 429, 500, 503])('treats HTTP %i as transient', (status) => {
-      expect(isRefreshTokenRejected(new HttpErrorResponse({ status }))).toBe(false);
-    });
-
-    it('treats non-HTTP errors as transient', () => {
-      expect(isRefreshTokenRejected(new Error('boom'))).toBe(false);
-    });
-  });
-
-  describe('ensureAccessToken', () => {
-    it('POSTs /refresh when getToken is empty', async () => {
-      (service as any).refreshTokenValue = 'old-refresh';
-      const tokenResponse: TokenPairResponse = {
-        accessToken: 'eyJhbGciOiJSUzI1NiJ9.' + btoa(JSON.stringify({ sub: 'uuid-1' })) + '.sig',
-        refreshToken: 'new-refresh',
-        expiresIn: 900,
-      };
-
-      const pending = service.ensureAccessToken();
-      const req = httpMock.expectOne(`${AUTH_BASE}/refresh`);
-      req.flush(tokenResponse);
-      await pending;
-
-      expect(service.getToken()).toBe(tokenResponse.accessToken);
-    });
-
-    it('is a no-op when getToken is already set', async () => {
-      (service as any).accessToken = 'existing-jwt';
-      await service.ensureAccessToken();
-      httpMock.expectNone(`${AUTH_BASE}/refresh`);
     });
   });
 });
 
-// ---------------------------------------------------------------------------
-// T-14 — AUTH_SERVICE_PROVIDER factory selects implementation by wallet mode
-// AC-009.2b, AC-009.3b, AC-009.5d (EUDISTACK-502)
-// ---------------------------------------------------------------------------
+describe('isRefreshTokenRejected', () => {
+  it.each([400, 401, 403])('treats %s as a session that is over', status => {
+    expect(isRefreshTokenRejected(new HttpErrorResponse({ status }))).toBe(true);
+  });
+
+  it.each([0, 429, 500, 503])('treats %s as transient', status => {
+    expect(isRefreshTokenRejected(new HttpErrorResponse({ status }))).toBe(false);
+  });
+});
+
 describe('AUTH_SERVICE_PROVIDER', () => {
-  /**
-   * Stub LocalAuthService — avoids pulling in PasskeyPrfService and its
-   * WebAuthn transitive dependencies, while still satisfying `instanceof`.
-   */
-  @Injectable()
-  class StubLocalAuthService extends LocalAuthService {}
+  afterEach(() => TestBed.resetTestingModule());
 
-  /**
-   * Stub RemoteAuthService — avoids HttpClient + BroadcastChannel setup,
-   * while still satisfying `instanceof`.
-   */
-  @Injectable()
-  class StubRemoteAuthService extends RemoteAuthService {}
-
-  function configureWithMode(walletMode: 'browser' | 'server'): void {
-    const discoveryMock: Partial<WalletDiscoveryService> = {
-      mode: () => walletMode,
-    };
-
+  it('selects LocalAuthService in browser mode, which keeps its local-only contract', async () => {
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
       providers: [
         AUTH_SERVICE_PROVIDER,
-        { provide: RemoteAuthService, useClass: StubRemoteAuthService },
-        { provide: LocalAuthService, useClass: StubLocalAuthService },
-        { provide: WalletDiscoveryService, useValue: discoveryMock },
-        { provide: WALLET_DISCOVERY_GATEWAY, useValue: { fetch: jest.fn() } },
-        { provide: Router, useValue: { navigate: jest.fn() } },
-        { provide: PasskeyStoreService, useValue: { hasPasskey: jest.fn().mockReturnValue(false) } },
-        { provide: PasskeyPrfService, useValue: {} },
-        { provide: IssuerMetadataCacheService, useValue: issuerMetadataCacheStub() },
-        { provide: TenantService, useValue: tenantServiceStub() },
-        { provide: ToastServiceHandler, useValue: new MockToastServiceHandler() },
+        { provide: WalletDiscoveryService, useValue: { mode: () => 'browser' } },
+        { provide: LocalAuthService, useValue: { kind: 'local' } },
+        { provide: RemoteAuthService, useValue: { kind: 'remote' } },
       ],
     });
-  }
 
-  beforeAll(() => {
-    (globalThis as any).BroadcastChannel = class {
-      name: string;
-      onmessage: ((ev: MessageEvent) => void) | null = null;
-      constructor(name: string) { this.name = name; }
-      postMessage(_message: unknown) {}
-      close() {}
-    };
+    expect(TestBed.inject(AuthService)).toEqual({ kind: 'local' });
   });
 
-  afterEach(() => {
-    TestBed.resetTestingModule();
-    localStorage.clear();
-  });
+  it('selects RemoteAuthService in server mode', () => {
+    TestBed.configureTestingModule({
+      providers: [
+        AUTH_SERVICE_PROVIDER,
+        { provide: WalletDiscoveryService, useValue: { mode: () => 'server' } },
+        { provide: LocalAuthService, useValue: { kind: 'local' } },
+        { provide: RemoteAuthService, useValue: { kind: 'remote' } },
+      ],
+    });
 
-  it('factory selects LocalAuthService when discovery mode is browser', () => {
-    configureWithMode('browser');
-
-    const authService = TestBed.inject(AuthService);
-
-    expect(authService).toBeInstanceOf(LocalAuthService);
-  });
-
-  it('factory selects RemoteAuthService when discovery mode is server', () => {
-    configureWithMode('server');
-
-    const authService = TestBed.inject(AuthService);
-
-    expect(authService).toBeInstanceOf(RemoteAuthService);
+    expect(TestBed.inject(AuthService)).toEqual({ kind: 'remote' });
   });
 });
