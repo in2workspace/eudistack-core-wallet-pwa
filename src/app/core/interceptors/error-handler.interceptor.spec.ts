@@ -540,7 +540,7 @@ describe('HttpErrorInterceptor — session-expiry marker coordination', () => {
     interceptor = TestBed.inject(HttpErrorInterceptor);
   });
 
-  it('shows the session-expired notice as an informative alert and skips the generic error alert when authInterceptor already marked the error', (done) => {
+  it('shows no alert when authInterceptor already ended the session: the access screen tells the user (EUD-8)', (done) => {
     const markedError = new HttpErrorResponse({ status: 401, url: 'http://localhost/api/v1/credentials' });
     sessionExpiryMarker.markSessionExpired(markedError);
 
@@ -553,7 +553,7 @@ describe('HttpErrorInterceptor — session-expiry marker coordination', () => {
 
     interceptor.intercept(req, fakeNext).subscribe({
       error: () => {
-        expect(infoAlertSpy).toHaveBeenCalledWith('errors.session-expired');
+        expect(infoAlertSpy).not.toHaveBeenCalled();
         expect(errorAlertSpy).not.toHaveBeenCalled();
         expect(toastSpy).not.toHaveBeenCalled();
         done();
