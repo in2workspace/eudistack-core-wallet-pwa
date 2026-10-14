@@ -71,4 +71,20 @@ describe('PasskeyPrfOnboardingPage', () => {
 
     expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs');
   });
+
+  it('openLearnMore() presents an alert with the translated learn-more texts', async () => {
+    const present = jest.fn();
+    alertController.create.mockResolvedValue({ present });
+
+    await component.openLearnMore();
+
+    expect(alertController.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        header: 'passkey-prf-onboarding.learn-more',
+        message: 'passkey-prf-onboarding.learn-more-body',
+        buttons: [{ text: 'passkey-prf-onboarding.learn-more-close', role: 'cancel' }],
+      }),
+    );
+    expect(present).toHaveBeenCalled();
+  });
 });
