@@ -172,4 +172,18 @@ describe('ServerPasskeyPrfKeyStorageProvider', () => {
     expect(server.resolveKeyIdByKid).toHaveBeenCalledWith('k1');
     expect(result).toBe('k1');
   });
+
+  it('delegates exportKey to server', async () => {
+    const { provider, server } = setup();
+    const result = await provider.exportKey!('k1');
+    expect(server.exportKey).toHaveBeenCalledWith('k1');
+    expect(result).toEqual({ kty: 'EC' });
+  });
+
+  it('delegates importKey to server', async () => {
+    const { provider, server } = setup();
+    const jwk: JsonWebKey = { kty: 'EC', crv: 'P-256' };
+    await provider.importKey!('k1', jwk);
+    expect(server.importKey).toHaveBeenCalledWith('k1', jwk);
+  });
 });

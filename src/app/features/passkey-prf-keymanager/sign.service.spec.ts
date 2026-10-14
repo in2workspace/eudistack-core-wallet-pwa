@@ -278,4 +278,58 @@ describe('SignService', () => {
 
     expect(result).toBe(KB_JWT);
   });
+
+  // ------------------------------------------------------------------ malformed server fields fail closed
+
+  it('refuses to sign when signing_input does not have exactly two segments', async () => {
+    memory.get.mockReturnValue(fakeUnwrapKey);
+    api.prepareSign.mockResolvedValue({ ...PREPARE_RESPONSE, signing_input: 'only-one-segment' });
+
+    await expect(service.sign(CRED_ID, PAYLOAD)).rejects.toMatchObject({ code: 'prepare_sign_failed' });
+
+    expect(api.submitSignedAssertion).not.toHaveBeenCalled();
+  });
+
+  it('refuses to sign when signing_input segments are not valid base64url JSON', async () => {
+    memory.get.mockReturnValue(fakeUnwrapKey);
+    api.prepareSign.mockResolvedValue({ ...PREPARE_RESPONSE, signing_input: '!!!.???' });
+
+    await expect(service.sign(CRED_ID, PAYLOAD)).rejects.toMatchObject({ code: 'prepare_sign_failed' });
+
+    expect(unwrapSvc.unwrap).not.toHaveBeenCalled();
+  });
+
+  it('fails closed with prepare_sign_failed when a wrapped key field is not valid base64url', async () => {
+    memory.get.mockReturnValue(fakeUnwrapKey);
+    api.prepareSign.mockResolvedValue({ ...PREPARE_RESPONSE, wrapped_blob: '!!!not-base64!!!' });
+
+    await expect(service.sign(CRED_ID, PAYLOAD)).rejects.toMatchObject({ code: 'prepare_sign_failed' });
+
+    expect(unwrapSvc.unwrap).not.toHaveBeenCalled();
+    expect(api.submitSignedAssertion).not.toHaveBeenCalled();
+  });
+
+  it('accepts a jwt_vc_json payload with nested arrays and null values (typ vp+jwt)', async () => {
+    const vpPayload = { vp: { verifiableCredential: ['a', 'b'], holder: null }, nonce: 'n' };
+    memory.get.mockReturnValue(fakeUnwrapKey);
+    unwrapSvc.unwrap.mockResolvedValue(holderKey);
+    api.submitSignedAssertion.mockResolvedValue({ kb_jwt: KB_JWT });
+    wrapSvc.zeroize.mockResolvedValue();
+    api.prepareSign.mockResolvedValue({ ...PREPARE_RESPONSE, signing_input: buildSigningInput(vpPayload, 'vp+jwt') });
+
+    const result = await service.sign(CRED_ID, vpPayload, 'jwt_vc_json');
+
+    expect(result).toBe(KB_JWT);
+  });
+
+  it('refuses to sign when nested array content differs from the submitted payload', async () => {
+    const submitted = { items: ['a', 'b'] };
+    memory.get.mockReturnValue(fakeUnwrapKey);
+    api.prepareSign.mockResolvedValue({
+      ...PREPARE_RESPONSE,
+      signing_input: buildSigningInput({ items: ['a', 'c'] }),
+    });
+
+    await expect(service.sign(CRED_ID, submitted)).rejects.toMatchObject({ code: 'prepare_sign_failed' });
+  });
 });

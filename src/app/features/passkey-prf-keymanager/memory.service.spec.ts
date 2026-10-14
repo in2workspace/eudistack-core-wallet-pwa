@@ -103,4 +103,10 @@ describe('MemoryService', () => {
     service.set('cred-1', makeMockKey());
     expect(setItemSpy).not.toHaveBeenCalled();
   }));
+
+  it('delete() of an unknown credentialId is a no-op', () => {
+    service.delete('unknown');
+
+    expect(mockDeleteKey).not.toHaveBeenCalled();
+  });
 });
