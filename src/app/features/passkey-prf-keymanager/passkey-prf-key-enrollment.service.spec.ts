@@ -33,7 +33,7 @@ if (!globalThis.crypto?.subtle) {
 describe('PasskeyPrfKeyEnrollmentService', () => {
   let service: PasskeyPrfKeyEnrollmentService;
 
-  let mockApi: { init: jest.Mock; commit: jest.Mock; block: jest.Mock };
+  let mockApi: { init: jest.Mock; commit: jest.Mock };
   let mockMemory: { set: jest.Mock };
   let mockPrf: { evaluateForWrap: jest.Mock };
 
@@ -58,7 +58,6 @@ describe('PasskeyPrfKeyEnrollmentService', () => {
         signing_pubkey_envelope_format: 'SD-JWT',
       }),
       commit: jest.fn().mockResolvedValue({ credential_id: CONTEXT.credentialId }),
-      block: jest.fn().mockResolvedValue({}),
     };
     mockMemory = { set: jest.fn() };
     mockPrf = {
@@ -141,7 +140,7 @@ describe('PasskeyPrfKeyEnrollmentService', () => {
 
   // ------------------------------------------------------------------ PRF gate (single ceremony — no separate probe)
 
-  it('calls block and surfaces errors.prf-unsupported when the ceremony confirms no PRF support', async () => {
+  it('surfaces errors.prf-unsupported when the ceremony confirms no PRF support, with no call to a block endpoint', async () => {
     mockPrf.evaluateForWrap.mockRejectedValue(
       new PasskeyPrfAdapterError('PRF extension not supported or returned no output', {
         code: 'prf_unavailable',
@@ -152,18 +151,13 @@ describe('PasskeyPrfKeyEnrollmentService', () => {
     await expect(service.enroll(CONTEXT)).rejects.toMatchObject({
       translationKey: 'errors.prf-unsupported',
     });
-    expect(mockApi.block).toHaveBeenCalledWith({
-      credential_id: CONTEXT.credentialId,
-      correlation_id: expect.any(String),
-    });
     expect(mockApi.commit).not.toHaveBeenCalled();
   });
 
-  it('does not call block for a cancelled assertion — not confirmed incapability, holder can retry', async () => {
+  it('propagates a cancelled assertion as-is — not confirmed incapability, holder can retry', async () => {
     mockPrf.evaluateForWrap.mockRejectedValue(new PasskeyError('passkey_cancelled', 'get'));
 
     await expect(service.enroll(CONTEXT)).rejects.toMatchObject({ code: 'passkey_cancelled' });
-    expect(mockApi.block).not.toHaveBeenCalled();
     expect(mockApi.commit).not.toHaveBeenCalled();
   });
 

@@ -1,11 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { PrfClientService } from './prf-client.service';
-import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
+import { SessionPasskeyService } from 'src/app/core/services/session-passkey.service';
+import { PasskeyError } from 'src/app/core/models/error/PasskeyError';
 import { AppError } from 'src/app/core/models/error/AppError';
 
 describe('PrfClientService', () => {
   let service: PrfClientService;
-  let mockGetCredentialId: jest.Mock;
+  let mockResolveCredentialId: jest.Mock;
   let mockCredentialsGet: jest.Mock;
 
   const CREDENTIAL_ID_B64 = 'dGVzdC1jcmVkZW50aWFsLWlk'; // base64url of "test-credential-id"
@@ -13,7 +14,7 @@ describe('PrfClientService', () => {
   const PRF_SALT = new Uint8Array(32).fill(0x01);
 
   beforeEach(() => {
-    mockGetCredentialId = jest.fn().mockReturnValue(CREDENTIAL_ID_B64);
+    mockResolveCredentialId = jest.fn().mockResolvedValue(CREDENTIAL_ID_B64);
     mockCredentialsGet = jest.fn();
 
     Object.defineProperty(globalThis, 'crypto', {
@@ -34,8 +35,8 @@ describe('PrfClientService', () => {
     TestBed.configureTestingModule({
       providers: [
         {
-          provide: PasskeyPrfService,
-          useValue: { getCredentialId: mockGetCredentialId },
+          provide: SessionPasskeyService,
+          useValue: { resolveCredentialId: mockResolveCredentialId },
         },
       ],
     });
@@ -67,8 +68,8 @@ describe('PrfClientService', () => {
 
   // ------------------------------------------------------------------ ES-04: abort when PRF absent
 
-  it('throws AppError when no credential ID is registered', async () => {
-    mockGetCredentialId.mockReturnValue(null);
+  it('throws AppError when the session passkey cannot be resolved', async () => {
+    mockResolveCredentialId.mockRejectedValue(new PasskeyError('passkey_not_found', 'get'));
 
     await expect(service.evaluateForWrap(PRF_SALT)).rejects.toBeInstanceOf(AppError);
     expect(mockCredentialsGet).not.toHaveBeenCalled();
@@ -107,8 +108,8 @@ describe('PrfClientService', () => {
     await expect(service.evaluateForWrap(PRF_SALT)).rejects.toMatchObject({ code: 'passkey_security' });
   });
 
-  it('reports a missing passkey as passkey_not_found', async () => {
-    mockGetCredentialId.mockReturnValue(null);
+  it('reports a missing session passkey as passkey_not_found', async () => {
+    mockResolveCredentialId.mockRejectedValue(new PasskeyError('passkey_not_found', 'get'));
 
     await expect(service.evaluateForWrap(PRF_SALT)).rejects.toMatchObject({ code: 'passkey_not_found' });
   });
@@ -128,6 +129,15 @@ describe('PrfClientService', () => {
     await expect(service.evaluateForWrap(PRF_SALT)).rejects.toMatchObject({ translationKey: 'auth.errors.passkey-failed' });
   });
 
+  it('evaluates the PRF with the passkey that opened the session (EUD-8 FR-15)', async () => {
+    mockCredentialsGet.mockResolvedValue(buildAssertion(PRF_OUTPUT));
+
+    await service.evaluateForWrap(PRF_SALT);
+
+    expect(mockResolveCredentialId).toHaveBeenCalled();
+    expect(mockCredentialsGet.mock.calls[0][0].publicKey.allowCredentials).toHaveLength(1);
+  });
+
   it('decodes the base64url credential id for allowCredentials', async () => {
     mockCredentialsGet.mockResolvedValue(buildAssertion(PRF_OUTPUT));
 
@@ -135,71 +145,6 @@ describe('PrfClientService', () => {
 
     const id = mockCredentialsGet.mock.calls[0][0].publicKey.allowCredentials[0].id as Uint8Array;
     expect(new TextDecoder().decode(id)).toBe('test-credential-id');
-  });
-
-  // ------------------------------------------------------------------ US-07: detectedPrf
-  it('returns enabled when PRF output exists', async () => {
-    mockCredentialsGet.mockResolvedValue(buildAssertion(PRF_OUTPUT));
-
-    const result = await service.detectPrfSupport();
-
-    expect(result).toBe('enabled');
-  });
-
-  it('returns disabled when assertion contains no PRF output', async () => {
-    mockCredentialsGet.mockResolvedValue(buildAssertion(null));
-
-    const result = await service.detectPrfSupport();
-
-    expect(result).toBe('disabled');
-  });
-
-  it('returns inconclusive when WebAuthn ceremony throws DOMException', async () => {
-    mockCredentialsGet.mockRejectedValue(
-      new DOMException('cancelled', 'NotAllowedError')
-    );
-
-    const result = await service.detectPrfSupport();
-
-    expect(result).toBe('inconclusive');
-  });
-
-  it('returns inconclusive when WebAuthn ceremony throws DOMException', async () => {
-    mockCredentialsGet.mockRejectedValue(
-      new DOMException('cancelled', 'NotAllowedError')
-    );
-
-    const result = await service.detectPrfSupport();
-
-    expect(result).toBe('inconclusive');
-  });
-
-  it('returns inconclusive when no credential id is registered', async () => {
-    mockGetCredentialId.mockReturnValue(null);
-
-    const result = await service.detectPrfSupport();
-
-    expect(result).toBe('inconclusive');
-
-    expect(mockCredentialsGet).not.toHaveBeenCalled();
-  });
-
-  it('uses the fixed PRF detection probe', async () => {
-    mockCredentialsGet.mockResolvedValue(buildAssertion(PRF_OUTPUT));
-
-    await service.detectPrfSupport();
-
-    const callArgs = mockCredentialsGet.mock.calls[0][0] as CredentialRequestOptions;
-
-    const extensions = callArgs.publicKey!.extensions as {
-      prf?: {
-        eval?: {
-          first?: BufferSource;
-        };
-      };
-    };
-
-    expect(extensions.prf?.eval?.first).toEqual(new Uint8Array(32));
   });
 
   // ------------------------------------------------------------------ helpers
