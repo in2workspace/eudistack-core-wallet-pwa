@@ -703,5 +703,99 @@
   },
   "app-update": {
     "toast": "L'aplicació s'ha actualitzat a la versió {{version}}"
+  },
+  "wallet-access": {
+    "back": "Tornar",
+    "waiting-passkey": "Esperant la teva passkey…",
+    "steps": {
+      "aria": "Passos per entrar amb el teu correu",
+      "email": "Correu",
+      "code": "Codi",
+      "passkey": "Passkey"
+    },
+    "requirements": {
+      "title": "Aquest navegador no és compatible",
+      "body": "Per fer servir el wallet necessites un navegador que admeti passkeys.",
+      "browsers-title": "Navegadors compatibles:",
+      "browsers": "Les versions actuals de Safari, Chrome, Edge i Firefox, a iPhone, iPad, Android, Mac i Windows.",
+      "more-info": "Més informació"
+    },
+    "access": {
+      "title": "Entra al teu wallet",
+      "subtitle": "Fes servir la teva empremta, la teva cara o el PIN del teu dispositiu.",
+      "passkey-button": "Entrar amb passkey",
+      "email-prompt": "Primera vegada o sense la teva passkey aquí?",
+      "email-button": "Entrar amb el meu correu",
+      "session-expired": "La teva sessió ha caducat. Torna a entrar.",
+      "install-aria": "Instal·lar el wallet",
+      "install-hint": "Instal·la el wallet al teu equip.",
+      "install-button": "Instal·lar",
+      "ios-steps-title": "Afegeix el wallet a la pantalla d'inici"
+    },
+    "rejected": {
+      "title": "No t'hem pogut verificar",
+      "body": "Torna-ho a provar amb la teva passkey.",
+      "retry": "Tornar-ho a provar"
+    },
+    "unknown-passkey": {
+      "title": "Aquesta passkey ja no és vàlida",
+      "body": "La passkey que has triat ja no és al teu compte. Entra amb el teu correu per fer-ne servir una altra o crear-ne una de nova."
+    },
+    "email": {
+      "title": "Introdueix el teu correu",
+      "subtitle": "T'enviarem un codi per comprovar que és teu.",
+      "label": "Correu",
+      "send": "Enviar el codi",
+      "rate-limited": "Has demanat massa codis. Torna-ho a provar d'aquí a una estona."
+    },
+    "code": {
+      "title": "Introdueix el codi",
+      "sent": "L'hem enviat a {{email}}.",
+      "validity": "Caduca d'aquí a 10 minuts.",
+      "label": "Codi",
+      "invalid": "El codi no és correcte",
+      "unusable": "Aquest codi ja no serveix. Demana'n un de nou.",
+      "resend": "Reenviar el codi",
+      "change-email": "Canviar el correu",
+      "continue": "Continuar"
+    },
+    "choose-passkey": {
+      "title": "Ja tens un compte",
+      "body": "Entra amb una passkey que ja facis servir en aquest compte, en aquest dispositiu o en un altre de proper.",
+      "use": "Fer servir la meva passkey",
+      "none-prompt": "No en tens cap a mà?",
+      "create": "Crear una passkey nova"
+    },
+    "create-passkey": {
+      "title": "Crea la teva passkey",
+      "body": "Entraràs al wallet amb la teva empremta, la teva cara o el PIN del teu dispositiu, sense contrasenyes.",
+      "attestations-warning": "Una passkey nova no dona accés a les atestacions que vas obtenir amb una altra.",
+      "shared-device-tip": "Equip compartit? Desa-la al teu mòbil o en una clau de seguretat, no en aquest equip.",
+      "button": "Crear la passkey"
+    },
+    "passkey-incompatible": {
+      "title": "Aquesta passkey no és compatible",
+      "body": "El gestor de passkeys que has fet servir no ofereix una funció que el wallet necessita per protegir les teves claus.",
+      "hint": "Prova amb el gestor del teu sistema (iCloud, Google o Windows Hello) o amb una altra clau de seguretat.",
+      "retry": "Provar amb un altre"
+    },
+    "other-sessions": {
+      "title": "Has afegit una passkey",
+      "email-sent": "T'hem enviat un avís per correu.",
+      "body": "Si no reconeixes algun dispositiu on tinguis el wallet obert, tanca les altres sessions.",
+      "keep": "Mantenir-les",
+      "close": "Tancar les altres sessions",
+      "failed": "No s'han pogut tancar les altres sessions. Torna-ho a provar."
+    },
+    "logout": {
+      "title": "Vols tancar la sessió?",
+      "cancel": "Cancel·lar",
+      "confirm": "Tancar la sessió"
+    },
+    "errors": {
+      "ticket-expired": "Ha passat massa temps des que vas verificar el teu correu. Demana un codi nou.",
+      "registration-failed": "No s'ha pogut registrar la passkey. Torna-ho a provar.",
+      "generic": "No s'ha pogut completar l'operació. Torna-ho a provar."
+    }
   }
 }

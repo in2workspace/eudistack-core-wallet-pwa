@@ -707,5 +707,99 @@
   },
   "app-update": {
     "toast": "La aplicación se ha actualizado a la versión {{version}}"
+  },
+  "wallet-access": {
+    "back": "Volver",
+    "waiting-passkey": "Esperando a tu passkey…",
+    "steps": {
+      "aria": "Pasos para entrar con tu email",
+      "email": "Email",
+      "code": "Código",
+      "passkey": "Passkey"
+    },
+    "requirements": {
+      "title": "Este navegador no es compatible",
+      "body": "Para usar el wallet necesitas un navegador que admita passkeys.",
+      "browsers-title": "Navegadores compatibles:",
+      "browsers": "Las versiones actuales de Safari, Chrome, Edge y Firefox, en iPhone, iPad, Android, Mac y Windows.",
+      "more-info": "Más información"
+    },
+    "access": {
+      "title": "Entra en tu wallet",
+      "subtitle": "Usa tu huella, tu cara o el PIN de tu dispositivo.",
+      "passkey-button": "Entrar con passkey",
+      "email-prompt": "¿Primera vez o sin tu passkey aquí?",
+      "email-button": "Entrar con mi email",
+      "session-expired": "Tu sesión ha caducado. Vuelve a entrar.",
+      "install-aria": "Instalar el wallet",
+      "install-hint": "Instala el wallet en tu equipo.",
+      "install-button": "Instalar",
+      "ios-steps-title": "Añade el wallet a tu pantalla de inicio"
+    },
+    "rejected": {
+      "title": "No hemos podido verificarte",
+      "body": "Vuelve a intentarlo con tu passkey.",
+      "retry": "Reintentar"
+    },
+    "unknown-passkey": {
+      "title": "Esta passkey ya no es válida",
+      "body": "La passkey que has elegido ya no está en tu cuenta. Entra con tu email para usar otra o crear una nueva."
+    },
+    "email": {
+      "title": "Introduce tu email",
+      "subtitle": "Te enviaremos un código para comprobar que es tuyo.",
+      "label": "Email",
+      "send": "Enviar código",
+      "rate-limited": "Has pedido demasiados códigos. Inténtalo dentro de un rato."
+    },
+    "code": {
+      "title": "Introduce el código",
+      "sent": "Lo hemos enviado a {{email}}.",
+      "validity": "Caduca en 10 minutos.",
+      "label": "Código",
+      "invalid": "El código no es correcto",
+      "unusable": "Este código ya no sirve. Pide uno nuevo.",
+      "resend": "Reenviar código",
+      "change-email": "Cambiar email",
+      "continue": "Continuar"
+    },
+    "choose-passkey": {
+      "title": "Ya tienes una cuenta",
+      "body": "Entra con una passkey que ya uses en esta cuenta, en este dispositivo o en otro cercano.",
+      "use": "Usar mi passkey",
+      "none-prompt": "¿No tienes ninguna a mano?",
+      "create": "Crear una passkey nueva"
+    },
+    "create-passkey": {
+      "title": "Crea tu passkey",
+      "body": "Entrarás al wallet con tu huella, tu cara o el PIN de tu dispositivo, sin contraseñas.",
+      "attestations-warning": "Una passkey nueva no da acceso a las atestaciones que obtuviste con otra.",
+      "shared-device-tip": "¿Equipo compartido? Guárdala en tu móvil o en una llave de seguridad, no en este equipo.",
+      "button": "Crear passkey"
+    },
+    "passkey-incompatible": {
+      "title": "Esta passkey no es compatible",
+      "body": "El gestor de passkeys que has usado no ofrece una función que el wallet necesita para proteger tus claves.",
+      "hint": "Prueba con el gestor de tu sistema (iCloud, Google o Windows Hello) o con otra llave de seguridad.",
+      "retry": "Probar con otro"
+    },
+    "other-sessions": {
+      "title": "Has añadido una passkey",
+      "email-sent": "Te hemos enviado un aviso por email.",
+      "body": "Si no reconoces algún dispositivo donde tengas el wallet abierto, cierra las demás sesiones.",
+      "keep": "Mantenerlas",
+      "close": "Cerrar las demás sesiones",
+      "failed": "No se han podido cerrar las demás sesiones. Inténtalo de nuevo."
+    },
+    "logout": {
+      "title": "¿Cerrar sesión?",
+      "cancel": "Cancelar",
+      "confirm": "Cerrar sesión"
+    },
+    "errors": {
+      "ticket-expired": "Ha pasado demasiado tiempo desde que verificaste tu email. Pide un código nuevo.",
+      "registration-failed": "No se ha podido registrar la passkey. Inténtalo de nuevo.",
+      "generic": "No se ha podido completar la operación. Inténtalo de nuevo."
+    }
   }
 }

@@ -1,0 +1,305 @@
+<ion-content [fullscreen]="true" class="auth-bg">
+  <div class="auth-page">
+    <div class="auth-wrapper">
+      <main class="auth-content" [attr.aria-busy]="busy()">
+        @if (flowStep(); as step) {
+          <ol class="access-steps" [attr.aria-label]="'wallet-access.steps.aria' | translate">
+            @for (label of ['email', 'code', 'passkey']; track label; let i = $index) {
+              <li
+                class="access-steps__item"
+                [class.access-steps__item--current]="step === i + 1"
+                [class.access-steps__item--done]="step > i + 1"
+                [attr.aria-current]="step === i + 1 ? 'step' : null"
+              >
+                <span class="access-steps__number" aria-hidden="true">{{ i + 1 }}</span>
+                <span>{{ 'wallet-access.steps.' + label | translate }}</span>
+              </li>
+            }
+          </ol>
+        }
+
+        @switch (screen()) {
+
+          @case ('checking') {
+            <div class="auth-checking" role="status">
+              <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+              <p class="init-status">{{ 'auth.login.initializing' | translate }}</p>
+            </div>
+          }
+
+          @case ('requirements') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.requirements.title' | translate }}</h1>
+            <p class="auth-subtitle">{{ 'wallet-access.requirements.body' | translate }}</p>
+            <p class="auth-subtitle">
+              <strong>{{ 'wallet-access.requirements.browsers-title' | translate }}</strong><br />
+              {{ 'wallet-access.requirements.browsers' | translate }}
+            </p>
+            <button type="button" class="auth-link-button" (click)="openHelp()">
+              {{ 'wallet-access.requirements.more-info' | translate }}
+            </button>
+          }
+
+          @case ('access') {
+            @if (sessionExpired()) {
+              <output class="error-box error-box--notice access-banner">
+                <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
+                <span>{{ 'wallet-access.access.session-expired' | translate }}</span>
+              </output>
+            }
+
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.access.title' | translate }}</h1>
+            <p class="auth-subtitle">{{ 'wallet-access.access.subtitle' | translate }}</p>
+
+            <button type="button" class="auth-button" [disabled]="busy()" (click)="signInWithPasskey()">
+              {{ 'wallet-access.access.passkey-button' | translate }}
+            </button>
+
+            <p class="auth-subtitle access-secondary">{{ 'wallet-access.access.email-prompt' | translate }}</p>
+            <button type="button" class="auth-link-button" [disabled]="busy()" (click)="startEmailFlow()">
+              {{ 'wallet-access.access.email-button' | translate }}
+            </button>
+
+            @if (installSuggestion()) {
+              <aside class="auth-notice access-install" [attr.aria-label]="'wallet-access.access.install-aria' | translate">
+                <p class="auth-notice__text">
+                  <ion-icon name="information-circle-outline" aria-hidden="true"></ion-icon>
+                  {{ 'wallet-access.access.install-hint' | translate }}
+                </p>
+                <button type="button" class="auth-notice__link" (click)="install()">
+                  {{ 'wallet-access.access.install-button' | translate }}
+                </button>
+              </aside>
+            }
+          }
+
+          @case ('rejected') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.rejected.title' | translate }}</h1>
+            <p class="auth-subtitle">{{ 'wallet-access.rejected.body' | translate }}</p>
+            <button type="button" class="auth-button" (click)="retryAfterRejection()">
+              {{ 'wallet-access.rejected.retry' | translate }}
+            </button>
+          }
+
+          @case ('unknown-passkey') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.unknown-passkey.title' | translate }}</h1>
+            <p class="auth-subtitle">{{ 'wallet-access.unknown-passkey.body' | translate }}</p>
+            <button type="button" class="auth-button" (click)="startEmailFlow()">
+              {{ 'wallet-access.access.email-button' | translate }}
+            </button>
+            <button type="button" class="auth-link-button" (click)="backToAccess()">
+              {{ 'wallet-access.back' | translate }}
+            </button>
+          }
+
+          @case ('email') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.email.title' | translate }}</h1>
+            <p class="auth-subtitle">{{ 'wallet-access.email.subtitle' | translate }}</p>
+
+            <div class="auth-field auth-field--email">
+              <label class="auth-field__label" for="access-email">{{ 'wallet-access.email.label' | translate }}</label>
+              <ion-input
+                id="access-email"
+                [ngModel]="email()"
+                (ngModelChange)="email.set($event ?? '')"
+                type="email"
+                inputmode="email"
+                autocomplete="email"
+                [maxlength]="emailMaxLength"
+                [placeholder]="'auth.register.email-placeholder' | translate"
+                class="auth-input"
+                (keyup.enter)="sendCode()"
+              ></ion-input>
+            </div>
+
+            <button type="button" class="auth-button auth-button--email" [disabled]="!canSendCode()" (click)="sendCode()">
+              @if (busy()) {
+                <ion-spinner name="crescent" class="btn-spinner" aria-hidden="true"></ion-spinner>
+                <span class="sr-only">{{ 'wallet-access.email.send' | translate }}</span>
+              } @else if (resendSecondsLeft() > 0) {
+                {{ 'auth.register.retry-in' | translate: { time: resendCountdown() } }}
+              } @else {
+                {{ 'wallet-access.email.send' | translate }}
+              }
+            </button>
+
+            <button type="button" class="auth-link-button" [disabled]="busy()" (click)="backToAccess()">
+              {{ 'wallet-access.back' | translate }}
+            </button>
+          }
+
+          @case ('code') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.code.title' | translate }}</h1>
+            <p class="auth-subtitle">
+              {{ 'wallet-access.code.sent' | translate: { email: maskedEmail() } }}<br />
+              {{ 'wallet-access.code.validity' | translate }}
+            </p>
+
+            <div class="auth-field auth-field--otp">
+              <span class="auth-field__label" id="access-code-label">{{ 'wallet-access.code.label' | translate }}</span>
+              <app-otp-input
+                #otpRef
+                role="group"
+                aria-labelledby="access-code-label"
+                [length]="6"
+                [autofocus]="true"
+                [error]="!!errorMessage()"
+                [errorMessage]="errorMessage()"
+                (changed)="onOtpChanged($event)"
+                (completed)="onOtpCompleted($event)"
+              ></app-otp-input>
+            </div>
+
+            <p class="auth-resend">
+              @if (resendSecondsLeft() > 0) {
+                {{ (rateLimited() ? 'auth.register.new-code-in' : 'auth.register.resend-in') | translate: { time: resendCountdown() } }}
+              } @else {
+                <button type="button" class="auth-inline-link" [disabled]="busy()" (click)="resendCode()">
+                  {{ 'wallet-access.code.resend' | translate }}
+                </button>
+              }
+              <button type="button" class="auth-inline-link" [disabled]="busy()" (click)="changeEmail()">
+                {{ 'wallet-access.code.change-email' | translate }}
+              </button>
+            </p>
+
+            <button type="button" class="auth-button auth-button--code" [disabled]="!canSubmitCode() || busy()" (click)="verifyCode()">
+              @if (busy()) {
+                <ion-spinner name="crescent" class="btn-spinner" aria-hidden="true"></ion-spinner>
+                <span class="sr-only">{{ 'wallet-access.code.continue' | translate }}</span>
+              } @else {
+                {{ 'wallet-access.code.continue' | translate }}
+              }
+            </button>
+          }
+
+          @case ('choose-passkey') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.choose-passkey.title' | translate }}</h1>
+            <p class="auth-subtitle">{{ 'wallet-access.choose-passkey.body' | translate }}</p>
+
+            <button type="button" class="auth-button" [disabled]="busy()" (click)="useAccountPasskey()">
+              {{ 'wallet-access.choose-passkey.use' | translate }}
+            </button>
+
+            <p class="auth-subtitle access-secondary">{{ 'wallet-access.choose-passkey.none-prompt' | translate }}</p>
+            <button type="button" class="auth-link-button" [disabled]="busy()" (click)="createNewPasskey()">
+              {{ 'wallet-access.choose-passkey.create' | translate }}
+            </button>
+          }
+
+          @case ('create-passkey') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.create-passkey.title' | translate }}</h1>
+            <p class="auth-subtitle">{{ 'wallet-access.create-passkey.body' | translate }}</p>
+
+            @if (showAttestationsWarning()) {
+              <p class="access-callout access-callout--warning">
+                <ion-icon name="warning-outline" aria-hidden="true"></ion-icon>
+                <span>{{ 'wallet-access.create-passkey.attestations-warning' | translate }}</span>
+              </p>
+            }
+
+            <p class="access-callout">
+              <ion-icon name="information-circle-outline" aria-hidden="true"></ion-icon>
+              <span>{{ 'wallet-access.create-passkey.shared-device-tip' | translate }}</span>
+            </p>
+
+            <div class="auth-field auth-field--device">
+              <label class="auth-field__label" for="access-device-name">{{ 'auth.passkey.device-name-label' | translate }}</label>
+              <ion-input
+                id="access-device-name"
+                [ngModel]="deviceName()"
+                (ngModelChange)="deviceName.set($event ?? '')"
+                type="text"
+                [maxlength]="deviceNameMaxLength"
+                [placeholder]="'auth.passkey.device-name-placeholder' | translate"
+                class="auth-input"
+                (keyup.enter)="createPasskey()"
+              ></ion-input>
+            </div>
+
+            <button type="button" class="auth-button" [disabled]="busy()" (click)="createPasskey()">
+              {{ 'wallet-access.create-passkey.button' | translate }}
+            </button>
+          }
+
+          @case ('passkey-incompatible') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.passkey-incompatible.title' | translate }}</h1>
+            <p class="auth-subtitle">{{ 'wallet-access.passkey-incompatible.body' | translate }}</p>
+            <p class="auth-subtitle">{{ 'wallet-access.passkey-incompatible.hint' | translate }}</p>
+            <button type="button" class="auth-button" (click)="retryWithOtherAuthenticator()">
+              {{ 'wallet-access.passkey-incompatible.retry' | translate }}
+            </button>
+          }
+
+          @case ('other-sessions') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.other-sessions.title' | translate }}</h1>
+            <p class="auth-subtitle">{{ 'wallet-access.other-sessions.email-sent' | translate }}</p>
+            <p class="auth-subtitle">{{ 'wallet-access.other-sessions.body' | translate }}</p>
+            <button type="button" class="auth-link-button" [disabled]="busy()" (click)="keepOtherSessions()">
+              {{ 'wallet-access.other-sessions.keep' | translate }}
+            </button>
+            <button type="button" class="auth-button" [disabled]="busy()" (click)="closeOtherSessions()">
+              {{ 'wallet-access.other-sessions.close' | translate }}
+            </button>
+          }
+        }
+
+        @if (errorMessage() && screen() !== 'code') {
+          <div class="error-box" role="alert">
+            <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+            <span>{{ errorMessage() }}</span>
+          </div>
+        }
+      </main>
+    </div>
+  </div>
+
+  @if (busy() && (screen() === 'access' || screen() === 'choose-passkey' || screen() === 'create-passkey')) {
+    <div class="auth-overlay" role="status" [attr.aria-label]="'wallet-access.waiting-passkey' | translate">
+      <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+    </div>
+  }
+
+  <ion-modal class="auth-help-modal" [isOpen]="showIosSteps()" (didDismiss)="showIosSteps.set(false)">
+    <ng-template>
+      <div class="help-modal" role="dialog" aria-labelledby="access-ios-steps-title">
+        <button type="button" class="help-modal__close" (click)="showIosSteps.set(false)" [attr.aria-label]="'auth.access.help.close' | translate">
+          <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+        </button>
+        <h2 class="help-modal__title" id="access-ios-steps-title">{{ 'wallet-access.access.ios-steps-title' | translate }}</h2>
+        <ol class="auth-steps" [attr.aria-label]="'ios-install.steps-aria' | translate">
+          @for (step of iosInstallSteps; track step; let i = $index) {
+            <li class="auth-steps__item">
+              <span class="auth-steps__number" aria-hidden="true">{{ i + 1 }}</span>
+              <span class="auth-steps__text">{{ 'ios-install.' + step | translate }}</span>
+            </li>
+          }
+        </ol>
+        <button type="button" class="auth-button" (click)="showIosSteps.set(false)">
+          {{ 'auth.access.help.close' | translate }}
+        </button>
+      </div>
+    </ng-template>
+  </ion-modal>
+
+  <ion-modal class="auth-help-modal" [isOpen]="showMacSteps()" (didDismiss)="showMacSteps.set(false)">
+    <ng-template>
+      <div class="help-modal" role="dialog" aria-labelledby="access-mac-steps-title">
+        <button type="button" class="help-modal__close" (click)="showMacSteps.set(false)" [attr.aria-label]="'auth.access.help.close' | translate">
+          <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+        </button>
+        <h2 class="help-modal__title" id="access-mac-steps-title">{{ 'auth.access.mac-modal-title' | translate }}</h2>
+        <ol class="auth-steps" [attr.aria-label]="'auth.access.mac-steps-aria' | translate">
+          @for (step of macInstallSteps; track step; let i = $index) {
+            <li class="auth-steps__item">
+              <span class="auth-steps__number" aria-hidden="true">{{ i + 1 }}</span>
+              <span class="auth-steps__text">{{ 'auth.access.mac-' + step | translate }}</span>
+            </li>
+          }
+        </ol>
+        <button type="button" class="auth-button" (click)="showMacSteps.set(false)">
+          {{ 'auth.access.help.close' | translate }}
+        </button>
+      </div>
+    </ng-template>
+  </ion-modal>
+</ion-content>

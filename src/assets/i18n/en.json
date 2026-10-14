@@ -707,5 +707,99 @@
   },
   "app-update": {
     "toast": "The app has been updated to version {{version}}"
+  },
+  "wallet-access": {
+    "back": "Back",
+    "waiting-passkey": "Waiting for your passkey…",
+    "steps": {
+      "aria": "Steps to sign in with your email",
+      "email": "Email",
+      "code": "Code",
+      "passkey": "Passkey"
+    },
+    "requirements": {
+      "title": "This browser is not supported",
+      "body": "To use the wallet you need a browser that supports passkeys.",
+      "browsers-title": "Supported browsers:",
+      "browsers": "Current versions of Safari, Chrome, Edge and Firefox, on iPhone, iPad, Android, Mac and Windows.",
+      "more-info": "More information"
+    },
+    "access": {
+      "title": "Sign in to your wallet",
+      "subtitle": "Use your fingerprint, your face or your device PIN.",
+      "passkey-button": "Sign in with a passkey",
+      "email-prompt": "First time, or no passkey here?",
+      "email-button": "Sign in with my email",
+      "session-expired": "Your session has expired. Please sign in again.",
+      "install-aria": "Install the wallet",
+      "install-hint": "Install the wallet on your device.",
+      "install-button": "Install",
+      "ios-steps-title": "Add the wallet to your Home Screen"
+    },
+    "rejected": {
+      "title": "We could not verify you",
+      "body": "Try again with your passkey.",
+      "retry": "Try again"
+    },
+    "unknown-passkey": {
+      "title": "This passkey is no longer valid",
+      "body": "The passkey you chose is no longer in your account. Sign in with your email to use another one or create a new one."
+    },
+    "email": {
+      "title": "Enter your email",
+      "subtitle": "We will send you a code to check that it is yours.",
+      "label": "Email",
+      "send": "Send code",
+      "rate-limited": "You have requested too many codes. Please try again later."
+    },
+    "code": {
+      "title": "Enter the code",
+      "sent": "We have sent it to {{email}}.",
+      "validity": "It expires in 10 minutes.",
+      "label": "Code",
+      "invalid": "The code is not correct",
+      "unusable": "This code can no longer be used. Request a new one.",
+      "resend": "Resend code",
+      "change-email": "Change email",
+      "continue": "Continue"
+    },
+    "choose-passkey": {
+      "title": "You already have an account",
+      "body": "Sign in with a passkey you already use for this account, on this device or on a nearby one.",
+      "use": "Use my passkey",
+      "none-prompt": "None at hand?",
+      "create": "Create a new passkey"
+    },
+    "create-passkey": {
+      "title": "Create your passkey",
+      "body": "You will sign in to the wallet with your fingerprint, your face or your device PIN, with no passwords.",
+      "attestations-warning": "A new passkey does not give access to the attestations you obtained with another one.",
+      "shared-device-tip": "Shared computer? Save it on your phone or on a security key, not on this computer.",
+      "button": "Create passkey"
+    },
+    "passkey-incompatible": {
+      "title": "This passkey is not compatible",
+      "body": "The passkey manager you used does not offer a feature the wallet needs to protect your keys.",
+      "hint": "Try your system's manager (iCloud, Google or Windows Hello) or another security key.",
+      "retry": "Try another one"
+    },
+    "other-sessions": {
+      "title": "You have added a passkey",
+      "email-sent": "We have sent you a notice by email.",
+      "body": "If you do not recognise a device where your wallet is open, close the other sessions.",
+      "keep": "Keep them",
+      "close": "Close the other sessions",
+      "failed": "The other sessions could not be closed. Please try again."
+    },
+    "logout": {
+      "title": "Log out?",
+      "cancel": "Cancel",
+      "confirm": "Log out"
+    },
+    "errors": {
+      "ticket-expired": "Too much time has passed since you verified your email. Request a new code.",
+      "registration-failed": "The passkey could not be registered. Please try again.",
+      "generic": "The operation could not be completed. Please try again."
+    }
   }
 }
