@@ -164,11 +164,9 @@
       "install-subtitle": "For the best experience and offline access, install the wallet app on your device.",
       "install-button": "Install App",
       "continue-browser": "Continue in browser",
-      "email-label": "Email",
       "verify-title": "Verify your email address",
       "code-sent-prefix": "Enter the verification code sent to your email address",
       "code-validity": "The code is valid for a limited time.",
-      "code-label": "Code",
       "resend-in": "Didn't receive the code? Resend available in {{time}}",
       "new-code-in": "You can request a new code in {{time}}",
       "resend-prompt": "Didn't receive the code?",
@@ -201,10 +199,7 @@
     },
     "errors": {
       "too-many-attempts": "Too many attempts. Please try again later.",
-      "too-many-attempts-otp": "Too many incorrect attempts. Please request a new code.",
       "too-many-attempts-wait": "You have exceeded the allowed number of attempts. Wait for the countdown to end before requesting a new code.",
-      "otp-expired": "The code has expired. Tap Resend to get a new one at your email.",
-      "otp-invalid": "The code is incorrect. Check it and try again.",
       "passkey-register-failed": "Failed to register this device. Please try again.",
       "passkey-login-cancelled": "You cancelled signing in with your passkey. You can try again whenever you like.",
       "passkey-cancelled": "You cancelled the passkey verification. You can try again whenever you like.",
@@ -214,8 +209,7 @@
       "passkey-already-registered": "This device already has a passkey registered for this wallet.",
       "passkey-not-supported": "This device or browser doesn’t support the required type of passkey. Try another browser or device.",
       "passkey-security": "The passkey can’t be used at this address. Make sure you open the wallet from its official (HTTPS) address.",
-      "passkey-failed": "We couldn’t complete the passkey verification. Please try again.",
-      "session-expired-request-code": "Your session has expired. Request a new verification code to continue opening your credential offer."
+      "passkey-failed": "We couldn’t complete the passkey verification. Please try again."
     }
   },
   "otp-input": {
@@ -432,7 +426,6 @@
   "errors": {
     "default": "Something went wrong. If it keeps happening, please contact {{supportLink}}.",
     "support-team-label": "the support team",
-    "session-expired": "Your session has expired. Please sign in again.",
     "key-storage-unavailable": "This browser can’t securely store keys. You won’t be able to activate or use credentials on this device.",
     "key-storage-public-only": "This browser can’t securely store keys. You can add credentials, but they may stop working after you close or reload the app.",
     "credential-validation-failed": "We couldn’t validate the credential. Please try again.",

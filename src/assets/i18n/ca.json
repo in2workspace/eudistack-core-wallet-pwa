@@ -151,11 +151,9 @@
       "install-subtitle": "Per a la millor experiència i accés offline, instal·la l'app del wallet al teu dispositiu.",
       "install-button": "Instal·lar App",
       "continue-browser": "Continuar al navegador",
-      "email-label": "Email",
       "verify-title": "Verifica la teva adreça de correu",
       "code-sent-prefix": "Introdueix el codi de verificació enviat a la teva adreça de correu",
       "code-validity": "El codi és vàlid durant un temps limitat.",
-      "code-label": "Codi",
       "resend-in": "No has rebut el codi? Reenviament disponible en {{time}}",
       "new-code-in": "Podràs sol·licitar un nou codi en {{time}}",
       "resend-prompt": "No has rebut el codi?",
@@ -184,10 +182,7 @@
     },
     "errors": {
       "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",
-      "too-many-attempts-otp": "Massa intents incorrectes. Si us plau, sol·licita un nou codi.",
       "too-many-attempts-wait": "Has superat el nombre d'intents permesos. Espera que acabi el compte enrere per sol·licitar un nou codi.",
-      "otp-expired": "El codi ha caducat. Prem Reenviar per rebre'n un de nou al teu correu.",
-      "otp-invalid": "El codi no és correcte. Revisa'l i torna-ho a provar.",
       "passkey-register-failed": "No s'ha pogut registrar aquest dispositiu. Torna-ho a provar.",
       "passkey-login-cancelled": "Has cancel·lat l’inici de sessió amb Passkey. Pots tornar-ho a provar quan vulguis.",
       "passkey-cancelled": "Has cancel·lat la verificació amb passkey. Pots tornar-ho a provar quan vulguis.",
@@ -197,8 +192,7 @@
       "passkey-already-registered": "Aquest dispositiu ja té una passkey registrada per a aquesta wallet.",
       "passkey-not-supported": "Aquest dispositiu o navegador no admet el tipus de passkey necessari. Prova amb un altre navegador o dispositiu.",
       "passkey-security": "No s’ha pogut fer servir la passkey en aquesta adreça. Assegura’t d’obrir la wallet des de la seva adreça oficial (HTTPS).",
-      "passkey-failed": "No s’ha pogut completar la verificació amb passkey. Torna-ho a provar.",
-      "session-expired-request-code": "La teva sessió ha caducat. Sol·licita un codi de verificació per continuar obrint l'oferta de credencial."
+      "passkey-failed": "No s’ha pogut completar la verificació amb passkey. Torna-ho a provar."
     }
   },
   "otp-input": {
@@ -213,7 +207,6 @@
   "errors": {
     "default": "Alguna cosa ha anat malament. Si et torna a passar, contacta amb {{supportLink}}.",
     "support-team-label": "l'equip de suport",
-    "session-expired": "La teva sessió ha caducat. Torna a iniciar sessió.",
     "key-storage-unavailable": "Aquest navegador no pot desar claus de manera segura. No podràs activar ni fer servir credencials en aquest dispositiu.",
     "key-storage-public-only": "Aquest navegador no pot desar claus de manera segura. Pots afegir credencials, però podrien deixar de funcionar en tancar o recarregar l’app.",
     "credential-validation-failed": "No hem pogut validar la credencial. Torna-ho a provar.",
