@@ -1,4 +1,4 @@
-import { inject } from '@angular/core';
+import { EnvironmentInjector, inject, runInInjectionContext } from '@angular/core';
 import { CanActivateFn, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { Observable } from 'rxjs';
 import { ACCESS_ROUTE, AuthService } from '../services/auth.service';
@@ -34,7 +34,7 @@ export function whenAuthInitialized<T>(authService: AuthService, decide: () => T
 export const authGuard: CanActivateFn = (_route, state: RouterStateSnapshot): Observable<boolean | UrlTree> => {
   const authService = inject(AuthService);
   const router = inject(Router);
-  const signIn = signInUrl();
+  const injector = inject(EnvironmentInjector);
 
   return whenAuthInitialized(authService, () => {
     if (authService.isLoggedIn()) {
@@ -45,6 +45,6 @@ export const authGuard: CanActivateFn = (_route, state: RouterStateSnapshot): Ob
     if (targetUrl && targetUrl !== '/') {
       sessionStorage.setItem(PENDING_DEEP_LINK_KEY, targetUrl);
     }
-    return router.parseUrl(signIn);
+    return router.parseUrl(runInInjectionContext(injector, signInUrl));
   });
 };
