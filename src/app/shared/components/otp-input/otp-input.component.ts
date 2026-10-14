@@ -8,6 +8,8 @@ import {
   QueryList,
   ElementRef,
   AfterViewInit,
+  OnChanges,
+  OnInit,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateService } from '@ngx-translate/core';
@@ -86,7 +88,7 @@ import { TranslateService } from '@ngx-translate/core';
     }
   `],
 })
-export class OtpInputComponent implements AfterViewInit {
+export class OtpInputComponent implements OnInit, OnChanges, AfterViewInit {
   @ViewChildren('otpBox') boxes!: QueryList<ElementRef<HTMLInputElement>>;
 
   /** Number of digit boxes (4 for PIN, 6 for email OTP) */
