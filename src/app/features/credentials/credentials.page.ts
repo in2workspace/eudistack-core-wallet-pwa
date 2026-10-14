@@ -349,9 +349,10 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   private verifiablePresentationFlow(qrCode: string): void{
     this.loader.addLoadingProcess();
 
-    // Gate on the load operation: refreshCredentials() completes once the store is
-    // 'loaded' or 'error', so we never filter against a half-synced / stale cache.
-    this.walletService.refreshCredentials().pipe(
+    // Gate on the load operation: it completes once the store is 'loaded' or 'error',
+    // so we never filter against a half-synced / stale cache. Server mode reloads
+    // from the service, which returns only the session passkey's attestations.
+    this.walletService.loadCredentialsForPresentation().pipe(
       switchMap(() => {
         // A load FAILURE is not an empty wallet — surface a load error, not "no credentials".
         if (this.credentialCacheService.status() === 'error') {
