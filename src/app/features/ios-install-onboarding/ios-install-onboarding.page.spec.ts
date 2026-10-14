@@ -15,14 +15,19 @@ describe('IosInstallOnboardingPage', () => {
   let fixture: ComponentFixture<IosInstallOnboardingPage>;
   let component: IosInstallOnboardingPage;
 
-  let iosInstall: { wizardState: jest.Mock; isDismissed: jest.Mock; dismissOnboarding: jest.Mock };
+  let iosInstall: { wizardState: jest.Mock; isDismissed: jest.Mock; dismissOnboarding: jest.Mock; isServerMode: jest.Mock };
   let passkeyStore: { hasPasskey: jest.Mock };
   let telemetry: { track: jest.Mock };
   let alertController: { create: jest.Mock };
   let router: { navigateByUrl: jest.Mock };
 
   beforeEach(async () => {
-    iosInstall = { wizardState: jest.fn(), isDismissed: jest.fn(), dismissOnboarding: jest.fn() };
+    iosInstall = {
+      wizardState: jest.fn(),
+      isDismissed: jest.fn(),
+      dismissOnboarding: jest.fn(),
+      isServerMode: jest.fn().mockReturnValue(false),
+    };
     passkeyStore = { hasPasskey: jest.fn().mockReturnValue(false) };
     telemetry = { track: jest.fn() };
     alertController = { create: jest.fn() };
@@ -135,6 +140,31 @@ describe('IosInstallOnboardingPage', () => {
       tick();
 
       expect(router.navigateByUrl).toHaveBeenCalledWith('/auth/login');
+    }));
+
+    it('asks for confirmation before dismissing in browser mode', fakeAsync(() => {
+      iosInstall.isServerMode.mockReturnValue(false);
+      alertController.create.mockResolvedValue({ present: jest.fn() });
+      fixture.detectChanges();
+
+      component.continueAnyway();
+      tick();
+
+      expect(alertController.create).toHaveBeenCalled();
+      expect(iosInstall.dismissOnboarding).not.toHaveBeenCalled();
+    }));
+
+    it('dismisses without confirmation in server mode', fakeAsync(() => {
+      iosInstall.isServerMode.mockReturnValue(true);
+      passkeyStore.hasPasskey.mockReturnValue(false);
+      fixture.detectChanges();
+
+      component.continueAnyway();
+      tick();
+
+      expect(alertController.create).not.toHaveBeenCalled();
+      expect(iosInstall.dismissOnboarding).toHaveBeenCalled();
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/auth/register');
     }));
   });
 });

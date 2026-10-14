@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tests: new "closing the menu on navigation" cases in `menu.component.spec.ts`.
 
 - **Duplicate error alerts during credential activation**: `CredentialsPage` now avoids stacking generic "Failed QR" alerts when the underlying OID4VCI engine has already presented a specific, more informative error modal to the user.
+- **iOS Safari install wizard was shown in server mode**: the wizard was always shown on iOS Safari before login, even when the credentials live in the backend and nothing is lost by signing up in Safari and installing the app later. It is now shown only in browser mode; in server mode the user goes straight to login/register, `/ios-install` redirects to `/`, and "Continue in browser" no longer asks for confirmation.
+- The decision is centralized in `IosInstallService.shouldShowInstallWizard()`, shared by `iosInstallGuard` and `authLandingGuard` (now exported from `ios-install.guard.ts`).
+- **Wrong wizard texts**: "Why is this necessary?" now explains the real browser-mode reason (Safari deletes the data of a website not opened for 7 days; the installed app does not), instead of claiming that all data would be lost. The subtitles now state that on iOS links and QR codes from the camera or email always open in Safari, never in the installed app. Updated in es/en/ca.
+- Tests: updated the guard, service, onboarding page and routing specs to cover both wallet modes.
 
 ### Fixed
 - **I-04 — logging in to the Issuer with a revoked credential showed "We couldn't send the login response"**: when the verifier rejects the presentation with HTTP 403 `credential_revoked`, the wallet now shows a dedicated message (`errors.credential-revoked`, en/es/ca) instead of the generic `errors.verifier-post-failed`. Any other failure of that POST keeps the generic message. New helper `isCredentialRevokedResponse` (`http-error-message.ts`) with unit tests.
