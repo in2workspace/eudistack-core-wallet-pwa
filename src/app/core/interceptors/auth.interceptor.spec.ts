@@ -13,7 +13,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, of, Subject, throwError } from 'rxjs';
 
 import { AccessTokenResponse, AuthService, ForceLogoutOptions } from '../services/auth.service';
 import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
@@ -29,6 +29,7 @@ class MockAuthService extends AuthService {
   token = '';
   loggedIn = true;
   refresh: () => Observable<AccessTokenResponse> = () => throwError(() => new HttpErrorResponse({ status: 401 }));
+  ready: () => Observable<void> = () => of(undefined);
   readonly forceLogoutCalls: (ForceLogoutOptions | undefined)[] = [];
   activity = 0;
   getToken() { return this.token; }
@@ -40,6 +41,7 @@ class MockAuthService extends AuthService {
   forceLogout(options?: ForceLogoutOptions) { this.forceLogoutCalls.push(options); }
   refreshAccessToken(): Observable<AccessTokenResponse> { return this.refresh(); }
   override recordActivity() { this.activity++; }
+  override whenAccessTokenReady() { return this.ready(); }
 }
 
 describe('authInterceptor', () => {
@@ -116,6 +118,18 @@ describe('authInterceptor', () => {
         expect(request.withCredentials).toBe(true);
       }
     );
+
+    it.each(['sessions', 'passkeys/registration'])('adds X-Wallet-Request to POST /auth/%s, which reads the cookie', path => {
+      http.post(`${AUTH}/${path}`, {}).subscribe();
+
+      expect(httpMock.expectOne(`${AUTH}/${path}`).request.headers.get(WALLET_REQUEST_HEADER)).toBe('1');
+    });
+
+    it.each(['sessions/options', 'passkeys/registration/options'])('does not add it to /auth/%s', path => {
+      http.post(`${AUTH}/${path}`, {}).subscribe();
+
+      expect(httpMock.expectOne(`${AUTH}/${path}`).request.headers.has(WALLET_REQUEST_HEADER)).toBe(false);
+    });
 
     it('signs in with no credential but the cookie outside the email flow (system picker)', () => {
       http.post(`${AUTH}/sessions/options`, {}).subscribe();
@@ -208,7 +222,7 @@ describe('authInterceptor', () => {
       expect(auth.forceLogoutCalls).toHaveLength(0);
     });
 
-    it('goes to the access screen with the expired notice when the renewal fails (FR-18)', () => {
+    it('goes to the access screen with the expired notice when the renewal is rejected (FR-18)', () => {
       auth.token = 'old';
       let failed: HttpErrorResponse | undefined;
       http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe({ error: err => failed = err });
@@ -217,6 +231,32 @@ describe('authInterceptor', () => {
 
       expect(auth.forceLogoutCalls).toEqual([{ sessionExpired: true }]);
       expect(marker.isSessionExpired(failed!)).toBe(true);
+    });
+
+    it.each([0, 503, 429])('keeps the session when the renewal fails for a temporary reason (%s)', status => {
+      auth.token = 'old';
+      auth.refresh = () => throwError(() => new HttpErrorResponse({ status }));
+      let failed: HttpErrorResponse | undefined;
+      http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe({ error: err => failed = err });
+
+      httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).flush(null, UNAUTHORIZED);
+
+      expect(auth.forceLogoutCalls).toHaveLength(0);
+      expect(failed?.status).toBe(401);
+      expect(marker.isSessionExpired(failed!)).toBe(false);
+    });
+
+    it('waits for the renewal of an expired token before sending, instead of sending without a token', () => {
+      const renewal = new Subject<void>();
+      auth.ready = () => renewal.asObservable();
+      http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe();
+
+      httpMock.expectNone(`${OWN_BACKEND}/api/v1/credentials`);
+      auth.token = 'renewed';
+      renewal.next();
+      renewal.complete();
+
+      expect(httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).request.headers.get('Authorization')).toBe('Bearer renewed');
     });
 
     it('ends the session when the retried call is rejected again', () => {

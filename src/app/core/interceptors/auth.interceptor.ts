@@ -2,7 +2,7 @@ import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn, HttpRequest } f
 import { inject } from '@angular/core';
 import { throwError } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
-import { AuthService } from '../services/auth.service';
+import { AuthService, isRefreshTokenRejected } from '../services/auth.service';
 import { UrlResolverService } from '../services/url-resolver.service';
 import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
 import { RegistrationTicketService } from '../services/registration-ticket.service';
@@ -22,12 +22,14 @@ const AUTH_PATH = '/api/v1/auth/';
  * - `public`: email verification — nothing.
  * - `ticket`: passkey registration, and sign-in during the email flow — the
  *   registration ticket, if any, plus the cookie (opening a session ends the one
- *   of the cookie and sets a new one).
+ *   of the cookie and sets a new one). The two calls that open a session
+ *   (`POST /auth/sessions`, `POST /auth/passkeys/registration`) also carry
+ *   `X-Wallet-Request`, since they read the cookie.
  * - `cookie`: renewal — the cookie and `X-Wallet-Request`, no token.
  * - `session-cookie`: ending sessions — the session token, the cookie and `X-Wallet-Request`.
  * - `session`: device management (`/auth/passkeys`) and any other API — the session token.
  */
-type AuthRoute = 'public' | 'ticket' | 'cookie' | 'session-cookie' | 'session';
+type AuthRoute = 'public' | 'ticket' | 'ticket-cookie' | 'cookie' | 'session-cookie' | 'session';
 
 function authRouteOf(url: string): AuthRoute {
   const authPathAt = url.indexOf(AUTH_PATH);
@@ -37,7 +39,8 @@ function authRouteOf(url: string): AuthRoute {
   if (path === 'register' || path === 'verify-email') return 'public';
   if (path === 'refresh') return 'cookie';
   if (path === 'sessions/current' || path === 'sessions/others') return 'session-cookie';
-  if (path === 'sessions' || path === 'sessions/options' || path.startsWith('passkeys/registration')) return 'ticket';
+  if (path === 'sessions' || path === 'passkeys/registration') return 'ticket-cookie';
+  if (path === 'sessions/options' || path === 'passkeys/registration/options') return 'ticket';
   return 'session';
 }
 
@@ -68,6 +71,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       return next(req);
     case 'ticket':
       return next(withTicket(req, inject(RegistrationTicketService).get()));
+    case 'ticket-cookie':
+      return next(withCookie(withTicket(req, inject(RegistrationTicketService).get())));
     case 'cookie':
       return next(withCookie(req));
     case 'session-cookie':
@@ -79,45 +84,52 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 };
 
 /**
- * Session-authenticated API call. Counts as activity (FR-19). On a 401 the
- * session is renewed once and the call retried; if the renewal is rejected the
- * session is over and the user goes to the access screen.
+ * Session-authenticated API call. Counts as activity (FR-19). A signed-in
+ * session that let its access token expire renews it before sending. On a 401
+ * the session is renewed once and the call retried; only a rejected renewal
+ * (`invalid_session`) ends the session and goes to the access screen — a
+ * temporary failure (offline, 5xx, 429) just fails this call.
  */
 const sendWithSession: HttpInterceptorFn = (req, next) => {
   // Only inject AuthService here — all bootstrap requests have already returned above.
   // At this point APP_INITIALIZER has resolved and _snapshot is set (AD-1).
   const authService = inject(AuthService);
   const sessionExpiryMarker = inject(SessionExpiryMarkerService);
-  const authorizedReq = withSessionToken(req, authService.getToken());
   authService.recordActivity();
 
-  return next(authorizedReq).pipe(
-    catchError((err: HttpErrorResponse) => {
-      if (err.status !== 401) {
-        return throwError(() => err);
-      }
+  return authService.whenAccessTokenReady().pipe(
+    switchMap(() => {
+      const authorizedReq = withSessionToken(req, authService.getToken());
+      return next(authorizedReq).pipe(
+        catchError((err: HttpErrorResponse) => {
+          if (err.status !== 401) {
+            return throwError(() => err);
+          }
 
-      const endExpiredSession = () => {
-        sessionExpiryMarker.markSessionExpired(err);
-        if (authService.isLoggedIn()) {
-          authService.forceLogout({ sessionExpired: true });
-        }
-        return throwError(() => err);
-      };
+          const endExpiredSession = () => {
+            sessionExpiryMarker.markSessionExpired(err);
+            if (authService.isLoggedIn()) {
+              authService.forceLogout({ sessionExpired: true });
+            }
+            return throwError(() => err);
+          };
 
-      if (req.context.get(AUTH_RETRY_AFTER_REFRESH)) {
-        return endExpiredSession();
-      }
+          // Already signed out (e.g. the renewal before sending was rejected): nothing to renew.
+          if (req.context.get(AUTH_RETRY_AFTER_REFRESH) || !authService.isLoggedIn()) {
+            return endExpiredSession();
+          }
 
-      return authService.refreshAccessToken().pipe(
-        catchError(() => endExpiredSession()),
-        switchMap(() => {
-          const retryReq = withSessionToken(authorizedReq, authService.getToken()).clone({
-            context: authorizedReq.context.set(AUTH_RETRY_AFTER_REFRESH, true),
-          });
-          return next(retryReq).pipe(
-            catchError((retryErr: HttpErrorResponse) =>
-              retryErr.status === 401 ? endExpiredSession() : throwError(() => retryErr))
+          return authService.refreshAccessToken().pipe(
+            catchError(refreshErr => isRefreshTokenRejected(refreshErr) ? endExpiredSession() : throwError(() => err)),
+            switchMap(() => {
+              const retryReq = withSessionToken(authorizedReq, authService.getToken()).clone({
+                context: authorizedReq.context.set(AUTH_RETRY_AFTER_REFRESH, true),
+              });
+              return next(retryReq).pipe(
+                catchError((retryErr: HttpErrorResponse) =>
+                  retryErr.status === 401 ? endExpiredSession() : throwError(() => retryErr))
+              );
+            })
           );
         })
       );
