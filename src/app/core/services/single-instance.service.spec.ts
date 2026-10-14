@@ -1,3 +1,4 @@
+import { BehaviorSubject } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
@@ -112,6 +113,7 @@ describe('SingleInstanceService', () => {
   let service: SingleInstanceService;
   let routerMock: jest.Mocked<Pick<Router, 'navigateByUrl'>>;
   let authServiceMock: jest.Mocked<Pick<AuthService, 'isLoggedIn' | 'dispose'>>;
+  let initialized$: BehaviorSubject<boolean>;
   let translateServiceMock: jest.Mocked<Pick<TranslateService, 'instant'>>;
   let baseQuerySpy: jest.SpyInstance;
 
@@ -125,8 +127,10 @@ describe('SingleInstanceService', () => {
     sessionStorage.clear();
 
     routerMock = { navigateByUrl: jest.fn() } as unknown as jest.Mocked<Pick<Router, 'navigateByUrl'>>;
+    initialized$ = new BehaviorSubject(true);
     authServiceMock = {
       isLoggedIn: jest.fn().mockReturnValue(true),
+      isInitialized$: jest.fn(() => initialized$.asObservable()),
       dispose: jest.fn(),
     } as unknown as jest.Mocked<Pick<AuthService, 'isLoggedIn' | 'dispose'>>;
     translateServiceMock = {
@@ -689,6 +693,22 @@ describe('SingleInstanceService', () => {
 
       expect(document.body.innerHTML).toContain('ventana de EUDI Wallet que ya tenías abierta');
       expect(document.body.innerHTML).toContain('Cambia a la ventana de la aplicación EUDI Wallet');
+    });
+  });
+
+  describe('cold launch (EUD-8)', () => {
+    it('waits for the start-up session resume before deciding between navigating and queueing', () => {
+      initialized$.next(false);
+      authServiceMock.isLoggedIn.mockReturnValue(false);
+      const router = TestBed.inject(Router) as unknown as { navigateByUrl: jest.Mock };
+
+      service.handleDeepLink('/tabs/credentials?credentialOfferUri=x');
+      expect(router.navigateByUrl).not.toHaveBeenCalled();
+      expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBeNull();
+
+      authServiceMock.isLoggedIn.mockReturnValue(true);
+      initialized$.next(true);
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs/credentials?credentialOfferUri=x');
     });
   });
 });
