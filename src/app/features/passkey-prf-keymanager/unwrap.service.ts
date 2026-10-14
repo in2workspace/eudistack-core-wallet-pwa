@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HybridAdapterError } from 'src/app/core/models/error/HybridAdapterError';
-import { HYBRID_WRAP_KDF_PARAMS } from './hybrid-kdf.const';
+import { PasskeyPrfAdapterError } from 'src/app/core/models/error/PasskeyPrfAdapterError';
+import { PASSKEY_PRF_WRAP_KDF_PARAMS } from './passkey-prf-kdf.const';
 
 /**
  * Client-side AES-256-GCM unwrap of the holder's ECDSA P-256 private key.
@@ -33,9 +33,9 @@ export class UnwrapService {
     const salt = new TextEncoder().encode(credentialId);
 
     return crypto.subtle.deriveKey(
-      { name: 'HKDF', hash: HYBRID_WRAP_KDF_PARAMS.hash, salt, info: HYBRID_WRAP_KDF_PARAMS.info },
+      { name: 'HKDF', hash: PASSKEY_PRF_WRAP_KDF_PARAMS.hash, salt, info: PASSKEY_PRF_WRAP_KDF_PARAMS.info },
       baseKey,
-      { name: 'AES-GCM', length: HYBRID_WRAP_KDF_PARAMS.aesLength },
+      { name: 'AES-GCM', length: PASSKEY_PRF_WRAP_KDF_PARAMS.aesLength },
       false,
       // Both usages, symmetric with WrapService.deriveWrapKey — this key is cached in
       // MemoryService keyed by credentialId and may be reused by a later wrap operation
@@ -52,7 +52,7 @@ export class UnwrapService {
    * fields. Reconstruct the concatenated buffer (required by SubtleCrypto.unwrapKey)
    * before calling the API. The result is non-extractable and usable only for signing.
    *
-   * @throws {HybridAdapterError} code='wrap_unavailable_on_this_device' if the GCM tag
+   * @throws {PasskeyPrfAdapterError} code='wrap_unavailable_on_this_device' if the GCM tag
    *   fails (wrong device, wrong salt, or corrupted blob). AC-06 / ES-03: fail-closed —
    *   the submit call is never made if unwrap fails.
    */
@@ -86,13 +86,13 @@ export class UnwrapService {
       // Duck-typed on `.name` (not `instanceof DOMException`) — Node's webcrypto and
       // jsdom's DOMException are distinct constructors in the Jest test environment.
       if ((cause as { name?: string } | undefined)?.name === 'OperationError') {
-        throw new HybridAdapterError('GCM tag invalid — wrong device or corrupted key material', {
+        throw new PasskeyPrfAdapterError('GCM tag invalid — wrong device or corrupted key material', {
           code: 'wrap_unavailable_on_this_device',
           cause,
-          translationKey: 'hybrid-errors.wrap-unavailable-body',
+          translationKey: 'passkey-prf-errors.wrap-unavailable-body',
         });
       }
-      throw new HybridAdapterError('Unwrap failed for a reason other than an invalid GCM tag', {
+      throw new PasskeyPrfAdapterError('Unwrap failed for a reason other than an invalid GCM tag', {
         code: 'prepare_sign_failed',
         cause,
       });

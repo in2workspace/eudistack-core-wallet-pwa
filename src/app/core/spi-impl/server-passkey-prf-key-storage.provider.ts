@@ -1,22 +1,22 @@
 import { Injectable, inject } from '@angular/core';
 import { AppError } from '../models/error/AppError';
-import { HybridAdapterError } from '../models/error/HybridAdapterError';
+import { PasskeyPrfAdapterError } from '../models/error/PasskeyPrfAdapterError';
 import { KeyStorageProvider, OID4VCIKeyGenContext } from '../spi/key-storage.provider.service';
 import { RawKeyAlgorithm, PublicKeyInfo, KeyInfo } from '../models/StoredKeyRecord';
 import { ServerKeyStorageProvider } from './server-key-storage.service';
-import { HybridKeyEnrollmentService } from 'src/app/features/hybrid-keymanager/hybrid-key-enrollment.service';
-import { SignService } from 'src/app/features/hybrid-keymanager/sign.service';
+import { PasskeyPrfKeyEnrollmentService } from 'src/app/features/passkey-prf-keymanager/passkey-prf-key-enrollment.service';
+import { SignService } from 'src/app/features/passkey-prf-keymanager/sign.service';
 
 @Injectable()
-export class HybridKeyStorageProvider extends KeyStorageProvider {
+export class ServerPasskeyPrfKeyStorageProvider extends KeyStorageProvider {
   private readonly server = inject(ServerKeyStorageProvider);
-  private readonly enrollment = inject(HybridKeyEnrollmentService);
+  private readonly enrollment = inject(PasskeyPrfKeyEnrollmentService);
   private readonly signService = inject(SignService);
 
   /**
    * Generates the holder key for a credential client-side (PRF wrap + EBW onboarding
    * commit) instead of delegating to `ServerKeyStorageProvider` — the DB-only
-   * `/api/v1/keys/generate` endpoint always 403s for `key_manager=hybrid` tenants
+   * `/api/v1/keys/generate` endpoint always 403s for `key_manager=passkey-prf` tenants
    * (backend requires wallet profile (SERVER, DB); see KeyManagerController).
    *
    * The OID4VCI proof is signed with the holder key before it is wrapped and
@@ -32,7 +32,7 @@ export class HybridKeyStorageProvider extends KeyStorageProvider {
       // supplies a context. DPoP's ephemeral keys bypass this provider entirely
       // (DpopService injects PasskeyPrfKeyStorageProvider directly).
       throw new AppError(
-        'Hybrid key generation requires an OID4VCI issuance context (credentialId, format)',
+        'Passkey+prf key generation requires an OID4VCI issuance context (credentialId, format)',
         { code: 'unknown' }
       );
     }
@@ -41,12 +41,12 @@ export class HybridKeyStorageProvider extends KeyStorageProvider {
     const kid = await this.computeJwkThumbprint(publicKeyJwk);
 
     return {
-      // Hybrid has no server-side `holder_key` row (the wrapped key lives in
-      // `hybrid_wrapped_key_handle`, keyed by (holder_id, credential_id)). Using
+      // Passkey+prf has no server-side `holder_key` row (the wrapped key lives in
+      // `passkey_prf_wrapped_key_handle`, keyed by (holder_id, credential_id)). Using
       // the real credentialId as keyId lets buildPresentationJws() round-trip it
       // straight back via resolveKeyIdByKid() — no separate mapping table needed.
       // wallet_credential.holder_key_id was widened to VARCHAR(512) to fit it
-      // (V5__widen_holder_key_id_for_hybrid.sql).
+      // (V5 tenant migration of the Wallet Unit Service).
       keyId: context.credentialId,
       algorithm: 'ES256',
       publicKeyJwk,
@@ -57,15 +57,15 @@ export class HybridKeyStorageProvider extends KeyStorageProvider {
   }
 
   /**
-   * Signing a raw payload (not a full presentation) is not a hybrid use case today —
+   * Signing a raw payload (not a full presentation) is not a passkey+prf use case today —
    * `buildPresentationJws` covers OID4VP, and the OID4VCI proof is signed inline during
    * `generateKeyPair` (`prebuiltJwsProof`). Kept as an explicit, typed failure rather than
    * silently delegating to `sign.service`'s two-step handshake with a raw byte payload it
    * cannot turn into a valid signing_input.
    */
   override async sign(_keyId: string, _data: Uint8Array): Promise<Uint8Array> {
-    throw new HybridAdapterError(
-      'Hybrid sign() is not supported — use buildPresentationJws for OID4VP presentations',
+    throw new PasskeyPrfAdapterError(
+      'Passkey+prf sign() is not supported — use buildPresentationJws for OID4VP presentations',
       { code: 'prepare_sign_failed' }
     );
   }

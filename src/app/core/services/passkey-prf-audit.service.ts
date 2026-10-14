@@ -5,12 +5,12 @@ import { SERVER_PATH } from '../constants/api.constants';
 import { UrlResolverService } from './url-resolver.service';
 
 @Injectable({ providedIn: 'root' })
-export class HybridAuditService {
+export class PasskeyPrfAuditService {
   private readonly http = inject(HttpClient);
   private readonly urlResolver = inject(UrlResolverService);
 
   recordConstraintAccepted(): Observable<void> {
-    const url = `${this.urlResolver.serverUrl()}${SERVER_PATH.HYBRID_CONSTRAINT_ACCEPTED}`;
+    const url = `${this.urlResolver.serverUrl()}${SERVER_PATH.PASSKEY_PRF_CONSTRAINT_ACCEPTED}`;
     return this.http.post<void>(url, {});
   }
 }

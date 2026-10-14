@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
 
-const ACCEPTED_KEY = 'hybrid-onboarding-accepted';
+const ACCEPTED_KEY = 'passkey-prf-onboarding-accepted';
 
 @Injectable({ providedIn: 'root' })
-export class HybridOnboardingService {
+export class PasskeyPrfOnboardingService {
   isAccepted(): boolean {
     return sessionStorage.getItem(ACCEPTED_KEY) === 'true';
   }

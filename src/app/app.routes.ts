@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { tenantGuard } from './core/guards/tenant.guard';
 import { authLandingGuard, iosInstallGuard, iosInstallRouteGuard } from './core/guards/ios-install.guard';
-import { hybridOnboardingGuard, hybridOnboardingRouteGuard } from './core/guards/hybrid-onboarding.guard';
+import { passkeyPrfOnboardingGuard, passkeyPrfOnboardingRouteGuard } from './core/guards/passkey-prf-onboarding.guard';
 
 export const routes: Routes = [
   {
@@ -18,11 +18,11 @@ export const routes: Routes = [
       ),
   },
   {
-    path: 'hybrid-onboarding',
-    canActivate: [tenantGuard, authGuard, hybridOnboardingRouteGuard],
+    path: 'passkey-prf-onboarding',
+    canActivate: [tenantGuard, authGuard, passkeyPrfOnboardingRouteGuard],
     loadComponent: () =>
-      import('./features/hybrid-onboarding/hybrid-onboarding.page').then(
-        m => m.HybridOnboardingPage
+      import('./features/passkey-prf-onboarding/passkey-prf-onboarding.page').then(
+        m => m.PasskeyPrfOnboardingPage
       ),
   },
   {
@@ -54,7 +54,7 @@ export const routes: Routes = [
   },
   {
     path: 'tabs',
-    canActivate: [tenantGuard, hybridOnboardingGuard],
+    canActivate: [tenantGuard, passkeyPrfOnboardingGuard],
     loadChildren: () => import('./features/tabs/tabs.routes').then(m => m.default),
   },
   {

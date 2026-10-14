@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { TestBed } from '@angular/core/testing';
-import { HybridAdapterError } from 'src/app/core/models/error/HybridAdapterError';
+import { PasskeyPrfAdapterError } from 'src/app/core/models/error/PasskeyPrfAdapterError';
 import { UnwrapService } from './unwrap.service';
 import { WrapService } from './wrap.service';
 
@@ -70,7 +70,7 @@ describe('UnwrapService', () => {
 
   // ------------------------------------------------------------------ wrong salt → GCM tag failure (AC-02/AC-06/ES-03)
 
-  it('deriveUnwrapKey with wrong credentialId causes unwrap to throw HybridAdapterError', async () => {
+  it('deriveUnwrapKey with wrong credentialId causes unwrap to throw PasskeyPrfAdapterError', async () => {
     const { privateKey } = await wrapSvc.generateHolderKeyPair();
     const wrapKey = await wrapSvc.deriveWrapKey(PRF_OUTPUT, CREDENTIAL_ID);
     const { wrappedBlob, iv, tag } = await wrapSvc.wrapPrivateKey(privateKey, wrapKey);
@@ -81,14 +81,14 @@ describe('UnwrapService', () => {
     await expect(unwrapSvc.unwrap(wrappedBlob, iv, tag, wrongUnwrapKey))
       .rejects.toMatchObject({
         code: 'wrap_unavailable_on_this_device',
-      } satisfies Partial<HybridAdapterError>);
+      } satisfies Partial<PasskeyPrfAdapterError>);
 
     await wrapSvc.zeroize(privateKey, wrapKey, wrongUnwrapKey);
   });
 
   // ------------------------------------------------------------------ corrupted tag → GCM tag failure (ES-03)
 
-  it('corrupted authentication tag causes unwrap to throw HybridAdapterError', async () => {
+  it('corrupted authentication tag causes unwrap to throw PasskeyPrfAdapterError', async () => {
     const { privateKey } = await wrapSvc.generateHolderKeyPair();
     const wrapKey = await wrapSvc.deriveWrapKey(PRF_OUTPUT, CREDENTIAL_ID);
     const { wrappedBlob, iv, tag } = await wrapSvc.wrapPrivateKey(privateKey, wrapKey);
@@ -101,7 +101,7 @@ describe('UnwrapService', () => {
     await expect(unwrapSvc.unwrap(wrappedBlob, iv, corruptedTag, unwrapKey))
       .rejects.toMatchObject({
         code: 'wrap_unavailable_on_this_device',
-      } satisfies Partial<HybridAdapterError>);
+      } satisfies Partial<PasskeyPrfAdapterError>);
 
     await wrapSvc.zeroize(privateKey, wrapKey, unwrapKey);
   });
@@ -121,7 +121,7 @@ describe('UnwrapService', () => {
 
   // ------------------------------------------------------------------ MemoryService cache reuse regression
   //
-  // HybridKeyEnrollmentService caches WrapService.deriveWrapKey()'s output in MemoryService
+  // PasskeyPrfKeyEnrollmentService caches WrapService.deriveWrapKey()'s output in MemoryService
   // keyed by credentialId; SignService.sign() later reads that same cache entry (TTL 5 min)
   // and hands it straight to unwrap() as the unwrapKey. A single-usage ['wrapKey'] key made
   // that throw InvalidAccessError ("key.usages does not permit this operation"), which the
@@ -167,7 +167,7 @@ describe('UnwrapService', () => {
     );
 
     await expect(unwrapSvc.unwrap(wrappedBlob, iv, tag, usageMismatchedKey))
-      .rejects.toMatchObject({ code: 'prepare_sign_failed' } satisfies Partial<HybridAdapterError>);
+      .rejects.toMatchObject({ code: 'prepare_sign_failed' } satisfies Partial<PasskeyPrfAdapterError>);
 
     await wrapSvc.zeroize(privateKey, wrapKey, usageMismatchedKey);
   });

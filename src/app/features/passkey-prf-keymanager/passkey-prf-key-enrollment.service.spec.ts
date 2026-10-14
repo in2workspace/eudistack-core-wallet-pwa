@@ -1,12 +1,12 @@
 /// <reference types="node" />
 import { TestBed } from '@angular/core/testing';
-import { HybridKeyEnrollmentService } from './hybrid-key-enrollment.service';
+import { PasskeyPrfKeyEnrollmentService } from './passkey-prf-key-enrollment.service';
 import { MemoryService } from './memory.service';
 import { PrfClientService } from './prf-client.service';
-import { OnboardingHybridApi } from './onboarding-hybrid.api';
+import { OnboardingPasskeyPrfApi } from './onboarding-passkey-prf.api';
 import { ProofBuilderService } from 'src/app/core/protocol/oid4vci/proof-builder.service';
 import { AppError } from 'src/app/core/models/error/AppError';
-import { HybridAdapterError } from 'src/app/core/models/error/HybridAdapterError';
+import { PasskeyPrfAdapterError } from 'src/app/core/models/error/PasskeyPrfAdapterError';
 import { PasskeyError } from 'src/app/core/models/error/PasskeyError';
 import { OID4VCIKeyGenContext } from 'src/app/core/spi/key-storage.provider.service';
 
@@ -22,7 +22,7 @@ if (!globalThis.crypto?.subtle) {
 }
 
 /**
- * Tests for HybridKeyEnrollmentService.
+ * Tests for PasskeyPrfKeyEnrollmentService.
  *
  * WrapService is left real (pure SubtleCrypto, proven safe under Node's webcrypto
  * polyfill in wrap.service.spec.ts) so the proof-signing step signs against a
@@ -30,8 +30,8 @@ if (!globalThis.crypto?.subtle) {
  *
  * Spec: EUDISTACK-534 (YARD-126) AC-01, AC-02, AC-03, AC-08, ES-04, ES-05.
  */
-describe('HybridKeyEnrollmentService', () => {
-  let service: HybridKeyEnrollmentService;
+describe('PasskeyPrfKeyEnrollmentService', () => {
+  let service: PasskeyPrfKeyEnrollmentService;
 
   let mockApi: { init: jest.Mock; commit: jest.Mock; block: jest.Mock };
   let mockMemory: { set: jest.Mock };
@@ -67,12 +67,12 @@ describe('HybridKeyEnrollmentService', () => {
 
     TestBed.configureTestingModule({
       providers: [
-        { provide: OnboardingHybridApi, useValue: mockApi },
+        { provide: OnboardingPasskeyPrfApi, useValue: mockApi },
         { provide: MemoryService, useValue: mockMemory },
         { provide: PrfClientService, useValue: mockPrf },
       ],
     });
-    service = TestBed.inject(HybridKeyEnrollmentService);
+    service = TestBed.inject(PasskeyPrfKeyEnrollmentService);
   });
 
   // ------------------------------------------------------------------ full flow
@@ -143,7 +143,7 @@ describe('HybridKeyEnrollmentService', () => {
 
   it('calls block and surfaces errors.prf-unsupported when the ceremony confirms no PRF support', async () => {
     mockPrf.evaluateForWrap.mockRejectedValue(
-      new HybridAdapterError('PRF extension not supported or returned no output', {
+      new PasskeyPrfAdapterError('PRF extension not supported or returned no output', {
         code: 'prf_unavailable',
         translationKey: 'errors.prf-unsupported',
       }),

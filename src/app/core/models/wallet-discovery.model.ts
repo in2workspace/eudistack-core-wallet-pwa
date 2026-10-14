@@ -53,7 +53,7 @@ export interface WalletDiscoverySnapshot {
   source: 'discovery' | 'fallback';
 
   /**
-   * Key manager configured for this tenant (`'db'`, `'hybrid'`, `'hsm'`, `'qtsp'`),
+   * Key manager configured for this tenant (`'db'`, `'passkey-prf'`, `'hsm'`, `'qtsp'`),
    * or `null` when the source is `'fallback'` or the tenant has no key manager set.
    */
   keyManager: string | null;

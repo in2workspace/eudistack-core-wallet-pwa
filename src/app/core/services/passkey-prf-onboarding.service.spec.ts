@@ -1,13 +1,13 @@
 import { TestBed } from '@angular/core/testing';
-import { HybridOnboardingService } from './hybrid-onboarding.service';
+import { PasskeyPrfOnboardingService } from './passkey-prf-onboarding.service';
 
-describe('HybridOnboardingService', () => {
-  let service: HybridOnboardingService;
+describe('PasskeyPrfOnboardingService', () => {
+  let service: PasskeyPrfOnboardingService;
 
   beforeEach(() => {
     sessionStorage.clear();
-    TestBed.configureTestingModule({ providers: [HybridOnboardingService] });
-    service = TestBed.inject(HybridOnboardingService);
+    TestBed.configureTestingModule({ providers: [PasskeyPrfOnboardingService] });
+    service = TestBed.inject(PasskeyPrfOnboardingService);
   });
 
   afterEach(() => sessionStorage.clear());
@@ -23,7 +23,7 @@ describe('HybridOnboardingService', () => {
 
   it('persists acceptance across service instances within the same session', () => {
     service.markAccepted();
-    const second = new HybridOnboardingService();
+    const second = new PasskeyPrfOnboardingService();
     expect(second.isAccepted()).toBe(true);
   });
 });

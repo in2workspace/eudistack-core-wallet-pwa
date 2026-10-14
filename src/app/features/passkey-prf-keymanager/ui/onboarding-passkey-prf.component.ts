@@ -4,12 +4,12 @@ import { AppError } from 'src/app/core/models/error/AppError';
 import { MemoryService } from '../memory.service';
 import { PrfClientService } from '../prf-client.service';
 import { WrapService } from '../wrap.service';
-import { OnboardingHybridApi } from '../onboarding-hybrid.api';
+import { OnboardingPasskeyPrfApi } from '../onboarding-passkey-prf.api';
 
 export type OnboardingState = 'idle' | 'loading' | 'done' | 'error' | 'prf-unsupported' | 'prf-inconclusive';
 
 /**
- * Orchestrates the full hybrid onboarding flow for a given credential:
+ * Orchestrates the full passkey+prf onboarding flow for a given credential:
  *   init → PRF ceremony → key generation → HKDF wrap-key derivation
  *   → AES-256-GCM wrap → commit → zeroize private key
  *
@@ -22,26 +22,26 @@ export type OnboardingState = 'idle' | 'loading' | 'done' | 'error' | 'prf-unsup
  * Spec: EUDISTACK-534 AC-01, AC-02, AC-03, AC-08, ES-04, ES-05; technical-design.md §3.2 T16.
  */
 @Component({
-  selector: 'app-onboarding-hybrid',
+  selector: 'app-onboarding-passkey-prf',
   standalone: true,
   template: `
     @if (state === 'loading') {
-      <p>{{ 'hybrid.onboarding.loading' | translate }}</p>
+      <p>{{ 'passkey-prf.onboarding.loading' | translate }}</p>
     } @else if (state === 'done') {
-      <p>{{ 'hybrid.onboarding.done' | translate }}</p>
+      <p>{{ 'passkey-prf.onboarding.done' | translate }}</p>
     } @else if (state === 'error') {
-      <p>{{ 'hybrid.onboarding.error' | translate }}</p>
+      <p>{{ 'passkey-prf.onboarding.error' | translate }}</p>
     } @else if (state === 'prf-unsupported') {
-       <p>{{ 'hybrid.error.prfUnsupported' | translate }}</p>
+       <p>{{ 'passkey-prf.error.prfUnsupported' | translate }}</p>
     }
     @else if (state === 'prf-inconclusive') {
        <p>
-         {{ 'hybrid.error.prfInconclusive' | translate }}
+         {{ 'passkey-prf.error.prfInconclusive' | translate }}
        </p>
     }
   `,
 })
-export class OnboardingHybridComponent {
+export class OnboardingPasskeyPrfComponent {
   @Input({ required: true }) credentialId!: string;
   @Input() format: string = 'vc+sd-jwt';
 
@@ -50,7 +50,7 @@ export class OnboardingHybridComponent {
 
   state: OnboardingState = 'idle';
 
-  private readonly api = inject(OnboardingHybridApi);
+  private readonly api = inject(OnboardingPasskeyPrfApi);
   private readonly memoryService = inject(MemoryService);
   private readonly prfClientService = inject(PrfClientService);
   private readonly wrapService = inject(WrapService);
@@ -138,7 +138,7 @@ export class OnboardingHybridComponent {
       this.state = 'error';
       const appErr = err instanceof AppError
         ? err
-        : new AppError('Hybrid onboarding failed', { cause: err });
+        : new AppError('Passkey+prf onboarding failed', { cause: err });
       this.enrollmentError.emit(appErr);
 
     } finally {

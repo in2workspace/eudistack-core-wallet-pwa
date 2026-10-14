@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { HybridAdapterError } from 'src/app/core/models/error/HybridAdapterError';
+import { PasskeyPrfAdapterError } from 'src/app/core/models/error/PasskeyPrfAdapterError';
 import { base64UrlDecode, base64UrlEncode } from 'src/app/core/utils/base64url';
 import { MemoryService } from './memory.service';
 import { PrfClientService } from './prf-client.service';
@@ -8,7 +8,7 @@ import { UnwrapService } from './unwrap.service';
 import { WrapService } from './wrap.service';
 
 /**
- * Orchestrates the hybrid (Passkey PRF) delegated signing handshake for US-04.
+ * Orchestrates the passkey+prf delegated signing handshake for US-04.
  *
  * Flow per AC-01/AC-04:
  *   1. prepareSign(payload) → EBW pins signing_input from the caller-assembled payload (opaque —
@@ -86,7 +86,7 @@ export class SignService {
 
       return resp.kb_jwt;
     } catch (err) {
-      if (err instanceof HybridAdapterError && err.code === 'wrap_unavailable_on_this_device') {
+      if (err instanceof PasskeyPrfAdapterError && err.code === 'wrap_unavailable_on_this_device') {
         // GCM tag failed → cached unwrap key is stale (wrong device); evict so next attempt re-derives.
         this.memory.delete(credentialId);
       }
@@ -111,7 +111,7 @@ export class SignService {
   ): void {
     const parts = signingInput.split('.');
     if (parts.length !== 2) {
-      throw new HybridAdapterError('Malformed signing_input from EBW', { code: 'prepare_sign_failed' });
+      throw new PasskeyPrfAdapterError('Malformed signing_input from EBW', { code: 'prepare_sign_failed' });
     }
 
     let header: { alg?: unknown; typ?: unknown };
@@ -120,19 +120,19 @@ export class SignService {
       header = JSON.parse(new TextDecoder().decode(base64UrlDecode(parts[0])));
       decodedPayload = JSON.parse(new TextDecoder().decode(base64UrlDecode(parts[1])));
     } catch (cause) {
-      throw new HybridAdapterError('Malformed signing_input from EBW', { code: 'prepare_sign_failed', cause });
+      throw new PasskeyPrfAdapterError('Malformed signing_input from EBW', { code: 'prepare_sign_failed', cause });
     }
 
     const expectedTyp = format === 'vc+sd-jwt' ? 'kb+jwt' : 'vp+jwt';
     if (header.alg !== 'ES256' || header.typ !== expectedTyp) {
-      throw new HybridAdapterError(
+      throw new PasskeyPrfAdapterError(
         `signing_input header mismatch: expected alg=ES256 typ=${expectedTyp}, got alg=${String(header.alg)} typ=${String(header.typ)}`,
         { code: 'prepare_sign_failed' },
       );
     }
 
     if (canonicalJson(decodedPayload) !== canonicalJson(payload)) {
-      throw new HybridAdapterError(
+      throw new PasskeyPrfAdapterError(
         'signing_input payload does not match the payload submitted to prepareSign — refusing to sign',
         { code: 'prepare_sign_failed' },
       );
@@ -143,7 +143,7 @@ export class SignService {
     try {
       return base64UrlDecode(value);
     } catch (cause) {
-      throw new HybridAdapterError('Malformed prepareSign field', {
+      throw new PasskeyPrfAdapterError('Malformed prepareSign field', {
         code: 'prepare_sign_failed',
         cause,
       });

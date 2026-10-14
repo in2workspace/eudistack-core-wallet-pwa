@@ -18,7 +18,7 @@ import { PasskeyError } from 'src/app/core/models/error/PasskeyError';
 
 // EUDISTACK-645: the holder-key id must be minted once per issued credential (ADR-021),
 // never derived from the shared `{issuer}:{credentialConfigurationId}` pair — that shape
-// caused a hard 409 in hybrid mode and silent key reuse in DB mode on a second credential
+// caused a hard 409 in passkey+prf mode and silent key reuse in DB mode on a second credential
 // of the same type.
 
 function buildKeyInfo(keyId: string): PublicKeyInfo {

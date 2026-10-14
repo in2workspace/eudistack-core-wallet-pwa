@@ -1,12 +1,12 @@
 /// <reference types="node" />
 import { TestBed } from '@angular/core/testing';
-import { HybridKeyStorageProvider } from './hybrid-key-storage.provider';
+import { ServerPasskeyPrfKeyStorageProvider } from './server-passkey-prf-key-storage.provider';
 import { ServerKeyStorageProvider } from './server-key-storage.service';
-import { HybridAdapterError } from '../models/error/HybridAdapterError';
+import { PasskeyPrfAdapterError } from '../models/error/PasskeyPrfAdapterError';
 import { AppError } from '../models/error/AppError';
 import { KeyInfo } from '../models/StoredKeyRecord';
-import { HybridKeyEnrollmentService, HybridEnrollmentResult } from 'src/app/features/hybrid-keymanager/hybrid-key-enrollment.service';
-import { SignService } from 'src/app/features/hybrid-keymanager/sign.service';
+import { PasskeyPrfKeyEnrollmentService, PasskeyPrfEnrollmentResult } from 'src/app/features/passkey-prf-keymanager/passkey-prf-key-enrollment.service';
+import { SignService } from 'src/app/features/passkey-prf-keymanager/sign.service';
 import { OID4VCIKeyGenContext } from '../spi/key-storage.provider.service';
 
 // JSDOM does not implement crypto.subtle; polyfill with Node's built-in WebCrypto API
@@ -22,7 +22,7 @@ if (!globalThis.crypto?.subtle) {
 }
 
 const PUBLIC_KEY_JWK: JsonWebKey = { kty: 'EC', crv: 'P-256', x: 'abc', y: 'def' };
-const ENROLLMENT_RESULT: HybridEnrollmentResult = {
+const ENROLLMENT_RESULT: PasskeyPrfEnrollmentResult = {
   publicKeyJwk: PUBLIC_KEY_JWK,
   jwsProof: 'header.payload.sig',
 };
@@ -50,10 +50,10 @@ function buildServerMock(): jest.Mocked<ServerKeyStorageProvider> {
   } as unknown as jest.Mocked<ServerKeyStorageProvider>;
 }
 
-function buildEnrollmentMock(): jest.Mocked<HybridKeyEnrollmentService> {
+function buildEnrollmentMock(): jest.Mocked<PasskeyPrfKeyEnrollmentService> {
   return {
     enroll: jest.fn().mockResolvedValue(ENROLLMENT_RESULT),
-  } as unknown as jest.Mocked<HybridKeyEnrollmentService>;
+  } as unknown as jest.Mocked<PasskeyPrfKeyEnrollmentService>;
 }
 
 function buildSignServiceMock(): jest.Mocked<SignService> {
@@ -63,9 +63,9 @@ function buildSignServiceMock(): jest.Mocked<SignService> {
 }
 
 function setup(): {
-  provider: HybridKeyStorageProvider;
+  provider: ServerPasskeyPrfKeyStorageProvider;
   server: jest.Mocked<ServerKeyStorageProvider>;
-  enrollment: jest.Mocked<HybridKeyEnrollmentService>;
+  enrollment: jest.Mocked<PasskeyPrfKeyEnrollmentService>;
   signService: jest.Mocked<SignService>;
 } {
   const server = buildServerMock();
@@ -73,17 +73,17 @@ function setup(): {
   const signService = buildSignServiceMock();
   TestBed.configureTestingModule({
     providers: [
-      HybridKeyStorageProvider,
+      ServerPasskeyPrfKeyStorageProvider,
       { provide: ServerKeyStorageProvider, useValue: server },
-      { provide: HybridKeyEnrollmentService, useValue: enrollment },
+      { provide: PasskeyPrfKeyEnrollmentService, useValue: enrollment },
       { provide: SignService, useValue: signService },
     ],
   });
-  return { provider: TestBed.inject(HybridKeyStorageProvider), server, enrollment, signService };
+  return { provider: TestBed.inject(ServerPasskeyPrfKeyStorageProvider), server, enrollment, signService };
 }
 
-describe('HybridKeyStorageProvider', () => {
-  it('generateKeyPair() delegates to HybridKeyEnrollmentService and returns the prebuilt OID4VCI proof', async () => {
+describe('ServerPasskeyPrfKeyStorageProvider', () => {
+  it('generateKeyPair() delegates to PasskeyPrfKeyEnrollmentService and returns the prebuilt OID4VCI proof', async () => {
     const { provider, server, enrollment } = setup();
     const result = await provider.generateKeyPair('ES256', 'k1', CONTEXT);
 
@@ -96,9 +96,9 @@ describe('HybridKeyStorageProvider', () => {
 
   it('generateKeyPair() returns the real credentialId as keyId, not the engine-supplied keyId', async () => {
     // context.credentialId round-trips through resolveKeyIdByKid -> buildPresentationJws,
-    // so SignService.sign() can call the hybrid handshake without a separate lookup.
+    // so SignService.sign() can call the passkey+prf handshake without a separate lookup.
     // wallet_credential.holder_key_id was widened to VARCHAR(512) to fit it
-    // (V5__widen_holder_key_id_for_hybrid.sql — was VARCHAR(36), see the 22001 regression).
+    // (V5__widen_holder_key_id_for_passkey-prf.sql — was VARCHAR(36), see the 22001 regression).
     const { provider } = setup();
     const result = await provider.generateKeyPair('ES256', 'k1', CONTEXT);
 
@@ -113,12 +113,12 @@ describe('HybridKeyStorageProvider', () => {
     expect(enrollment.enroll).not.toHaveBeenCalled();
   });
 
-  it('sign() throws HybridAdapterError with code prepare_sign_failed', async () => {
+  it('sign() throws PasskeyPrfAdapterError with code prepare_sign_failed', async () => {
     const { provider } = setup();
     await expect(provider.sign('k1', new Uint8Array([1, 2, 3])))
-      .rejects.toBeInstanceOf(HybridAdapterError);
+      .rejects.toBeInstanceOf(PasskeyPrfAdapterError);
 
-    await provider.sign('k1', new Uint8Array()).catch((e: HybridAdapterError) => {
+    await provider.sign('k1', new Uint8Array()).catch((e: PasskeyPrfAdapterError) => {
       expect(e.code).toBe('prepare_sign_failed');
     });
   });

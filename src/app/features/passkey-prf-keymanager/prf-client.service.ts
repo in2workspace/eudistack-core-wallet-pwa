@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { HybridAdapterError } from 'src/app/core/models/error/HybridAdapterError';
+import { PasskeyPrfAdapterError } from 'src/app/core/models/error/PasskeyPrfAdapterError';
 import { PasskeyError, runPasskeyCeremony } from 'src/app/core/models/error/PasskeyError';
 import { base64UrlDecode } from 'src/app/core/utils/base64url';
 import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
@@ -46,7 +46,7 @@ export class PrfClientService {
    * Cancel/timeout/SecurityError surface as a classified PasskeyError (same
    * contract as login and PRF signing). Only "the authenticator answered but
    * produced no PRF output" is reported as `prf_unavailable`: that is the one
-   * outcome HybridKeyEnrollmentService treats as confirmed incapability.
+   * outcome PasskeyPrfKeyEnrollmentService treats as confirmed incapability.
    */
   async evaluateForWrap(prfSalt: Uint8Array): Promise<Uint8Array> {
     const credentialId = this.prfService.getCredentialId();
@@ -56,7 +56,7 @@ export class PrfClientService {
 
     const prfOutput = this.readPrfOutput(await this.assertWithPrf(credentialId, prfSalt));
     if (!prfOutput) {
-      throw new HybridAdapterError('PRF extension not supported or returned no output', {
+      throw new PasskeyPrfAdapterError('PRF extension not supported or returned no output', {
         code: 'prf_unavailable',
         translationKey: 'errors.prf-unsupported',
       });

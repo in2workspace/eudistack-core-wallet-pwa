@@ -3,56 +3,56 @@ import { Router } from '@angular/router';
 import { AlertController } from '@ionic/angular';
 import { TranslateModule } from '@ngx-translate/core';
 import { of, throwError } from 'rxjs';
-import { HybridOnboardingPage } from './hybrid-onboarding.page';
+import { PasskeyPrfOnboardingPage } from './passkey-prf-onboarding.page';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
-import { HybridAuditService } from 'src/app/core/services/hybrid-audit.service';
-import { HybridOnboardingService } from 'src/app/core/services/hybrid-onboarding.service';
+import { PasskeyPrfAuditService } from 'src/app/core/services/passkey-prf-audit.service';
+import { PasskeyPrfOnboardingService } from 'src/app/core/services/passkey-prf-onboarding.service';
 import { TelemetryService } from 'src/app/core/services/telemetry.service';
 
-describe('HybridOnboardingPage', () => {
-  let fixture: ComponentFixture<HybridOnboardingPage>;
-  let component: HybridOnboardingPage;
+describe('PasskeyPrfOnboardingPage', () => {
+  let fixture: ComponentFixture<PasskeyPrfOnboardingPage>;
+  let component: PasskeyPrfOnboardingPage;
   let router: { navigateByUrl: jest.Mock };
-  let hybridOnboarding: { markAccepted: jest.Mock; isAccepted: jest.Mock };
-  let hybridAudit: { recordConstraintAccepted: jest.Mock };
+  let passkeyPrfOnboarding: { markAccepted: jest.Mock; isAccepted: jest.Mock };
+  let passkeyPrfAudit: { recordConstraintAccepted: jest.Mock };
   let telemetry: { track: jest.Mock };
   let alertController: { create: jest.Mock };
 
   beforeEach(async () => {
     sessionStorage.clear();
     router = { navigateByUrl: jest.fn() };
-    hybridOnboarding = { markAccepted: jest.fn(), isAccepted: jest.fn() };
-    hybridAudit = { recordConstraintAccepted: jest.fn().mockReturnValue(of(undefined)) };
+    passkeyPrfOnboarding = { markAccepted: jest.fn(), isAccepted: jest.fn() };
+    passkeyPrfAudit = { recordConstraintAccepted: jest.fn().mockReturnValue(of(undefined)) };
     telemetry = { track: jest.fn() };
     alertController = { create: jest.fn().mockResolvedValue({ present: jest.fn() }) };
 
     await TestBed.configureTestingModule({
-      imports: [HybridOnboardingPage, TranslateModule.forRoot()],
+      imports: [PasskeyPrfOnboardingPage, TranslateModule.forRoot()],
       providers: [
         { provide: Router, useValue: router },
-        { provide: HybridOnboardingService, useValue: hybridOnboarding },
-        { provide: HybridAuditService, useValue: hybridAudit },
+        { provide: PasskeyPrfOnboardingService, useValue: passkeyPrfOnboarding },
+        { provide: PasskeyPrfAuditService, useValue: passkeyPrfAudit },
         { provide: TelemetryService, useValue: telemetry },
         { provide: AlertController, useValue: alertController },
       ],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(HybridOnboardingPage);
+    fixture = TestBed.createComponent(PasskeyPrfOnboardingPage);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
 
   it('tracks shown event on init', () => {
-    expect(telemetry.track).toHaveBeenCalledWith('hybrid_onboarding_shown');
+    expect(telemetry.track).toHaveBeenCalledWith('passkey_prf_onboarding_shown');
   });
 
   it('marks accepted, tracks, navigates immediately and fires audit in background', () => {
     component.accept();
 
-    expect(hybridOnboarding.markAccepted).toHaveBeenCalled();
-    expect(telemetry.track).toHaveBeenCalledWith('hybrid_onboarding_accepted');
+    expect(passkeyPrfOnboarding.markAccepted).toHaveBeenCalled();
+    expect(telemetry.track).toHaveBeenCalledWith('passkey_prf_onboarding_accepted');
     expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs');
-    expect(hybridAudit.recordConstraintAccepted).toHaveBeenCalled();
+    expect(passkeyPrfAudit.recordConstraintAccepted).toHaveBeenCalled();
   });
 
   it('resumes the pending deep link instead of /tabs after accepting', () => {
@@ -65,7 +65,7 @@ describe('HybridOnboardingPage', () => {
   });
 
   it('navigates even when audit call fails', () => {
-    hybridAudit.recordConstraintAccepted.mockReturnValue(throwError(() => new Error('network')));
+    passkeyPrfAudit.recordConstraintAccepted.mockReturnValue(throwError(() => new Error('network')));
 
     component.accept();
 

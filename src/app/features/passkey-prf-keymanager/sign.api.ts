@@ -33,10 +33,10 @@ export interface SubmitSignedResponse {
 }
 
 /**
- * HTTP client for the hybrid signing handshake endpoints on the EBW backend.
+ * HTTP client for the passkey+prf signing handshake endpoints on the EBW backend.
  *
- * - POST /api/v1/keys/hybrid/sign/prepare  → 200 PrepareSignResponse
- * - POST /api/v1/keys/hybrid/sign/submit   → 200 SubmitSignedResponse
+ * - POST /api/v1/keys/passkey-prf/sign/prepare  → 200 PrepareSignResponse
+ * - POST /api/v1/keys/passkey-prf/sign/submit   → 200 SubmitSignedResponse
  *
  * Authorization: Bearer is attached automatically by the existing auth interceptor
  * for own-backend URLs. Field names match the EBW DTOs exactly.
@@ -51,7 +51,7 @@ export class SignApi {
   prepareSign(req: PrepareSignRequest): Promise<PrepareSignResponse> {
     return firstValueFrom(
       this.http.post<PrepareSignResponse>(
-        `${this.urlResolver.serverUrl()}${SERVER_PATH.HYBRID_SIGN_PREPARE}`,
+        `${this.urlResolver.serverUrl()}${SERVER_PATH.PASSKEY_PRF_SIGN_PREPARE}`,
         req,
       ),
     );
@@ -60,7 +60,7 @@ export class SignApi {
   submitSignedAssertion(req: SubmitSignedRequest): Promise<SubmitSignedResponse> {
     return firstValueFrom(
       this.http.post<SubmitSignedResponse>(
-        `${this.urlResolver.serverUrl()}${SERVER_PATH.HYBRID_SIGN_SUBMIT}`,
+        `${this.urlResolver.serverUrl()}${SERVER_PATH.PASSKEY_PRF_SIGN_SUBMIT}`,
         req,
       ),
     );

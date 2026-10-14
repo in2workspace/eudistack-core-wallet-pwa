@@ -122,7 +122,7 @@ describe('PrfClientService', () => {
     });
   });
 
-  it('only uses translation keys that exist (no raw hybrid.error.* keys)', async () => {
+  it('only uses translation keys that exist (no raw passkey-prf.error.* keys)', async () => {
     mockCredentialsGet.mockRejectedValue(new Error('unexpected'));
 
     await expect(service.evaluateForWrap(PRF_SALT)).rejects.toMatchObject({ translationKey: 'auth.errors.passkey-failed' });

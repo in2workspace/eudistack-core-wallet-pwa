@@ -688,9 +688,9 @@
     "step1": "Toca los tres puntos en Safari",
     "step1-detail": "Búscalos al lado de la barra de navegación para abrir el menú de opciones"
   },
-  "hybrid-onboarding": {
+  "passkey-prf-onboarding": {
     "title": "Firma desde múltiples dispositivos",
-    "subtitle": "Este tenant usa un gestor de claves híbrido. Las credenciales se firman con una passkey vinculada a este dispositivo. Si intentas firmar desde otro dispositivo, la operación fallará.",
+    "subtitle": "Este tenant usa un gestor de claves passkey+prf. Las credenciales se firman con una passkey vinculada a este dispositivo. Si intentas firmar desde otro dispositivo, la operación fallará.",
     "warning-icon-aria": "Advertencia de limitación multi-dispositivo",
     "bullet-1": "La clave de firma queda vinculada a este dispositivo",
     "bullet-2": "No podrás presentar credenciales desde otro dispositivo",
@@ -700,7 +700,7 @@
     "learn-more-body": "Este tenant usa passkeys con extensión PRF para proteger la clave privada del titular. La passkey solo existe en este dispositivo; por seguridad, no se puede transferir a otro.",
     "learn-more-close": "Entendido"
   },
-  "hybrid-errors": {
+  "passkey-prf-errors": {
     "wrap-unavailable-title": "No se puede firmar en este dispositivo",
     "wrap-unavailable-body": "La clave de firma fue creada en otro dispositivo y no puede usarse aquí. Usa el dispositivo original para presentar tus credenciales.",
     "wrap-unavailable-cta": "Cerrar"

@@ -6,16 +6,16 @@ import { ProofBuilderService } from 'src/app/core/protocol/oid4vci/proof-builder
 import { MemoryService } from './memory.service';
 import { PrfClientService } from './prf-client.service';
 import { WrapService } from './wrap.service';
-import { OnboardingHybridApi } from './onboarding-hybrid.api';
+import { OnboardingPasskeyPrfApi } from './onboarding-passkey-prf.api';
 
-export interface HybridEnrollmentResult {
+export interface PasskeyPrfEnrollmentResult {
   publicKeyJwk: JsonWebKey;
   /** OID4VCI proof JWT signed with the holder key before it was wrapped and zeroized. */
   jwsProof: string;
 }
 
 /**
- * Orchestrates per-credential holder key generation for `key_manager=hybrid` tenants:
+ * Orchestrates per-credential holder key generation for `key_manager=passkey-prf` tenants:
  *   init -> PRF ceremony -> key generation -> OID4VCI proof signing
  *   -> HKDF wrap-key derivation -> AES-256-GCM wrap -> commit -> zeroize
  *
@@ -33,14 +33,14 @@ export interface HybridEnrollmentResult {
  * Spec: EUDISTACK-534 (YARD-126) AC-01, AC-02, AC-03, AC-08, ES-04, ES-05.
  */
 @Injectable({ providedIn: 'root' })
-export class HybridKeyEnrollmentService {
-  private readonly api = inject(OnboardingHybridApi);
+export class PasskeyPrfKeyEnrollmentService {
+  private readonly api = inject(OnboardingPasskeyPrfApi);
   private readonly memoryService = inject(MemoryService);
   private readonly prfClientService = inject(PrfClientService);
   private readonly wrapService = inject(WrapService);
   private readonly proofBuilder = inject(ProofBuilderService);
 
-  async enroll(context: OID4VCIKeyGenContext): Promise<HybridEnrollmentResult> {
+  async enroll(context: OID4VCIKeyGenContext): Promise<PasskeyPrfEnrollmentResult> {
     let privateKey: CryptoKey | undefined;
     let wrapKey: CryptoKey | undefined;
     let prfOutput: Uint8Array | undefined;
@@ -88,7 +88,7 @@ export class HybridKeyEnrollmentService {
       return { publicKeyJwk, jwsProof };
 
     } catch (err) {
-      throw err instanceof AppError ? err : new AppError('Hybrid key enrollment failed', { cause: err });
+      throw err instanceof AppError ? err : new AppError('Passkey+prf key enrollment failed', { cause: err });
 
     } finally {
       // Private key MUST always be zeroized (ES-05) — it never persists

@@ -39,30 +39,30 @@ export interface BlockResponse {
 }
 
 /**
- * HTTP client for the hybrid onboarding endpoints on the EBW backend.
+ * HTTP client for the passkey+prf onboarding endpoints on the EBW backend.
  *
- * - POST /api/v1/keys/hybrid/onboarding/init  → 200 with prf_salt + kdf_params
- * - POST /api/v1/keys/hybrid/onboarding/commit → 201 (new) or 200 (idempotent replay)
+ * - POST /api/v1/keys/passkey-prf/onboarding/init  → 200 with prf_salt + kdf_params
+ * - POST /api/v1/keys/passkey-prf/onboarding/commit → 201 (new) or 200 (idempotent replay)
  *
  * Spec: EUDISTACK-534 AC-01, AC-04, AC-07; technical-design.md §3.2 T15.
  */
 @Injectable({ providedIn: 'root' })
-export class OnboardingHybridApi {
+export class OnboardingPasskeyPrfApi {
   private readonly http = inject(HttpClient);
   private readonly urlResolver = inject(UrlResolverService);
 
   init(req: InitRequest): Promise<InitResponse> {
-    const url = `${this.urlResolver.serverUrl()}${SERVER_PATH.HYBRID_ONBOARDING_INIT}`;
+    const url = `${this.urlResolver.serverUrl()}${SERVER_PATH.PASSKEY_PRF_ONBOARDING_INIT}`;
     return firstValueFrom(this.http.post<InitResponse>(url, req));
   }
 
   commit(req: CommitRequest): Promise<CommitResponse> {
-    const url = `${this.urlResolver.serverUrl()}${SERVER_PATH.HYBRID_ONBOARDING_COMMIT}`;
+    const url = `${this.urlResolver.serverUrl()}${SERVER_PATH.PASSKEY_PRF_ONBOARDING_COMMIT}`;
     return firstValueFrom(this.http.post<CommitResponse>(url, req));
   }
 
   block(req: BlockRequest): Promise<BlockResponse> {
-    const url = `${this.urlResolver.serverUrl()}${SERVER_PATH.HYBRID_ONBOARDING_BLOCK}`;
+    const url = `${this.urlResolver.serverUrl()}${SERVER_PATH.PASSKEY_PRF_ONBOARDING_BLOCK}`;
     return firstValueFrom(this.http.post<BlockResponse>(url, req));
   }
 }

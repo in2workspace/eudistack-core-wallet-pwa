@@ -408,8 +408,8 @@ it('keeps the backend message as-is for REQUEST_CREDENTIAL on "Incorrect PIN" (n
   req.flush({ message: 'Incorrect PIN' }, { status: 400, statusText: 'Bad Request' });
 });
 
-it('hybrid sign prepare 500 → handled silently, no toast, no error body logged (B1/NFR-S-536-03)', () => {
-  const testUrl = `${environment.server_url}${SERVER_PATH.HYBRID_SIGN_PREPARE}`;
+it('passkey-prf sign prepare 500 → handled silently, no toast, no error body logged (B1/NFR-S-536-03)', () => {
+  const testUrl = `${environment.server_url}${SERVER_PATH.PASSKEY_PRF_SIGN_PREPARE}`;
   const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
   const consoleSpy = jest.spyOn(console, 'error');
 
@@ -425,8 +425,8 @@ it('hybrid sign prepare 500 → handled silently, no toast, no error body logged
   req.flush({ message: 'Internal error' }, { status: 500, statusText: 'Internal Server Error' });
 });
 
-it('hybrid sign submit 500 → handled silently, no toast, no error body logged (B1/NFR-S-536-03)', () => {
-  const testUrl = `${environment.server_url}${SERVER_PATH.HYBRID_SIGN_SUBMIT}`;
+it('passkey-prf sign submit 500 → handled silently, no toast, no error body logged (B1/NFR-S-536-03)', () => {
+  const testUrl = `${environment.server_url}${SERVER_PATH.PASSKEY_PRF_SIGN_SUBMIT}`;
   const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
   const consoleSpy = jest.spyOn(console, 'error');
 

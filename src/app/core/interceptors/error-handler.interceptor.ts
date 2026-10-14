@@ -103,9 +103,9 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           // on register/verify-email pop the generic modal on top of the inline
           // banner the login page already shows (EUD bug: duplicate 429 feedback).
           pathname.includes('/api/v1/auth/') ||
-          // Hybrid signing endpoints — never toast or expose body (NFR-S-536-03 defense-in-depth)
-          pathname.endsWith(SERVER_PATH.HYBRID_SIGN_PREPARE) ||
-          pathname.endsWith(SERVER_PATH.HYBRID_SIGN_SUBMIT) ||
+          // passkey+prf signing endpoints — never toast or expose body (NFR-S-536-03 defense-in-depth)
+          pathname.endsWith(SERVER_PATH.PASSKEY_PRF_SIGN_PREPARE) ||
+          pathname.endsWith(SERVER_PATH.PASSKEY_PRF_SIGN_SUBMIT) ||
           // Background sync the user never triggered directly: activity history
           // (sync after login, list on Actividad, append after saving/deleting a
           // credential) and credential lifecycle status persistence. Callers already

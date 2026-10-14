@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { TestBed } from '@angular/core/testing';
-import { HybridAdapterError } from 'src/app/core/models/error/HybridAdapterError';
+import { PasskeyPrfAdapterError } from 'src/app/core/models/error/PasskeyPrfAdapterError';
 import { base64UrlEncode } from 'src/app/core/utils/base64url';
 import { MemoryService } from './memory.service';
 import { PrfClientService } from './prf-client.service';
@@ -47,7 +47,7 @@ const PREPARE_RESPONSE: PrepareSignResponse = {
 };
 
 /**
- * Orchestration tests for SignService (US-04 hybrid signing handshake).
+ * Orchestration tests for SignService (US-04 passkey+prf signing handshake).
  *
  * All crypto services are mocked; only crypto.subtle.sign runs real WebCrypto
  * (hence the Node polyfill + real holderKey from beforeAll).
@@ -186,8 +186,8 @@ describe('SignService', () => {
 
   // ------------------------------------------------------------------ ES-03: unwrap failure → fail-closed
 
-  it('unwrap failure throws HybridAdapterError, evicts stale key, and never calls submit (W3/ES-03)', async () => {
-    const unwrapError = new HybridAdapterError('GCM tag invalid', {
+  it('unwrap failure throws PasskeyPrfAdapterError, evicts stale key, and never calls submit (W3/ES-03)', async () => {
+    const unwrapError = new PasskeyPrfAdapterError('GCM tag invalid', {
       code: 'wrap_unavailable_on_this_device',
     });
     memory.get.mockReturnValue(undefined);
@@ -197,7 +197,7 @@ describe('SignService', () => {
     api.prepareSign.mockResolvedValue(PREPARE_RESPONSE);
     wrapSvc.zeroize.mockResolvedValue();
 
-    await expect(service.sign(CRED_ID, PAYLOAD)).rejects.toThrow(HybridAdapterError);
+    await expect(service.sign(CRED_ID, PAYLOAD)).rejects.toThrow(PasskeyPrfAdapterError);
 
     expect(api.submitSignedAssertion).not.toHaveBeenCalled(); // ES-03 fail-closed
     expect(memory.delete).toHaveBeenCalledWith(CRED_ID); // W3: stale key evicted on GCM fail

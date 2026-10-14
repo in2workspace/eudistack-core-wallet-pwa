@@ -232,6 +232,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `WalletDiscoveryService` (`wallet_mode` discovery/fallback) was investigated and ruled out as the cause.
 - **Revocation status check failed open: a failed status-list request was shown as "not revoked"**: `CredentialVerificationService.isRevoked()`/`checkStatusList()` caught any failure of the HTTP request to the bitstring status list (network down, 5xx, CORS, timeout) and silently collapsed it into "not revoked" — a network error rendered as a successful check, both in the explicit "Verify Credential" modal and in the passive background check in `credentials.page.ts`. Both methods now share a single `checkRevocationStatus()`, which resolves to a tri-state result (`'revoked' | 'not-revoked' | 'unknown'`); a request failure is never reported as `'not-revoked'`. The modal now shows an explicit third state ("Revocation status could not be checked", amber) that neither persists a false `REVOKED` nor gets confused with a confirmed revocation; the background check leaves the cached status untouched under uncertainty. A credential already known locally as `REVOKED` stays `REVOKED` even if the network fails afterwards.
 
+## [3.17.0] - 2026-10-14
+
+### Changed
+
+- **The `hybrid` key manager is now `passkey-prf` (EUD-309)**: the key manager that wraps the holder key with the passkey PRF output is selected by `keyManager = 'passkey-prf'` in the wallet configuration and calls the Wallet Unit Service routes under `/api/v1/keys/passkey-prf/**` (same sub-paths as before). Code, files, i18n keys, telemetry events and UI texts were renamed accordingly (user-facing name: "passkey+prf"). Requires a Wallet Unit Service with the same change. The HKDF label `hybrid-wrap-v1` keeps its value so keys already wrapped stay readable. The session flag that records the accepted onboarding is now `passkey-prf-onboarding-accepted`, so a holder with an open session sees the onboarding screen once more.
+
 ## [3.16.13] - 2026-10-13
 
 ### Fixed

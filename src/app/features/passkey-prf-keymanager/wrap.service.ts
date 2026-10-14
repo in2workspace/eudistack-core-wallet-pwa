@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HYBRID_WRAP_KDF_PARAMS } from './hybrid-kdf.const';
+import { PASSKEY_PRF_WRAP_KDF_PARAMS } from './passkey-prf-kdf.const';
 
 export interface HolderKeyPair {
   privateKey: CryptoKey;
@@ -13,7 +13,7 @@ export interface WrappedKeyMaterial {
 }
 
 /**
- * Client-side cryptographic operations for hybrid onboarding.
+ * Client-side cryptographic operations for passkey+prf onboarding.
  *
  * Key invariants (spec §AC-02/AC-03/NFR-04):
  *  - Private key never leaves the device in plaintext.
@@ -52,9 +52,9 @@ export class WrapService {
     const salt = new TextEncoder().encode(credentialId);
 
     return crypto.subtle.deriveKey(
-      { name: 'HKDF', hash: HYBRID_WRAP_KDF_PARAMS.hash, salt, info: HYBRID_WRAP_KDF_PARAMS.info },
+      { name: 'HKDF', hash: PASSKEY_PRF_WRAP_KDF_PARAMS.hash, salt, info: PASSKEY_PRF_WRAP_KDF_PARAMS.info },
       baseKey,
-      { name: 'AES-GCM', length: HYBRID_WRAP_KDF_PARAMS.aesLength },
+      { name: 'AES-GCM', length: PASSKEY_PRF_WRAP_KDF_PARAMS.aesLength },
       false, // wrap key is not extractable
       // Both usages: this key is cached in MemoryService keyed by credentialId and reused
       // as-is by SignService.sign() (US-04) to unwrap the same private key later in the

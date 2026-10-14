@@ -1,8 +1,8 @@
-.hybrid-onboarding-bg {
+.passkey-prf-onboarding-bg {
   --background: var(--ion-color-light);
 }
 
-.hybrid-onboarding-wrapper {
+.passkey-prf-onboarding-wrapper {
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -10,7 +10,7 @@
   padding: 24px 16px;
 }
 
-.hybrid-onboarding-card {
+.passkey-prf-onboarding-card {
   background: var(--ion-background-color, #fff);
   border-radius: 16px;
   padding: 32px 24px;
@@ -19,12 +19,12 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-.hybrid-onboarding-header {
+.passkey-prf-onboarding-header {
   text-align: center;
   margin-bottom: 28px;
 }
 
-.hybrid-onboarding-icon-circle {
+.passkey-prf-onboarding-icon-circle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -40,21 +40,21 @@
   }
 }
 
-.hybrid-onboarding-title {
+.passkey-prf-onboarding-title {
   font-size: 1.25rem;
   font-weight: 700;
   margin: 0 0 8px;
   color: var(--ion-color-dark);
 }
 
-.hybrid-onboarding-subtitle {
+.passkey-prf-onboarding-subtitle {
   font-size: 0.9rem;
   color: var(--ion-color-medium);
   margin: 0;
   line-height: 1.5;
 }
 
-.hybrid-onboarding-bullets {
+.passkey-prf-onboarding-bullets {
   list-style: none;
   padding: 0;
   margin: 0 0 28px;
@@ -63,7 +63,7 @@
   gap: 12px;
 }
 
-.hybrid-onboarding-bullet {
+.passkey-prf-onboarding-bullet {
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -78,7 +78,7 @@
   }
 }
 
-.hybrid-accept-btn {
+.passkey-prf-accept-btn {
   display: block;
   width: 100%;
   padding: 14px;
@@ -96,7 +96,7 @@
   }
 }
 
-.hybrid-learn-more-btn {
+.passkey-prf-learn-more-btn {
   display: block;
   width: 100%;
   padding: 10px;

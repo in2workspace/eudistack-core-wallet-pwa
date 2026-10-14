@@ -1,14 +1,14 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { OnboardingHybridComponent } from './onboarding-hybrid.component';
+import { OnboardingPasskeyPrfComponent } from './onboarding-passkey-prf.component';
 import { MemoryService } from '../memory.service';
 import { PrfClientService } from '../prf-client.service';
 import { WrapService } from '../wrap.service';
-import { OnboardingHybridApi } from '../onboarding-hybrid.api';
+import { OnboardingPasskeyPrfApi } from '../onboarding-passkey-prf.api';
 import { AppError } from 'src/app/core/models/error/AppError';
 
-describe('OnboardingHybridComponent', () => {
-  let fixture: ComponentFixture<OnboardingHybridComponent>;
-  let component: OnboardingHybridComponent;
+describe('OnboardingPasskeyPrfComponent', () => {
+  let fixture: ComponentFixture<OnboardingPasskeyPrfComponent>;
+  let component: OnboardingPasskeyPrfComponent;
 
   let mockApi: { init: jest.Mock; commit: jest.Mock; block: jest.Mock };
   let mockMemory: { set: jest.Mock };
@@ -50,16 +50,16 @@ describe('OnboardingHybridComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [OnboardingHybridComponent],
+      imports: [OnboardingPasskeyPrfComponent],
       providers: [
-        { provide: OnboardingHybridApi, useValue: mockApi },
+        { provide: OnboardingPasskeyPrfApi, useValue: mockApi },
         { provide: MemoryService, useValue: mockMemory },
         { provide: PrfClientService, useValue: mockPrf },
         { provide: WrapService, useValue: mockWrap },
       ],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(OnboardingHybridComponent);
+    fixture = TestBed.createComponent(OnboardingPasskeyPrfComponent);
     component = fixture.componentInstance;
     component.credentialId = CRED_ID;
     fixture.detectChanges();
@@ -104,7 +104,7 @@ describe('OnboardingHybridComponent', () => {
 
   it('aborts and does not call commit if PRF ceremony throws', async () => {
     mockPrf.evaluateForWrap.mockRejectedValue(
-      new AppError('PRF not available', { translationKey: 'hybrid.error.prfUnavailable' }),
+      new AppError('PRF not available', { translationKey: 'passkey-prf.error.prfUnavailable' }),
     );
     const errorSpy = jest.fn();
     component.enrollmentError.subscribe(errorSpy);
