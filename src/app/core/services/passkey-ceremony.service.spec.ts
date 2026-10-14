@@ -4,7 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { signal } from '@angular/core';
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import { environment } from 'src/environments/environment';
-import { PasskeyCeremonyService } from './passkey-ceremony.service';
+import { PasskeyCeremonyService, PrfCheckNeedsGestureError } from './passkey-ceremony.service';
 import { WalletDiscoveryService } from './wallet-discovery.service';
 import { WebAuthnBrowserService } from './webauthn-browser.service';
 import { PasskeyError } from '../models/error/PasskeyError';
@@ -233,12 +233,51 @@ describe('PasskeyCeremonyService (EUD-8)', () => {
 
       it('keeps a cancelled check a cancel (no error screen) but still hides the unregistered passkey', async () => {
         (startRegistration as jest.Mock).mockResolvedValue(registrationResponse());
-        credentialsGet.mockRejectedValue(Object.assign(new Error('cancelled'), { name: 'NotAllowedError' }));
+        // The user took a while to cancel: a real cancel, not a lost gesture.
+        let now = 1_000_000;
+        jest.spyOn(Date, 'now').mockImplementation(() => now);
+        credentialsGet.mockImplementation(async () => {
+          now += 5_000;
+          throw Object.assign(new Error('cancelled'), { name: 'NotAllowedError' });
+        });
 
         const result = service.register();
         http.expectOne(`${AUTH}/passkeys/registration/options`).flush(creationOptions);
 
         await expect(result).rejects.toMatchObject({ code: 'passkey_cancelled' });
+        expect(webAuthn.signalUnknownCredential).toHaveBeenCalled();
+        jest.restoreAllMocks();
+      });
+
+      it('asks for a new tap when the check is rejected at once (Safari lost the gesture), and registers from it', async () => {
+        (startRegistration as jest.Mock).mockResolvedValue(registrationResponse());
+        credentialsGet.mockRejectedValueOnce(Object.assign(new Error('not allowed'), { name: 'NotAllowedError' }));
+
+        const result = service.register();
+        http.expectOne(`${AUTH}/passkeys/registration/options`).flush(creationOptions);
+        const error = await result.catch(err => err);
+
+        expect(error).toBeInstanceOf(PrfCheckNeedsGestureError);
+        expect(webAuthn.signalUnknownCredential).not.toHaveBeenCalled();
+
+        credentialsGet.mockResolvedValue(prfAssertion(new Uint8Array(32).fill(1).buffer));
+        const resumed = (error as PrfCheckNeedsGestureError).resume();
+        await flush();
+        const registration = http.expectOne(`${AUTH}/passkeys/registration`);
+        expect(registration.request.body.prfSupported).toBe(true);
+        registration.flush(session);
+        await expect(resumed).resolves.toMatchObject({ credentialId: 'Y3JlZC1uZXc' });
+      });
+
+      it('treats a cancel of the tapped check as a real cancel and hides the passkey', async () => {
+        (startRegistration as jest.Mock).mockResolvedValue(registrationResponse());
+        credentialsGet.mockRejectedValue(Object.assign(new Error('not allowed'), { name: 'NotAllowedError' }));
+
+        const result = service.register();
+        http.expectOne(`${AUTH}/passkeys/registration/options`).flush(creationOptions);
+        const error = (await result.catch(err => err)) as PrfCheckNeedsGestureError;
+
+        await expect(error.resume()).rejects.toMatchObject({ code: 'passkey_cancelled' });
         expect(webAuthn.signalUnknownCredential).toHaveBeenCalled();
       });
 

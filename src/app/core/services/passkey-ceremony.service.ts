@@ -23,6 +23,23 @@ export const PASSKEY_CUSTODY_KEY_MANAGER = 'passkey-prf';
 const PRF_CHECK_TIMEOUT_MS = 60_000;
 const PRF_CHECK_SALT_BYTES = 32;
 
+/**
+ * A PRF check rejected faster than this was not answered by the user: Safari
+ * refuses a second WebAuthn call that is not started by a new user gesture.
+ */
+const GESTURE_LOSS_MAX_MS = 1_500;
+
+/**
+ * The PRF check of a just-created passkey could not start without a new tap.
+ * `resume()` must be called from a click handler: it runs the check and, if it
+ * passes, registers the passkey.
+ */
+export class PrfCheckNeedsGestureError extends Error {
+  public constructor(public readonly resume: () => Promise<PasskeySession>) {
+    super('The PRF check needs a new user gesture');
+  }
+}
+
 /** `Session` of the contract: returned when a passkey ceremony or a renewal succeeds. */
 export interface SessionResponse {
   accessToken: string;
@@ -98,9 +115,26 @@ export class PasskeyCeremonyService {
     const credential = await runPasskeyCeremony<RegistrationResponseJSON>(
       'create', publicKey.timeout, () => startRegistration({ optionsJSON: publicKey })
     );
+    return this.registerCreated(ceremonyId, publicKey, credential, displayName?.trim(), true);
+  }
+
+  /**
+   * Checks the PRF of a created passkey and registers it. `allowGestureRetry`:
+   * a check rejected almost at once (Safari drops the user gesture after the
+   * creation dialog) does not count as a cancel; the caller gets a
+   * `PrfCheckNeedsGestureError` to run the check again from a new tap.
+   */
+  private async registerCreated(
+    ceremonyId: string,
+    publicKey: PublicKeyCredentialCreationOptionsJSON,
+    credential: RegistrationResponseJSON,
+    name: string | undefined,
+    allowGestureRetry: boolean,
+  ): Promise<PasskeySession> {
     const rpId = publicKey.rp.id ?? globalThis.location.hostname;
-    const prfSupported = await this.confirmPrf(credential, rpId);
-    const name = displayName?.trim();
+    const prfSupported = await this.confirmPrf(credential, rpId, allowGestureRetry
+      ? () => this.registerCreated(ceremonyId, publicKey, credential, name, false)
+      : null);
 
     try {
       const session = await firstValueFrom(this.http.post<SessionResponse>(`${this.authBase}/passkeys/registration`, {
@@ -138,17 +172,27 @@ export class PasskeyCeremonyService {
    * managers only give the PRF on use (Windows Hello in Chrome/Edge ≤ 146,
    * Samsung Pass). The PRF output is only checked for presence and discarded.
    */
-  private async confirmPrf(credential: RegistrationResponseJSON, rpId: string): Promise<boolean> {
+  private async confirmPrf(
+    credential: RegistrationResponseJSON,
+    rpId: string,
+    retryWithGesture: (() => Promise<PasskeySession>) | null,
+  ): Promise<boolean> {
     const enabledAtCreation = credential.clientExtensionResults?.prf?.enabled === true;
     if (enabledAtCreation || !this.hasPasskeyCustody()) {
       return enabledAtCreation;
     }
 
     let prfConfirmed: boolean;
+    const startedAt = Date.now();
     try {
       prfConfirmed = await this.evaluatePrfOnce(credential.rawId, rpId);
     } catch (err) {
-      // The passkey will not be registered either way: hide it from the passkey manager.
+      const gestureLost = err instanceof PasskeyError && err.code === 'passkey_cancelled'
+        && Date.now() - startedAt < GESTURE_LOSS_MAX_MS;
+      if (gestureLost && retryWithGesture) {
+        throw new PrfCheckNeedsGestureError(retryWithGesture);
+      }
+      // The passkey will not be registered: hide it from the passkey manager.
       await this.webAuthnBrowser.signalUnknownCredential(rpId, credential.id);
       if (err instanceof PasskeyError && err.isUserAbort) {
         throw err;
