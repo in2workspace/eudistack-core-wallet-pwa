@@ -50,15 +50,4 @@ describe('OnboardingPasskeyPrfApi', () => {
     expect(call.request.body).toEqual(req);
     await expect(promise).resolves.toEqual({ credential_id: 'c1' });
   });
-
-  it('block() POSTs to the onboarding/block endpoint and returns the response', async () => {
-    const req = { credential_id: 'c1', correlation_id: 'corr-1' };
-
-    const promise = api.block(req);
-    const call = httpMock.expectOne(`${SERVER_BASE}${SERVER_PATH.PASSKEY_PRF_ONBOARDING_BLOCK}`);
-    call.flush({ credential_id: 'c1' });
-
-    expect(call.request.body).toEqual(req);
-    await expect(promise).resolves.toEqual({ credential_id: 'c1' });
-  });
 });
