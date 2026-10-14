@@ -232,6 +232,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `WalletDiscoveryService` (`wallet_mode` discovery/fallback) was investigated and ruled out as the cause.
 - **Revocation status check failed open: a failed status-list request was shown as "not revoked"**: `CredentialVerificationService.isRevoked()`/`checkStatusList()` caught any failure of the HTTP request to the bitstring status list (network down, 5xx, CORS, timeout) and silently collapsed it into "not revoked" — a network error rendered as a successful check, both in the explicit "Verify Credential" modal and in the passive background check in `credentials.page.ts`. Both methods now share a single `checkRevocationStatus()`, which resolves to a tri-state result (`'revoked' | 'not-revoked' | 'unknown'`); a request failure is never reported as `'not-revoked'`. The modal now shows an explicit third state ("Revocation status could not be checked", amber) that neither persists a false `REVOKED` nor gets confused with a confirmed revocation; the background check leaves the cached status untouched under uncertainty. A credential already known locally as `REVOKED` stays `REVOKED` even if the network fails afterwards.
 
+## [3.18.0] - 2026-10-14
+
+### Added
+
+- **Passkey-verified access in server mode (EUD-308, feature EUD-8)**: the Wallet Unit Service now issues every WebAuthn challenge and verifies every passkey; a session only opens after that verification. Requires the Wallet Unit Service with the EUD-8 registration and access API (`/auth/passkeys/registration*`, `/auth/sessions*`, cookie-based `/auth/refresh`).
+  - Ceremonies run with `@simplewebauthn/browser` 14 and the options the service returns (`ceremonyId` + `publicKey`); the response goes back as `{ ceremonyId, credential }`, without any PRF output.
+  - New single access screen (`/auth/access`): sign-in with the system passkey picker (no email, any passkey of the wallet, including a nearby device), and "Sign in with my email" for the first registration and recovery (email, code, then use a passkey of the account or create a new one). Also the screens for unsupported browsers, rejected sign-in, unknown passkey, passkey without PRF and "close the other sessions" after adding a passkey. `/auth/login` and `/auth/register` stay for browser mode and redirect to the access screen in server mode.
+  - With passkey custody (`passkey-prf`), a passkey whose creation does not confirm the PRF is used once to check it; without a PRF result it is not registered.
+  - WebAuthn Signal API, when the browser offers it: unknown or rejected passkeys are hidden from the passkey manager, and after signing in the manager learns the account's accepted passkeys and its email.
+  - Install suggestion on the access screen (browser prompt, or the add-to-home-screen steps on iOS and macOS Safari).
+  - Logout asks for confirmation and ends the session in the service.
+  - Texts in es, en and ca.
+
+### Changed
+
+- **Session**: the access token lives in memory only and the refresh token only in the `HttpOnly` cookie set by the service. On start-up the wallet resumes the session with `POST /auth/refresh`; it renews the token 30 s before expiry only while there is user or API activity, and otherwise lets it expire (the service applies the 15-minute inactivity and 8-hour maximum limits). A session that has ended takes the user to the access screen with a "session expired" notice instead of a toast. Renewals stay single-flight per tab and are serialized across tabs with a Web Lock.
+- **Interceptor**: sends the registration ticket to the passkey registration and sign-in endpoints, the session token to the rest, and `X-Wallet-Request: 1` with credentials to the cookie endpoints; errors are read from the RFC 9457 `type`.
+- **Attestations**: the local copy is replaced when a session starts and dropped when it ends, and a presentation looks the attestations up in `GET /api/v1/credentials`, so the wallet never offers one the service no longer returns for the session's passkey. Passkey custody evaluates the PRF with the passkey that opened the session.
+- **Connected devices**: the current device is the passkey that opened the session.
+
+### Removed
+
+- Server mode no longer creates passkeys with a local challenge and user id, no longer keeps `wallet_refresh_token` in localStorage, and no longer calls `POST /auth/passkeys`, `/auth/passkeys/{id}/confirm-session` or `/keys/passkey-prf/onboarding/block`. At start-up it deletes the old local data: `credential_id`, `has_passkey` and `webauthn_user_id:<email>` from IndexedDB and `wallet_refresh_token` from localStorage. The unused post-login PRF probe (`OnboardingPasskeyPrfComponent`, `detectPrfSupport`) is gone. Browser mode is unchanged.
+
 ## [3.17.0] - 2026-10-14
 
 ### Changed
