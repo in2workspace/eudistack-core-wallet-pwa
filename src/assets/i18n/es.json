@@ -733,7 +733,8 @@
       "install-aria": "Instalar el wallet",
       "install-hint": "Instala el wallet en tu equipo.",
       "install-button": "Instalar",
-      "ios-steps-title": "Añade el wallet a tu pantalla de inicio"
+      "ios-steps-title": "Añade el wallet a tu pantalla de inicio",
+      "logout-pending": "No hemos podido confirmar el cierre de sesión con el servidor. Lo haremos en cuanto vuelvas a tener conexión."
     },
     "rejected": {
       "title": "No hemos podido verificarte",
@@ -781,6 +782,11 @@
       "body": "El gestor de passkeys que has usado no ofrece una función que el wallet necesita para proteger tus claves.",
       "hint": "Prueba con el gestor de tu sistema (iCloud, Google o Windows Hello) o con otra llave de seguridad.",
       "retry": "Probar con otro"
+    },
+    "check-passkey": {
+      "title": "Comprueba tu passkey",
+      "body": "Tu navegador necesita que confirmes una vez más para comprobar que esta passkey puede proteger tus claves.",
+      "button": "Comprobar passkey"
     },
     "other-sessions": {
       "title": "Has añadido una passkey",

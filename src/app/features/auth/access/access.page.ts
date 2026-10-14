@@ -6,10 +6,9 @@ import { IonicModule } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { RemoteAuthService } from 'src/app/core/services/auth.service';
-import { PasskeyCeremonyService } from 'src/app/core/services/passkey-ceremony.service';
+import { PasskeyCeremonyService, PasskeySession, PrfCheckNeedsGestureError } from 'src/app/core/services/passkey-ceremony.service';
 import { WebAuthnBrowserService } from 'src/app/core/services/webauthn-browser.service';
 import { SupportChannelService } from 'src/app/core/services/support-channel.service';
-import { ThemeService } from 'src/app/core/services/theme.service';
 import { PasskeyError } from 'src/app/core/models/error/PasskeyError';
 import { AUTH_PROBLEM_TYPE, authProblemType, WalletAuthError } from 'src/app/core/models/error/WalletAuthError';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
@@ -30,6 +29,7 @@ export type AccessScreen =
   | 'choose-passkey'
   | 'create-passkey'
   | 'passkey-incompatible'
+  | 'check-passkey'
   | 'other-sessions';
 
 /** Steps of the email flow shown in the step indicator. */
@@ -101,7 +101,6 @@ export class AccessPage implements OnDestroy {
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly theme = toSignal(inject(ThemeService).getTheme());
   private readonly installable = toSignal(this.pwaInstall.installable$, { initialValue: false });
 
   readonly screen = signal<AccessScreen>('checking');
@@ -124,16 +123,16 @@ export class AccessPage implements OnDestroy {
 
   /** Screen the "Retry" of a rejected sign-in goes back to. */
   private rejectedFrom: 'access' | 'choose-passkey' = 'access';
+  private focusTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Registration waiting for a tap to run its PRF check (Safari, see checkCreatedPasskey). */
+  private pendingPrfCheck: (() => Promise<PasskeySession>) | null = null;
+  /** A logout the service has not confirmed yet (offline): the access screen says so. */
+  readonly serverLogoutPending = this.authService.serverLogoutPending;
   private readonly resendAvailableAt = signal(0);
   private readonly rateLimit = signal<RateLimit | null>(null);
   private readonly now = signal(Date.now());
   private ticker: ReturnType<typeof setInterval> | null = null;
   private rateLimitMessage: string | null = null;
-
-  readonly brandName = computed(() => {
-    const name = this.theme()?.branding?.name?.trim();
-    return name ? name.split(' ')[0] : 'Wallet';
-  });
 
   readonly flowStep = computed(() => EMAIL_FLOW_STEPS[this.screen()] ?? null);
   readonly maskedEmail = computed(() => maskEmail(this.email()));
@@ -182,6 +181,10 @@ export class AccessPage implements OnDestroy {
   });
 
   ionViewWillEnter(): void {
+    // A ticket from an earlier visit must not leak into this one (it is in memory only).
+    this.authService.leaveEmailFlow();
+    this.accountHadPasskeys.set(false);
+    this.pendingPrfCheck = null;
     this.busy.set(false);
     this.errorMessage.set('');
     this.showIosSteps.set(false);
@@ -191,16 +194,18 @@ export class AccessPage implements OnDestroy {
     this.screen.set('checking');
     // FR-01: nothing is created before the browser is known to handle passkeys.
     void this.webAuthnBrowser.isPasskeySupported().then(supported => {
-      this.screen.set(supported ? 'access' : 'requirements');
+      this.goTo(supported ? 'access' : 'requirements');
     });
   }
 
   ionViewWillLeave(): void {
     this.stopTicker();
+    this.clearFocusTimer();
   }
 
   ngOnDestroy(): void {
     this.stopTicker();
+    this.clearFocusTimer();
   }
 
   // --- Acceso ---
@@ -215,6 +220,7 @@ export class AccessPage implements OnDestroy {
   }
 
   backToAccess(): void {
+    this.pendingPrfCheck = null;
     this.authService.leaveEmailFlow();
     this.accountHadPasskeys.set(false);
     this.goTo('access');
@@ -315,11 +321,7 @@ export class AccessPage implements OnDestroy {
     this.errorMessage.set('');
     try {
       await this.authService.registerPasskey(this.deviceName());
-      if (this.accountHadPasskeys()) {
-        this.goTo('other-sessions');
-      } else {
-        await this.enterWallet();
-      }
+      await this.afterRegistration();
     } catch (err: unknown) {
       this.handleRegistrationError(err);
     } finally {
@@ -329,6 +331,32 @@ export class AccessPage implements OnDestroy {
 
   retryWithOtherAuthenticator(): void {
     this.goTo('create-passkey');
+  }
+
+  /**
+   * Runs the PRF check of the passkey just created from this tap: Safari only
+   * lets a WebAuthn call start from a fresh user gesture, so it could not run
+   * right after the creation dialog. Must stay the first thing the click does.
+   */
+  async checkCreatedPasskey(): Promise<void> {
+    const resume = this.pendingPrfCheck;
+    if (!resume || this.busy()) return;
+    this.busy.set(true);
+    this.errorMessage.set('');
+    try {
+      await this.authService.completeRegistration(resume);
+      this.pendingPrfCheck = null;
+      await this.afterRegistration();
+    } catch (err: unknown) {
+      this.pendingPrfCheck = null;
+      if (err instanceof PasskeyError && err.isUserAbort) {
+        this.goTo('create-passkey');
+        return;
+      }
+      this.handleRegistrationError(err);
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   // --- Otras sesiones ---
@@ -392,7 +420,20 @@ export class AccessPage implements OnDestroy {
     this.showFailure(err);
   }
 
+  private async afterRegistration(): Promise<void> {
+    if (this.accountHadPasskeys()) {
+      this.goTo('other-sessions');
+    } else {
+      await this.enterWallet();
+    }
+  }
+
   private handleRegistrationError(err: unknown): void {
+    if (err instanceof PrfCheckNeedsGestureError) {
+      this.pendingPrfCheck = err.resume;
+      this.goTo('check-passkey');
+      return;
+    }
     if (err instanceof PasskeyError && err.isUserAbort) {
       return;
     }
@@ -545,7 +586,18 @@ export class AccessPage implements OnDestroy {
   private goTo(screen: AccessScreen): void {
     this.errorMessage.set('');
     this.screen.set(screen);
-    setTimeout(() => this.heading?.nativeElement.focus());
+    this.clearFocusTimer();
+    this.focusTimer = setTimeout(() => {
+      this.focusTimer = null;
+      this.heading?.nativeElement.focus();
+    });
+  }
+
+  private clearFocusTimer(): void {
+    if (this.focusTimer !== null) {
+      clearTimeout(this.focusTimer);
+      this.focusTimer = null;
+    }
   }
 
   /**

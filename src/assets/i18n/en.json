@@ -733,7 +733,8 @@
       "install-aria": "Install the wallet",
       "install-hint": "Install the wallet on your device.",
       "install-button": "Install",
-      "ios-steps-title": "Add the wallet to your Home Screen"
+      "ios-steps-title": "Add the wallet to your Home Screen",
+      "logout-pending": "We could not confirm the logout with the server. We will do it as soon as you are back online."
     },
     "rejected": {
       "title": "We could not verify you",
@@ -781,6 +782,11 @@
       "body": "The passkey manager you used does not offer a feature the wallet needs to protect your keys.",
       "hint": "Try your system's manager (iCloud, Google or Windows Hello) or another security key.",
       "retry": "Try another one"
+    },
+    "check-passkey": {
+      "title": "Check your passkey",
+      "body": "Your browser needs you to confirm once more to check that this passkey can protect your keys.",
+      "button": "Check passkey"
     },
     "other-sessions": {
       "title": "You have added a passkey",

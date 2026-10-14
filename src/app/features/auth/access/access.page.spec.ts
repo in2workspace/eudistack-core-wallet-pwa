@@ -1,11 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { BehaviorSubject, of, throwError } from 'rxjs';
 import { AccessPage, maskEmail } from './access.page';
 import { RemoteAuthService } from 'src/app/core/services/auth.service';
-import { PasskeyCeremonyService } from 'src/app/core/services/passkey-ceremony.service';
+import { PasskeyCeremonyService, PrfCheckNeedsGestureError } from 'src/app/core/services/passkey-ceremony.service';
 import { WebAuthnBrowserService } from 'src/app/core/services/webauthn-browser.service';
 import { SupportChannelService } from 'src/app/core/services/support-channel.service';
 import { ThemeService } from 'src/app/core/services/theme.service';
@@ -31,6 +32,8 @@ describe('AccessPage (EUD-8)', () => {
     endOtherSessions: jest.Mock;
     leaveEmailFlow: jest.Mock;
     sessionDataReady: jest.Mock;
+    completeRegistration: jest.Mock;
+    serverLogoutPending: ReturnType<typeof signal<boolean>>;
   };
   let router: { navigateByUrl: jest.Mock };
   let supported: jest.Mock;
@@ -63,6 +66,8 @@ describe('AccessPage (EUD-8)', () => {
       endOtherSessions: jest.fn().mockReturnValue(of(undefined)),
       leaveEmailFlow: jest.fn(),
       sessionDataReady: jest.fn().mockResolvedValue(undefined),
+      completeRegistration: jest.fn(async (resume: () => Promise<unknown>) => { await resume(); }),
+      serverLogoutPending: signal(false),
     };
     router = { navigateByUrl: jest.fn().mockResolvedValue(true) };
     supported = jest.fn().mockResolvedValue(true);
@@ -171,6 +176,17 @@ describe('AccessPage (EUD-8)', () => {
       await page.signInWithPasskey();
 
       expect(page.errorMessage()).toBe('auth.errors.passkey-security');
+    });
+
+    it('forgets a registration ticket from an earlier visit', () => {
+      expect(auth.leaveEmailFlow).toHaveBeenCalled();
+    });
+
+    it('says when a logout could not be confirmed with the service yet', () => {
+      auth.serverLogoutPending.set(true);
+      fixture.detectChanges();
+
+      expect(text()).toContain('wallet-access.access.logout-pending');
     });
 
     it('tells the user their session expired when they land here because of it (FR-18)', async () => {
@@ -429,6 +445,30 @@ describe('AccessPage (EUD-8)', () => {
       expect(page.errorMessage()).toBe('');
     });
 
+    it('asks for a tap to check the PRF when Safari dropped the gesture, and registers from that tap (FR-08)', async () => {
+      await reachCreate(false);
+      const resume = jest.fn().mockResolvedValue({});
+      auth.registerPasskey.mockRejectedValue(new PrfCheckNeedsGestureError(resume));
+
+      await page.createPasskey();
+      expect(page.screen()).toBe('check-passkey');
+
+      await page.checkCreatedPasskey();
+      expect(auth.completeRegistration).toHaveBeenCalledWith(resume);
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs/credentials');
+    });
+
+    it('goes back to Crear passkey when the user cancels the tapped check', async () => {
+      await reachCreate(false);
+      auth.registerPasskey.mockRejectedValue(new PrfCheckNeedsGestureError(jest.fn()));
+      auth.completeRegistration.mockRejectedValue(new PasskeyError('passkey_cancelled', 'get'));
+
+      await page.createPasskey();
+      await page.checkCreatedPasskey();
+
+      expect(page.screen()).toBe('create-passkey');
+    });
+
     it('says the registration failed when the service cannot verify it', async () => {
       await reachCreate(false);
       auth.registerPasskey.mockRejectedValue(new WalletAuthError('registration_failed'));
@@ -487,13 +527,27 @@ describe('AccessPage (EUD-8)', () => {
       }
     });
 
-    it('labels the email field', () => {
+    it('labels the email field through aria-labelledby', () => {
       page.startEmailFlow();
       fixture.detectChanges();
 
-      const label = (fixture.nativeElement as HTMLElement).querySelector('label[for="access-email"]');
-      expect(label).not.toBeNull();
-      expect((fixture.nativeElement as HTMLElement).querySelector('#access-email')).not.toBeNull();
+      const input = (fixture.nativeElement as HTMLElement).querySelector('#access-email')!;
+      const label = (fixture.nativeElement as HTMLElement).querySelector(`#${input.getAttribute('aria-labelledby')}`);
+      expect(label?.textContent).toContain('wallet-access.email.label');
+    });
+
+    it('moves the focus to the heading on first render too', async () => {
+      jest.useFakeTimers();
+      try {
+        page.ionViewWillEnter();
+        await settle();
+        fixture.detectChanges();
+        jest.runOnlyPendingTimers();
+
+        expect(document.activeElement?.textContent).toContain('wallet-access.access.title');
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('marks the current step of the email flow', () => {

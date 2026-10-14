@@ -40,6 +40,13 @@
           }
 
           @case ('access') {
+            @if (serverLogoutPending()) {
+              <output class="error-box error-box--notice access-banner">
+                <ion-icon name="cloud-offline-outline" aria-hidden="true"></ion-icon>
+                <span>{{ 'wallet-access.access.logout-pending' | translate }}</span>
+              </output>
+            }
+
             @if (sessionExpired()) {
               <output class="error-box error-box--notice access-banner">
                 <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
@@ -96,9 +103,10 @@
             <p class="auth-subtitle">{{ 'wallet-access.email.subtitle' | translate }}</p>
 
             <div class="auth-field auth-field--email">
-              <label class="auth-field__label" for="access-email">{{ 'wallet-access.email.label' | translate }}</label>
+              <span class="auth-field__label" id="access-email-label">{{ 'wallet-access.email.label' | translate }}</span>
               <ion-input
                 id="access-email"
+                aria-labelledby="access-email-label"
                 [ngModel]="email()"
                 (ngModelChange)="email.set($event ?? '')"
                 type="email"
@@ -203,9 +211,10 @@
             </p>
 
             <div class="auth-field auth-field--device">
-              <label class="auth-field__label" for="access-device-name">{{ 'auth.passkey.device-name-label' | translate }}</label>
+              <span class="auth-field__label" id="access-device-name-label">{{ 'auth.passkey.device-name-label' | translate }}</span>
               <ion-input
                 id="access-device-name"
+                aria-labelledby="access-device-name-label"
                 [ngModel]="deviceName()"
                 (ngModelChange)="deviceName.set($event ?? '')"
                 type="text"
@@ -227,6 +236,14 @@
             <p class="auth-subtitle">{{ 'wallet-access.passkey-incompatible.hint' | translate }}</p>
             <button type="button" class="auth-button" (click)="retryWithOtherAuthenticator()">
               {{ 'wallet-access.passkey-incompatible.retry' | translate }}
+            </button>
+          }
+
+          @case ('check-passkey') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.check-passkey.title' | translate }}</h1>
+            <p class="auth-subtitle">{{ 'wallet-access.check-passkey.body' | translate }}</p>
+            <button type="button" class="auth-button" [disabled]="busy()" (click)="checkCreatedPasskey()">
+              {{ 'wallet-access.check-passkey.button' | translate }}
             </button>
           }
 
@@ -253,7 +270,7 @@
     </div>
   </div>
 
-  @if (busy() && (screen() === 'access' || screen() === 'choose-passkey' || screen() === 'create-passkey')) {
+  @if (busy() && (screen() === 'access' || screen() === 'choose-passkey' || screen() === 'create-passkey' || screen() === 'check-passkey')) {
     <div class="auth-overlay" role="status" [attr.aria-label]="'wallet-access.waiting-passkey' | translate">
       <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
     </div>
