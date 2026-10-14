@@ -12,6 +12,7 @@ import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service
 import { PasskeyApiService } from 'src/app/core/services/passkey-api.service';
 import { compareCredentialIds } from 'src/app/core/utils/base64url';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
+import { takePendingDeepLink } from 'src/app/shared/helpers/pending-deep-link';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { LocalAuthService } from 'src/app/core/services/local-auth.service';
@@ -797,9 +798,7 @@ export class LoginPage implements OnDestroy {
   }
 
   private navigateHome(): void {
-    const pendingLink = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
-    sessionStorage.removeItem(PENDING_DEEP_LINK_KEY);
-    void this.router.navigateByUrl(pendingLink || '/tabs/credentials');
+    void this.router.navigateByUrl(takePendingDeepLink() || '/tabs/credentials');
   }
 
   private getDeviceName(): string {

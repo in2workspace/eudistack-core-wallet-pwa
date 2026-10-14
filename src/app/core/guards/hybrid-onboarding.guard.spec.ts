@@ -5,6 +5,7 @@ import { hybridOnboardingGuard, hybridOnboardingRouteGuard } from './hybrid-onbo
 import { WalletDiscoveryService } from '../services/wallet-discovery.service';
 import { HybridOnboardingService } from '../services/hybrid-onboarding.service';
 import { WalletDiscoverySnapshot } from '../models/wallet-discovery.model';
+import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
 
 const mockSnapshot = (keyManager: string | null): WalletDiscoverySnapshot => ({
   mode: keyManager ? 'server' : 'browser',
@@ -40,6 +41,37 @@ describe('hybridOnboardingGuard', () => {
 
     expect(router.createUrlTree).toHaveBeenCalledWith(['/hybrid-onboarding']);
     expect(result).toBe('/hybrid-onboarding' as any);
+  });
+
+  it('saves the original target as pending deep link when redirecting to onboarding', () => {
+    sessionStorage.clear();
+    discovery.snapshot.mockReturnValue(signal(mockSnapshot('hybrid')));
+    hybridOnboarding.isAccepted.mockReturnValue(false);
+    const state = { url: '/tabs/credentials?credentialOfferUri=abc' };
+
+    TestBed.runInInjectionContext(() => hybridOnboardingGuard({} as any, state as any));
+
+    expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBe('/tabs/credentials?credentialOfferUri=abc');
+  });
+
+  it('does not save a pending deep link when the target is the root', () => {
+    sessionStorage.clear();
+    discovery.snapshot.mockReturnValue(signal(mockSnapshot('hybrid')));
+    hybridOnboarding.isAccepted.mockReturnValue(false);
+
+    TestBed.runInInjectionContext(() => hybridOnboardingGuard({} as any, { url: '/' } as any));
+
+    expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBeNull();
+  });
+
+  it('does not save a pending deep link when already accepted', () => {
+    sessionStorage.clear();
+    discovery.snapshot.mockReturnValue(signal(mockSnapshot('hybrid')));
+    hybridOnboarding.isAccepted.mockReturnValue(true);
+
+    TestBed.runInInjectionContext(() => hybridOnboardingGuard({} as any, { url: '/tabs/credentials' } as any));
+
+    expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBeNull();
   });
 
   it('passes through when keyManager is hybrid and already accepted', () => {

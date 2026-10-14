@@ -11,7 +11,7 @@ import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
-import { catchError, EMPTY, finalize, forkJoin, from, Observable, of, switchMap, take, tap } from 'rxjs';
+import { catchError, EMPTY, filter, finalize, forkJoin, from, fromEvent, map, Observable, of, Subscription, switchMap, take, tap } from 'rxjs';
 import { ExtendedHttpErrorResponse } from 'src/app/core/models/errors';
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engine.service';
@@ -60,6 +60,7 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   private readonly credentialDecisionService = inject(CredentialDecisionService);
   private readonly credentialPreviewBuilder = inject(CredentialPreviewBuilderService);
   private readonly destroyRef = inject(DestroyRef);
+  private pendingFlowStart?: Subscription;
   private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
   private readonly issuerNotificationService = inject(IssuerNotificationService);
   private readonly loader = inject(LoaderService);
@@ -136,7 +137,30 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
     this.cdr.detectChanges();
   }
 
+  /**
+   * Starting the flow in a hidden tab would redeem the one-shot credential offer and raise the
+   * passkey prompt where the user cannot see it; a cancelled prompt then loses the offer for good.
+   * So the flow waits until this tab is the one being looked at.
+   */
   private runPendingProtocolFlow(): void {
+    this.pendingFlowStart?.unsubscribe();
+    this.pendingFlowStart = this.whenTabVisible()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.startPendingProtocolFlow());
+  }
+
+  private whenTabVisible(): Observable<void> {
+    if (document.visibilityState === 'visible') {
+      return of(undefined);
+    }
+    return fromEvent(document, 'visibilitychange').pipe(
+      filter(() => document.visibilityState === 'visible'),
+      take(1),
+      map(() => undefined)
+    );
+  }
+
+  private startPendingProtocolFlow(): void {
     if (this.credentialOfferUri) {
       this.sameDeviceVcActivationFlow(this.credentialOfferUri);
     } else if (this.authorizationRequest) {
