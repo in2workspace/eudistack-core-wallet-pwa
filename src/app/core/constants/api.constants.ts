@@ -21,7 +21,6 @@ export const SERVER_PATH = Object.freeze({
   PASSKEY_PRF_CONSTRAINT_ACCEPTED: `${apiV1PasskeyPrfPath}/constraint-accepted`,
   PASSKEY_PRF_ONBOARDING_INIT: `${apiV1PasskeyPrfPath}/onboarding/init`,
   PASSKEY_PRF_ONBOARDING_COMMIT: `${apiV1PasskeyPrfPath}/onboarding/commit`,
-  PASSKEY_PRF_ONBOARDING_BLOCK: `${apiV1PasskeyPrfPath}/onboarding/block`,
 });
 
 export const WALLET_DISCOVERY_PATH = '/business-wallet/.well-known/wallet-config-metadata' as const;

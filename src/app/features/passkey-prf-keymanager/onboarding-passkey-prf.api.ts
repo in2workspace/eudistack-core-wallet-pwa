@@ -29,22 +29,13 @@ export interface CommitResponse {
   credential_id: string;
 }
 
-export interface BlockRequest {
-  credential_id: string;
-  correlation_id: string;
-}
-
-export interface BlockResponse {
-  credential_id: string;
-}
-
 /**
  * HTTP client for the passkey+prf onboarding endpoints on the EBW backend.
  *
  * - POST /api/v1/keys/passkey-prf/onboarding/init  → 200 with prf_salt + kdf_params
  * - POST /api/v1/keys/passkey-prf/onboarding/commit → 201 (new) or 200 (idempotent replay)
  *
- * Spec: EUDISTACK-534 AC-01, AC-04, AC-07; technical-design.md §3.2 T15.
+ * Spec: EUDISTACK-534 AC-01, AC-04; technical-design.md §3.2 T15.
  */
 @Injectable({ providedIn: 'root' })
 export class OnboardingPasskeyPrfApi {
@@ -59,10 +50,5 @@ export class OnboardingPasskeyPrfApi {
   commit(req: CommitRequest): Promise<CommitResponse> {
     const url = `${this.urlResolver.serverUrl()}${SERVER_PATH.PASSKEY_PRF_ONBOARDING_COMMIT}`;
     return firstValueFrom(this.http.post<CommitResponse>(url, req));
-  }
-
-  block(req: BlockRequest): Promise<BlockResponse> {
-    const url = `${this.urlResolver.serverUrl()}${SERVER_PATH.PASSKEY_PRF_ONBOARDING_BLOCK}`;
-    return firstValueFrom(this.http.post<BlockResponse>(url, req));
   }
 }

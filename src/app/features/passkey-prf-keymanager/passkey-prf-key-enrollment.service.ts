@@ -23,12 +23,8 @@ export interface PasskeyPrfEnrollmentResult {
  * it is wrapped and zeroized. It never leaves this service and never persists
  * (ES-05) — a single PRF/WebAuthn ceremony covers both the PRF-support gate
  * (US-07/EUDISTACK-539 AC-01: no key material is generated before it succeeds),
- * the wrap-key derivation, and the proof signature. `PrfClientService.
- * detectPrfSupport()` (a separate dummy-salt probe) is intentionally not used
- * here — running it before `evaluateForWrap()` forced two WebAuthn prompts per
- * credential for no AC-mandated reason; `evaluateForWrap()`'s own
- * `prf_unavailable` failure is an equally valid "unsupported"
- * signal and still fires strictly before any key material exists.
+ * the wrap-key derivation, and the proof signature. `evaluateForWrap()`'s
+ * `prf_unavailable` failure fires strictly before any key material exists.
  *
  * Spec: EUDISTACK-534 (YARD-126) AC-01, AC-02, AC-03, AC-08, ES-04, ES-05.
  */
@@ -56,7 +52,7 @@ export class PasskeyPrfKeyEnrollmentService {
       // Step 2: single PRF ceremony — doubles as the PRF-support gate. Aborts
       // (ES-04) before any key material is generated if PRF is unavailable.
       const prfSalt = base64UrlDecode(initResponse.prf_salt);
-      prfOutput = await this.evaluateForWrapOrBlock(prfSalt, context.credentialId);
+      prfOutput = await this.evaluatePrfForWrap(prfSalt);
 
       // Step 3: generate holder key pair
       const { privateKey: pk, publicKeyJwk } = await this.wrapService.generateHolderKeyPair();
@@ -103,22 +99,17 @@ export class PasskeyPrfKeyEnrollmentService {
   }
 
   /**
-   * Runs the real PRF ceremony. If the authenticator confirms it has no PRF
-   * support (`prf_unavailable`), records the block event and
-   * surfaces the same `errors.prf-unsupported` error the old two-ceremony gate
-   * produced. Other failures (cancelled assertion, no registered passkey) are
-   * not confirmed incapability — they propagate as-is so the holder can retry.
+   * Runs the real PRF ceremony. An authenticator that answers without PRF output
+   * (`prf_unavailable`) surfaces `errors.prf-unsupported`; with passkey custody
+   * the PRF is already confirmed when the passkey is registered (EUD-8 FR-08), so
+   * this only happens with a passkey manager that changed since. Other failures
+   * (cancelled assertion, no session passkey) propagate as-is so the holder can retry.
    */
-  private async evaluateForWrapOrBlock(prfSalt: Uint8Array, credentialId: string): Promise<Uint8Array> {
+  private async evaluatePrfForWrap(prfSalt: Uint8Array): Promise<Uint8Array> {
     try {
       return await this.prfClientService.evaluateForWrap(prfSalt);
     } catch (err) {
       if (err instanceof AppError && err.code === 'prf_unavailable') {
-        try {
-          await this.api.block({ credential_id: credentialId, correlation_id: crypto.randomUUID() });
-        } catch {
-          // esperamos 422 prf_unsupported
-        }
         throw new AppError('Authenticator does not support PRF', {
           code: 'unknown',
           translationKey: 'errors.prf-unsupported',

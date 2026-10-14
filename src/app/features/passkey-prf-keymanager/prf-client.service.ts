@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { PasskeyPrfAdapterError } from 'src/app/core/models/error/PasskeyPrfAdapterError';
-import { PasskeyError, runPasskeyCeremony } from 'src/app/core/models/error/PasskeyError';
+import { runPasskeyCeremony } from 'src/app/core/models/error/PasskeyError';
 import { base64UrlDecode } from 'src/app/core/utils/base64url';
-import { PasskeyPrfService } from 'src/app/core/services/passkey-prf.service';
+import { SessionPasskeyService } from 'src/app/core/services/session-passkey.service';
 import { WEBAUTHN_ASSERTION_HINTS } from 'src/app/core/constants/webauthn.constants';
 
 /**
@@ -11,48 +11,27 @@ import { WEBAUTHN_ASSERTION_HINTS } from 'src/app/core/constants/webauthn.consta
  * Returns the raw PRF output bytes (32 bytes per CTAP2.1 spec). The output
  * is used as HKDF input material for AES-256-GCM wrap key derivation.
  *
+ * The PRF is always evaluated with the passkey that opened the session: the
+ * Wallet Unit Service binds each attestation to that passkey and only returns
+ * the session passkey's attestations (EUD-8 FR-15, EUD-11 prd §3.3). Whether the
+ * authenticator offers the PRF is checked when the passkey is registered
+ * (EUD-8 FR-08), not here.
+ *
  * The PRF salt itself is NEVER logged (NFR-06).
  *
  * Spec: EUDISTACK-534 AC-01; technical-design.md §3.2 T13.
  */
-
-export type PrfDetectionResult =
-  | 'enabled'
-  | 'disabled'
-  | 'inconclusive';
-const PRF_DETECTION_PROBE = new Uint8Array(32);
-
 @Injectable({ providedIn: 'root' })
 export class PrfClientService {
-  private readonly prfService = inject(PasskeyPrfService);
-
-  async detectPrfSupport(): Promise<PrfDetectionResult> {
-    const credentialId = this.prfService.getCredentialId();
-
-    if (!credentialId) {
-      return 'inconclusive';
-    }
-
-    try {
-      const assertion = await this.assertWithPrf(credentialId, PRF_DETECTION_PROBE);
-      return this.readPrfOutput(assertion) ? 'enabled' : 'disabled';
-    } catch {
-      // Cancel, timeout or any WebAuthn failure: support could not be determined.
-      return 'inconclusive';
-    }
-  }
+  private readonly sessionPasskey = inject(SessionPasskeyService);
 
   /**
    * Cancel/timeout/SecurityError surface as a classified PasskeyError (same
-   * contract as login and PRF signing). Only "the authenticator answered but
-   * produced no PRF output" is reported as `prf_unavailable`: that is the one
-   * outcome PasskeyPrfKeyEnrollmentService treats as confirmed incapability.
+   * contract as sign-in and PRF signing). Only "the authenticator answered but
+   * produced no PRF output" is reported as `prf_unavailable`.
    */
   async evaluateForWrap(prfSalt: Uint8Array): Promise<Uint8Array> {
-    const credentialId = this.prfService.getCredentialId();
-    if (!credentialId) {
-      throw new PasskeyError('passkey_not_found', 'get');
-    }
+    const credentialId = await this.sessionPasskey.resolveCredentialId();
 
     const prfOutput = this.readPrfOutput(await this.assertWithPrf(credentialId, prfSalt));
     if (!prfOutput) {
