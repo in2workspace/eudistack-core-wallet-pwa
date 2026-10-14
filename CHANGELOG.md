@@ -252,6 +252,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Attestations**: the local copy is replaced when a session starts and dropped when it ends, and a presentation looks the attestations up in `GET /api/v1/credentials`, so the wallet never offers one the service no longer returns for the session's passkey. Passkey custody evaluates the PRF with the passkey that opened the session.
 - **Connected devices**: the current device is the passkey that opened the session.
 
+### Fixed
+
+- **Session robustness (EUD-308 review)**:
+  - A renewal that finishes after a logout, after another tab ended the session or after a new sign-in no longer revives the old session (session epoch).
+  - Logout ends the session locally at once and confirms it in the service: a missing or about-to-expire token is renewed first, a 401 is answered with one silent renewal and a retry, and when the service cannot be reached the access screen says the logout is pending, the next start-up does not resume that session, and the logout is retried when the connection returns.
+  - Only a rejected renewal (`invalid_session`) ends the session; an offline, 5xx or 429 renewal fails the call but keeps the session, and background renewals back off exponentially instead of retrying on every interaction.
+  - The start-up resume retries a temporary failure (when back online or after 3 s) before showing the access screen, keeps the local attestations meanwhile, and resumes in the background once the connection returns.
+  - A signed-in session whose token expired while idle renews it before an API call instead of sending the call without a token.
+  - With activity pending, the token is renewed when the page is hidden, so inactivity is counted from the last activity. Known limit: that renewal is a normal request (`sendBeacon`/`keepalive` cannot carry `X-Wallet-Request`), so it may not complete if the page is discarded right away.
+  - Server-mode attestation copies are dropped from IndexedDB on `pagehide` when there is no live session.
+  - Other tabs show the "session expired" notice when the session expired in one of them.
+  - Known limit: renewals are serialized across tabs with the Web Locks API; a browser without it (none of the supported ones) only gets the in-tab single-flight.
+- **`X-Wallet-Request: 1`** is also sent on `POST /auth/sessions` and `POST /auth/passkeys/registration`, which now read the refresh cookie (renamed `__Host-wallet_refresh` by the service; transparent to the app).
+- **PRF check on Safari**: a check rejected almost at once (the browser dropped the user gesture after the creation dialog) now shows "Comprueba tu passkey" with a button that runs it from a fresh tap, instead of being taken as a cancel.
+- **Signal API**: the accepted passkeys are only signalled when the list from the service contains the passkey of the session.
+- **Deep links on a cold launch** wait for the start-up session resume before deciding whether to open them or keep them for after sign-in.
+- **Access screen**: the registration ticket is forgotten every time the screen is entered; focus moves to the heading on first render; inputs are labelled with `aria-labelledby`. The email claim is decoded as UTF-8. Unused texts removed (es, en, ca).
+
 ### Removed
 
 - Server mode no longer creates passkeys with a local challenge and user id, no longer keeps `wallet_refresh_token` in localStorage, and no longer calls `POST /auth/passkeys`, `/auth/passkeys/{id}/confirm-session` or `/keys/passkey-prf/onboarding/block`. At start-up it deletes the old local data: `credential_id`, `has_passkey` and `webauthn_user_id:<email>` from IndexedDB and `wallet_refresh_token` from localStorage. The unused post-login PRF probe (`OnboardingPasskeyPrfComponent`, `detectPrfSupport`) is gone. Browser mode is unchanged.
