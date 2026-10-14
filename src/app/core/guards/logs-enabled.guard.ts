@@ -7,6 +7,5 @@ export const logsEnabledGuard: CanActivateFn = (route, state) => {
   if(environment.logs_enabled){
     return true;
   }
-  router.navigate(['/settings']);
-  return false;
+  return router.createUrlTree(['/settings']);
 };

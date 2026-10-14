@@ -16,7 +16,7 @@ describe('LocalAuthService', () => {
     } as any;
 
     routerSpy = {
-      navigate: jest.fn()
+      navigate: jest.fn().mockResolvedValue(true)
     } as any;
 
     TestBed.configureTestingModule({
@@ -121,6 +121,19 @@ describe('LocalAuthService', () => {
 
       expect(service.isLoggedIn()).toBe(false);
       expect(routerSpy.navigate).toHaveBeenCalledWith(['/auth/register']);
+    });
+
+    it('should log, not throw, when the navigation fails', async () => {
+      const failure = new Error('navigation failed');
+      routerSpy.navigate.mockRejectedValueOnce(failure);
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      expect(() => service.forceLogout()).not.toThrow();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Navigation after forced logout failed', failure);
+      consoleErrorSpy.mockRestore();
     });
   });
 

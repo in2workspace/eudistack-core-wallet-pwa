@@ -124,7 +124,7 @@ describe('SingleInstanceService', () => {
     BroadcastChannelMock.reset();
     sessionStorage.clear();
 
-    routerMock = { navigateByUrl: jest.fn() } as unknown as jest.Mocked<Pick<Router, 'navigateByUrl'>>;
+    routerMock = { navigateByUrl: jest.fn().mockResolvedValue(true) } as unknown as jest.Mocked<Pick<Router, 'navigateByUrl'>>;
     authServiceMock = {
       isLoggedIn: jest.fn().mockReturnValue(true),
       dispose: jest.fn(),
@@ -215,6 +215,23 @@ describe('SingleInstanceService', () => {
 
       expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/protocol/callback?code=abc');
       expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBeNull();
+    });
+
+    it('logs, and does not throw, when the deep-link navigation fails', async () => {
+      const failure = new Error('navigation failed');
+      routerMock.navigateByUrl.mockRejectedValueOnce(failure);
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      expect(() => (service as any).handleMessage({
+        type: 'NAVIGATE',
+        tabId: 'other-tab',
+        url: '/wallet/protocol/callback?code=abc',
+      })).not.toThrow();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Deep link navigation failed', failure);
+      consoleErrorSpy.mockRestore();
     });
 
     it('queues /protocol/ deep-link to sessionStorage when not logged in', () => {

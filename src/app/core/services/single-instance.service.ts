@@ -173,7 +173,8 @@ export class SingleInstanceService implements OnDestroy {
 
   private applyDeepLink(appRelative: string): DeepLinkOutcome {
     if (this.authService.isLoggedIn()) {
-      this.router.navigateByUrl(appRelative);
+      this.router.navigateByUrl(appRelative)
+        .catch(error => console.error('Deep link navigation failed', error));
       return 'navigated';
     }
     sessionStorage.setItem(PENDING_DEEP_LINK_KEY, appRelative);
