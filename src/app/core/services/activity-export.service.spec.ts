@@ -9,7 +9,6 @@ const LABELS: ActivityExportLabels = {
     credentialName: 'Credencial',
     counterparty: 'Contraparte',
     timestamp: 'Fecha',
-    details: 'Detalle',
   },
   types: {
     issued: 'Credencial recibida',
@@ -42,11 +41,11 @@ describe('ActivityExportService.buildCsv', () => {
 
   // --- AC-02 ---------------------------------------------------------------
 
-  it('AC-02: emits a header row with the 5 allow-listed columns, in labels order', () => {
+  it('AC-02: emits a header row with the 4 allow-listed columns, in labels order', () => {
     const csv = service.buildCsv([], LABELS);
     const lines = parseLines(csv);
 
-    expect(lines[0]).toBe('Tipo,Credencial,Contraparte,Fecha,Detalle');
+    expect(lines[0]).toBe('Tipo,Credencial,Contraparte,Fecha');
   });
 
   it('AC-02: emits exactly one data row per entry', () => {
@@ -110,7 +109,7 @@ describe('ActivityExportService.buildCsv', () => {
     expect(csv).not.toContain('internal-uuid-4');
   });
 
-  it('AC-04: excludes fields outside the 5-column allow-list (e.g. sharedAttributes)', () => {
+  it('AC-04: excludes fields outside the 4-column allow-list (e.g. sharedAttributes)', () => {
     const withSharedAttributes: ActivityEntry = {
       ...ENTRIES[0],
       sharedAttributes: ['given_name', 'family_name'],
@@ -121,12 +120,28 @@ describe('ActivityExportService.buildCsv', () => {
     expect(csv).not.toContain('family_name');
   });
 
-  it('AC-04: every data row has exactly 5 columns', () => {
+  it('AC-04: excludes the optional "details" field, which no longer has a column', () => {
+    const withDetails: ActivityEntry = { ...ENTRIES[0], details: 'internal note' };
+    const csv = service.buildCsv([withDetails], LABELS);
+
+    expect(csv).not.toContain('internal note');
+  });
+
+  it('AC-04: every data row has exactly 4 columns', () => {
     const csv = service.buildCsv(ENTRIES, LABELS);
     const [, ...dataLines] = parseLines(csv);
 
     for (const line of dataLines) {
-      expect(line.split(',').length).toBe(5);
+      expect(line.split(',').length).toBe(4);
+    }
+  });
+
+  it('AC-04: header and every data row have the same number of columns', () => {
+    const csv = service.buildCsv(ENTRIES, LABELS);
+    const [headerLine, ...dataLines] = parseLines(csv);
+
+    for (const line of dataLines) {
+      expect(line.split(',').length).toBe(headerLine.split(',').length);
     }
   });
 
@@ -143,8 +158,8 @@ describe('ActivityExportService.buildCsv', () => {
 
     expect(stripBom(csv)).toBe(
       [
-        'Tipo,Credencial,Contraparte,Fecha,Detalle',
-        `Credencial presentada,Cred B,Verifier B,${new Date(2000).toISOString()},`,
+        'Tipo,Credencial,Contraparte,Fecha',
+        `Credencial presentada,Cred B,Verifier B,${new Date(2000).toISOString()}`,
       ].join(CSV_LINE_BREAK)
     );
   });
@@ -164,7 +179,7 @@ describe('ActivityExportService.buildCsv', () => {
   });
 
   it('EC-01: quotes a field containing a line break (the break itself is preserved inside the quotes)', () => {
-    const entry: ActivityEntry = { ...ENTRIES[0], details: 'line one\nline two' };
+    const entry: ActivityEntry = { ...ENTRIES[0], credentialName: 'line one\nline two' };
     const csv = service.buildCsv([entry], LABELS);
 
     expect(csv).toContain('"line one\nline two"');
@@ -193,8 +208,8 @@ describe('ActivityExportService.buildCsv', () => {
     expect(csv).toContain("'+1234=cmd");
   });
 
-  it('EC-02: prefixes a details value starting with "-" with a single quote', () => {
-    const entry: ActivityEntry = { ...ENTRIES[0], details: '-2+3+cmd|calc' };
+  it('EC-02: prefixes a credentialName starting with "-" with a single quote', () => {
+    const entry: ActivityEntry = { ...ENTRIES[0], credentialName: '-2+3+cmd|calc' };
     const csv = service.buildCsv([entry], LABELS);
 
     expect(csv).toContain("'-2+3+cmd|calc");
@@ -229,7 +244,7 @@ describe('ActivityExportService.buildCsv', () => {
     expect(csv).not.toContain("'Safe credential");
   });
 
-  it('EC-02: only neutralizes the 3 free-text columns, not the localized "type" column', () => {
+  it('EC-02: only neutralizes the 2 free-text columns, not the localized "type" column', () => {
     const labelsWithTriggerType: ActivityExportLabels = {
       ...LABELS,
       types: { ...LABELS.types, issued: '=Credencial recibida' },
@@ -262,12 +277,12 @@ describe('ActivityExportService.buildCsv', () => {
 
   // --- EC-04 -----------------------------------------------------------
 
-  it('EC-04: an absent "details" field serializes to an empty cell, never "undefined"', () => {
-    const entry: ActivityEntry = { ...ENTRIES[0], details: undefined };
+  it('EC-04: an absent "credentialName" serializes to an empty cell, never "undefined"', () => {
+    const entry: ActivityEntry = { ...ENTRIES[0], credentialName: undefined as unknown as string };
     const csv = service.buildCsv([entry], LABELS);
     const [, dataLine] = parseLines(csv);
 
-    expect(dataLine.split(',')[4]).toBe('');
+    expect(dataLine.split(',')[1]).toBe('');
     expect(csv).not.toContain('undefined');
   });
 
@@ -305,6 +320,7 @@ describe('ActivityExportService.buildCsv', () => {
     const lines = parseLines(csv);
 
     expect(lines.length).toBe(3); // header + malformed row + valid row
+    expect(lines[1]).toBe(',,,');
     expect(csv).toContain('Cred A');
   });
 });

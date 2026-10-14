@@ -56,6 +56,31 @@ describe('LegalContentService', () => {
     });
   });
 
+  it('treats the SPA index.html served with 200 as a missing document: es fallback, then not-found', () => {
+    translateServiceMock.currentLang = 'en';
+    const shell = '<!doctype html><html><body><app-root></app-root></body></html>';
+    let result: LegalContentResult | undefined;
+
+    service.load('privacy-policy').subscribe((r) => (result = r));
+
+    httpMock.expectOne('assets/legal/en/privacy-policy.html').flush(shell);
+    httpMock.expectOne('assets/legal/es/privacy-policy.html').flush(shell);
+
+    expect(result).toEqual({ status: 'error', reason: 'not-found' });
+  });
+
+  it('treats a 403 (S3/CloudFront for a missing object) as not published: es fallback, then not-found', () => {
+    translateServiceMock.currentLang = 'en';
+    let result: LegalContentResult | undefined;
+
+    service.load('legal-notice').subscribe((r) => (result = r));
+
+    httpMock.expectOne('assets/legal/en/legal-notice.html').flush('', { status: 403, statusText: 'Forbidden' });
+    httpMock.expectOne('assets/legal/es/legal-notice.html').flush('', { status: 403, statusText: 'Forbidden' });
+
+    expect(result).toEqual({ status: 'error', reason: 'not-found' });
+  });
+
   it('falls back to es on a 404 in the active language, marking isFallbackLanguage (EC-01)', () => {
     translateServiceMock.currentLang = 'ca';
     let result: LegalContentResult | undefined;

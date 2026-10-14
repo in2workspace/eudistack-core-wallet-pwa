@@ -2,7 +2,8 @@ import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testin
 import { By } from '@angular/platform-browser';
 import { Router, ActivatedRoute } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
-import { EMPTY, of } from 'rxjs';
+import { EMPTY, of, throwError } from 'rxjs';
+import { CredentialOfferExpiredError } from 'src/app/core/models/error/Oid4vciError';
 import { ModalController } from '@ionic/angular';
 import { CredentialsPage } from './credentials.page';
 import { VcViewComponent } from 'src/app/shared/components/vc-view/vc-view.component';
@@ -311,6 +312,107 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
 
       expect(refreshSpy).not.toHaveBeenCalled();
     });
+  });
+
+  describe('runPendingProtocolFlow — waits for the tab to be visible', () => {
+    let activationFlow: jest.SpyInstance;
+
+    function setVisibility(state: 'visible' | 'hidden'): void {
+      Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+    }
+
+    beforeEach(() => {
+      activationFlow = jest
+        .spyOn(component as unknown as { credentialActivationFlow: () => void }, 'credentialActivationFlow')
+        .mockImplementation();
+      component.credentialOfferUri = 'https://issuer.example/credential-offer/abc';
+    });
+
+    afterEach(() => setVisibility('visible'));
+
+    it('starts the offer flow immediately when the tab is visible', () => {
+      setVisibility('visible');
+
+      (component as any).runPendingProtocolFlow();
+
+      expect(activationFlow).toHaveBeenCalledWith('https://issuer.example/credential-offer/abc');
+    });
+
+    it('does not start the offer flow while the tab is hidden', () => {
+      setVisibility('hidden');
+
+      (component as any).runPendingProtocolFlow();
+
+      expect(activationFlow).not.toHaveBeenCalled();
+    });
+
+    it('starts the offer flow once when the hidden tab becomes visible', () => {
+      setVisibility('hidden');
+      (component as any).runPendingProtocolFlow();
+
+      setVisibility('visible');
+      document.dispatchEvent(new Event('visibilitychange'));
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(activationFlow).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps waiting when visibility changes but the tab is still hidden', () => {
+      setVisibility('hidden');
+      (component as any).runPendingProtocolFlow();
+
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(activationFlow).not.toHaveBeenCalled();
+    });
+
+    it('does not start the flow twice when a second request arrives while hidden', () => {
+      setVisibility('hidden');
+      (component as any).runPendingProtocolFlow();
+      (component as any).runPendingProtocolFlow();
+
+      setVisibility('visible');
+      document.dispatchEvent(new Event('visibilitychange'));
+
+      expect(activationFlow).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('credentialActivationFlow — engine failures (credential_offer_expired)', () => {
+    let performOid4vciFlow: jest.Mock;
+
+    beforeEach(() => {
+      performOid4vciFlow = TestBed.inject(Oid4vciEngineService).performOid4vciFlow as jest.Mock;
+    });
+
+    it('does not stack the generic "failed QR" alert over the engine\'s specific one', fakeAsync(() => {
+      performOid4vciFlow.mockRejectedValue(new CredentialOfferExpiredError());
+
+      (component as any).credentialActivationFlow('https://issuer.example/credential-offer/abc');
+      tick(1000);
+
+      expect(mockToastServiceHandler.showErrorAlertByTranslateLabel).not.toHaveBeenCalled();
+    }));
+
+    it('still returns to the credentials list after an engine failure', fakeAsync(() => {
+      performOid4vciFlow.mockRejectedValue(new CredentialOfferExpiredError());
+
+      (component as any).credentialActivationFlow('https://issuer.example/credential-offer/abc');
+      tick(1000);
+
+      expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials']);
+    }));
+
+    it('keeps the generic alert for failures after the engine (e.g. finalize)', fakeAsync(() => {
+      performOid4vciFlow.mockResolvedValue({ credentialResponseWithStatus: { statusCode: 202 } });
+      (mockWalletService as unknown as { finalizeCredentialIssuance: jest.Mock }).finalizeCredentialIssuance =
+        jest.fn().mockReturnValue(throwError(() => new Error('finalize failed')));
+
+      (component as any).credentialActivationFlow('https://issuer.example/credential-offer/abc');
+      tick(1000);
+
+      expect(mockToastServiceHandler.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.failed-qr-process');
+    }));
   });
 
   describe('checkCredentialStatuses — background revocation check', () => {

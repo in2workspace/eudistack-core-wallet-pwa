@@ -239,6 +239,21 @@ describe('VcSelectorPage', () => {
       expect(component.clientName).toBe('Cliente Test');
       expect(component.clientLogo).toBe('https://dark.logo');
     });
+
+    it('should keep the localized client_name in VCReply for the activity log', () => {
+      component.getExecutionParamsFromQueryParams(mockQueryParams);
+
+      expect(component._VCReply.clientName).toBe('Cliente Test');
+    });
+
+    it('should leave VCReply.clientName empty and show the domain when the verifier sends no client_name', () => {
+      const { clientMetadata, ...withoutMetadata } = mockExecutionResponse;
+
+      component.getExecutionParamsFromQueryParams({ executionResponse: JSON.stringify(withoutMetadata) });
+
+      expect(component._VCReply.clientName).toBe('');
+      expect(component.clientName).toBe('client.example.com');
+    });
   });
 
   describe('formatCredList', () => {

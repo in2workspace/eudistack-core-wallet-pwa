@@ -804,7 +804,6 @@ describe('ActivityPage — exportar historial a CSV (EUD-140)', () => {
         credentialName: 'activity.csv-header-credential',
         counterparty: 'activity.csv-header-counterparty',
         timestamp: 'activity.csv-header-date',
-        details: 'activity.csv-header-details',
       },
       types: {
         issued: 'activity.type-issued',

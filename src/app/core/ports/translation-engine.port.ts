@@ -44,6 +44,18 @@ export interface TranslationEnginePort {
   availability(pair: LanguagePair): Promise<TranslationAvailability>;
 
   /**
+   * Creates (and memoizes) the engine instance for `pair`, downloading the
+   * language pack on first use. Deliberately has no timeout of its own: a
+   * first-time download over a slow connection can take far longer than the
+   * translation itself, so the caller bounds only the translation step and
+   * lets the user cancel this one. Cancelling does not stop the browser's own
+   * download of the language pack (it keeps going in the background).
+   * `onDownloadProgress` receives the language-pack download progress; its
+   * `loaded/total` ratio is in the 0..1 range.
+   */
+  prepare(pair: LanguagePair, onDownloadProgress?: (loaded: number, total: number) => void): Promise<void>;
+
+  /**
    * Translates `entries` for `pair`, invoking `onProgress` as batches
    * complete (AC-11). `allowedKeys` is the exact set of keys the caller
    * derived from the current pristine bundle (already excludes

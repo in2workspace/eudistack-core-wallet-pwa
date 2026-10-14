@@ -9,7 +9,6 @@ export interface ActivityExportHeaders {
   credentialName: string;
   counterparty: string;
   timestamp: string;
-  details: string;
 }
 
 export interface ActivityExportLabels {
@@ -26,7 +25,6 @@ export class ActivityExportService {
       labels.headers.credentialName,
       labels.headers.counterparty,
       labels.headers.timestamp,
-      labels.headers.details,
     ];
     const rows = entries.map((entry) => this.buildRow(entry, labels));
     const lines = [header, ...rows].map((row) => row.map(escapeCsvField).join(','));
@@ -60,10 +58,9 @@ export class ActivityExportService {
         neutralizeFormula(toCell(entry?.credentialName)),
         neutralizeFormula(toCell(entry?.counterparty)),
         safeIsoString(entry?.timestamp),
-        neutralizeFormula(toCell(entry?.details)),
       ];
     } catch {
-      return ['', '', '', '', ''];
+      return ['', '', '', ''];
     }
   }
 }

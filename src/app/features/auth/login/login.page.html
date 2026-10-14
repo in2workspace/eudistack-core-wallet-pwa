@@ -112,14 +112,14 @@
                 autocomplete="email"
                 [placeholder]="'auth.register.email-placeholder' | translate"
                 class="auth-input"
-                (keyup.enter)="email && !loading && sendCode()"
+                (keyup.enter)="sendCode()"
               ></ion-input>
             </div>
 
             <button
               type="button"
               class="auth-button auth-button--email"
-              [disabled]="!email || loading || resendSecondsLeft() > 0"
+              [disabled]="!email() || loading || resendSecondsLeft() > 0"
               (click)="sendCode()"
             >
               <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
@@ -132,7 +132,7 @@
           @case ('code') {
             <h1 class="auth-title">{{ 'auth.register.verify-title' | translate }}</h1>
             <p class="auth-subtitle">
-              {{ 'auth.register.code-sent-prefix' | translate }} <strong>{{ email }}</strong>.<br />
+              {{ 'auth.register.code-sent-prefix' | translate }} <strong>{{ email() }}</strong>.<br />
               {{ 'auth.register.code-validity' | translate }}
             </p>
 
@@ -144,16 +144,16 @@
                 [autofocus]="true"
                 [error]="!!errorMessage"
                 [errorMessage]="errorMessage"
-                (changed)="otpValue = $event; errorMessage = ''"
+                (changed)="onOtpChanged($event)"
                 (completed)="verifyCode()"
               ></app-otp-input>
             </div>
 
             <p class="auth-resend">
               @if (resendSecondsLeft() > 0) {
-                {{ 'auth.register.resend-in' | translate: { time: resendCountdown() } }}
+                {{ (rateLimited() ? 'auth.register.new-code-in' : 'auth.register.resend-in') | translate: { time: resendCountdown() } }}
               } @else {
-                {{ (codeExpired() ? 'auth.register.code-expired-prompt' : 'auth.register.resend-prompt') | translate }}
+                {{ (codeState() === 'expired' ? 'auth.register.code-expired-prompt' : codeState() === 'exhausted' ? 'auth.register.code-exhausted-prompt' : 'auth.register.resend-prompt') | translate }}
                 <button type="button" class="auth-inline-link" [disabled]="loading" (click)="resendCode()">
                   {{ 'auth.register.resend-action' | translate }}
                 </button>
@@ -163,7 +163,7 @@
             <button
               type="button"
               class="auth-button auth-button--code"
-              [disabled]="otpValue.length < 6 || loading || codeExpired()"
+              [disabled]="!canSubmitCode() || loading"
               (click)="verifyCode()"
             >
               <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>

@@ -822,6 +822,18 @@ describe('DevicesPage > current/other split and device icons', () => {
     expect(fixture.nativeElement.querySelectorAll('.this-device-badge').length).toBe(1);
   });
 
+  it('#1061961: another device with live sessions offers rename and remove, but no "close sessions"', async () => {
+    mockPasskeyApi.listPasskeys.mockReturnValue(of([LAPTOP, { ...PHONE, activeSessions: 2 }]));
+    const fixture = await createModule('server');
+    const el: HTMLElement = fixture.nativeElement;
+
+    const otherCard = el.querySelectorAll('.device-card')[1];
+    const actions = Array.from(otherCard.querySelectorAll('.device-action')).map((b) => b.textContent!.trim());
+    expect(actions).toEqual(['devices.rename-confirm', 'devices.remove-device']);
+    expect(el.textContent).not.toContain('devices.close-sessions');
+    expect(otherCard.querySelector('ion-icon[name="log-out-outline"]')).toBeFalsy();
+  });
+
   it('picks the ionicon that matches each device type, defaulting to desktop', async () => {
     const fixture = await createModule('server');
     const component = fixture.componentInstance;

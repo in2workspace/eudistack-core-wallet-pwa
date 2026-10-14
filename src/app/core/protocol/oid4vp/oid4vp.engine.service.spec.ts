@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Oid4vpError } from '../../models/error/Oid4vpError';
 import { Oid4vpEngineService } from './oid4vp.engine.service';
 import { KeyStorageProvider } from '../../spi/key-storage.provider.service';
 import { LoaderHandledFlowService } from 'src/app/shared/services/loader-handled-flow.service';
@@ -258,7 +260,7 @@ describe('Oid4vpEngineService — shared attributes flow into the "presented" ac
     const [type, credName, counterparty, details, sharedAttributes] = activityService.log.mock.calls[0];
     expect(type).toBe('presented');
     expect(credName).toBe('Empleado ACME');
-    expect(counterparty).toBe('https://verifier.example.com');
+    expect(counterparty).toBe('verifier.example.com');
     expect(details).toBeUndefined();
     expect([...(sharedAttributes as string[])].sort()).toEqual(['family_name', 'given_name']);
   });
@@ -299,6 +301,40 @@ describe('Oid4vpEngineService — shared attributes flow into the "presented" ac
   });
 });
 
+describe('Oid4vpEngineService — friendly counterparty name in the "presented" activity log', () => {
+  function plainJwtFor(): string {
+    const header = b64urlJson({ alg: 'ES256', typ: 'JWT' });
+    const payload = b64urlJson({ iss: 'did:key:zHolder', credentialSubject: { id: 'did:key:zHolder' }, cnf: HOLDER_CNF });
+    return `${header}.${payload}.sig`;
+  }
+
+  it('logs the verifier client_name as the counterparty when it is available', async () => {
+    const { service, credentialCacheService, activityService } = setup();
+    const plainJwt = plainJwtFor();
+    credentialCacheService.extractSignedJwt.mockReturnValue(plainJwt);
+
+    await service.buildVerifiablePresentationWithSelectedVCs(
+      selectorResponseFor(plainJwt, { clientName: 'DOME Marketplace', clientId: 'x509_hash:abc123' })
+    );
+
+    const [, , counterparty] = activityService.log.mock.calls[0];
+    expect(counterparty).toBe('DOME Marketplace');
+  });
+
+  it('falls back to the response URI hostname instead of a technical client_id when there is no client_name', async () => {
+    const { service, credentialCacheService, activityService } = setup();
+    const plainJwt = plainJwtFor();
+    credentialCacheService.extractSignedJwt.mockReturnValue(plainJwt);
+
+    await service.buildVerifiablePresentationWithSelectedVCs(
+      selectorResponseFor(plainJwt, { clientName: '', clientId: 'x509_hash:abc123', redirectUri: 'https://www.verifier.example.com/oid4vp/auth-response' })
+    );
+
+    const [, , counterparty] = activityService.log.mock.calls[0];
+    expect(counterparty).toBe('verifier.example.com');
+  });
+});
+
 describe('Oid4vpEngineService — passkey prompt outcomes in the flow alert', () => {
   // errorToTranslationKey does not touch `this`: call it without the DI graph.
   const toKey = (e: unknown): string | null =>
@@ -315,5 +351,40 @@ describe('Oid4vpEngineService — passkey prompt outcomes in the flow alert', ()
 
   it('still reports a real passkey failure', () => {
     expect(toKey(new PasskeyError('passkey_security', 'get'))).toBe('auth.errors.passkey-security');
+  });
+});
+
+describe('Oid4vpEngineService.postAuthorizationResponse — verifier rejection mapping (I-04)', () => {
+  async function postAndCatch(error: HttpErrorResponse): Promise<Oid4vpError> {
+    const { service, walletService } = setup();
+    walletService.postOid4vpAuthorizationResponse.mockReturnValue(throwError(() => error));
+    try {
+      await (service as any).postAuthorizationResponse('https://verifier.example.com/callback', 'state-1', 'vp');
+    } catch (e) {
+      return e as Oid4vpError;
+    }
+    throw new Error('expected postAuthorizationResponse to reject');
+  }
+
+  it('uses errors.credential-revoked for a 403 credential_revoked response', async () => {
+    const err = await postAndCatch(new HttpErrorResponse({
+      status: 403,
+      error: '{"type":"credential_revoked","title":"Verifiable presentation failed","status":403,"detail":"The credential has been revoked"}',
+    }));
+
+    expect(err).toBeInstanceOf(Oid4vpError);
+    expect(err.translationKey).toBe('errors.credential-revoked');
+  });
+
+  it('keeps errors.verifier-post-failed for a 500', async () => {
+    const err = await postAndCatch(new HttpErrorResponse({ status: 500, error: 'boom' }));
+
+    expect(err.translationKey).toBe('errors.verifier-post-failed');
+  });
+
+  it('keeps errors.verifier-post-failed for a 403 that is not a revocation', async () => {
+    const err = await postAndCatch(new HttpErrorResponse({ status: 403, error: '{"type":"issuer_not_trusted"}' }));
+
+    expect(err.translationKey).toBe('errors.verifier-post-failed');
   });
 });

@@ -11,7 +11,7 @@ import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { ToastServiceHandler } from 'src/app/shared/services/toast.service';
-import { catchError, EMPTY, finalize, forkJoin, from, Observable, of, switchMap, take, tap } from 'rxjs';
+import { catchError, EMPTY, filter, finalize, forkJoin, from, fromEvent, map, Observable, of, Subscription, switchMap, take, tap } from 'rxjs';
 import { ExtendedHttpErrorResponse } from 'src/app/core/models/errors';
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engine.service';
@@ -60,6 +60,7 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   private readonly credentialDecisionService = inject(CredentialDecisionService);
   private readonly credentialPreviewBuilder = inject(CredentialPreviewBuilderService);
   private readonly destroyRef = inject(DestroyRef);
+  private pendingFlowStart?: Subscription;
   private readonly issuerMetadataCache = inject(IssuerMetadataCacheService);
   private readonly issuerNotificationService = inject(IssuerNotificationService);
   private readonly loader = inject(LoaderService);
@@ -136,7 +137,30 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
     this.cdr.detectChanges();
   }
 
+  /**
+   * Starting the flow in a hidden tab would redeem the one-shot credential offer and raise the
+   * passkey prompt where the user cannot see it; a cancelled prompt then loses the offer for good.
+   * So the flow waits until this tab is the one being looked at.
+   */
   private runPendingProtocolFlow(): void {
+    this.pendingFlowStart?.unsubscribe();
+    this.pendingFlowStart = this.whenTabVisible()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.startPendingProtocolFlow());
+  }
+
+  private whenTabVisible(): Observable<void> {
+    if (document.visibilityState === 'visible') {
+      return of(undefined);
+    }
+    return fromEvent(document, 'visibilitychange').pipe(
+      filter(() => document.visibilityState === 'visible'),
+      take(1),
+      map(() => undefined)
+    );
+  }
+
+  private startPendingProtocolFlow(): void {
     if (this.credentialOfferUri) {
       this.sameDeviceVcActivationFlow(this.credentialOfferUri);
     } else if (this.authorizationRequest) {
@@ -219,6 +243,13 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   private credentialActivationFlow(credentialOfferUri: string): void{
     from(this.oid4vciEngineService.performOid4vciFlow(credentialOfferUri))
       .pipe(
+        // The engine (LoaderHandledFlowService) has already shown the specific
+        // alert for its own failures (e.g. offer expired) — or none on user
+        // cancel. A second, generic "failed QR" alert here would bury it.
+        catchError((err: ExtendedHttpErrorResponse | Error) => {
+          this.handleContentExecutionError(err, false);
+          return EMPTY;
+        }),
         switchMap((flowResult: FinalizeIssuancePayload) => {
           // Deferred credentials (202): save to backend without user decision
           if (flowResult.credentialResponseWithStatus.statusCode === 202) {
@@ -482,7 +513,10 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   }
 
   //todo review this (it is storing camera logs, but is used after API calls)
-  private handleContentExecutionError(errorResponse: ExtendedHttpErrorResponse | Error): void{
+  private handleContentExecutionError(
+    errorResponse: ExtendedHttpErrorResponse | Error,
+    notifyUser = true
+  ): void{
     const httpErr = (errorResponse as ExtendedHttpErrorResponse)?.error;
     const message = httpErr?.message || (errorResponse as ExtendedHttpErrorResponse)?.message || errorResponse?.message || 'No error message';
     const title = httpErr?.title || (errorResponse as ExtendedHttpErrorResponse)?.title || '(No title)';
@@ -493,13 +527,15 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
 
     console.error(errorResponse);
 
-    const translationKey = errorResponse instanceof InvalidQrError
-      ? 'errors.invalid-qr'
-      : 'errors.failed-qr-process';
-    this.toastServiceHandler
-      .showErrorAlertByTranslateLabel(translationKey)
-      .pipe(take(1))
-      .subscribe();
+    if (notifyUser) {
+      const translationKey = errorResponse instanceof InvalidQrError
+        ? 'errors.invalid-qr'
+        : 'errors.failed-qr-process';
+      this.toastServiceHandler
+        .showErrorAlertByTranslateLabel(translationKey)
+        .pipe(take(1))
+        .subscribe();
+    }
 
     setTimeout(()=>{
       void this.router.navigate(['/tabs/credentials'])

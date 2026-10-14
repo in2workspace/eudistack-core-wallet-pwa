@@ -6,7 +6,7 @@ import { Router, RouterModule } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Subscription } from 'rxjs';
 import { BUILD_INFO } from 'src/app/core/constants/build-info.constants';
-import { SupportChannels } from 'src/app/core/constants/support.constants';
+import { SBOM_BACKEND_URL, SBOM_FRONTEND_URL, SupportChannels } from 'src/app/core/constants/support.constants';
 import { ConfirmModalComponent } from 'src/app/shared/components/confirm-modal/confirm-modal.component';
 import { ThemeService } from 'src/app/core/services/theme.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
@@ -16,6 +16,7 @@ import { OssLicenseService } from './services/oss-license.service';
 import { OssLicense } from './models/oss-license.model';
 import {
   LEGAL_DOCUMENT_IDS,
+  LegalContentFailureReason,
   LegalDocumentContent,
   LegalDocumentId,
   isLegalDocumentId,
@@ -83,10 +84,15 @@ export class AboutPage implements OnInit, OnDestroy {
   // --- Legal document panel ---------------------------------------------------
   readonly legalState = signal<PanelLoadState>('loading');
   readonly legalDocument = signal<LegalDocumentContent | null>(null);
+  readonly legalErrorReason = signal<LegalContentFailureReason | null>(null);
 
   // --- Licenses panel ---------------------------------------------------------
   readonly licensesState = signal<PanelLoadState>('loading');
   readonly licenses = signal<readonly OssLicense[]>([]);
+  readonly sbomLinks = [
+    { labelKey: 'about.oss-licenses.sbom-frontend', url: SBOM_FRONTEND_URL },
+    { labelKey: 'about.oss-licenses.sbom-backend', url: SBOM_BACKEND_URL },
+  ] as const;
 
   /** Transient confirmation shown next to the copy action (EC-04). */
   readonly emailCopied = signal(false);
@@ -201,6 +207,7 @@ export class AboutPage implements OnInit, OnDestroy {
     this.legalSubscription?.unsubscribe();
     this.legalState.set('loading');
     this.legalDocument.set(null);
+    this.legalErrorReason.set(null);
 
     this.legalSubscription = this.legalContent
       .load(docId)
@@ -212,6 +219,7 @@ export class AboutPage implements OnInit, OnDestroy {
           this.legalState.set('ready');
           return;
         }
+        this.legalErrorReason.set(result.reason);
         this.legalState.set('error');
       });
   }

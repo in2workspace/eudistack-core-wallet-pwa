@@ -431,3 +431,35 @@
   font-size: 14px;
   color: var(--text-secondary);
 }
+
+.about-sbom-list {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.about-sbom-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary-color);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+
+  ion-icon {
+    font-size: 16px;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

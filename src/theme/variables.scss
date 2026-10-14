@@ -9,6 +9,8 @@
   --secondary-color: #132153;
   --secondary-contrast-color: #ffffff;
 
+  color-scheme: light;
+
   /** Static, brand-independent neutral color palette　(not overridden by ThemeService)  **/
   --neutral-strong: #333333;
   --neutral-medium: #6B7280;
@@ -153,6 +155,9 @@
 
 // ── Dark theme ──────────────────────────────────────
 .dark-theme {
+  // Native controls (alert inputs, autofill) follow the app theme, not the OS one
+  color-scheme: dark;
+
   --surface-page: #0F1117;
   --surface-card: #1A1D27;
   --surface-muted: #252833;
@@ -195,4 +200,13 @@
   --ion-color-light-contrast: var(--text-primary);
   --ion-color-light-shade: var(--border-default);
   --ion-color-step-850: var(--surface-card);
+
+  // Ionic overlays (alert, toast) fall back to light defaults for these on iOS
+  --ion-overlay-background-color: var(--surface-card);
+  --ion-color-step-50: var(--surface-card);
+  --ion-color-step-100: var(--surface-muted);
+  --ion-color-step-250: var(--border-default);
+  --ion-color-step-400: var(--text-disabled);
+  --ion-color-step-600: var(--text-secondary);
+  --ion-text-color-rgb: 240, 241, 244;
 }

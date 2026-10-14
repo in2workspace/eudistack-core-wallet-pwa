@@ -160,7 +160,6 @@ export class ActivityPage implements OnInit, ViewWillEnter {
         credentialName: this.translate.instant('activity.csv-header-credential'),
         counterparty: this.translate.instant('activity.csv-header-counterparty'),
         timestamp: this.translate.instant('activity.csv-header-date'),
-        details: this.translate.instant('activity.csv-header-details'),
       },
       types: {
         issued: this.translate.instant('activity.type-issued'),

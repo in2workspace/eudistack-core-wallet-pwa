@@ -132,7 +132,9 @@ export class HttpErrorInterceptor implements HttpInterceptor {
         }
 
         if (errStatus === 410) {
-          this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.credential-offer-already-processed').subscribe();
+          // Several distinct 410 causes exist (offer expired vs. offer already
+          // processed): the helper resolves the Problem Details `type` first.
+          this.toastServiceHandler.showErrorAlertByTranslateLabel(defaultHttpToTranslationKey(errorResp)).subscribe();
         } else {
           // EBW errors are RFC 7807 ProblemDetails (`detail`, no `message`), so the
           // text rarely matches a known backend message: fall back to a message

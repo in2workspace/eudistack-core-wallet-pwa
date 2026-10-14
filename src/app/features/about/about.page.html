@@ -76,11 +76,17 @@
                 @case ('error') {
                   <div class="about-panel-status about-panel-status--error" role="alert">
                     <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
-                    <p class="about-panel-status__title">{{ "about.legal-document.error-title" | translate }}</p>
-                    <p>{{ "about.legal-document.error-description" | translate }}</p>
-                    <button type="button" class="about-panel-retry" (click)="retryLegalDocument()">
-                      {{ "about.legal-document.retry" | translate }}
-                    </button>
+                    @if (legalErrorReason() === 'not-found') {
+                      <p class="about-panel-status__title">{{ "about.legal-document.not-published-title" | translate }}</p>
+                      <p>{{ "about.legal-document.not-published-description" | translate }}</p>
+                      <a class="about-email-link" [href]="supportMailto">{{ channels.email }}</a>
+                    } @else {
+                      <p class="about-panel-status__title">{{ "about.legal-document.error-title" | translate }}</p>
+                      <p>{{ "about.legal-document.error-description" | translate }}</p>
+                      <button type="button" class="about-panel-retry" (click)="retryLegalDocument()">
+                        {{ "about.legal-document.retry" | translate }}
+                      </button>
+                    }
                   </div>
                 }
               }
@@ -108,6 +114,17 @@
 
         @if (isExpanded('licenses')) {
           <section class="about-row__panel" id="about-panel-licenses" aria-labelledby="about-header-licenses">
+            <ul class="about-sbom-list">
+              @for (link of sbomLinks; track link.url) {
+                <li>
+                  <a [href]="link.url" target="_blank" rel="noopener noreferrer" class="about-sbom-link">
+                    <span>{{ link.labelKey | translate }}</span>
+                    <ion-icon name="open-outline" aria-hidden="true"></ion-icon>
+                    <span class="visually-hidden">{{ "about.opens-new-window" | translate }}</span>
+                  </a>
+                </li>
+              }
+            </ul>
             @switch (licensesState()) {
               @case ('loading') {
                 <output class="about-panel-status">

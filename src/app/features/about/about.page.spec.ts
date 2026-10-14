@@ -1,3 +1,4 @@
+import { SBOM_BACKEND_URL, SBOM_FRONTEND_URL } from 'src/app/core/constants/support.constants';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { EventEmitter, NO_ERRORS_SCHEMA } from '@angular/core';
 import { IonicModule, ModalController } from '@ionic/angular';
@@ -190,8 +191,8 @@ describe('AboutPage', () => {
     expect(fixture.nativeElement.querySelector('.about-row__panel')).toBeFalsy();
   });
 
-  it('ES-01: a failing legal document shows the error state with a retry action', async () => {
-    legalResult = { status: 'error', reason: 'not-found' };
+  it('ES-01: a transient legal document failure shows the connection error with a retry action', async () => {
+    legalResult = { status: 'error', reason: 'unavailable' };
     const fixture = await createFixture(supportStub, modalCtrlMock);
 
     expandPanel(fixture, 0);
@@ -199,6 +200,28 @@ describe('AboutPage', () => {
     expect(fixture.nativeElement.querySelector('.about-panel-status--error')).toBeTruthy();
     fixture.nativeElement.querySelector('.about-panel-retry').dispatchEvent(new MouseEvent('click'));
     expect(legalContentStub.load).toHaveBeenCalledTimes(2);
+  });
+
+  it('a document that is not published shows a truthful message, with no retry', async () => {
+    legalResult = { status: 'error', reason: 'not-found' };
+    const fixture = await createFixture(supportStub, modalCtrlMock);
+
+    expandPanel(fixture, 0);
+
+    const panel = fixture.nativeElement.querySelector('.about-panel-status--error');
+    expect(panel).toBeTruthy();
+    expect(panel.textContent).toContain('about.legal-document.not-published-title');
+    expect(panel.textContent).not.toContain('about.legal-document.error-description');
+    expect(fixture.nativeElement.querySelector('.about-panel-retry')).toBeFalsy();
+  });
+
+  it('the licenses panel links the frontend and backend SBOMs', async () => {
+    const fixture = await createFixture(supportStub, modalCtrlMock);
+
+    expandPanel(fixture, 3);
+
+    const links = Array.from<HTMLAnchorElement>(fixture.nativeElement.querySelectorAll('.about-sbom-link'));
+    expect(links.map((a) => a.getAttribute('href'))).toEqual([SBOM_FRONTEND_URL, SBOM_BACKEND_URL]);
   });
 
   it('AC-05: expanding the licenses row lists the packaged dependencies', async () => {

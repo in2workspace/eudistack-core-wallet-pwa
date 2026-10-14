@@ -8,9 +8,14 @@
   --custom-alert-ok-bg: #e7f8e4;
   --custom-alert-ok-info-bg: #d0efff;
   --custom-alert-ok-text: var(--status-success);
+  /* generic alert buttons: confirm keeps the brand color, cancel is muted */
+  --alert-action-color: var(--ion-color-primary);
+  --alert-cancel-color: var(--text-secondary);
 }
 
 .dark-theme{
+  --alert-action-color: var(--ui-focus-ring);
+  --alert-cancel-color: var(--text-secondary);
   --custom-alert-error-bg: #9c2b2e;
   --custom-alert-error-border: 1px solid #e84e4f;
   --custom-alert-error-text: White;
@@ -21,6 +26,44 @@
 
 ion-alert{
   --ion-background-color: var(--surface-card);
+  --ion-text-color: var(--text-primary);
+}
+
+// Generic alerts (e.g. rename device): buttons and inputs must follow the app
+// theme tokens, not the brand primary (dark navy, unreadable on dark surfaces)
+// nor the native light defaults of iOS inputs.
+// Same scoped selectors Ionic uses (.sc-ion-alert-*), otherwise its
+// `color: var(--ion-color-primary)` wins on specificity.
+// Confirm = accent (brand in light, light blue in dark); cancel = muted, so
+// the two buttons are told apart in both themes.
+ion-alert .alert-button.sc-ion-alert-md,
+ion-alert .alert-button.sc-ion-alert-ios {
+  color: var(--alert-action-color) !important;
+  font-weight: 600;
+}
+
+ion-alert .alert-button.alert-button-role-cancel.sc-ion-alert-md,
+ion-alert .alert-button.alert-button-role-cancel.sc-ion-alert-ios {
+  color: var(--alert-cancel-color) !important;
+  font-weight: 400;
+}
+
+ion-alert .alert-button.alert-button-role-destructive.sc-ion-alert-md,
+ion-alert .alert-button.alert-button-role-destructive.sc-ion-alert-ios {
+  color: var(--status-error) !important;
+}
+
+ion-alert .alert-input {
+  background-color: var(--surface-muted);
+  color: var(--text-primary);
+  -webkit-text-fill-color: var(--text-primary);
+  caret-color: var(--ui-caret);
+  border-color: var(--border-strong);
+}
+
+ion-alert .alert-input::placeholder {
+  color: var(--text-secondary);
+  -webkit-text-fill-color: var(--text-secondary);
 }
 
 ion-alert.custom-alert-error .alert-wrapper {

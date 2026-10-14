@@ -178,17 +178,6 @@ export class DevicesPage implements OnInit {
     await alert.present();
   }
 
-  async revokeSessions(passkey: PasskeyInfo): Promise<void> {
-    this.passkeyApi.revokeSessions(passkey.id).subscribe({
-      next: () => {
-        this.passkeys.update(list =>
-          list.map(p => p.id === passkey.id ? { ...p, activeSessions: 0 } : p)
-        );
-      },
-      error: (err) => console.error('Failed to revoke sessions:', err)
-    });
-  }
-
   /**
    * A passkey is the current device's only when its credentialId matches the locally
    * stored one. If the local credentialId can't be resolved (EC-03), fail safe to `false`

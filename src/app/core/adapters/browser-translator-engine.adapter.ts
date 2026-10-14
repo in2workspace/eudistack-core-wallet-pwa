@@ -41,6 +41,10 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
     }
   }
 
+  async prepare(pair: LanguagePair, onDownloadProgress?: (loaded: number, total: number) => void): Promise<void> {
+    await this.translatorFor(pair, onDownloadProgress);
+  }
+
   async translateEntries(
     entries: ReadonlyArray<UiTextEntry>,
     pair: LanguagePair,
@@ -100,29 +104,29 @@ export class BrowserTranslatorEngineAdapter implements TranslationEnginePort {
     this._translatorFor.clear();
   }
 
-  private translatorFor(pair: LanguagePair): Promise<TranslatorInstance> {
+  private translatorFor(
+    pair: LanguagePair,
+    onDownloadProgress?: (loaded: number, total: number) => void,
+  ): Promise<TranslatorInstance> {
     const cacheKey = `${pair.sourceLanguage}:${pair.targetLanguage}`;
     let memoized = this._translatorFor.get(cacheKey);
     if (!memoized) {
-      memoized = this.createTranslator(pair);
+      memoized = this.createTranslator(pair, onDownloadProgress);
       this._translatorFor.set(cacheKey, memoized);
     }
     return memoized;
   }
 
-  private createTranslator(pair: LanguagePair): Promise<TranslatorInstance> {
+  private createTranslator(
+    pair: LanguagePair,
+    onDownloadProgress?: (loaded: number, total: number) => void,
+  ): Promise<TranslatorInstance> {
     return Translator.create({
       sourceLanguage: pair.sourceLanguage,
       targetLanguage: pair.targetLanguage,
-      // Download progress (language-pack fetch on first use, AC-11) surfaces
-      // through the same telemetry channel as engine failures — the
-      // orchestrator's own onProgress (per-batch, translate-time) is reported
-      // separately in translateEntries() above.
       monitor(monitor) {
-        monitor.addEventListener('downloadprogress', () => {
-          // Intentionally no-op beyond the engine's own progress event —
-          // UiTextTranslationService (task 15) reports progress from the
-          // batch loop, which already spans the slower first-activation path.
+        monitor.addEventListener('downloadprogress', event => {
+          onDownloadProgress?.(event.loaded, event.total);
         });
       },
     });

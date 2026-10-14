@@ -1,12 +1,42 @@
 import { ActivityEntry } from 'src/app/core/models/activity.model';
 
+const MAX_COUNTERPARTY_LENGTH = 30;
+
+export interface CounterpartySource {
+  clientName?: string;
+  redirectUri?: string;
+  clientId?: string;
+}
+
 /**
  * Formats the counterparty of an activity entry for display:
  * URLs are reduced to their hostname, did: URIs are truncated,
  * anything else (or empty input) is passed through as-is.
  */
 export function formatCounterparty(entry: ActivityEntry): string {
-  const raw = entry.counterparty?.trim() ?? '';
+  return formatRawCounterparty(entry.counterparty);
+}
+
+/**
+ * Resolves a human-friendly verifier name to store in the activity log:
+ * the verifier's client_name, else the hostname of its response URI, else
+ * its client_id formatted for display. Always capped in length because the
+ * name is controlled by the verifier.
+ */
+export function resolveCounterpartyName(source: CounterpartySource): string {
+  const name = source.clientName?.trim();
+  if (name) {
+    return capLength(name);
+  }
+  const host = hostnameOf(source.redirectUri);
+  if (host) {
+    return capLength(host.replace(/^www\./i, ''));
+  }
+  return capLength(formatRawCounterparty(source.clientId));
+}
+
+function formatRawCounterparty(value: string | undefined): string {
+  const raw = value?.trim() ?? '';
   if (!raw) {
     return '';
   }
@@ -22,6 +52,18 @@ export function formatCounterparty(entry: ActivityEntry): string {
   } catch {
     return raw;
   }
+}
+
+function hostnameOf(value: string | undefined): string {
+  try {
+    return new URL(value ?? '').hostname;
+  } catch {
+    return '';
+  }
+}
+
+function capLength(value: string): string {
+  return value.length > MAX_COUNTERPARTY_LENGTH ? `${value.slice(0, MAX_COUNTERPARTY_LENGTH - 1)}…` : value;
 }
 
 /**

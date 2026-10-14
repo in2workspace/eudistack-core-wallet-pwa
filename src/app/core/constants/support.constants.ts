@@ -18,6 +18,16 @@ export const ISSUE_TRACKER_URL =
  */
 export const SUPPORT_URL = 'https://docs.eudistack.net/';
 
+/**
+ * Published SBOMs (CycloneDX, `sbom-v<version>.cdx.json`) are attached as assets of each
+ * repo's GitHub release (docs/_shared/guides/license-gate-and-sbom.md §8).
+ * Backend = the wallet backend (EBW). Single point of change for both links.
+ */
+export const SBOM_FRONTEND_URL =
+  'https://github.com/in2workspace/eudistack-core-wallet-pwa/releases/latest';
+export const SBOM_BACKEND_URL =
+  'https://github.com/in2workspace/eudistack-core-wallet-ebw/releases/latest';
+
 /** Timeout for loading a legal document (ES-04, NFR-S-135-03). */
 export const LEGAL_DOCUMENT_TIMEOUT_MS = 5_000;
 

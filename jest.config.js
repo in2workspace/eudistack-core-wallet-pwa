@@ -34,6 +34,7 @@ module.exports = {
     "src/app/core/models/error/PasskeyError.ts",
     "src/app/core/spi-impl/hybrid-key-storage.provider.ts",
     "src/app/features/hybrid-onboarding/hybrid-onboarding.page.ts",
+    "src/app/shared/helpers/pending-deep-link.ts",
     "src/app/features/signing/sign-prompt.component.ts",
     "src/app/features/hybrid-keymanager/hybrid-kdf.const.ts",
     "src/app/features/hybrid-keymanager/hybrid-key-enrollment.service.ts",
@@ -52,6 +53,7 @@ module.exports = {
     "src/app/core/services/credential-display.service.ts",
     "src/app/shared/components/vc-view/vc-view.component.ts",
     "src/app/shared/services/toast.service.ts",
+    "src/app/shared/helpers/http-error-message.ts",
     "src/app/features/credentials/credentials.page.ts",
     "src/app/features/auth/login/login.page.ts",
     "src/app/core/services/passkey-api.service.ts",
@@ -74,6 +76,7 @@ module.exports = {
     "src/app/features/devices/devices.page.ts",
     "src/app/features/protocol-callback/protocol-callback.page.ts",
     "src/app/features/vc-selector/vc-selector.page.ts",
+    "src/app/shared/utils/activity-format.util.ts",
     "src/app/core/services/qr-content.service.ts",
     "src/app/core/services/theme.service.ts",
     "src/app/core/services/environment.service.ts",
@@ -93,6 +96,11 @@ module.exports = {
     "src/app/shared/services/credential-cache.service.ts",
     "src/app/shared/services/camera.service.ts",
     "src/app/shared/components/barcode-scanner/barcode-scanner.component.ts",
+    // --- credential_offer_expired (HTTP 410) handling ---
+    "src/app/core/models/error/ApiError.ts",
+    "src/app/core/models/error/Oid4vciError.ts",
+    "src/app/shared/helpers/http-error-message.ts",
+    "src/app/core/protocol/oid4vci/credential-offer.service.ts",
 
   ],
   coveragePathIgnorePatterns: [
