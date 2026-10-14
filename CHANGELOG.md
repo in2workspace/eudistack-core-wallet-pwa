@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The three-dots menu stayed open after choosing an option**: Activity, Connected devices, Settings and About navigate through `routerLink`, which does not close the Ionic popover, so the dropdown and its grey backdrop remained on top of the destination screen. `MenuComponent` now dismisses the popover as soon as any navigation starts (mouse or keyboard); a dismiss on an already closed popover (e.g. after *Log out*) is ignored.
+- Tests: new "closing the menu on navigation" cases in `menu.component.spec.ts`.
+
 - **Duplicate error alerts during credential activation**: `CredentialsPage` now avoids stacking generic "Failed QR" alerts when the underlying OID4VCI engine has already presented a specific, more informative error modal to the user.
 - **iOS Safari install wizard was shown in server mode**: the wizard was always shown on iOS Safari before login, even when the credentials live in the backend and nothing is lost by signing up in Safari and installing the app later. It is now shown only in browser mode; in server mode the user goes straight to login/register, `/ios-install` redirects to `/`, and "Continue in browser" no longer asks for confirmation.
 - The decision is centralized in `IosInstallService.shouldShowInstallWizard()`, shared by `iosInstallGuard` and `authLandingGuard` (now exported from `ios-install.guard.ts`).
