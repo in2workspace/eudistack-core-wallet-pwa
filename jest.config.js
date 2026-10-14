@@ -95,6 +95,8 @@ module.exports = {
     "src/app/shared/components/credential-confirmation-modal/credential-confirmation-modal.component.ts",
     "src/app/shared/services/credential-cache.service.ts",
     "src/app/shared/components/barcode-scanner/barcode-scanner.component.ts",
+    "src/app/shared/services/storage.service.ts",
+    "src/app/features/logs/camera-logs/camera-logs.page.ts",
     // --- credential_offer_expired (HTTP 410) handling ---
     "src/app/core/models/error/ApiError.ts",
     "src/app/core/models/error/Oid4vciError.ts",
