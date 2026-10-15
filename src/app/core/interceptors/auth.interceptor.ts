@@ -1,6 +1,6 @@
-import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
+import { HttpContextToken, HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { throwError } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import { AuthService, isRefreshTokenRejected } from '../services/auth.service';
 import { UrlResolverService } from '../services/url-resolver.service';
@@ -94,49 +94,75 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 const sendWithSession: HttpInterceptorFn = (req, next) => {
   // Only inject AuthService here — all bootstrap requests have already returned above.
   // At this point APP_INITIALIZER has resolved and _snapshot is set (AD-1).
-  const authService = inject(AuthService);
-  const sessionExpiryMarker = inject(SessionExpiryMarkerService);
-  authService.recordActivity();
+  const call: SessionCall = {
+    req,
+    next,
+    authService: inject(AuthService),
+    sessionExpiryMarker: inject(SessionExpiryMarkerService),
+  };
+  call.authService.recordActivity();
 
-  return authService.whenAccessTokenReady().pipe(
-    switchMap(() => {
-      const authorizedReq = withSessionToken(req, authService.getToken());
-      return next(authorizedReq).pipe(
-        catchError((err: HttpErrorResponse) => {
-          if (err.status !== 401) {
-            return throwError(() => err);
-          }
-
-          const endExpiredSession = () => {
-            sessionExpiryMarker.markSessionExpired(err);
-            if (authService.isLoggedIn()) {
-              authService.forceLogout({ sessionExpired: true });
-            }
-            return throwError(() => err);
-          };
-
-          // Already signed out (e.g. the renewal before sending was rejected): nothing to renew.
-          if (req.context.get(AUTH_RETRY_AFTER_REFRESH) || !authService.isLoggedIn()) {
-            return endExpiredSession();
-          }
-
-          return authService.refreshAccessToken().pipe(
-            catchError(refreshErr => isRefreshTokenRejected(refreshErr) ? endExpiredSession() : throwError(() => err)),
-            switchMap(() => {
-              const retryReq = withSessionToken(authorizedReq, authService.getToken()).clone({
-                context: authorizedReq.context.set(AUTH_RETRY_AFTER_REFRESH, true),
-              });
-              return next(retryReq).pipe(
-                catchError((retryErr: HttpErrorResponse) =>
-                  retryErr.status === 401 ? endExpiredSession() : throwError(() => retryErr))
-              );
-            })
-          );
-        })
-      );
-    })
-  );
+  return call.authService.whenAccessTokenReady().pipe(switchMap(() => sendAuthorized(call)));
 };
+
+/** A session-authenticated call in flight and the collaborators it needs. */
+interface SessionCall {
+  req: HttpRequest<unknown>;
+  next: HttpHandlerFn;
+  authService: AuthService;
+  sessionExpiryMarker: SessionExpiryMarkerService;
+}
+
+function sendAuthorized(call: SessionCall): Observable<HttpEvent<unknown>> {
+  const authorizedReq = withSessionToken(call.req, call.authService.getToken());
+  return call.next(authorizedReq).pipe(
+    catchError((err: HttpErrorResponse) => renewAndRetry(call, authorizedReq, err))
+  );
+}
+
+/** On a 401, renews the session once and retries the call; anything else is rethrown. */
+function renewAndRetry(
+  call: SessionCall,
+  authorizedReq: HttpRequest<unknown>,
+  err: HttpErrorResponse
+): Observable<HttpEvent<unknown>> {
+  if (err.status !== 401) {
+    return throwError(() => err);
+  }
+
+  // Already signed out (e.g. the renewal before sending was rejected): nothing to renew.
+  if (call.req.context.get(AUTH_RETRY_AFTER_REFRESH) || !call.authService.isLoggedIn()) {
+    return endExpiredSession(call, err);
+  }
+
+  return call.authService.refreshAccessToken().pipe(
+    catchError(refreshErr => isRefreshTokenRejected(refreshErr) ? endExpiredSession(call, err) : throwError(() => err)),
+    switchMap(() => retryAfterRenewal(call, authorizedReq, err))
+  );
+}
+
+function retryAfterRenewal(
+  call: SessionCall,
+  authorizedReq: HttpRequest<unknown>,
+  err: HttpErrorResponse
+): Observable<HttpEvent<unknown>> {
+  const retryReq = withSessionToken(authorizedReq, call.authService.getToken()).clone({
+    context: authorizedReq.context.set(AUTH_RETRY_AFTER_REFRESH, true),
+  });
+  return call.next(retryReq).pipe(
+    catchError((retryErr: HttpErrorResponse) =>
+      retryErr.status === 401 ? endExpiredSession(call, err) : throwError(() => retryErr))
+  );
+}
+
+/** Ends the session after the 401 `err` and rethrows it. */
+function endExpiredSession(call: SessionCall, err: HttpErrorResponse): Observable<never> {
+  call.sessionExpiryMarker.markSessionExpired(err);
+  if (call.authService.isLoggedIn()) {
+    call.authService.forceLogout({ sessionExpired: true });
+  }
+  return throwError(() => err);
+}
 
 function withSessionToken<T>(req: HttpRequest<T>, token: string): HttpRequest<T> {
   return token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
