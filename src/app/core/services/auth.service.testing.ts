@@ -39,8 +39,15 @@ export class BroadcastChannelMock {
 }
 
 export function accessToken(email = 'ana@example.com'): string {
-  const payload = btoa(JSON.stringify({ sub: 'u1', email })).replace(/=+$/, '');
+  const payload = withoutPadding(btoa(JSON.stringify({ sub: 'u1', email })));
   return `eyJhbGciOiJFUzI1NiJ9.${payload}.c2ln`;
+}
+
+/** Drops the trailing `=` padding of a base64 string (base64url carries none). */
+function withoutPadding(base64: string): string {
+  let end = base64.length;
+  while (base64[end - 1] === '=') end--;
+  return base64.slice(0, end);
 }
 
 export function session(overrides: Partial<SessionResponse> = {}): SessionResponse {
@@ -52,10 +59,14 @@ export function passkeySession(overrides: Partial<PasskeySession> = {}): Passkey
 }
 
 /** Lets pending promise chains (lock, firstValueFrom, async helpers) settle. */
-export async function settle(): Promise<void> {
-  for (let i = 0; i < 10; i++) {
-    await Promise.resolve();
-  }
+export function settle(): Promise<void> {
+  return yieldMicrotasks(10);
+}
+
+async function yieldMicrotasks(count: number): Promise<void> {
+  if (count === 0) return;
+  await Promise.resolve();
+  await yieldMicrotasks(count - 1);
 }
 
 export interface AuthHarness {
