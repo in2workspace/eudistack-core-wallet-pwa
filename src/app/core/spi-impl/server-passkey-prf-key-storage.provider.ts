@@ -63,11 +63,11 @@ export class ServerPasskeyPrfKeyStorageProvider extends KeyStorageProvider {
    * silently delegating to `sign.service`'s two-step handshake with a raw byte payload it
    * cannot turn into a valid signing_input.
    */
-  override async sign(_keyId: string, _data: Uint8Array): Promise<Uint8Array> {
-    throw new PasskeyPrfAdapterError(
+  override sign(_keyId: string, _data: Uint8Array): Promise<Uint8Array> {
+    return Promise.reject(new PasskeyPrfAdapterError(
       'Passkey+prf sign() is not supported — use buildPresentationJws for OID4VP presentations',
       { code: 'prepare_sign_failed' }
-    );
+    ));
   }
 
   override hasKey(keyId: string): Promise<boolean> {
