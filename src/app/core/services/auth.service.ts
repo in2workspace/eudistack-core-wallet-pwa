@@ -106,7 +106,9 @@ export abstract class AuthService {
   abstract forceLogout(options?: ForceLogoutOptions): void;
   abstract refreshAccessToken(options?: { onAuthFailure?: AuthFailureMode }): Observable<AccessTokenResponse>;
   /** Notes activity (user interaction or an API call). Server mode renews the session only while there is some. */
-  recordActivity(): void {}
+  recordActivity(): void {
+    // No-op by default: browser mode has no server session to keep alive. RemoteAuthService overrides it.
+  }
   /** Completes once a session that let its access token expire has a fresh one (or cannot get it now). */
   whenAccessTokenReady(): Observable<void> {
     return of(undefined);
@@ -410,25 +412,29 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       await this.serverSessionData.sessionEnded();
       return false;
     }
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        await firstValueFrom(this.refreshAccessToken({ onAuthFailure: 'clear-only' }));
-        this.sessionData = this.serverSessionData.sessionStarted();
-        await this.sessionData;
-        return true;
-      } catch (err) {
-        if (err instanceof SessionChangedError) {
-          return this.isLoggedIn();
-        }
-        if (isRefreshTokenRejected(err)) {
-          // No session to resume: the local attestations belong to one that has ended.
-          await this.serverSessionData.sessionEnded();
-          return false;
-        }
-        if (attempt === 0) {
-          await this.waitForConnectionOrDelay(RESUME_RETRY_DELAY_MS);
-        }
+    return this.attemptResume(true);
+  }
+
+  /** One renewal attempt of the start-up resume; a temporary failure is retried once, in sequence. */
+  private async attemptResume(canRetry: boolean): Promise<boolean> {
+    try {
+      await firstValueFrom(this.refreshAccessToken({ onAuthFailure: 'clear-only' }));
+      this.sessionData = this.serverSessionData.sessionStarted();
+      await this.sessionData;
+      return true;
+    } catch (err) {
+      if (err instanceof SessionChangedError) {
+        return this.isLoggedIn();
       }
+      if (isRefreshTokenRejected(err)) {
+        // No session to resume: the local attestations belong to one that has ended.
+        await this.serverSessionData.sessionEnded();
+        return false;
+      }
+    }
+    if (canRetry) {
+      await this.waitForConnectionOrDelay(RESUME_RETRY_DELAY_MS);
+      return this.attemptResume(false);
     }
     // Still offline or failing: show the access screen, keep the local attestations
     // (the session may be alive) and try again when the connection returns.
@@ -779,7 +785,8 @@ function readEmailClaim(accessToken: string): string {
 
 /** Base64url → UTF-8 text (`atob` alone returns Latin-1 and garbles non-ASCII emails). */
 function base64UrlToText(segment: string): string {
-  const base64 = segment.replace(/-/g, '+').replace(/_/g, '/');
+  const base64 = segment.replaceAll('-', '+').replaceAll('_', '/');
   const binary = atob(base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '='));
-  return new TextDecoder().decode(Uint8Array.from(binary, char => char.charCodeAt(0)));
+  // `atob` yields one char per byte (0–255), so the code point is the byte value.
+  return new TextDecoder().decode(Uint8Array.from(binary, char => char.codePointAt(0) as number));
 }
