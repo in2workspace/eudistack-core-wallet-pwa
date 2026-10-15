@@ -42,7 +42,6 @@ const EMAIL_FLOW_STEPS: Partial<Record<AccessScreen, number>> = {
 
 const RESEND_COOLDOWN_SECONDS = 180;
 const EMAIL_MAX_LENGTH = 254;
-const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DEVICE_NAME_MAX_LENGTH = 100;
 const IOS_INSTALL_STEPS = ['step1', 'step2', 'step3', 'step4'] as const;
 const MAC_INSTALL_STEPS = ['step-1', 'step-2', 'step-3'] as const;
@@ -64,6 +63,19 @@ interface RateLimit {
 }
 
 const sameEmail = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * `local@domain.tld`: no white space, a single `@` with text before it, and a
+ * dot in the domain with text on both sides. The service validates the address.
+ */
+export function hasEmailFormat(email: string): boolean {
+  if (/\s/.test(email)) return false;
+  const at = email.indexOf('@');
+  if (at < 1 || at !== email.lastIndexOf('@')) return false;
+  const domain = email.slice(at + 1);
+  const dot = domain.indexOf('.', 1);
+  return dot > 0 && dot < domain.length - 1;
+}
 
 /** `ana@example.com` → `a***@example.com`, as the code screen shows it. */
 export function maskEmail(email: string): string {
@@ -89,8 +101,8 @@ export function maskEmail(email: string): string {
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class AccessPage implements OnDestroy {
-  @ViewChild('otpRef') private otpInput?: OtpInputComponent;
-  @ViewChild('heading') private heading?: ElementRef<HTMLElement>;
+  @ViewChild('otpRef') private readonly otpInput?: OtpInputComponent;
+  @ViewChild('heading') private readonly heading?: ElementRef<HTMLElement>;
 
   private readonly authService = inject(RemoteAuthService);
   private readonly ceremony = inject(PasskeyCeremonyService);
@@ -138,7 +150,7 @@ export class AccessPage implements OnDestroy {
   readonly maskedEmail = computed(() => maskEmail(this.email()));
   readonly emailIsValid = computed(() => {
     const email = this.email().trim();
-    return email.length <= EMAIL_MAX_LENGTH && EMAIL_FORMAT.test(email);
+    return email.length <= EMAIL_MAX_LENGTH && hasEmailFormat(email);
   });
 
   /** FR-02: only in a tab that can be installed. iOS cannot launch the install, so it shows the steps. */

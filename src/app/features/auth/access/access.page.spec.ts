@@ -4,7 +4,7 @@ import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { BehaviorSubject, of, throwError } from 'rxjs';
-import { AccessPage, maskEmail } from './access.page';
+import { AccessPage, hasEmailFormat, maskEmail } from './access.page';
 import { RemoteAuthService } from 'src/app/core/services/auth.service';
 import { PasskeyCeremonyService, PrfCheckNeedsGestureError } from 'src/app/core/services/passkey-ceremony.service';
 import { WebAuthnBrowserService } from 'src/app/core/services/webauthn-browser.service';
@@ -576,5 +576,35 @@ describe('maskEmail', () => {
 
   it('leaves a malformed value as is', () => {
     expect(maskEmail('ana')).toBe('ana');
+  });
+});
+
+describe('hasEmailFormat', () => {
+  it.each([
+    'ana@dominio.es',
+    'a@b.c',
+    'ana.garcia+wallet@sub.dominio.es',
+    'ana@dominio.es.',
+    'ana@a.b.',
+    'ana@-.-',
+  ])('accepts %s', email => {
+    expect(hasEmailFormat(email)).toBe(true);
+  });
+
+  it.each([
+    '',
+    'ana',
+    '@dominio.es',
+    'ana@',
+    'ana@dominio',
+    'ana@.es',
+    'ana@dominio.',
+    'ana@@dominio.es',
+    'ana@dom@inio.es',
+    'ana garcia@dominio.es',
+    'ana@dominio.es	',
+    'ana@.',
+  ])('rejects %j', email => {
+    expect(hasEmailFormat(email)).toBe(false);
   });
 });
