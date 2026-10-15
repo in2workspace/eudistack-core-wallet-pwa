@@ -21,10 +21,10 @@
         @switch (screen()) {
 
           @case ('checking') {
-            <div class="auth-checking" role="status">
+            <output class="auth-checking">
               <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
               <p class="init-status">{{ 'auth.login.initializing' | translate }}</p>
-            </div>
+            </output>
           }
 
           @case ('requirements') {
@@ -271,14 +271,14 @@
   </div>
 
   @if (busy() && (screen() === 'access' || screen() === 'choose-passkey' || screen() === 'create-passkey' || screen() === 'check-passkey')) {
-    <div class="auth-overlay" role="status" [attr.aria-label]="'wallet-access.waiting-passkey' | translate">
+    <output class="auth-overlay" [attr.aria-label]="'wallet-access.waiting-passkey' | translate">
       <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
-    </div>
+    </output>
   }
 
   <ion-modal class="auth-help-modal" [isOpen]="showIosSteps()" (didDismiss)="showIosSteps.set(false)">
     <ng-template>
-      <div class="help-modal" role="dialog" aria-labelledby="access-ios-steps-title">
+      <dialog class="help-modal" open aria-labelledby="access-ios-steps-title">
         <button type="button" class="help-modal__close" (click)="showIosSteps.set(false)" [attr.aria-label]="'auth.access.help.close' | translate">
           <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
         </button>
@@ -294,13 +294,13 @@
         <button type="button" class="auth-button" (click)="showIosSteps.set(false)">
           {{ 'auth.access.help.close' | translate }}
         </button>
-      </div>
+      </dialog>
     </ng-template>
   </ion-modal>
 
   <ion-modal class="auth-help-modal" [isOpen]="showMacSteps()" (didDismiss)="showMacSteps.set(false)">
     <ng-template>
-      <div class="help-modal" role="dialog" aria-labelledby="access-mac-steps-title">
+      <dialog class="help-modal" open aria-labelledby="access-mac-steps-title">
         <button type="button" class="help-modal__close" (click)="showMacSteps.set(false)" [attr.aria-label]="'auth.access.help.close' | translate">
           <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
         </button>
@@ -316,7 +316,7 @@
         <button type="button" class="auth-button" (click)="showMacSteps.set(false)">
           {{ 'auth.access.help.close' | translate }}
         </button>
-      </div>
+      </dialog>
     </ng-template>
   </ion-modal>
 </ion-content>
