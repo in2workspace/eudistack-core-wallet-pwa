@@ -81,6 +81,31 @@ describe('RemoteAuthService (EUD-8)', () => {
       expect(harness.sessionData.sessionEnded).not.toHaveBeenCalled();
     });
 
+    it('keeps the local attestations when the renewal is refused with 403 forbidden (not an ended session)', async () => {
+      const resumed = service.resumeSession();
+      await settle();
+      harness.http.expectOne(`${AUTH_BASE}/refresh`)
+        .flush({ type: 'forbidden', status: 403 }, { status: 403, statusText: 'Forbidden' });
+      await settle();
+      window.dispatchEvent(new Event('online'));
+      await settle();
+      harness.http.expectOne(`${AUTH_BASE}/refresh`)
+        .flush({ type: 'forbidden', status: 403 }, { status: 403, statusText: 'Forbidden' });
+
+      expect(await resumed).toBe(false);
+      expect(harness.sessionData.sessionEnded).not.toHaveBeenCalled();
+      expect(service.consumeSessionExpiredNotice()).toBe(false);
+    });
+
+    it('drops the local attestations when the renewal answers 401 without a problem body', async () => {
+      const resumed = service.resumeSession();
+      await settle();
+      harness.http.expectOne(`${AUTH_BASE}/refresh`).flush(null, { status: 401, statusText: 'Unauthorized' });
+
+      expect(await resumed).toBe(false);
+      expect(harness.sessionData.sessionEnded).toHaveBeenCalled();
+    });
+
     it('gives up after the retry but resumes in the background when the connection returns', async () => {
       const resumed = service.resumeSession();
       await settle();
@@ -218,6 +243,37 @@ describe('RemoteAuthService (EUD-8)', () => {
         .flush({ type: 'invalid_session', status: 401 }, { status: 401, statusText: 'Unauthorized' });
       await renewal;
 
+      expect(harness.router.navigateByUrl).not.toHaveBeenCalled();
+      expect(service.consumeSessionExpiredNotice()).toBe(false);
+    });
+
+    it('a renewal answering 401 without a problem body ends the session with the expired notice', async () => {
+      service['applySession'](session());
+      const renewal = firstValueFrom(service.refreshAccessToken()).catch(err => err);
+      await settle();
+      harness.http.expectOne(`${AUTH_BASE}/refresh`).flush(null, { status: 401, statusText: 'Unauthorized' });
+      await renewal;
+
+      expect(service.isLoggedIn()).toBe(false);
+      expect(service.consumeSessionExpiredNotice()).toBe(true);
+    });
+
+    it.each([
+      [400, 'Bad Request', { type: 'invalid_request', status: 400 }],
+      [403, 'Forbidden', { type: 'forbidden', status: 403 }],
+      [403, 'Forbidden', { type: 'access_denied', status: 403 }],
+      [500, 'Server Error', null],
+      [503, 'Unavailable', null],
+    ])('a renewal failing with %s %s keeps the session and the attestations, with no expired notice', async (status, statusText, body) => {
+      service['applySession'](session());
+      harness.sessionData.sessionEnded.mockClear();
+      const renewal = firstValueFrom(service.refreshAccessToken()).catch(err => err);
+      await settle();
+      harness.http.expectOne(`${AUTH_BASE}/refresh`).flush(body, { status, statusText });
+
+      expect(await renewal).toBeInstanceOf(HttpErrorResponse);
+      expect(service.isLoggedIn()).toBe(true);
+      expect(harness.sessionData.sessionEnded).not.toHaveBeenCalled();
       expect(harness.router.navigateByUrl).not.toHaveBeenCalled();
       expect(service.consumeSessionExpiredNotice()).toBe(false);
     });
@@ -430,6 +486,17 @@ describe('RemoteAuthService (EUD-8)', () => {
       expect(service.serverLogoutPending()).toBe(false);
     });
 
+    it('keeps the logout pending when the renewal before retrying is refused with 403 forbidden', async () => {
+      const done = firstValueFrom(service.logout(), { defaultValue: undefined });
+      harness.http.expectOne(`${AUTH_BASE}/sessions/current`).flush(null, { status: 401, statusText: 'Unauthorized' });
+      await settle();
+      harness.http.expectOne(`${AUTH_BASE}/refresh`)
+        .flush({ type: 'forbidden', status: 403 }, { status: 403, statusText: 'Forbidden' });
+      await done;
+
+      expect(service.serverLogoutPending()).toBe(true);
+    });
+
     it('does not pretend the session closed when the service cannot be reached, and retries when back online (M2)', async () => {
       const done = firstValueFrom(service.logout(), { defaultValue: undefined });
       harness.http.expectOne(`${AUTH_BASE}/sessions/current`).error(new ProgressEvent('offline'), { status: 0 });
@@ -538,12 +605,41 @@ describe('RemoteAuthService (EUD-8)', () => {
 });
 
 describe('isRefreshTokenRejected', () => {
-  it.each([400, 401, 403])('treats %s as a session that is over', status => {
-    expect(isRefreshTokenRejected(new HttpErrorResponse({ status }))).toBe(true);
+  const problem = (status: number, type: string) => new HttpErrorResponse({ status, error: { type, status } });
+
+  it('treats a 401 invalid_session as a session that is over', () => {
+    expect(isRefreshTokenRejected(problem(401, 'invalid_session'))).toBe(true);
   });
 
-  it.each([0, 429, 500, 503])('treats %s as transient', status => {
+  it('treats a 401 invalid_session sent as a URI type as a session that is over', () => {
+    expect(isRefreshTokenRejected(problem(401, 'https://eudistack.net/problems/invalid_session'))).toBe(true);
+  });
+
+  it.each([null, '', 'not json'])('treats a 401 without a readable problem body (%p) as a session that is over', error => {
+    expect(isRefreshTokenRejected(new HttpErrorResponse({ status: 401, error }))).toBe(true);
+  });
+
+  it('does not treat a 401 with another problem type as a session that is over', () => {
+    expect(isRefreshTokenRejected(problem(401, 'invalid_ticket'))).toBe(false);
+  });
+
+  it.each([
+    [400, 'invalid_request'],
+    [403, 'forbidden'],
+    [403, 'invalid_session'],
+    [404, 'not_found'],
+    [429, 'rate_limited'],
+    [500, 'internal_error'],
+  ])('treats a %s %s as a failure of the call, not of the session', (status, type) => {
+    expect(isRefreshTokenRejected(problem(status, type))).toBe(false);
+  });
+
+  it.each([0, 400, 403, 429, 500, 503])('treats a %s without body as a failure of the call', status => {
     expect(isRefreshTokenRejected(new HttpErrorResponse({ status }))).toBe(false);
+  });
+
+  it('ignores errors that are not HTTP responses', () => {
+    expect(isRefreshTokenRejected(new Error('boom'))).toBe(false);
   });
 });
 

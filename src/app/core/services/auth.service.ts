@@ -14,6 +14,7 @@ import { UserActivityService } from './user-activity.service';
 import { WebAuthnBrowserService } from './webauthn-browser.service';
 import { PasskeyApiService } from './passkey-api.service';
 import { takePendingDeepLink } from 'src/app/shared/helpers/pending-deep-link';
+import { AUTH_PROBLEM_TYPE, authProblemType } from 'src/app/core/models/error/WalletAuthError';
 
 export type AuthFailureMode = 'force-logout' | 'clear-only';
 
@@ -72,12 +73,16 @@ interface SessionEndedMessage {
 }
 
 /**
- * Whether a failed renewal means the session itself is over (inactive too long,
- * past its maximum duration, ended or reused → 401 `invalid_session`) as opposed
- * to a transient failure (offline, 5xx, 429) where it may still be alive.
+ * Whether a failed renewal means the session itself is over: a 401 with the
+ * RFC 9457 `type` `invalid_session` (inactive too long, past its maximum
+ * duration, ended or reused). A 401 without a readable problem body counts too,
+ * since nothing says the session is alive. Any other failure (400, 403, 404,
+ * 429, 5xx, offline) is a failure of that call: the session may still be alive.
  */
 export function isRefreshTokenRejected(err: unknown): boolean {
-  return err instanceof HttpErrorResponse && [400, 401, 403].includes(err.status);
+  if (!(err instanceof HttpErrorResponse) || err.status !== 401) return false;
+  const type = authProblemType(err);
+  return type === null || type === AUTH_PROBLEM_TYPE.INVALID_SESSION;
 }
 
 /** A renewal whose result arrived after the session it belonged to had ended or been replaced. */
@@ -481,7 +486,8 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       }
       this.setServerLogoutPending(false);
     } catch (err) {
-      // Offline, 5xx or 429: not confirmed. The pending flag stays and `online` retries.
+      // Offline, 5xx, 429, or a renewal refused for a reason other than an ended session:
+      // not confirmed. The pending flag stays and `online` retries.
       console.warn('[RemoteAuthService] The service could not confirm the logout yet', err);
     }
   }

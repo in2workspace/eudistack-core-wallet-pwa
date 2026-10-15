@@ -87,8 +87,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
  * Session-authenticated API call. Counts as activity (FR-19). A signed-in
  * session that let its access token expire renews it before sending. On a 401
  * the session is renewed once and the call retried; only a rejected renewal
- * (`invalid_session`) ends the session and goes to the access screen — a
- * temporary failure (offline, 5xx, 429) just fails this call.
+ * (401 `invalid_session`, see `isRefreshTokenRejected`) ends the session and
+ * goes to the access screen — any other renewal failure (400, 403, 5xx, 429,
+ * offline) just fails this call and keeps the session.
  */
 const sendWithSession: HttpInterceptorFn = (req, next) => {
   // Only inject AuthService here — all bootstrap requests have already returned above.

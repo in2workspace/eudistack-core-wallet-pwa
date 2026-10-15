@@ -233,9 +233,29 @@ describe('authInterceptor', () => {
       expect(marker.isSessionExpired(failed!)).toBe(true);
     });
 
-    it.each([0, 503, 429])('keeps the session when the renewal fails for a temporary reason (%s)', status => {
+    it('ends the session when the renewal answers 401 invalid_session', () => {
+      auth.refresh = () => throwError(() => new HttpErrorResponse({ status: 401, error: { type: 'invalid_session', status: 401 } }));
+      let failed: HttpErrorResponse | undefined;
+      http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe({ error: err => failed = err });
+
+      httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).flush(null, UNAUTHORIZED);
+
+      expect(auth.forceLogoutCalls).toEqual([{ sessionExpired: true }]);
+      expect(marker.isSessionExpired(failed!)).toBe(true);
+    });
+
+    it.each([
+      [0, null],
+      [400, { type: 'invalid_request', status: 400 }],
+      [403, { type: 'forbidden', status: 403 }],
+      [403, { type: 'access_denied', status: 403 }],
+      [404, null],
+      [429, { type: 'rate_limited', status: 429 }],
+      [500, null],
+      [503, null],
+    ])('keeps the session when the renewal fails with %s (not an ended session)', (status, error) => {
       auth.token = 'old';
-      auth.refresh = () => throwError(() => new HttpErrorResponse({ status }));
+      auth.refresh = () => throwError(() => new HttpErrorResponse({ status, error }));
       let failed: HttpErrorResponse | undefined;
       http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe({ error: err => failed = err });
 
