@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 import { IosInstallService } from './ios-install.service';
 
 const SESSION_KEY = 'ios_onboarding_dismissed';
@@ -32,9 +33,13 @@ function setNavigatorStandalone(value: boolean | undefined): void {
 
 describe('IosInstallService', () => {
   let service: IosInstallService;
+  let discovery: { mode: jest.Mock };
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    discovery = { mode: jest.fn().mockReturnValue('browser') };
+    TestBed.configureTestingModule({
+      providers: [{ provide: WalletDiscoveryService, useValue: discovery }],
+    });
     service = TestBed.inject(IosInstallService);
     sessionStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(SESSION_KEY);
@@ -131,5 +136,50 @@ describe('IosInstallService', () => {
 
   it('wizardState returns already-bootstrapped when passkey exists', () => {
     expect(service.wizardState(true)).toBe('already-bootstrapped');
+  });
+
+  // --- Wallet mode gating ---
+
+  describe('shouldShowInstallWizard', () => {
+    const IPHONE_SAFARI = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+
+    beforeEach(() => setUA(IPHONE_SAFARI));
+
+    it('returns true on iOS Safari in browser mode when not dismissed', () => {
+      discovery.mode.mockReturnValue('browser');
+
+      expect(service.shouldShowInstallWizard()).toBe(true);
+    });
+
+    it('returns false on iOS Safari in server mode', () => {
+      discovery.mode.mockReturnValue('server');
+
+      expect(service.shouldShowInstallWizard()).toBe(false);
+    });
+
+    it('returns false in browser mode once the wizard is dismissed', () => {
+      discovery.mode.mockReturnValue('browser');
+      service.dismissOnboarding();
+
+      expect(service.shouldShowInstallWizard()).toBe(false);
+    });
+
+    it('returns false in browser mode when not iOS Safari', () => {
+      discovery.mode.mockReturnValue('browser');
+      setUA('Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36 CriOS/120');
+
+      expect(service.shouldShowInstallWizard()).toBe(false);
+    });
+  });
+
+  describe('isServerMode', () => {
+    it.each([
+      ['server', true],
+      ['browser', false],
+    ])('returns the wallet mode flag for %s', (mode, expected) => {
+      discovery.mode.mockReturnValue(mode);
+
+      expect(service.isServerMode()).toBe(expected);
+    });
   });
 });
