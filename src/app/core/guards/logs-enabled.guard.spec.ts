@@ -1,22 +1,17 @@
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
+import { Router, UrlTree, provideRouter } from '@angular/router';
 import { logsEnabledGuard } from './logs-enabled.guard';
 import { environment } from 'src/environments/environment';
 
 describe('logsEnabledGuard', () => {
-  let mockRouter: Router;
-  let navigateSpy: jest.SpyInstance;
+  let router: Router;
 
   beforeEach(() => {
-    mockRouter = { navigate: jest.fn() } as any; 
-
     TestBed.configureTestingModule({
-      providers: [
-        { provide: Router, useValue: mockRouter }
-      ]
+      providers: [provideRouter([])]
     });
 
-    navigateSpy = jest.spyOn(mockRouter, 'navigate');
+    router = TestBed.inject(Router);
   });
 
   afterEach(() => {
@@ -28,16 +23,15 @@ describe('logsEnabledGuard', () => {
 
     const result = TestBed.runInInjectionContext(() => logsEnabledGuard(null as any, null as any));
 
-    expect(result).toBe(true); 
-    expect(navigateSpy).not.toHaveBeenCalled();
+    expect(result).toBe(true);
   });
 
-  it('should block activation and navigate to /settings if logs are disabled', () => {
+  it('should block activation and redirect to /settings if logs are disabled', () => {
     environment.logs_enabled = false; 
 
     const result = TestBed.runInInjectionContext(() => logsEnabledGuard(null as any, null as any));
 
-    expect(result).toBe(false); 
-    expect(navigateSpy).toHaveBeenCalledWith(['/settings']); 
+    expect(result).toBeInstanceOf(UrlTree);
+    expect(router.serializeUrl(result as UrlTree)).toBe('/settings');
   });
 });

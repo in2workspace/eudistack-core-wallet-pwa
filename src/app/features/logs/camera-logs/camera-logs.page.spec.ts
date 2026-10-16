@@ -6,6 +6,8 @@ import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
 import { Storage } from '@ionic/storage-angular';
 import { TranslateModule } from '@ngx-translate/core';
 
+const flushPromises = () => new Promise(resolve => setTimeout(resolve));
+
 describe('CameraLogsPage', () => {
   let component: CameraLogsPage;
   let fixture: ComponentFixture<CameraLogsPage>;
@@ -37,7 +39,8 @@ describe('CameraLogsPage', () => {
     const mockLogs = [{ id: 1, log: 'Camera log 1' }];
     mockCameraLogsService.getCameraLogs.mockResolvedValue(mockLogs);
 
-    await component.ngOnInit();
+    component.ngOnInit();
+    await flushPromises();
 
     expect(mockCameraLogsService.getCameraLogs).toHaveBeenCalled();
     expect(component.cameraLogs).toEqual(mockLogs);
@@ -53,7 +56,8 @@ describe('CameraLogsPage', () => {
     (component as any).logsBatchSize = 2;
     
     mockCameraLogsService.getCameraLogs.mockResolvedValue(mockLogs);
-    await component.ngOnInit();
+    component.ngOnInit();
+    await flushPromises();
   
     expect(component.displayedLogs.length).toBe(2);
     expect(component.displayedLogs).toEqual(mockLogs.slice(0, 2));
@@ -72,6 +76,19 @@ describe('CameraLogsPage', () => {
   
     expect(mockInfiniteScrollEvent.target.complete).toHaveBeenCalled();
     expect(mockInfiniteScrollEvent.target.disabled).toBe(true);
+  });
+
+  it('should log, not throw, when the stored logs cannot be loaded', async () => {
+    const failure = new Error('storage unavailable');
+    mockCameraLogsService.getCameraLogs.mockRejectedValue(failure);
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+    expect(() => component.ngOnInit()).not.toThrow();
+    await flushPromises();
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error loading camera logs:', failure);
+    expect(component.displayedLogs).toEqual([]);
+    consoleErrorSpy.mockRestore();
   });
   
 });

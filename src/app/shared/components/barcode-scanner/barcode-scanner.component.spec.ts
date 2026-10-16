@@ -42,7 +42,7 @@ describe('BarcodeScannerComponent', () => {
       handleCameraErrors: jest.fn()
     };
     mockCameraLogsService = {
-      addCameraLog: jest.fn()
+      addCameraLog: jest.fn().mockResolvedValue(undefined)
     } as any;
     mockRouter = new MockRouter();
 
@@ -113,7 +113,7 @@ describe('BarcodeScannerComponent', () => {
   describe('BarcodeScannerComponent Lifecycle Hooks', () => {
     beforeEach(() => {
       jest.spyOn(component, 'modifyConsoleErrorToHandleScannerErrors').mockImplementation();
-      jest.spyOn(component, 'initCameraIfNoActivateScanners').mockImplementation();
+      jest.spyOn(component, 'initCameraIfNoActivateScanners').mockResolvedValue();
       jest.spyOn((component as any), 'setActivatingTimeout').mockImplementation();
       jest.spyOn(component, 'restoreOriginalConsoleError').mockImplementation();
       jest.spyOn(mockCameraService.isCameraError$, 'set').mockImplementation();
@@ -127,6 +127,18 @@ describe('BarcodeScannerComponent', () => {
     it('should call initCameraIfNoActivateScanners on ngAfterViewInit', async () => {
       await component.ngAfterViewInit();
       expect(component.initCameraIfNoActivateScanners).toHaveBeenCalled();
+    });
+
+    it('should warn, not throw, when the camera initialization fails on ngAfterViewInit', async () => {
+      const failure = new Error('camera flow failed');
+      jest.spyOn(component, 'initCameraIfNoActivateScanners').mockRejectedValue(failure);
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      expect(() => component.ngAfterViewInit()).not.toThrow();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(warnSpy).toHaveBeenCalledWith('SCANNER: camera initialization failed.', failure);
     });
   
     it('should call destroy$.next, setActivatingTimeout, restoreOriginalConsoleError and reset camera error on ngOnDestroy', () => {
@@ -196,6 +208,102 @@ describe('BarcodeScannerComponent', () => {
   
       expect(component.activateScanner).toHaveBeenCalled();
       expect(component.firstActivationCompleted).toBe(true);
+    });
+  });
+
+  describe('initCameraIfNoActivateScanners', () => {
+    const camera = { deviceId: 'camera-1' } as MediaDeviceInfo;
+    let activateInitiallySpy: jest.SpyInstance;
+    let warnSpy: jest.SpyInstance;
+    let activatingScanners$: Subject<[]>;
+
+    // Microtasks only: a macrotask wait would let the unrelated zxing "can't enumerate devices"
+    // rejection of the real scanner rendered by the outer beforeEach surface in these tests.
+    const settlePromises = async () => {
+      for (let i = 0; i < 5; i++) {
+        await Promise.resolve();
+      }
+    };
+
+    const otherScannerIsDeactivating = () => {
+      (component as any).isActivatingScanner$ = () => ['other-scanner'];
+      activatingScanners$ = new Subject<[]>();
+      (mockCameraService as any).activatingScannersList$ = activatingScanners$;
+    };
+
+    beforeEach(() => {
+      // detectChanges() in the outer beforeEach already ran ngAfterViewInit once
+      mockCameraService.getCameraFlow.mockReset();
+      activateInitiallySpy = jest.spyOn(component, 'activateScannerInitially').mockResolvedValue();
+      warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    });
+
+    afterEach(() => warnSpy.mockRestore());
+
+    it('activates the scanner right away when no other scanner is being deactivated', async () => {
+      mockCameraService.getCameraFlow.mockResolvedValue(camera);
+
+      await component.initCameraIfNoActivateScanners();
+
+      expect(mockCameraService.getCameraFlow).toHaveBeenCalledTimes(1);
+      expect(activateInitiallySpy).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['NO_CAMERA_AVAILABLE', 'PERMISSION_DENIED'])(
+      'does not activate the scanner when the camera flow ends with %s',
+      async (outcome) => {
+        mockCameraService.getCameraFlow.mockResolvedValue(outcome);
+
+        await component.initCameraIfNoActivateScanners();
+
+        expect(activateInitiallySpy).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalledWith('SCANNER: camera flow not completed; scanner will not be activated.');
+      }
+    );
+
+    it('waits until the other scanners are gone before starting the camera flow', async () => {
+      otherScannerIsDeactivating();
+      mockCameraService.getCameraFlow.mockResolvedValue(camera);
+
+      await component.initCameraIfNoActivateScanners();
+      expect(mockCameraService.getCameraFlow).not.toHaveBeenCalled();
+
+      activatingScanners$.next(['still-deactivating'] as any);
+      await Promise.resolve();
+      expect(mockCameraService.getCameraFlow).not.toHaveBeenCalled();
+
+      activatingScanners$.next([]);
+      await settlePromises();
+
+      expect(mockCameraService.getCameraFlow).toHaveBeenCalledTimes(1);
+      expect(activateInitiallySpy).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['NO_CAMERA_AVAILABLE', 'PERMISSION_DENIED'])(
+      'does not activate the scanner after waiting when the camera flow ends with %s',
+      async (outcome) => {
+        otherScannerIsDeactivating();
+        mockCameraService.getCameraFlow.mockResolvedValue(outcome);
+
+        await component.initCameraIfNoActivateScanners();
+        activatingScanners$.next([]);
+        await settlePromises();
+
+        expect(mockCameraService.getCameraFlow).toHaveBeenCalledTimes(1);
+        expect(activateInitiallySpy).not.toHaveBeenCalled();
+      }
+    );
+
+    it('stops waiting once the component is destroyed', async () => {
+      otherScannerIsDeactivating();
+      mockCameraService.getCameraFlow.mockResolvedValue(camera);
+
+      await component.initCameraIfNoActivateScanners();
+      component.destroy$.next();
+      activatingScanners$.next([]);
+      await settlePromises();
+
+      expect(mockCameraService.getCameraFlow).not.toHaveBeenCalled();
     });
   });
 
@@ -382,6 +490,18 @@ describe('BarcodeScannerComponent', () => {
     const testExceptionType: CameraLogType = 'undefinedError';
     component.saveErrorLog(testError, testExceptionType);
     expect(mockCameraLogsService.addCameraLog).toHaveBeenCalledWith(testError, testExceptionType);
+  });
+
+  it('should warn, not throw, when the camera log cannot be saved', async () => {
+    const failure = new Error('storage full');
+    (mockCameraLogsService.addCameraLog as jest.Mock).mockRejectedValueOnce(failure);
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+    expect(() => component.saveErrorLog(new Error('scan'), 'scanError')).not.toThrow();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(warnSpy).toHaveBeenCalledWith('SCANNER: camera log could not be saved.', failure);
   });
 
   it('should save error log when onScanError is called', () => {

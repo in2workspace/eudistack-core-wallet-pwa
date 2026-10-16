@@ -21,24 +21,29 @@ export class CameraLogsPage implements OnInit {
   private currentIndex = 0;
 
 
-  async ngOnInit() {
-    const logs = await this.cameraLogsService.getCameraLogs();
-    this.cameraLogs = logs;
-    this.loadLogs('INITIAL');
+  ngOnInit(): void {
+    this.loadInitialLogs()
+      .catch(error => console.error('Error loading camera logs:', error));
   }
 
-  loadLogs(event: InfiniteScrollCustomEvent|'INITIAL') {
+  private async loadInitialLogs(): Promise<void> {
+    this.cameraLogs = await this.cameraLogsService.getCameraLogs();
+    await this.loadLogs('INITIAL');
+  }
+
+  async loadLogs(event: InfiniteScrollCustomEvent|'INITIAL'): Promise<void> {
     const nextIndex = this.currentIndex + this.logsBatchSize;
     const newLogs = this.cameraLogs.slice(this.currentIndex, nextIndex);
     this.displayedLogs = [...this.displayedLogs, ...newLogs];
     this.currentIndex = nextIndex;
 
     if(event!=='INITIAL' && event?.target){
-      event.target.complete();
+      const completed = event.target.complete();
 
       if (this.displayedLogs.length >= this.cameraLogs.length) {
         event.target.disabled = true;
       }
+      await completed;
     }
   }
 

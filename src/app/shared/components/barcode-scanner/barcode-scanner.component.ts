@@ -5,6 +5,8 @@ import {
   Component,
   Output,
   EventEmitter,
+  AfterViewInit,
+  OnDestroy,
   OnInit,
   ViewChild,
   WritableSignal,
@@ -47,7 +49,7 @@ import { IonicModule } from '@ionic/angular';
     styleUrl: './barcode-scanner.component.scss',
     imports: [CommonModule, ZXingScannerModule, RouterModule, TranslateModule, IonicModule]
 })
-export class BarcodeScannerComponent implements OnInit {
+export class BarcodeScannerComponent implements OnInit, AfterViewInit, OnDestroy {
   @Output() public qrCode: EventEmitter<string> = new EventEmitter();
   @ViewChild('scanner') public scanner!: ZXingScannerComponent;
   public allowedFormats = [BarcodeFormat.QR_CODE];
@@ -141,12 +143,14 @@ export class BarcodeScannerComponent implements OnInit {
 
     }
   
-    public async ngOnInit(): Promise<void> {
+    public ngOnInit(): void {
       this.modifyConsoleErrorToHandleScannerErrors();
     }
   
-    public async ngAfterViewInit(): Promise<void> {
-      this.initCameraIfNoActivateScanners();
+    public ngAfterViewInit(): void {
+      // console.error is intercepted by this component: report with console.warn to avoid recursion
+      this.initCameraIfNoActivateScanners()
+        .catch(error => console.warn('SCANNER: camera initialization failed.', error));
     }
 
     public ngOnDestroy(): void {
@@ -166,7 +170,7 @@ export class BarcodeScannerComponent implements OnInit {
           console.warn('SCANNER: camera flow not completed; scanner will not be activated.');
           return;
         }
-         this.activateScannerInitially();
+         await this.activateScannerInitially();
        } else {
          console.warn('SCANNER: there is at least one active scanner, waiting before starting next camera flow.')
          this.cameraService.activatingScannersList$
@@ -180,7 +184,7 @@ export class BarcodeScannerComponent implements OnInit {
              if(cameraFlowResult === 'NO_CAMERA_AVAILABLE' || cameraFlowResult === 'PERMISSION_DENIED'){
               return;
             }
-             this.activateScannerInitially();
+             await this.activateScannerInitially();
            });
        }
     }
@@ -240,7 +244,9 @@ export class BarcodeScannerComponent implements OnInit {
   }
 
   public saveErrorLog(error: Error|undefined, exceptionType: CameraLogType): void {
-    this.cameraLogsService.addCameraLog(error, exceptionType);
+    // console.error is intercepted by this component: report with console.warn to avoid recursion
+    this.cameraLogsService.addCameraLog(error, exceptionType)
+      .catch(e => console.warn('SCANNER: camera log could not be saved.', e));
   }
 
   private setActivatingTimeout(): void{

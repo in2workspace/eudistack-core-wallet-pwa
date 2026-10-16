@@ -24,8 +24,7 @@ export const authGuard: CanActivateFn = (_route, state: RouterStateSnapshot) => 
       }
 
       const hasPasskey = passkeyStore.hasPasskey();
-      router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
-      return false;
+      return router.createUrlTree([hasPasskey ? '/auth/login' : '/auth/register']);
     })
   );
 };

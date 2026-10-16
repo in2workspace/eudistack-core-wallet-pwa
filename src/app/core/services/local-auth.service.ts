@@ -88,6 +88,7 @@ export class LocalAuthService extends AuthService {
     this.authenticated$.next(false);
     this.name$.next('');
     const hasPasskey = this.hasPasskey();
-    this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register']);
+    this.router.navigate([hasPasskey ? '/auth/login' : '/auth/register'])
+      .catch(error => console.error('Navigation after forced logout failed', error));
   }
 }
