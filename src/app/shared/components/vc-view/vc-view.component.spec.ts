@@ -747,4 +747,392 @@ describe('VcViewComponent', () => {
       expect(event.defaultPrevented).toBe(false);
     });
   });
+
+  describe('expiryStatus and daysUntilExpiry edge cases', () => {
+    const withValidUntil = (validUntil: string) => {
+      componentRef.setInput('credentialInput$', {
+        ...component.credentialInput$(),
+        validUntil,
+      });
+      fixture.detectChanges();
+    };
+
+    it('treats an unparseable validUntil as valid', () => {
+      withValidUntil('not-a-date');
+
+      expect(component.expiryStatus()).toBe('valid');
+    });
+
+    it('reports no remaining days when validUntil is empty', () => {
+      withValidUntil('');
+
+      expect(component.daysUntilExpiry()).toBeNull();
+    });
+
+    it('reports the remaining whole days for a future expiry', () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-06-01T00:00:00.000Z'));
+      withValidUntil('2026-06-11T00:00:00.000Z');
+
+      expect(component.daysUntilExpiry()).toBe(10);
+
+      jest.useRealTimers();
+    });
+
+    it('reports no remaining days once the credential has expired', () => {
+      withValidUntil(new Date(Date.now() - 86400000).toISOString());
+
+      expect(component.daysUntilExpiry()).toBeNull();
+    });
+  });
+
+  describe('issuedBy', () => {
+    const withIssuer = (issuer: unknown) => {
+      componentRef.setInput('credentialInput$', {
+        ...component.credentialInput$(),
+        issuer,
+      });
+      fixture.detectChanges();
+    };
+
+    it('prefers the issuer commonName', () => {
+      withIssuer({ id: 'issuerId', commonName: 'EUDIStack CA', organization: 'EUDIStack' });
+
+      expect(component.issuedBy).toBe('EUDIStack CA');
+    });
+
+    it('falls back to the issuer organization', () => {
+      withIssuer({ id: 'issuerId', organization: 'EUDIStack' });
+
+      expect(component.issuedBy).toBe('EUDIStack');
+    });
+
+    it('yields an empty string when the issuer has neither', () => {
+      withIssuer({ id: 'issuerId' });
+
+      expect(component.issuedBy).toBe('');
+    });
+  });
+
+  describe('previewFields', () => {
+    const withCredential = (overrides: Record<string, unknown>) => {
+      componentRef.setInput('credentialInput$', {
+        ...component.credentialInput$(),
+        ...overrides,
+      });
+      fixture.detectChanges();
+    };
+
+    const byLabel = (label: string) =>
+      component.previewFields().find(f => f.label === label)?.value;
+
+    it('resolves the issuer through organizationIdentifier, then id, then empty', () => {
+      withCredential({ issuer: { id: 'did:key:abc', organizationIdentifier: 'VATES-B123' } });
+      expect(byLabel('vc-view.preview-issuer')).toBe('VATES-B123');
+
+      withCredential({ issuer: { id: 'did:key:abc' } });
+      expect(byLabel('vc-view.preview-issuer')).toBe('did:key:abc');
+
+      withCredential({ issuer: undefined });
+      expect(byLabel('vc-view.preview-issuer')).toBe('');
+    });
+
+    it('formats a parseable expiry and leaves an unparseable one blank', () => {
+      withCredential({ validUntil: '2027-03-15T00:00:00.000Z' });
+      expect(byLabel('vc-view.preview-expiry')).toBe('15/03/2027');
+
+      withCredential({ validUntil: 'not-a-date' });
+      expect(byLabel('vc-view.preview-expiry')).toBe('');
+    });
+
+    it('uses the mandatee full name as the subject name when present', () => {
+      const current = component.credentialInput$();
+      withCredential({
+        credentialSubject: {
+          mandate: {
+            ...(current.credentialSubject as any).mandate,
+            mandatee: {
+              ...(current.credentialSubject as any).mandate.mandatee,
+              firstName: 'Ada',
+              lastName: 'Lovelace',
+            },
+          },
+        },
+      });
+
+      expect(byLabel('vc-view.preview-name')).toBe('Ada Lovelace');
+    });
+
+    it('masks the name, issuer and expiry while the card is blurred', () => {
+      componentRef.setInput('blurred', true);
+      fixture.detectChanges();
+
+      const masked = '*'.repeat(15);
+      expect(byLabel('vc-view.preview-name')).toBe(masked);
+      expect(byLabel('vc-view.preview-issuer')).toBe(masked);
+      expect(byLabel('vc-view.preview-expiry')).toBe(masked);
+    });
+  });
+
+  describe('verificationRows', () => {
+    const withCredential = (overrides: Record<string, unknown>) => {
+      componentRef.setInput('credentialInput$', {
+        ...component.credentialInput$(),
+        ...overrides,
+      });
+      fixture.detectChanges();
+    };
+
+    const rowValue = (key: string) =>
+      component.verificationRows.find(r => r.key === key)?.value;
+
+    it('formats the dates and resolves the issuer, blanking what is missing or unparseable', () => {
+      withCredential({
+        validFrom: '2026-01-02T00:00:00.000Z',
+        validUntil: '2027-03-15T00:00:00.000Z',
+        issuer: { id: 'did:key:abc', organizationIdentifier: 'VATES-B123' },
+      });
+      expect(rowValue('issuance')).toBe('02/01/2026');
+      expect(rowValue('expiration')).toBe('15/03/2027');
+      expect(rowValue('issuer')).toBe('VATES-B123');
+
+      withCredential({ validFrom: '', validUntil: 'not-a-date', issuer: { id: 'did:key:abc' } });
+      expect(rowValue('issuance')).toBe('');
+      expect(rowValue('expiration')).toBe('');
+      expect(rowValue('issuer')).toBe('did:key:abc');
+
+      withCredential({ issuer: {} });
+      expect(rowValue('issuer')).toBe('');
+    });
+
+    it('prefers an executed check, otherwise mirrors the badge tone', () => {
+      component.verificationChecks = [{ key: 'issuance', status: 'failed' } as any];
+      expect(component.verificationRows.find(r => r.key === 'issuance')?.status).toBe('failed');
+
+      component.verificationChecks = [];
+      expect(component.verificationRows.every(r => r.status === 'passed')).toBe(true);
+
+      withCredential({ lifeCycleStatus: 'REVOKED' });
+      expect(component.verificationRows.every(r => r.status === 'failed')).toBe(true);
+    });
+  });
+
+  describe('field layout helpers', () => {
+    it('classifies wide fields, powers sections and power actions', () => {
+      expect(component.isWideField({ label: 'l', value: 'x'.repeat(25) } as any)).toBe(true);
+      expect(component.isWideField({ label: 'l', value: 'short' } as any)).toBe(false);
+      expect(component.isWideField({ label: 'l' } as any)).toBe(false);
+
+      expect(
+        component.isPowersSection({
+          section: 's',
+          fields: [{ label: 'l', value: 'v', structured: [{}] }],
+        } as any)
+      ).toBe(true);
+      expect(
+        component.isPowersSection({ section: 's', fields: [{ label: 'l', value: 'v' }] } as any)
+      ).toBe(false);
+
+      expect(component.powerActions({} as any)).toEqual([]);
+    });
+  });
+
+  describe('iconUrl', () => {
+    it('resolves the icon of a known type and nothing for an unknown one', () => {
+      componentRef.setInput('credentialInput$', {
+        ...component.credentialInput$(),
+        type: ['learcredential.employee.w3c.4'],
+      });
+      fixture.detectChanges();
+      expect(component.iconUrl).toBeDefined();
+
+      componentRef.setInput('credentialInput$', {
+        ...component.credentialInput$(),
+        type: ['SomeUnknownCredentialType'],
+      });
+      fixture.detectChanges();
+      expect(component.iconUrl).toBeUndefined();
+    });
+  });
+
+  describe('isDetailViewActive$', () => {
+    it('is active only when the selected id matches this credential', () => {
+      componentRef.setInput('enableDetailView$', true);
+
+      componentRef.setInput('selectedVcId', 'another-id');
+      fixture.detectChanges();
+      expect(component.isDetailViewActive$()).toBe(false);
+
+      componentRef.setInput('selectedVcId', component.credentialInput$().id);
+      fixture.detectChanges();
+      expect(component.isDetailViewActive$()).toBe(true);
+    });
+  });
+
+  describe('navigation and QR guards', () => {
+    it('does not navigate to the detail view when the credential has no id', async () => {
+      const navigate = jest.spyOn(router, 'navigate').mockResolvedValue(true);
+      componentRef.setInput('credentialInput$', { ...component.credentialInput$(), id: '' });
+      fixture.detectChanges();
+
+      await component.openDetailModal();
+
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('does not request the CBOR encoding of an expired credential', () => {
+      const spy = jest.spyOn(walletService, 'getVCinCBOR');
+      componentRef.setInput('credentialInput$', {
+        ...component.credentialInput$(),
+        lifeCycleStatus: 'EXPIRED',
+      });
+      fixture.detectChanges();
+
+      component.qrView();
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('verify modal lifecycle', () => {
+    it('opens and closes only from the matching state', () => {
+      const back = jest.spyOn(history, 'back').mockImplementation(() => undefined);
+
+      component.isVerifyModalOpen = false;
+      component.onPopstate();
+      expect(component.isVerifyModalOpen).toBe(false);
+      component.closeVerifyModal();
+      expect(back).not.toHaveBeenCalled();
+
+      component.isVerifyModalOpen = true;
+      component.onPopstate();
+      expect(component.isVerifyModalOpen).toBe(false);
+
+      component.isVerifyModalOpen = true;
+      component.closeVerifyModal();
+      expect(component.isVerifyModalOpen).toBe(false);
+      expect(back).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores a verification requested while the cooldown is still locked', async () => {
+      const verificationService = TestBed.inject(CredentialVerificationService);
+      const getCheckKeys = jest.spyOn(verificationService, 'getCheckKeys');
+      component.verifyLocked = true;
+
+      await component.verifyCredential();
+
+      expect(getCheckKeys).not.toHaveBeenCalled();
+    });
+
+    it('replaces pending timers instead of stacking them', () => {
+      jest.useFakeTimers();
+
+      (component as any).startVerifyResultTimer();
+      const firstResult = (component as any).verifyResultTimer;
+      (component as any).startVerifyResultTimer();
+      expect((component as any).verifyResultTimer).not.toBe(firstResult);
+
+      (component as any).startVerifyCooldown();
+      const firstCooldown = (component as any).verifyCooldownTimer;
+      (component as any).startVerifyCooldown();
+      expect((component as any).verifyCooldownTimer).not.toBe(firstCooldown);
+
+      jest.advanceTimersByTime(5000);
+
+      expect(component.showVerifyResult).toBe(false);
+      expect(component.verifyLocked).toBe(false);
+      expect((component as any).verifyResultTimer).toBeNull();
+      expect((component as any).verifyCooldownTimer).toBeNull();
+
+      jest.useRealTimers();
+    });
+
+    it('cancels both pending timers on destroy', () => {
+      jest.useFakeTimers();
+      (component as any).startVerifyResultTimer();
+      (component as any).startVerifyCooldown();
+      component.showVerifyResult = true;
+      component.verifyLocked = true;
+
+      component.ngOnDestroy();
+      jest.advanceTimersByTime(10000);
+
+      expect(component.showVerifyResult).toBe(true);
+      expect(component.verifyLocked).toBe(true);
+
+      jest.useRealTimers();
+    });
+  });
+
+  describe('keyboard handlers', () => {
+    const press = (key: string, run: (event: KeyboardEvent) => void) => {
+      const event = new KeyboardEvent('keydown', { key, cancelable: true });
+      run(event);
+      return event;
+    };
+
+    it('triggers the QR view from handleKeydown only for the qr action', () => {
+      const qr = jest.spyOn(component, 'qrView').mockImplementation(() => undefined);
+
+      expect(press('Enter', e => component.handleKeydown(e, 'qr')).defaultPrevented).toBe(true);
+      press(' ', e => component.handleKeydown(e, 'qr'));
+      expect(qr).toHaveBeenCalledTimes(2);
+
+      qr.mockClear();
+      expect(press('Enter', e => component.handleKeydown(e)).defaultPrevented).toBe(true);
+      expect(press('Tab', e => component.handleKeydown(e, 'qr')).defaultPrevented).toBe(false);
+      expect(qr).not.toHaveBeenCalled();
+    });
+
+    it('routes handleButtonKeydown to the detail action and ignores unknown ones', () => {
+      const detail = jest.spyOn(component, 'openDetailModal').mockResolvedValue(undefined);
+      const del = jest.spyOn(component, 'deleteVC').mockImplementation(() => undefined);
+
+      press('Enter', e => component.handleButtonKeydown(e, 'detail'));
+      expect(detail).toHaveBeenCalledTimes(1);
+
+      detail.mockClear();
+      const event = press('Enter', e => component.handleButtonKeydown(e, 'something-else'));
+      expect(detail).not.toHaveBeenCalled();
+      expect(del).not.toHaveBeenCalled();
+      expect(event.defaultPrevented).toBe(true);
+    });
+  });
+
+  describe('updateDetailSections field assembly', () => {
+    const infoFields = () =>
+      component.detailViewSections$().find(s => s.section === 'vc-fields.title')?.fields ?? [];
+
+    it('adds the format row when resolvable and drops the rows that resolve to empty', async () => {
+      const displayService = TestBed.inject(CredentialDisplayService);
+      (displayService.getFormatLabel as jest.Mock).mockReturnValue('SD-JWT VC');
+
+      await (component as any).updateDetailSections(component.credentialInput$());
+      expect(infoFields().some(f => f.label === 'vc-fields.credentialInfo.format')).toBe(true);
+
+      await (component as any).updateDetailSections({
+        ...component.credentialInput$(),
+        issuer: {},
+        lifeCycleStatus: undefined,
+      } as any);
+      expect(infoFields().some(f => f.label === 'vc-fields.credentialInfo.issuerId')).toBe(false);
+      expect(infoFields().some(f => f.label === 'vc-fields.credentialInfo.status')).toBe(false);
+    });
+  });
+
+  describe('updateLifeCycleStatus persistence failure', () => {
+    it('logs the error and still emits the status change', () => {
+      const error = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      jest
+        .spyOn(walletService, 'updateCredentialStatus')
+        .mockReturnValue(throwError(() => new Error('offline')));
+      const emit = jest.spyOn(component.statusChanged, 'emit');
+
+      (component as any).updateLifeCycleStatus('REVOKED');
+
+      expect(error).toHaveBeenCalledWith('Failed to persist credential status', expect.any(Error));
+      expect(emit).toHaveBeenCalledWith({ id: component.credentialInput$().id, status: 'REVOKED' });
+
+      error.mockRestore();
+    });
+  });
 });

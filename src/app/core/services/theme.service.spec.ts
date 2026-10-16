@@ -161,6 +161,102 @@ describe('ThemeService', () => {
       expect(root.style.getPropertyValue('--card-background')).toBe('');
     });
   });
+
+  describe('rewriteAssetPaths', () => {
+    const rewrite = (theme: Theme, base = '/assets/tenants/acme') =>
+      (service as any).rewriteAssetPaths(theme, base);
+
+    it('expands tenant-relative paths, with or without a leading slash', () => {
+      const theme = buildTheme({
+        logoUrl: 'assets/tenant/logo.png',
+        faviconUrl: '/assets/tenant/favicon.ico',
+        pwaIconUrl: 'assets/tenant/icon.png',
+      });
+
+      rewrite(theme);
+
+      expect(theme.branding.logoUrl).toBe('/assets/tenants/acme/logo.png');
+      expect(theme.branding.faviconUrl).toBe('/assets/tenants/acme/favicon.ico');
+      expect(theme.branding.pwaIconUrl).toBe('/assets/tenants/acme/icon.png');
+    });
+
+    it('leaves an already-absolute shared-bucket path untouched', () => {
+      const theme = buildTheme({ logoUrl: '/assets/tenants/other/logo.png' });
+
+      rewrite(theme);
+
+      expect(theme.branding.logoUrl).toBe('/assets/tenants/other/logo.png');
+    });
+
+    it('maps an absent path to null and skips an absent pwa icon', () => {
+      const theme = buildTheme({ logoDarkUrl: null, pwaIconUrl: undefined as any });
+
+      rewrite(theme);
+
+      expect(theme.branding.logoDarkUrl).toBeNull();
+      expect(theme.branding.pwaIconUrl).toBeUndefined();
+    });
+
+    it('is a no-op for a theme that declares no branding', () => {
+      const theme = { tenantDomain: 'test' } as unknown as Theme;
+
+      expect(() => rewrite(theme)).not.toThrow();
+    });
+  });
+
+  describe('setupI18n', () => {
+    let translate: { addLangs: jest.SpyInstance; setDefaultLang: jest.SpyInstance; use: jest.SpyInstance };
+    let storage: StorageServiceMock;
+
+    beforeEach(() => {
+      const real = (service as any).translate;
+      translate = {
+        addLangs: jest.spyOn(real, 'addLangs').mockImplementation(() => undefined),
+        setDefaultLang: jest.spyOn(real, 'setDefaultLang').mockImplementation(() => undefined),
+        use: jest.spyOn(real, 'use').mockImplementation(() => undefined as any),
+      };
+      storage = (service as any).storageService;
+    });
+
+    afterEach(() => jest.restoreAllMocks());
+
+    it('does nothing for a theme that declares no i18n block', async () => {
+      await (service as any).setupI18n({ tenantDomain: 'test' } as Theme);
+
+      expect(translate.addLangs).not.toHaveBeenCalled();
+    });
+
+    it('honours a stored language that the tenant supports', async () => {
+      storage.get.mockResolvedValue('es');
+      const theme = { ...buildTheme(), i18n: { defaultLang: 'en', available: ['en', 'es'] } };
+
+      await (service as any).setupI18n(theme);
+
+      expect(translate.addLangs).toHaveBeenCalledWith(['en', 'es']);
+      expect(translate.setDefaultLang).toHaveBeenCalledWith('en');
+      expect(translate.use).toHaveBeenCalledWith('es');
+    });
+
+    it('ignores a stored language the tenant does not support and detects the browser one', async () => {
+      storage.get.mockResolvedValue('de');
+      Object.defineProperty(navigator, 'languages', { value: ['es-ES'], configurable: true });
+      const theme = { ...buildTheme(), i18n: { defaultLang: 'en', available: ['en', 'es'] } };
+
+      await (service as any).setupI18n(theme);
+
+      expect(translate.use).toHaveBeenCalledWith('es');
+    });
+
+    it('falls back to the tenant default language when nothing else matches', async () => {
+      storage.get.mockResolvedValue(null);
+      Object.defineProperty(navigator, 'languages', { value: ['de-DE'], configurable: true });
+      const theme = { ...buildTheme(), i18n: { defaultLang: 'en', available: ['en', 'es'] } };
+
+      await (service as any).setupI18n(theme);
+
+      expect(translate.use).toHaveBeenCalledWith('en');
+    });
+  });
 });
 
 describe('ThemeService environment label', () => {
