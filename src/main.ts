@@ -37,8 +37,15 @@ function initializeTheme(themeService: ThemeService): () => Promise<void> {
   return () => themeService.load();
 }
 
-function initializePasskeyStore(store: PasskeyStoreService): () => Promise<void> {
-  return () => store.init();
+/**
+ * Waits for the wallet mode (memoized discovery) so that, in server mode, the
+ * local passkey data and the old refresh token are purged rather than loaded (EUD-8).
+ */
+function initializePasskeyStore(store: PasskeyStoreService, discovery: WalletDiscoveryService): () => Promise<void> {
+  return async () => {
+    const { mode } = await discovery.resolve();
+    await store.init({ serverMode: mode === 'server' });
+  };
 }
 
 /**
@@ -108,7 +115,7 @@ bootstrapApplication(AppComponent, {
     {
       provide: APP_INITIALIZER,
       useFactory: initializePasskeyStore,
-      deps: [PasskeyStoreService],
+      deps: [PasskeyStoreService, WalletDiscoveryService],
       multi: true
     },
     // Fire-and-forget: restoreFromPreference() reads the tenant's languages

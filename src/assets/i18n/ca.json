@@ -151,11 +151,9 @@
       "install-subtitle": "Per a la millor experiència i accés offline, instal·la l'app del wallet al teu dispositiu.",
       "install-button": "Instal·lar App",
       "continue-browser": "Continuar al navegador",
-      "email-label": "Email",
       "verify-title": "Verifica la teva adreça de correu",
       "code-sent-prefix": "Introdueix el codi de verificació enviat a la teva adreça de correu",
       "code-validity": "El codi és vàlid durant un temps limitat.",
-      "code-label": "Codi",
       "resend-in": "No has rebut el codi? Reenviament disponible en {{time}}",
       "new-code-in": "Podràs sol·licitar un nou codi en {{time}}",
       "resend-prompt": "No has rebut el codi?",
@@ -184,10 +182,7 @@
     },
     "errors": {
       "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",
-      "too-many-attempts-otp": "Massa intents incorrectes. Si us plau, sol·licita un nou codi.",
       "too-many-attempts-wait": "Has superat el nombre d'intents permesos. Espera que acabi el compte enrere per sol·licitar un nou codi.",
-      "otp-expired": "El codi ha caducat. Prem Reenviar per rebre'n un de nou al teu correu.",
-      "otp-invalid": "El codi no és correcte. Revisa'l i torna-ho a provar.",
       "passkey-register-failed": "No s'ha pogut registrar aquest dispositiu. Torna-ho a provar.",
       "passkey-login-cancelled": "Has cancel·lat l’inici de sessió amb Passkey. Pots tornar-ho a provar quan vulguis.",
       "passkey-cancelled": "Has cancel·lat la verificació amb passkey. Pots tornar-ho a provar quan vulguis.",
@@ -197,8 +192,7 @@
       "passkey-already-registered": "Aquest dispositiu ja té una passkey registrada per a aquesta wallet.",
       "passkey-not-supported": "Aquest dispositiu o navegador no admet el tipus de passkey necessari. Prova amb un altre navegador o dispositiu.",
       "passkey-security": "No s’ha pogut fer servir la passkey en aquesta adreça. Assegura’t d’obrir la wallet des de la seva adreça oficial (HTTPS).",
-      "passkey-failed": "No s’ha pogut completar la verificació amb passkey. Torna-ho a provar.",
-      "session-expired-request-code": "La teva sessió ha caducat. Sol·licita un codi de verificació per continuar obrint l'oferta de credencial."
+      "passkey-failed": "No s’ha pogut completar la verificació amb passkey. Torna-ho a provar."
     }
   },
   "otp-input": {
@@ -213,7 +207,6 @@
   "errors": {
     "default": "Alguna cosa ha anat malament. Si et torna a passar, contacta amb {{supportLink}}.",
     "support-team-label": "l'equip de suport",
-    "session-expired": "La teva sessió ha caducat. Torna a iniciar sessió.",
     "key-storage-unavailable": "Aquest navegador no pot desar claus de manera segura. No podràs activar ni fer servir credencials en aquest dispositiu.",
     "key-storage-public-only": "Aquest navegador no pot desar claus de manera segura. Pots afegir credencials, però podrien deixar de funcionar en tancar o recarregar l’app.",
     "credential-validation-failed": "No hem pogut validar la credencial. Torna-ho a provar.",
@@ -282,8 +275,7 @@
       "not-supported": "El teu navegador no admet l'accés a la càmera. Considera utilitzar un navegador diferent.",
       "default": "Error inesperat. Comprova els permisos del teu navegador i assegura't que cap altra aplicació estigui utilitzant la càmera. Intenta refrescar la pàgina."
     },
-    "prf-unsupported": "El teu autenticador no és compatible amb PRF. Aquest tenant requereix una passkey compatible amb PRF per completar el procés d'activació. Utilitza un altre dispositiu o contacta amb l'administrador.",
-    "prf-inconclusive": "No s'ha pogut verificar si el teu autenticador és compatible amb PRF. Torna-ho a intentar o utilitza un altre dispositiu."
+    "prf-unsupported": "El teu autenticador no és compatible amb PRF. Aquest tenant requereix una passkey compatible amb PRF per completar el procés d'activació. Utilitza un altre dispositiu o contacta amb l'administrador."
   },
   "settings": {
     "theme": "Tema",
@@ -684,9 +676,9 @@
     "step1": "Toca els tres punts a Safari",
     "step1-detail": "Cerca'ls al costat de la barra d'adreces per obrir el menú d'opcions"
   },
-  "hybrid-onboarding": {
+  "passkey-prf-onboarding": {
     "title": "Signatura des de múltiples dispositius",
-    "subtitle": "Aquest tenant fa servir un gestor de claus híbrid. Les credencials es signen amb una passkey vinculada a aquest dispositiu. Si intentes signar des d'un altre dispositiu, l'operació fallarà.",
+    "subtitle": "Aquest tenant fa servir un gestor de claus passkey+prf. Les credencials es signen amb una passkey vinculada a aquest dispositiu. Si intentes signar des d'un altre dispositiu, l'operació fallarà.",
     "warning-icon-aria": "Advertència de limitació multi-dispositiu",
     "bullet-1": "La clau de signatura queda vinculada a aquest dispositiu",
     "bullet-2": "No podràs presentar credencials des d'un altre dispositiu",
@@ -696,12 +688,112 @@
     "learn-more-body": "Aquest tenant fa servir passkeys amb l'extensió PRF per protegir la clau privada del titular. La passkey només existeix en aquest dispositiu i no es pot transferir per raons de seguretat.",
     "learn-more-close": "Entès"
   },
-  "hybrid-errors": {
+  "passkey-prf-errors": {
     "wrap-unavailable-title": "No es pot signar en aquest dispositiu",
     "wrap-unavailable-body": "La clau de signatura es va crear en un altre dispositiu i no es pot utilitzar aquí. Usa el dispositiu original per presentar les teves credencials.",
     "wrap-unavailable-cta": "Tancar"
   },
   "app-update": {
     "toast": "L'aplicació s'ha actualitzat a la versió {{version}}"
+  },
+  "wallet-access": {
+    "back": "Tornar",
+    "waiting-passkey": "Esperant la teva passkey…",
+    "steps": {
+      "aria": "Passos per entrar amb el teu correu",
+      "email": "Correu",
+      "code": "Codi",
+      "passkey": "Passkey"
+    },
+    "requirements": {
+      "title": "Aquest navegador no és compatible",
+      "body": "Per fer servir el wallet necessites un navegador que admeti passkeys.",
+      "browsers-title": "Navegadors compatibles:",
+      "browsers": "Les versions actuals de Safari, Chrome, Edge i Firefox, a iPhone, iPad, Android, Mac i Windows.",
+      "more-info": "Més informació"
+    },
+    "access": {
+      "title": "Entra al teu wallet",
+      "subtitle": "Fes servir la teva empremta, la teva cara o el PIN del teu dispositiu.",
+      "passkey-button": "Entrar amb passkey",
+      "email-prompt": "Primera vegada o sense la teva passkey aquí?",
+      "email-button": "Entrar amb el meu correu",
+      "session-expired": "La teva sessió ha caducat. Torna a entrar.",
+      "install-aria": "Instal·lar el wallet",
+      "install-hint": "Instal·la el wallet al teu equip.",
+      "install-button": "Instal·lar",
+      "ios-steps-title": "Afegeix el wallet a la pantalla d'inici",
+      "logout-pending": "No hem pogut confirmar el tancament de sessió amb el servidor. Ho farem tan bon punt tornis a tenir connexió."
+    },
+    "rejected": {
+      "title": "No t'hem pogut verificar",
+      "body": "Torna-ho a provar amb la teva passkey.",
+      "retry": "Tornar-ho a provar"
+    },
+    "unknown-passkey": {
+      "title": "Aquesta passkey ja no és vàlida",
+      "body": "La passkey que has triat ja no és al teu compte. Entra amb el teu correu per fer-ne servir una altra o crear-ne una de nova."
+    },
+    "email": {
+      "title": "Introdueix el teu correu",
+      "subtitle": "T'enviarem un codi per comprovar que és teu.",
+      "label": "Correu",
+      "send": "Enviar el codi",
+      "rate-limited": "Has demanat massa codis. Torna-ho a provar d'aquí a una estona."
+    },
+    "code": {
+      "title": "Introdueix el codi",
+      "sent": "L'hem enviat a {{email}}.",
+      "validity": "Caduca d'aquí a 10 minuts.",
+      "label": "Codi",
+      "invalid": "El codi no és correcte",
+      "unusable": "Aquest codi ja no serveix. Demana'n un de nou.",
+      "resend": "Reenviar el codi",
+      "change-email": "Canviar el correu",
+      "continue": "Continuar"
+    },
+    "choose-passkey": {
+      "title": "Ja tens un compte",
+      "body": "Entra amb una passkey que ja facis servir en aquest compte, en aquest dispositiu o en un altre de proper.",
+      "use": "Fer servir la meva passkey",
+      "none-prompt": "No en tens cap a mà?",
+      "create": "Crear una passkey nova"
+    },
+    "create-passkey": {
+      "title": "Crea la teva passkey",
+      "body": "Entraràs al wallet amb la teva empremta, la teva cara o el PIN del teu dispositiu, sense contrasenyes.",
+      "attestations-warning": "Una passkey nova no dona accés a les atestacions que vas obtenir amb una altra.",
+      "shared-device-tip": "Equip compartit? Desa-la al teu mòbil o en una clau de seguretat, no en aquest equip.",
+      "button": "Crear la passkey"
+    },
+    "passkey-incompatible": {
+      "title": "Aquesta passkey no és compatible",
+      "body": "El gestor de passkeys que has fet servir no ofereix una funció que el wallet necessita per protegir les teves claus.",
+      "hint": "Prova amb el gestor del teu sistema (iCloud, Google o Windows Hello) o amb una altra clau de seguretat.",
+      "retry": "Provar amb un altre"
+    },
+    "check-passkey": {
+      "title": "Comprova la teva passkey",
+      "body": "El teu navegador necessita que ho confirmis un cop més per comprovar que aquesta passkey pot protegir les teves claus.",
+      "button": "Comprovar la passkey"
+    },
+    "other-sessions": {
+      "title": "Has afegit una passkey",
+      "email-sent": "T'hem enviat un avís per correu.",
+      "body": "Si no reconeixes algun dispositiu on tinguis el wallet obert, tanca les altres sessions.",
+      "keep": "Mantenir-les",
+      "close": "Tancar les altres sessions",
+      "failed": "No s'han pogut tancar les altres sessions. Torna-ho a provar."
+    },
+    "logout": {
+      "title": "Vols tancar la sessió?",
+      "cancel": "Cancel·lar",
+      "confirm": "Tancar la sessió"
+    },
+    "errors": {
+      "ticket-expired": "Ha passat massa temps des que vas verificar el teu correu. Demana un codi nou.",
+      "registration-failed": "No s'ha pogut registrar la passkey. Torna-ho a provar.",
+      "generic": "No s'ha pogut completar l'operació. Torna-ho a provar."
+    }
   }
 }

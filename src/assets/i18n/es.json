@@ -151,11 +151,9 @@
       "install-subtitle": "Para la mejor experiencia y acceso offline, instala la app del wallet en tu dispositivo.",
       "install-button": "Instalar App",
       "continue-browser": "Continuar en el navegador",
-      "email-label": "Email",
       "verify-title": "Verifica tu dirección de email",
       "code-sent-prefix": "Introduce el código de verificación enviado a tu dirección de email",
       "code-validity": "El código es válido durante un tiempo limitado.",
-      "code-label": "Código",
       "resend-in": "¿No has recibido el código? Reenvío disponible en {{time}}",
       "new-code-in": "Podrás solicitar un nuevo código en {{time}}",
       "resend-prompt": "¿No has recibido el código?",
@@ -188,10 +186,7 @@
     },
     "errors": {
       "too-many-attempts": "Demasiados intentos. Por favor, inténtalo más tarde.",
-      "too-many-attempts-otp": "Demasiados intentos incorrectos. Por favor, solicita un nuevo código.",
       "too-many-attempts-wait": "Has superado el número de intentos permitidos. Espera a que termine la cuenta atrás para solicitar un nuevo código.",
-      "otp-expired": "El código ha caducado. Pulsa Reenviar para recibir uno nuevo en tu email.",
-      "otp-invalid": "El código no es correcto. Revísalo e inténtalo de nuevo.",
       "passkey-register-failed": "No se ha podido registrar este dispositivo. Inténtalo de nuevo.",
       "passkey-login-cancelled": "Has cancelado el inicio de sesión con Passkey. Puedes intentarlo nuevamente cuando lo desees.",
       "passkey-cancelled": "Has cancelado la verificación con passkey. Puedes intentarlo nuevamente cuando lo desees.",
@@ -201,8 +196,7 @@
       "passkey-already-registered": "Este dispositivo ya tiene una passkey registrada para esta wallet.",
       "passkey-not-supported": "Este dispositivo o navegador no admite el tipo de passkey necesario. Prueba con otro navegador o dispositivo.",
       "passkey-security": "No se ha podido usar la passkey en esta dirección. Asegúrate de abrir la wallet desde su dirección oficial (HTTPS).",
-      "passkey-failed": "No se ha podido completar la verificación con passkey. Inténtalo de nuevo.",
-      "session-expired-request-code": "Tu sesión ha caducado. Solicita un código de verificación para seguir abriendo la oferta de credencial."
+      "passkey-failed": "No se ha podido completar la verificación con passkey. Inténtalo de nuevo."
     }
   },
   "otp-input": {
@@ -432,7 +426,6 @@
   "errors": {
     "default": "Algo ha salido mal. Si vuelve a ocurrir, contacta con {{supportLink}}.",
     "support-team-label": "el equipo de soporte",
-    "session-expired": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
     "key-storage-unavailable": "Este navegador no puede guardar claves de forma segura. No podrás activar ni usar credenciales en este dispositivo.",
     "key-storage-public-only": "Este navegador no puede guardar claves de forma segura. Puedes añadir credenciales, pero podrían dejar de funcionar al cerrar o recargar la app.",
     "credential-validation-failed": "No hemos podido validar la credencial. Inténtalo de nuevo.",
@@ -501,8 +494,7 @@
       "not-supported": "Tu navegador no admite el acceso a la cámara. Considera utilizar un navegador diferente.",
       "default": "Error inesperado. Revisa los permisos de tu navegador y asegúrate de que ninguna otra aplicación esté utilizando la cámara. Intenta actualizar la página."
     },
-    "prf-unsupported": "Tu autenticador no soporta PRF. Este tenant requiere una passkey compatible con PRF para completar el proceso de activación. Utiliza otro dispositivo o contacta con tu administrador.",
-    "prf-inconclusive": "No se ha podido verificar si tu autenticador soporta PRF. Inténtalo de nuevo o utiliza otro dispositivo."
+    "prf-unsupported": "Tu autenticador no soporta PRF. Este tenant requiere una passkey compatible con PRF para completar el proceso de activación. Utiliza otro dispositivo o contacta con tu administrador."
   },
   "activity": {
     "title": "Actividad",
@@ -688,9 +680,9 @@
     "step1": "Toca los tres puntos en Safari",
     "step1-detail": "Búscalos al lado de la barra de navegación para abrir el menú de opciones"
   },
-  "hybrid-onboarding": {
+  "passkey-prf-onboarding": {
     "title": "Firma desde múltiples dispositivos",
-    "subtitle": "Este tenant usa un gestor de claves híbrido. Las credenciales se firman con una passkey vinculada a este dispositivo. Si intentas firmar desde otro dispositivo, la operación fallará.",
+    "subtitle": "Este tenant usa un gestor de claves passkey+prf. Las credenciales se firman con una passkey vinculada a este dispositivo. Si intentas firmar desde otro dispositivo, la operación fallará.",
     "warning-icon-aria": "Advertencia de limitación multi-dispositivo",
     "bullet-1": "La clave de firma queda vinculada a este dispositivo",
     "bullet-2": "No podrás presentar credenciales desde otro dispositivo",
@@ -700,12 +692,112 @@
     "learn-more-body": "Este tenant usa passkeys con extensión PRF para proteger la clave privada del titular. La passkey solo existe en este dispositivo; por seguridad, no se puede transferir a otro.",
     "learn-more-close": "Entendido"
   },
-  "hybrid-errors": {
+  "passkey-prf-errors": {
     "wrap-unavailable-title": "No se puede firmar en este dispositivo",
     "wrap-unavailable-body": "La clave de firma fue creada en otro dispositivo y no puede usarse aquí. Usa el dispositivo original para presentar tus credenciales.",
     "wrap-unavailable-cta": "Cerrar"
   },
   "app-update": {
     "toast": "La aplicación se ha actualizado a la versión {{version}}"
+  },
+  "wallet-access": {
+    "back": "Volver",
+    "waiting-passkey": "Esperando a tu passkey…",
+    "steps": {
+      "aria": "Pasos para entrar con tu email",
+      "email": "Email",
+      "code": "Código",
+      "passkey": "Passkey"
+    },
+    "requirements": {
+      "title": "Este navegador no es compatible",
+      "body": "Para usar el wallet necesitas un navegador que admita passkeys.",
+      "browsers-title": "Navegadores compatibles:",
+      "browsers": "Las versiones actuales de Safari, Chrome, Edge y Firefox, en iPhone, iPad, Android, Mac y Windows.",
+      "more-info": "Más información"
+    },
+    "access": {
+      "title": "Entra en tu wallet",
+      "subtitle": "Usa tu huella, tu cara o el PIN de tu dispositivo.",
+      "passkey-button": "Entrar con passkey",
+      "email-prompt": "¿Primera vez o sin tu passkey aquí?",
+      "email-button": "Entrar con mi email",
+      "session-expired": "Tu sesión ha caducado. Vuelve a entrar.",
+      "install-aria": "Instalar el wallet",
+      "install-hint": "Instala el wallet en tu equipo.",
+      "install-button": "Instalar",
+      "ios-steps-title": "Añade el wallet a tu pantalla de inicio",
+      "logout-pending": "No hemos podido confirmar el cierre de sesión con el servidor. Lo haremos en cuanto vuelvas a tener conexión."
+    },
+    "rejected": {
+      "title": "No hemos podido verificarte",
+      "body": "Vuelve a intentarlo con tu passkey.",
+      "retry": "Reintentar"
+    },
+    "unknown-passkey": {
+      "title": "Esta passkey ya no es válida",
+      "body": "La passkey que has elegido ya no está en tu cuenta. Entra con tu email para usar otra o crear una nueva."
+    },
+    "email": {
+      "title": "Introduce tu email",
+      "subtitle": "Te enviaremos un código para comprobar que es tuyo.",
+      "label": "Email",
+      "send": "Enviar código",
+      "rate-limited": "Has pedido demasiados códigos. Inténtalo dentro de un rato."
+    },
+    "code": {
+      "title": "Introduce el código",
+      "sent": "Lo hemos enviado a {{email}}.",
+      "validity": "Caduca en 10 minutos.",
+      "label": "Código",
+      "invalid": "El código no es correcto",
+      "unusable": "Este código ya no sirve. Pide uno nuevo.",
+      "resend": "Reenviar código",
+      "change-email": "Cambiar email",
+      "continue": "Continuar"
+    },
+    "choose-passkey": {
+      "title": "Ya tienes una cuenta",
+      "body": "Entra con una passkey que ya uses en esta cuenta, en este dispositivo o en otro cercano.",
+      "use": "Usar mi passkey",
+      "none-prompt": "¿No tienes ninguna a mano?",
+      "create": "Crear una passkey nueva"
+    },
+    "create-passkey": {
+      "title": "Crea tu passkey",
+      "body": "Entrarás al wallet con tu huella, tu cara o el PIN de tu dispositivo, sin contraseñas.",
+      "attestations-warning": "Una passkey nueva no da acceso a las atestaciones que obtuviste con otra.",
+      "shared-device-tip": "¿Equipo compartido? Guárdala en tu móvil o en una llave de seguridad, no en este equipo.",
+      "button": "Crear passkey"
+    },
+    "passkey-incompatible": {
+      "title": "Esta passkey no es compatible",
+      "body": "El gestor de passkeys que has usado no ofrece una función que el wallet necesita para proteger tus claves.",
+      "hint": "Prueba con el gestor de tu sistema (iCloud, Google o Windows Hello) o con otra llave de seguridad.",
+      "retry": "Probar con otro"
+    },
+    "check-passkey": {
+      "title": "Comprueba tu passkey",
+      "body": "Tu navegador necesita que confirmes una vez más para comprobar que esta passkey puede proteger tus claves.",
+      "button": "Comprobar passkey"
+    },
+    "other-sessions": {
+      "title": "Has añadido una passkey",
+      "email-sent": "Te hemos enviado un aviso por email.",
+      "body": "Si no reconoces algún dispositivo donde tengas el wallet abierto, cierra las demás sesiones.",
+      "keep": "Mantenerlas",
+      "close": "Cerrar las demás sesiones",
+      "failed": "No se han podido cerrar las demás sesiones. Inténtalo de nuevo."
+    },
+    "logout": {
+      "title": "¿Cerrar sesión?",
+      "cancel": "Cancelar",
+      "confirm": "Cerrar sesión"
+    },
+    "errors": {
+      "ticket-expired": "Ha pasado demasiado tiempo desde que verificaste tu email. Pide un código nuevo.",
+      "registration-failed": "No se ha podido registrar la passkey. Inténtalo de nuevo.",
+      "generic": "No se ha podido completar la operación. Inténtalo de nuevo."
+    }
   }
 }

@@ -12,19 +12,12 @@ export interface PasskeyInfo {
   activeSessions: number;
 }
 
-export interface RegisterPasskeyRequest {
-  credentialId: string;
-  displayName: string;
-  userAgent?: string;
-  refreshToken?: string | null;
-}
-
 /**
- * Service to manage passkeys via the backend API.
- * Only used in server mode (wallet_mode === 'server').
+ * Service to manage the account's passkeys via the backend API (session token).
+ * Only used in server mode (wallet_mode === 'server'). Registering a passkey is
+ * a WebAuthn ceremony verified by the service: see PasskeyCeremonyService (EUD-8).
  *
- * Implements US-005 to US-010 from EUDI-044:
- * - US-005: Register passkey metadata
+ * Implements US-006 to US-010 from EUDI-044:
  * - US-006: List passkeys
  * - US-007: Delete passkey
  * - US-008: Rename passkey
@@ -36,14 +29,6 @@ export class PasskeyApiService {
   private readonly urlResolver = inject(UrlResolverService);
 
   private get authBase(): string { return `${this.urlResolver.serverUrl()}/api/v1/auth`; }
-
-  /**
-   * Register a new passkey on the server after local WebAuthn creation.
-   * US-005: POST /api/auth/passkeys
-   */
-  registerPasskey(request: RegisterPasskeyRequest): Observable<PasskeyInfo> {
-    return this.http.post<PasskeyInfo>(`${this.authBase}/passkeys`, request);
-  }
 
   /**
    * List all passkeys for the current user.
@@ -75,14 +60,6 @@ export class PasskeyApiService {
    */
   revokeSessions(id: string): Observable<void> {
     return this.http.post<void>(`${this.authBase}/passkeys/${id}/revoke-sessions`, {});
-  }
-
-  /**
-   * Attributes the caller's current refresh token session to a passkey.
-   * POST /api/auth/passkeys/{id}/confirm-session
-   */
-  confirmSession(id: string, refreshToken: string): Observable<void> {
-    return this.http.post<void>(`${this.authBase}/passkeys/${id}/confirm-session`, { refreshToken });
   }
 }
 

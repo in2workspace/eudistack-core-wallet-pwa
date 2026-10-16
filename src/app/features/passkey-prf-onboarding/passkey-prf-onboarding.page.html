@@ -1,0 +1,44 @@
+<ion-content [fullscreen]="true" class="passkey-prf-onboarding-bg">
+  <div class="passkey-prf-onboarding-wrapper">
+    <div class="passkey-prf-onboarding-card">
+
+      <div class="passkey-prf-onboarding-header">
+        <div class="passkey-prf-onboarding-icon-circle">
+          <ion-icon name="warning-outline" [attr.aria-label]="'passkey-prf-onboarding.warning-icon-aria' | translate"></ion-icon>
+        </div>
+
+        <h1 class="passkey-prf-onboarding-title">
+          {{ 'passkey-prf-onboarding.title' | translate }}
+        </h1>
+
+        <p class="passkey-prf-onboarding-subtitle">
+          {{ 'passkey-prf-onboarding.subtitle' | translate }}
+        </p>
+      </div>
+
+      <ul class="passkey-prf-onboarding-bullets" [attr.aria-label]="'passkey-prf-onboarding.title' | translate">
+        @for (key of bullets; track key) {
+          <li class="passkey-prf-onboarding-bullet">
+            <ion-icon name="checkmark-circle-outline" aria-hidden="true"></ion-icon>
+            <span>{{ key | translate }}</span>
+          </li>
+        }
+      </ul>
+
+      <button
+        class="passkey-prf-accept-btn"
+        (click)="accept()"
+        type="button">
+        {{ 'passkey-prf-onboarding.accept' | translate }}
+      </button>
+
+      <button
+        class="passkey-prf-learn-more-btn"
+        (click)="openLearnMore()"
+        type="button">
+        {{ 'passkey-prf-onboarding.learn-more' | translate }}
+      </button>
+
+    </div>
+  </div>
+</ion-content>

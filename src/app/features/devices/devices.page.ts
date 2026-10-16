@@ -8,9 +8,8 @@ import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AuthService } from 'src/app/core/services/auth.service';
 import { PasskeyApiService, PasskeyInfo } from 'src/app/core/services/passkey-api.service';
-import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
+import { SessionPasskeyService } from 'src/app/core/services/session-passkey.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
-import { compareCredentialIds } from 'src/app/core/utils/base64url';
 
 export const PASSKEY_LIST_TIMEOUT_MS = 10_000;
 
@@ -23,7 +22,7 @@ export const PASSKEY_LIST_TIMEOUT_MS = 10_000;
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class DevicesPage implements OnInit {
   private readonly passkeyApi = inject(PasskeyApiService);
-  private readonly passkeyStore = inject(PasskeyStoreService);
+  private readonly sessionPasskey = inject(SessionPasskeyService);
   private readonly authService = inject(AuthService);
   private readonly alertController = inject(AlertController);
   private readonly translate = inject(TranslateService);
@@ -40,12 +39,11 @@ export class DevicesPage implements OnInit {
   get isServerMode(): boolean {
     return this.discovery.mode() === 'server';
   }
-  readonly currentCredentialId = this.passkeyStore.getCredentialId();
-
+  /** The passkey that opened this session (EUD-8 FR-15) is the current device's. */
   readonly currentDevice = computed<PasskeyInfo | null>(() => {
-    const credentialId = this.currentCredentialId;
-    if (!credentialId) return null;
-    return this.passkeys().find((p) => compareCredentialIds(p.credentialId, credentialId)) ?? null;
+    const passkeyId = this.sessionPasskey.passkeyId();
+    if (!passkeyId) return null;
+    return this.passkeys().find((p) => p.id === passkeyId) ?? null;
   });
 
   readonly otherDevices = computed<PasskeyInfo[]>(() => {
@@ -150,12 +148,11 @@ export class DevicesPage implements OnInit {
             this.passkeyApi.deletePasskey(passkey.id).pipe(
               takeUntilDestroyed(this.destroyRef)
             ).subscribe({
-              next: async () => {
+              next: () => {
                 this.passkeys.update(list => list.filter(p => p.id !== passkey.id));
                 // Self-revoke detection lives only here (success), never in `error` (R-3):
                 // a failed/timed-out revocation must not force a logout that didn't happen.
                 if (selfRevoke) {
-                  await this.passkeyStore.clearCredentialId();
                   this.authService.forceLogout();
                 }
               },
@@ -179,12 +176,13 @@ export class DevicesPage implements OnInit {
   }
 
   /**
-   * A passkey is the current device's only when its credentialId matches the locally
-   * stored one. If the local credentialId can't be resolved (EC-03), fail safe to `false`
-   * rather than risk forcing a logout that doesn't correspond to the revoked device.
+   * A passkey is the current device's only when it opened this session. If the session's
+   * passkey is unknown (EC-03), fail safe to `false` rather than risk forcing a logout
+   * that doesn't correspond to the revoked device.
    */
   private isSelfRevoke(passkey: PasskeyInfo): boolean {
-    return !!this.currentCredentialId && compareCredentialIds(passkey.credentialId, this.currentCredentialId);
+    const passkeyId = this.sessionPasskey.passkeyId();
+    return !!passkeyId && passkey.id === passkeyId;
   }
 }
 

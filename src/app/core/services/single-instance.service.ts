@@ -1,5 +1,6 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { filter, take } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from './auth.service';
 import { DEEP_LINK_PATH_PREFIXES, PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
@@ -168,7 +169,13 @@ export class SingleInstanceService implements OnDestroy {
       appRelative = SingleInstanceService.stripBase(url);
     }
 
-    this.applyDeepLink(appRelative);
+    // On a cold launch the start-up session resume may still be running: decide
+    // between navigating and queueing for after login once the session state is known.
+    this.whenAuthInitialized(() => this.applyDeepLink(appRelative));
+  }
+
+  private whenAuthInitialized(run: () => void): void {
+    this.authService.isInitialized$().pipe(filter(Boolean), take(1)).subscribe(() => run());
   }
 
   private applyDeepLink(appRelative: string): DeepLinkOutcome {
@@ -219,15 +226,17 @@ export class SingleInstanceService implements OnDestroy {
         const appRelative = SingleInstanceService.stripBase(msg.url ?? '');
 
         if (SingleInstanceService.isDeepLinkPath(appRelative)) {
-          const outcome = this.applyDeepLink(appRelative);
-          this.flagPendingOffer();
-          this.channel!.postMessage({
-            type: 'NAVIGATE_ACK',
-            tabId: this.tabId,
-            replyTo: msg.tabId,
-            outcome,
-            leaderStandalone: SingleInstanceService.isStandalone(),
-          } satisfies SingleInstanceMessage);
+          this.whenAuthInitialized(() => {
+            const outcome = this.applyDeepLink(appRelative);
+            this.flagPendingOffer();
+            this.channel!.postMessage({
+              type: 'NAVIGATE_ACK',
+              tabId: this.tabId,
+              replyTo: msg.tabId,
+              outcome,
+              leaderStandalone: SingleInstanceService.isStandalone(),
+            } satisfies SingleInstanceMessage);
+          });
         }
         break;
       }

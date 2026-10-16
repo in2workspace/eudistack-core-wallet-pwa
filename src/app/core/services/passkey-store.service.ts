@@ -9,6 +9,9 @@ const KEY_CREDENTIAL_ID = 'credential_id';
 const KEY_HAS_PASSKEY = 'has_passkey';
 const KEY_WEBAUTHN_USER_ID_PREFIX = 'webauthn_user_id:';
 
+/** localStorage entries of earlier versions: the 90-day refresh token and the pre-IndexedDB passkey flags. */
+const LEGACY_LOCAL_STORAGE_KEYS = ['wallet_refresh_token', 'wallet_passkey_credential_id', 'wallet_has_passkey'];
+
 /**
  * Persists passkey metadata (credential ID and presence flag) in IndexedDB.
  *
@@ -99,9 +102,35 @@ export class PasskeyStoreService {
     await this.clear();
   }
 
+  /**
+   * Server mode (EUD-8): the passkeys live in the system passkey manager and the
+   * Wallet Unit Service, so none of this local data is used any more. Drops it,
+   * on disk and in cache, including the `webauthn_user_id:<email>` entries that
+   * keep the email in clear, and the legacy localStorage entries.
+   */
+  async purgeServerModeEntries(): Promise<void> {
+    const keys = [...this.cache.keys()].filter(key =>
+      key === KEY_CREDENTIAL_ID || key === KEY_HAS_PASSKEY || key.startsWith(KEY_WEBAUTHN_USER_ID_PREFIX));
+    for (const key of LEGACY_LOCAL_STORAGE_KEYS) {
+      localStorage.removeItem(key);
+    }
+    if (keys.length === 0) return;
+    keys.forEach(key => this.cache.delete(key));
+    const db = await this.openDatabase();
+    try {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      keys.forEach(key => store.delete(key));
+      await this.awaitTx(tx);
+    } finally {
+      db.close();
+    }
+  }
+
   // --- Initialisation (called from APP_INITIALIZER) ---
 
-  async init(): Promise<void> {
+  /** Loads the cache. In server mode the local passkey data is purged instead of migrated. */
+  async init(options?: { serverMode?: boolean }): Promise<void> {
     const db = await this.openDatabase();
     try {
       const tx = db.transaction(STORE_NAME, 'readonly');
@@ -116,9 +145,14 @@ export class PasskeyStoreService {
         this.cache.set(record.key, record.value);
       }
 
-      await this.migrateFromLocalStorage();
+      if (!options?.serverMode) {
+        await this.migrateFromLocalStorage();
+      }
     } finally {
       db.close();
+    }
+    if (options?.serverMode) {
+      await this.purgeServerModeEntries();
     }
   }
 
