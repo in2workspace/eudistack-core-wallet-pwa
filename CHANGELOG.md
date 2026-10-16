@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Unit test coverage**: `jest.config.js` only measured a hand-maintained list of 78 files, so files with passing tests were reported at 0%. `collectCoverageFrom` now mirrors `sonar.exclusions` and covers the whole source tree (overall 41% → 84%).
+  - New specs: `did-key.utils`, `credential-parser.util`, `issuer-metadata-cache.service`, `credential-preview-builder.service`, `pre-authorized-token.service`, `passkey-prf-key-storage.service`.
+  - Extended specs: `credential-display.service`, `credential-verification.service`, `theme.service`, `oid4vp.engine.service`, `vc-view.component`, `credential-confirmation-modal.component`, `credentials.page`.
+
 - **Settings did not list the cameras until "Sin dispositivo" was pressed**: opening Settings never enumerated the cameras — `CameraService.availableDevices$` was only filled by the scanner flow or by changing the selector — so on a device that had never opened the camera the selector showed "Sin dispositivo" (or blank labels, since Chrome hides device names until the permission is granted) and the cameras only appeared after pressing it. Expanding the camera panel now calls the new `CameraService.loadCamerasForSelector()` when the list is empty or unlabelled:
   - With the camera permission already granted (Permissions API) it only enumerates devices, so the camera is never switched on and the browser's "camera in use" indicator does not appear.
   - Otherwise it asks for the permission once and then enumerates; a denied permission or an empty list is reported like in the scanner flow. If the Permissions API is unavailable it falls back to asking.
