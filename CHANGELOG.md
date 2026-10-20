@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **QR scanner only read codes from about 20 cm**: the scanner never asked the camera for a resolution, so browsers opened it at their 640×480 default and a QR on a screen (e.g. the verifier login) had to be very close to be decoded. The new `scanner-resolution.ts` patches zxing's `BrowserCodeReader.getUserMedia` so every scanner stream asks for at least 720 px per side and ideally 1920×1080; if the camera is still busy it retries twice (300 ms, 600 ms) and, if it cannot reach the minimum, opens with the best resolution available. The patch lives on zxing's class rather than on `navigator.mediaDevices.getUserMedia` because iOS restored the browser method intermittently, falling back to 640×480. `tryHarder` is also enabled on the scanner. `@zxing/browser` (already installed through `@zxing/ngx-scanner`) is now a direct dependency since it is imported. Bumps version to 3.16.14.
+
 - **Unit test coverage**: `jest.config.js` only measured a hand-maintained list of 78 files, so files with passing tests were reported at 0%. `collectCoverageFrom` now mirrors `sonar.exclusions` and covers the whole source tree (overall 41% → 84%).
   - New specs: `did-key.utils`, `credential-parser.util`, `issuer-metadata-cache.service`, `credential-preview-builder.service`, `pre-authorized-token.service`, `passkey-prf-key-storage.service`.
   - Extended specs: `credential-display.service`, `credential-verification.service`, `theme.service`, `oid4vp.engine.service`, `vc-view.component`, `credential-confirmation-modal.component`, `credentials.page`.
