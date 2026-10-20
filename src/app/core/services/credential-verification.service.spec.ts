@@ -251,4 +251,76 @@ describe('CredentialVerificationService', () => {
       httpTestingController.expectNone(STATUS_LIST_URL);
     });
   });
+
+  describe('getCheckKeys', () => {
+    it('declares the four checks in display order', () => {
+      expect(service.getCheckKeys()).toEqual(['issuer', 'issuance', 'expiration', 'status']);
+    });
+  });
+
+  describe('runCheck("issuer")', () => {
+    it('passes with the organization, falling back to the issuer id as detail', async () => {
+      await expect(
+        service.runCheck('issuer', buildCredential({ issuer: { id: 'did:key:abc', organization: 'CGCOM' } }))
+      ).resolves.toEqual({ key: 'issuer', status: 'passed', detail: 'CGCOM' });
+
+      await expect(
+        service.runCheck('issuer', buildCredential({ issuer: { id: 'did:key:abc' } }))
+      ).resolves.toEqual({ key: 'issuer', status: 'passed', detail: 'did:key:abc' });
+    });
+
+    it('fails when the issuer is absent or identifies nothing', async () => {
+      await expect(
+        service.runCheck('issuer', buildCredential({ issuer: undefined }))
+      ).resolves.toEqual({ key: 'issuer', status: 'failed' });
+
+      await expect(
+        service.runCheck('issuer', buildCredential({ issuer: { id: '' } }))
+      ).resolves.toEqual({ key: 'issuer', status: 'failed' });
+    });
+  });
+
+  describe('runCheck("issuance")', () => {
+    it('passes a credential already issued and reports the date', async () => {
+      await expect(
+        service.runCheck('issuance', buildCredential({ validFrom: '2026-01-02T00:00:00.000Z' }))
+      ).resolves.toEqual({ key: 'issuance', status: 'passed', detail: '02/01/2026' });
+    });
+
+    it('fails a validFrom that is missing, unparseable or still in the future', async () => {
+      await expect(
+        service.runCheck('issuance', buildCredential({ validFrom: '' }))
+      ).resolves.toEqual({ key: 'issuance', status: 'failed' });
+
+      await expect(
+        service.runCheck('issuance', buildCredential({ validFrom: 'not-a-date' }))
+      ).resolves.toEqual({ key: 'issuance', status: 'failed' });
+
+      const future = await service.runCheck(
+        'issuance',
+        buildCredential({ validFrom: '2099-01-01T00:00:00.000Z' })
+      );
+      expect(future.status).toBe('failed');
+    });
+  });
+
+  describe('runCheck("expiration")', () => {
+    it('passes a credential that has not expired and reports the date', async () => {
+      await expect(
+        service.runCheck('expiration', buildCredential({ validUntil: '2030-03-15T00:00:00.000Z' }))
+      ).resolves.toEqual({ key: 'expiration', status: 'passed', detail: '15/03/2030' });
+    });
+
+    it('fails an expired credential and an unparseable validUntil', async () => {
+      const expired = await service.runCheck(
+        'expiration',
+        buildCredential({ validUntil: '2020-01-01T00:00:00.000Z' })
+      );
+      expect(expired).toEqual({ key: 'expiration', status: 'failed', detail: '01/01/2020' });
+
+      await expect(
+        service.runCheck('expiration', buildCredential({ validUntil: 'not-a-date' }))
+      ).resolves.toEqual({ key: 'expiration', status: 'failed' });
+    });
+  });
 });
