@@ -11,6 +11,9 @@ import { CameraLogType } from 'src/app/core/models/camera-log';
 import { NavigationEnd, Router } from '@angular/router';
 import { signal, WritableSignal } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
+import { requestHighResolutionScannerStream } from './scanner-resolution';
+
+jest.mock('./scanner-resolution', () => ({ requestHighResolutionScannerStream: jest.fn() }));
 
 class MockRouter {
   public events = new Subject<any>();
@@ -124,6 +127,16 @@ describe('BarcodeScannerComponent', () => {
       expect(component.modifyConsoleErrorToHandleScannerErrors).toHaveBeenCalled();
     });
   
+    it('should request the high resolution scanner stream on ngOnInit', async () => {
+      (requestHighResolutionScannerStream as jest.Mock).mockClear();
+      await component.ngOnInit();
+      expect(requestHighResolutionScannerStream).toHaveBeenCalledTimes(1);
+    });
+
+    it('should enable tryHarder on the zxing scanner', () => {
+      expect(component.scanner.tryHarder).toBe(true);
+    });
+
     it('should call initCameraIfNoActivateScanners on ngAfterViewInit', async () => {
       await component.ngAfterViewInit();
       expect(component.initCameraIfNoActivateScanners).toHaveBeenCalled();
