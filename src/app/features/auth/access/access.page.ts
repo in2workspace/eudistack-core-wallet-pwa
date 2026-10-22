@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { firstValueFrom } from 'rxjs';
 import { RemoteAuthService } from 'src/app/core/services/auth.service';
 import { PasskeyCeremonyService, PasskeySession, PrfCheckNeedsGestureError } from 'src/app/core/services/passkey-ceremony.service';
 import { WebAuthnBrowserService } from 'src/app/core/services/webauthn-browser.service';
@@ -16,11 +17,14 @@ import { takePendingDeepLink } from 'src/app/shared/helpers/pending-deep-link';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { IosInstallService } from 'src/app/shared/services/ios-install.service';
 import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input.component';
+import { ThemeService } from 'src/app/core/services/theme.service';
+import { WatermarkShape, watermarkStyle } from '../auth-watermark';
 
 /** Screens of the access flow (EUD-8 `annex/wireframes.md`). `checking` is the passkey support check. */
 export type AccessScreen =
   | 'checking'
   | 'requirements'
+  | 'install'
   | 'access'
   | 'rejected'
   | 'unknown-passkey'
@@ -32,19 +36,16 @@ export type AccessScreen =
   | 'check-passkey'
   | 'other-sessions';
 
-/** Steps of the email flow shown in the step indicator. */
-const EMAIL_FLOW_STEPS: Partial<Record<AccessScreen, number>> = {
-  'email': 1,
-  'code': 2,
-  'choose-passkey': 3,
-  'create-passkey': 3,
-};
-
 const RESEND_COOLDOWN_SECONDS = 180;
 const EMAIL_MAX_LENGTH = 254;
 const DEVICE_NAME_MAX_LENGTH = 100;
 const IOS_INSTALL_STEPS = ['step1', 'step2', 'step3', 'step4'] as const;
 const MAC_INSTALL_STEPS = ['step-1', 'step-2', 'step-3'] as const;
+const INSTALL_HELP_FAQS = [
+  { question: 'auth.access.help.q1', answer: 'auth.access.help.a1' },
+  { question: 'auth.access.help.q2', answer: 'auth.access.help.a2' },
+  { question: 'auth.access.help.q3', answer: 'auth.access.help.a3' },
+] as const;
 
 /**
  * Whether the code the user holds can still be checked: `expired` (401
@@ -77,13 +78,6 @@ export function hasEmailFormat(email: string): boolean {
   return dot > 0 && dot < domain.length - 1;
 }
 
-/** `ana@example.com` → `a***@example.com`, as the code screen shows it. */
-export function maskEmail(email: string): string {
-  const [local, domain] = email.trim().split('@');
-  if (!local || !domain) return email.trim();
-  return `${local.charAt(0)}***@${domain}`;
-}
-
 /**
  * Single access screen of the wallet in server mode (EUD-8): sign-in with a
  * passkey from the system picker, and the email flow (email → code → choose or
@@ -114,6 +108,7 @@ export class AccessPage implements OnDestroy {
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly installable = toSignal(this.pwaInstall.installable$, { initialValue: false });
+  private readonly theme = toSignal(inject(ThemeService).getTheme());
 
   readonly screen = signal<AccessScreen>('checking');
   readonly busy = signal(false);
@@ -125,11 +120,13 @@ export class AccessPage implements OnDestroy {
   readonly deviceName = signal(defaultDeviceName());
   readonly showIosSteps = signal(false);
   readonly showMacSteps = signal(false);
+  readonly showInstallHelp = signal(false);
   /** Whether the account of the email flow already had passkeys (verify-email). */
   readonly accountHadPasskeys = signal(false);
 
   readonly iosInstallSteps = IOS_INSTALL_STEPS;
   readonly macInstallSteps = MAC_INSTALL_STEPS;
+  readonly installHelpFaqs = INSTALL_HELP_FAQS;
   readonly emailMaxLength = EMAIL_MAX_LENGTH;
   readonly deviceNameMaxLength = DEVICE_NAME_MAX_LENGTH;
 
@@ -146,8 +143,29 @@ export class AccessPage implements OnDestroy {
   private ticker: ReturnType<typeof setInterval> | null = null;
   private rateLimitMessage: string | null = null;
 
-  readonly flowStep = computed(() => EMAIL_FLOW_STEPS[this.screen()] ?? null);
-  readonly maskedEmail = computed(() => maskEmail(this.email()));
+  /** Tenant wallet name, as the browser-mode LoginPage shows it. */
+  readonly brandName = computed(() => {
+    const name = this.theme()?.branding?.name?.trim();
+    return name ? name.split(' ')[0] : 'Wallet';
+  });
+
+  /** Same artwork per step as the browser-mode LoginPage. */
+  readonly watermark = computed<WatermarkShape | null>(() => {
+    switch (this.screen()) {
+      case 'checking': return null;
+      case 'install': return 'access';
+      case 'email': return 'email';
+      case 'code': return 'verify';
+      default: return 'passkey';
+    }
+  });
+
+  readonly watermarkStyle = computed(() => watermarkStyle(this.watermark()));
+
+  /** Screens with the top-left back button (see goBack). */
+  readonly canGoBack = computed(() =>
+    ['email', 'code', 'unknown-passkey', 'choose-passkey', 'create-passkey'].includes(this.screen()));
+
   readonly emailIsValid = computed(() => {
     const email = this.email().trim();
     return email.length <= EMAIL_MAX_LENGTH && hasEmailFormat(email);
@@ -201,13 +219,31 @@ export class AccessPage implements OnDestroy {
     this.errorMessage.set('');
     this.showIosSteps.set(false);
     this.showMacSteps.set(false);
+    this.showInstallHelp.set(false);
     this.sessionExpired.set(this.authService.consumeSessionExpiredNotice());
     this.startTicker();
     this.screen.set('checking');
     // FR-01: nothing is created before the browser is known to handle passkeys.
-    void this.webAuthnBrowser.isPasskeySupported().then(supported => {
-      this.goTo(supported ? 'access' : 'requirements');
+    void Promise.all([
+      this.webAuthnBrowser.isPasskeySupported(),
+      firstValueFrom(this.pwaInstall.installDecision$),
+    ]).then(([supported, installable]) => {
+      if (!supported) {
+        this.goTo('requirements');
+      } else {
+        this.goTo(this.showsInstallScreen(installable) ? 'install' : 'access');
+      }
     });
+  }
+
+  /**
+   * FR-02: the install screen of the browser-mode LoginPage comes first in a tab
+   * that can be installed, and on iOS Safari, which can only show the steps. It
+   * is skipped when the user was already in (expired session, pending logout).
+   */
+  private showsInstallScreen(installable: boolean): boolean {
+    if (this.pwaInstall.isStandalone || this.sessionExpired() || this.serverLogoutPending()) return false;
+    return installable || this.iosInstall.isIosSafariBrowserMode();
   }
 
   ionViewWillLeave(): void {
@@ -238,6 +274,38 @@ export class AccessPage implements OnDestroy {
     this.goTo('access');
   }
 
+  /**
+   * Top-left back button. Code goes back to Email; Elegir passkey too, and Crear
+   * passkey to Elegir passkey when the account had passkeys. Leaving the
+   * verified email forgets its ticket. Email and Passkey desconocida go to Acceso.
+   */
+  goBack(): void {
+    switch (this.screen()) {
+      case 'code':
+        this.changeEmail();
+        return;
+      case 'create-passkey':
+        if (this.accountHadPasskeys()) {
+          this.goTo('choose-passkey');
+          return;
+        }
+        this.leaveVerifiedEmail();
+        return;
+      case 'choose-passkey':
+        this.leaveVerifiedEmail();
+        return;
+      default:
+        this.backToAccess();
+    }
+  }
+
+  private leaveVerifiedEmail(): void {
+    this.pendingPrfCheck = null;
+    this.authService.leaveEmailFlow();
+    this.accountHadPasskeys.set(false);
+    this.changeEmail();
+  }
+
   retryAfterRejection(): void {
     this.goTo(this.rejectedFrom);
   }
@@ -247,10 +315,16 @@ export class AccessPage implements OnDestroy {
     window.open(channels.helpCenterUrl ?? channels.supportUrl, '_blank', 'noopener');
   }
 
+  /** "Continue in browser" on the install screen. */
+  continueInBrowser(): void {
+    this.goTo('access');
+  }
+
   async install(): Promise<void> {
     switch (this.installSuggestion()) {
       case 'prompt':
         await this.pwaInstall.promptInstall();
+        this.goTo('access');
         return;
       case 'ios':
         this.showIosSteps.set(true);
@@ -524,15 +598,15 @@ export class AccessPage implements OnDestroy {
     const status = err instanceof HttpErrorResponse ? err.status : undefined;
     if (type === AUTH_PROBLEM_TYPE.EXPIRED_CODE) {
       this.discardCode('expired');
-      this.errorMessage.set(this.translate.instant('wallet-access.code.unusable'));
+      this.errorMessage.set(this.translate.instant('auth.errors.otp-expired'));
     } else if (type === AUTH_PROBLEM_TYPE.TOO_MANY_ATTEMPTS) {
       this.discardCode('exhausted');
-      this.errorMessage.set(this.translate.instant('wallet-access.code.unusable'));
+      this.errorMessage.set(this.translate.instant('auth.errors.too-many-attempts-otp'));
     } else if (status === 429) {
       this.applyRateLimit(retryAfterSeconds(err as HttpErrorResponse), true);
       this.showRateLimitMessage('auth.errors.too-many-attempts-wait');
     } else if (type === AUTH_PROBLEM_TYPE.INVALID_CODE) {
-      this.errorMessage.set(this.translate.instant('wallet-access.code.invalid'));
+      this.errorMessage.set(this.translate.instant('auth.errors.otp-invalid'));
     } else {
       this.showFailure(err);
     }

@@ -151,9 +151,11 @@
       "install-subtitle": "Para la mejor experiencia y acceso offline, instala la app del wallet en tu dispositivo.",
       "install-button": "Instalar App",
       "continue-browser": "Continuar en el navegador",
+      "email-label": "Email",
       "verify-title": "Verifica tu dirección de email",
       "code-sent-prefix": "Introduce el código de verificación enviado a tu dirección de email",
       "code-validity": "El código es válido durante un tiempo limitado.",
+      "code-label": "Código",
       "resend-in": "¿No has recibido el código? Reenvío disponible en {{time}}",
       "new-code-in": "Podrás solicitar un nuevo código en {{time}}",
       "resend-prompt": "¿No has recibido el código?",
@@ -186,7 +188,10 @@
     },
     "errors": {
       "too-many-attempts": "Demasiados intentos. Por favor, inténtalo más tarde.",
+      "too-many-attempts-otp": "Demasiados intentos incorrectos. Por favor, solicita un nuevo código.",
       "too-many-attempts-wait": "Has superado el número de intentos permitidos. Espera a que termine la cuenta atrás para solicitar un nuevo código.",
+      "otp-expired": "El código ha caducado. Pulsa Reenviar para recibir uno nuevo en tu email.",
+      "otp-invalid": "El código no es correcto. Revísalo e inténtalo de nuevo.",
       "passkey-register-failed": "No se ha podido registrar este dispositivo. Inténtalo de nuevo.",
       "passkey-login-cancelled": "Has cancelado el inicio de sesión con Passkey. Puedes intentarlo nuevamente cuando lo desees.",
       "passkey-cancelled": "Has cancelado la verificación con passkey. Puedes intentarlo nuevamente cuando lo desees.",
@@ -701,14 +706,7 @@
     "toast": "La aplicación se ha actualizado a la versión {{version}}"
   },
   "wallet-access": {
-    "back": "Volver",
     "waiting-passkey": "Esperando a tu passkey…",
-    "steps": {
-      "aria": "Pasos para entrar con tu email",
-      "email": "Email",
-      "code": "Código",
-      "passkey": "Passkey"
-    },
     "requirements": {
       "title": "Este navegador no es compatible",
       "body": "Para usar el wallet necesitas un navegador que admita passkeys.",
@@ -723,9 +721,6 @@
       "email-prompt": "¿Primera vez o sin tu passkey aquí?",
       "email-button": "Entrar con mi email",
       "session-expired": "Tu sesión ha caducado. Vuelve a entrar.",
-      "install-aria": "Instalar el wallet",
-      "install-hint": "Instala el wallet en tu equipo.",
-      "install-button": "Instalar",
       "ios-steps-title": "Añade el wallet a tu pantalla de inicio",
       "logout-pending": "No hemos podido confirmar el cierre de sesión con el servidor. Lo haremos en cuanto vuelvas a tener conexión."
     },
@@ -739,36 +734,15 @@
       "body": "La passkey que has elegido ya no está en tu cuenta. Entra con tu email para usar otra o crear una nueva."
     },
     "email": {
-      "title": "Introduce tu email",
-      "subtitle": "Te enviaremos un código para comprobar que es tuyo.",
-      "label": "Email",
-      "send": "Enviar código",
       "rate-limited": "Has pedido demasiados códigos. Inténtalo dentro de un rato."
     },
-    "code": {
-      "title": "Introduce el código",
-      "sent": "Lo hemos enviado a {{email}}.",
-      "validity": "Caduca en 10 minutos.",
-      "label": "Código",
-      "invalid": "El código no es correcto",
-      "unusable": "Este código ya no sirve. Pide uno nuevo.",
-      "resend": "Reenviar código",
-      "change-email": "Cambiar email",
-      "continue": "Continuar"
-    },
     "choose-passkey": {
-      "title": "Ya tienes una cuenta",
-      "body": "Entra con una passkey que ya uses en esta cuenta, en este dispositivo o en otro cercano.",
-      "use": "Usar mi passkey",
       "none-prompt": "¿No tienes ninguna a mano?",
       "create": "Crear una passkey nueva"
     },
     "create-passkey": {
-      "title": "Crea tu passkey",
-      "body": "Entrarás al wallet con tu huella, tu cara o el PIN de tu dispositivo, sin contraseñas.",
       "attestations-warning": "Una passkey nueva no da acceso a las atestaciones que obtuviste con otra.",
-      "shared-device-tip": "¿Equipo compartido? Guárdala en tu móvil o en una llave de seguridad, no en este equipo.",
-      "button": "Crear passkey"
+      "shared-device-tip": "¿Equipo compartido? Guárdala en tu móvil o en una llave de seguridad, no en este equipo."
     },
     "passkey-incompatible": {
       "title": "Esta passkey no es compatible",

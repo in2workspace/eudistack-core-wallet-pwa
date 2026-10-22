@@ -12,23 +12,13 @@ import { ThemeService } from 'src/app/core/services/theme.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { LocalAuthService } from 'src/app/core/services/local-auth.service';
 import { PasskeyError } from 'src/app/core/models/error/PasskeyError';
+import { WatermarkShape, watermarkStyle } from '../auth-watermark';
 
 // Reassures the user that initialization is still progressing.
 const INIT_SLOW_THRESHOLD_MS = 3000;
 // Above PwaInstallService's own hard ceiling (INSTALL_DECISION_HARD_TIMEOUT_MS):
 // a safety net in case something other than installDecision$ hangs.
 const INIT_FAIL_THRESHOLD_MS = 8000;
-
-type WatermarkShape = 'access' | 'passkey';
-
-const WATERMARK_ASSETS: Record<WatermarkShape, string> = {
-  access: 'assets/svg/download-solid.svg',
-  passkey: 'assets/svg/door-open-solid.svg',
-};
-
-const WATERMARK_VIEWBOX_WIDTH = 672;
-
-const WATERMARK_CROP_TOP = 200;
 
 /**
  * Access screen of browser mode (local passkey, no Wallet Unit Service). Server
@@ -111,20 +101,7 @@ export class LoginPage implements OnDestroy {
   });
 
 
-  readonly watermarkStyle = computed((): Record<string, string> => {
-    const shape = this.watermark();
-    if (!shape) return { display: 'none' };
-
-    const image = `url('${new URL(WATERMARK_ASSETS[shape], document.baseURI).href}')`;
-    const position = `left calc(var(--wm-width) * ${WATERMARK_CROP_TOP} / -${WATERMARK_VIEWBOX_WIDTH})`;
-
-    return {
-      'mask-image': image,
-      'mask-repeat': 'no-repeat',
-      'mask-size': 'contain',
-      'mask-position': position,
-    };
-  });
+  readonly watermarkStyle = computed(() => watermarkStyle(this.watermark()));
 
   ionViewWillEnter(): void {
     this.loading = false;

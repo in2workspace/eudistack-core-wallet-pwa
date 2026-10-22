@@ -4,7 +4,7 @@ import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { BehaviorSubject, of, throwError } from 'rxjs';
-import { AccessPage, hasEmailFormat, maskEmail } from './access.page';
+import { AccessPage, hasEmailFormat } from './access.page';
 import { RemoteAuthService } from 'src/app/core/services/auth.service';
 import { PasskeyCeremonyService, PrfCheckNeedsGestureError } from 'src/app/core/services/passkey-ceremony.service';
 import { WebAuthnBrowserService } from 'src/app/core/services/webauthn-browser.service';
@@ -39,7 +39,14 @@ describe('AccessPage (EUD-8)', () => {
   let supported: jest.Mock;
   let custody: jest.Mock;
   let installable$: BehaviorSubject<boolean>;
-  let pwa: { installable$: unknown; isStandalone: boolean; isMacSafari: boolean; promptInstall: jest.Mock };
+  let installDecision$: BehaviorSubject<boolean>;
+  let pwa: {
+    installable$: unknown;
+    installDecision$: unknown;
+    isStandalone: boolean;
+    isMacSafari: boolean;
+    promptInstall: jest.Mock;
+  };
   let iosTab: jest.Mock;
 
   const settle = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
@@ -73,7 +80,14 @@ describe('AccessPage (EUD-8)', () => {
     supported = jest.fn().mockResolvedValue(true);
     custody = jest.fn().mockReturnValue(false);
     installable$ = new BehaviorSubject(false);
-    pwa = { installable$: installable$.asObservable(), isStandalone: false, isMacSafari: false, promptInstall: jest.fn().mockResolvedValue(true) };
+    installDecision$ = new BehaviorSubject(false);
+    pwa = {
+      installable$: installable$.asObservable(),
+      installDecision$: installDecision$.asObservable(),
+      isStandalone: false,
+      isMacSafari: false,
+      promptInstall: jest.fn().mockResolvedValue(true),
+    };
     iosTab = jest.fn().mockReturnValue(false);
 
     await TestBed.configureTestingModule({
@@ -199,39 +213,91 @@ describe('AccessPage (EUD-8)', () => {
     });
   });
 
-  describe('install suggestion (FR-02)', () => {
-    it('is hidden in a tab that cannot be installed', async () => {
+  describe('install screen (FR-02, same as the browser-mode LoginPage)', () => {
+    function installableTab(): void {
+      installable$.next(true);
+      installDecision$.next(true);
+    }
+
+    it('goes straight to Acceso in a tab that cannot be installed', async () => {
       await create();
 
-      expect(page.installSuggestion()).toBeNull();
-      expect(text()).not.toContain('wallet-access.access.install-button');
+      expect(page.screen()).toBe('access');
     });
 
-    it('launches the browser install prompt when the tab can be installed', async () => {
-      installable$.next(true);
+    it('comes first in a tab that can be installed, with the download watermark', async () => {
+      installableTab();
       await create();
 
-      expect(text()).toContain('wallet-access.access.install-button');
+      expect(page.screen()).toBe('install');
+      expect(text()).toContain('auth.access.continue-wallet');
+      expect(page.watermark()).toBe('access');
+    });
+
+    it('launches the browser install prompt and then shows Acceso', async () => {
+      installableTab();
+      await create();
+
       await page.install();
+
       expect(pwa.promptInstall).toHaveBeenCalled();
+      expect(page.screen()).toBe('access');
+    });
+
+    it('goes to Acceso from "Continue in browser"', async () => {
+      installableTab();
+      await create();
+
+      page.continueInBrowser();
+
+      expect(page.screen()).toBe('access');
+      expect(pwa.promptInstall).not.toHaveBeenCalled();
+    });
+
+    it('opens the help with the FAQs from "Need help?"', async () => {
+      installableTab();
+      await create();
+
+      (fixture.nativeElement.querySelector('.auth-notice__link') as HTMLButtonElement).click();
+
+      expect(page.showInstallHelp()).toBe(true);
     });
 
     it('shows the add-to-home-screen steps on iOS, which cannot launch it', async () => {
       iosTab.mockReturnValue(true);
       await create();
 
+      expect(page.screen()).toBe('install');
       await page.install();
 
       expect(page.showIosSteps()).toBe(true);
       expect(pwa.promptInstall).not.toHaveBeenCalled();
     });
 
-    it('is hidden in the installed app', async () => {
-      pwa.isStandalone = true;
-      installable$.next(true);
+    it('shows the Mac Safari steps', async () => {
+      pwa.isMacSafari = true;
+      installDecision$.next(true);
       await create();
 
-      expect(page.installSuggestion()).toBeNull();
+      await page.install();
+
+      expect(page.showMacSteps()).toBe(true);
+    });
+
+    it('is skipped in the installed app', async () => {
+      pwa.isStandalone = true;
+      installableTab();
+      await create();
+
+      expect(page.screen()).toBe('access');
+    });
+
+    it('is skipped after an expired session, which goes straight to Acceso', async () => {
+      auth.consumeSessionExpiredNotice.mockReturnValue(true);
+      installableTab();
+      await create();
+
+      expect(page.screen()).toBe('access');
     });
   });
 
@@ -249,14 +315,14 @@ describe('AccessPage (EUD-8)', () => {
       expect(page.canSendCode()).toBe(true);
     });
 
-    it('sends the code and shows the masked email', () => {
+    it('sends the code and shows the email', () => {
       page.email.set('ana@example.com');
       page.sendCode();
       fixture.detectChanges();
 
       expect(auth.requestEmailCode).toHaveBeenCalledWith('ana@example.com');
       expect(page.screen()).toBe('code');
-      expect(page.maskedEmail()).toBe('a***@example.com');
+      expect(text()).toContain('ana@example.com');
     });
 
     it('shows the same rate-limit message whatever the email (FR-05, FR-06)', () => {
@@ -296,18 +362,21 @@ describe('AccessPage (EUD-8)', () => {
 
         page.verifyCode();
 
-        expect(page.errorMessage()).toBe('wallet-access.code.invalid');
+        expect(page.errorMessage()).toBe('auth.errors.otp-invalid');
         expect(page.canSubmitCode()).toBe(true);
       });
 
-      it.each([[401, 'expired_code'], [429, 'too_many_attempts']])(
+      it.each([
+        [401, 'expired_code', 'auth.errors.otp-expired'],
+        [429, 'too_many_attempts', 'auth.errors.too-many-attempts-otp'],
+      ])(
         'asks for a new code after %s %s',
-        (status, type) => {
+        (status, type, message) => {
           auth.verifyEmailCode.mockReturnValue(throwError(() => problem(status, type)));
 
           page.verifyCode();
 
-          expect(page.errorMessage()).toBe('wallet-access.code.unusable');
+          expect(page.errorMessage()).toBe(message);
           expect(page.canSubmitCode()).toBe(false);
         }
       );
@@ -324,6 +393,54 @@ describe('AccessPage (EUD-8)', () => {
 
       expect(auth.leaveEmailFlow).toHaveBeenCalled();
       expect(page.screen()).toBe('access');
+    });
+
+    it('goes back to Acceso from the top-left back button of Email', () => {
+      fixture.detectChanges();
+      (fixture.nativeElement.querySelector('.auth-back') as HTMLButtonElement).click();
+
+      expect(auth.leaveEmailFlow).toHaveBeenCalled();
+      expect(page.screen()).toBe('access');
+    });
+
+    it('goes back to Email from the top-left back button of Código', () => {
+      page.email.set('ana@example.com');
+      page.sendCode();
+      page.goBack();
+
+      expect(page.screen()).toBe('email');
+    });
+  });
+
+  describe('Watermark and back button (same look as LoginPage)', () => {
+    const watermarkEl = () => fixture.nativeElement.querySelector('.auth-watermark') as HTMLElement;
+    const backButton = () => fixture.nativeElement.querySelector('.auth-back');
+
+    it('hides the watermark while checking passkey support', () => {
+      fixture = TestBed.createComponent(AccessPage);
+      page = fixture.componentInstance;
+      fixture.detectChanges();
+
+      expect(page.watermark()).toBeNull();
+      expect(watermarkEl().style.display).toBe('none');
+    });
+
+    it('masks the watermark with the artwork of each step', async () => {
+      await create();
+      expect(watermarkEl().getAttribute('data-shape')).toBe('passkey');
+      expect(watermarkEl().style.getPropertyValue('mask-image')).toContain('door-open-solid.svg');
+      expect(backButton()).toBeNull();
+
+      page.startEmailFlow();
+      fixture.detectChanges();
+      expect(watermarkEl().style.getPropertyValue('mask-image')).toContain('user-solid.svg');
+      expect(backButton()).not.toBeNull();
+
+      page.email.set('ana@example.com');
+      page.sendCode();
+      fixture.detectChanges();
+      expect(watermarkEl().style.getPropertyValue('mask-image')).toContain('envelope-circle-check-solid.svg');
+      expect(backButton()).not.toBeNull();
     });
   });
 
@@ -368,6 +485,23 @@ describe('AccessPage (EUD-8)', () => {
       page.createNewPasskey();
 
       expect(page.screen()).toBe('create-passkey');
+    });
+
+    it('goes back to Email and forgets the ticket from the top-left back button', () => {
+      page.goBack();
+
+      expect(auth.leaveEmailFlow).toHaveBeenCalled();
+      expect(page.screen()).toBe('email');
+    });
+
+    it('goes back from Crear passkey to Elegir passkey', () => {
+      page.createNewPasskey();
+      auth.leaveEmailFlow.mockClear();
+
+      page.goBack();
+
+      expect(page.screen()).toBe('choose-passkey');
+      expect(auth.leaveEmailFlow).not.toHaveBeenCalled();
     });
   });
 
@@ -521,7 +655,7 @@ describe('AccessPage (EUD-8)', () => {
         fixture.detectChanges();
         jest.runOnlyPendingTimers();
 
-        expect(document.activeElement?.textContent).toContain('wallet-access.email.title');
+        expect(document.activeElement?.textContent).toContain('auth.login.email-title');
       } finally {
         jest.useRealTimers();
       }
@@ -533,7 +667,7 @@ describe('AccessPage (EUD-8)', () => {
 
       const input = (fixture.nativeElement as HTMLElement).querySelector('#access-email')!;
       const label = (fixture.nativeElement as HTMLElement).querySelector(`#${input.getAttribute('aria-labelledby')}`);
-      expect(label?.textContent).toContain('wallet-access.email.label');
+      expect(label?.textContent).toContain('auth.register.email-label');
     });
 
     it('moves the focus to the heading on first render too', async () => {
@@ -550,14 +684,6 @@ describe('AccessPage (EUD-8)', () => {
       }
     });
 
-    it('marks the current step of the email flow', () => {
-      page.startEmailFlow();
-      fixture.detectChanges();
-
-      const current = (fixture.nativeElement as HTMLElement).querySelector('[aria-current="step"]');
-      expect(current?.textContent).toContain('wallet-access.steps.email');
-    });
-
     it('announces errors as alerts', async () => {
       auth.signInWithPasskey.mockRejectedValue(new PasskeyError('passkey_security', 'get'));
       await page.signInWithPasskey();
@@ -566,16 +692,6 @@ describe('AccessPage (EUD-8)', () => {
       expect((fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')?.textContent)
         .toContain('auth.errors.passkey-security');
     });
-  });
-});
-
-describe('maskEmail', () => {
-  it('keeps the first letter and the domain', () => {
-    expect(maskEmail('ana@dominio.es')).toBe('a***@dominio.es');
-  });
-
-  it('leaves a malformed value as is', () => {
-    expect(maskEmail('ana')).toBe('ana');
   });
 });
 

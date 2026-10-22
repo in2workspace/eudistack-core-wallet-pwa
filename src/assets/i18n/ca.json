@@ -151,9 +151,11 @@
       "install-subtitle": "Per a la millor experiència i accés offline, instal·la l'app del wallet al teu dispositiu.",
       "install-button": "Instal·lar App",
       "continue-browser": "Continuar al navegador",
+      "email-label": "Email",
       "verify-title": "Verifica la teva adreça de correu",
       "code-sent-prefix": "Introdueix el codi de verificació enviat a la teva adreça de correu",
       "code-validity": "El codi és vàlid durant un temps limitat.",
+      "code-label": "Codi",
       "resend-in": "No has rebut el codi? Reenviament disponible en {{time}}",
       "new-code-in": "Podràs sol·licitar un nou codi en {{time}}",
       "resend-prompt": "No has rebut el codi?",
@@ -182,7 +184,10 @@
     },
     "errors": {
       "too-many-attempts": "Massa intents. Si us plau, torna-ho a provar més tard.",
+      "too-many-attempts-otp": "Massa intents incorrectes. Si us plau, sol·licita un nou codi.",
       "too-many-attempts-wait": "Has superat el nombre d'intents permesos. Espera que acabi el compte enrere per sol·licitar un nou codi.",
+      "otp-expired": "El codi ha caducat. Prem Reenviar per rebre'n un de nou al teu correu.",
+      "otp-invalid": "El codi no és correcte. Revisa'l i torna-ho a provar.",
       "passkey-register-failed": "No s'ha pogut registrar aquest dispositiu. Torna-ho a provar.",
       "passkey-login-cancelled": "Has cancel·lat l’inici de sessió amb Passkey. Pots tornar-ho a provar quan vulguis.",
       "passkey-cancelled": "Has cancel·lat la verificació amb passkey. Pots tornar-ho a provar quan vulguis.",
@@ -697,14 +702,7 @@
     "toast": "L'aplicació s'ha actualitzat a la versió {{version}}"
   },
   "wallet-access": {
-    "back": "Tornar",
     "waiting-passkey": "Esperant la teva passkey…",
-    "steps": {
-      "aria": "Passos per entrar amb el teu correu",
-      "email": "Correu",
-      "code": "Codi",
-      "passkey": "Passkey"
-    },
     "requirements": {
       "title": "Aquest navegador no és compatible",
       "body": "Per fer servir el wallet necessites un navegador que admeti passkeys.",
@@ -719,9 +717,6 @@
       "email-prompt": "Primera vegada o sense la teva passkey aquí?",
       "email-button": "Entrar amb el meu correu",
       "session-expired": "La teva sessió ha caducat. Torna a entrar.",
-      "install-aria": "Instal·lar el wallet",
-      "install-hint": "Instal·la el wallet al teu equip.",
-      "install-button": "Instal·lar",
       "ios-steps-title": "Afegeix el wallet a la pantalla d'inici",
       "logout-pending": "No hem pogut confirmar el tancament de sessió amb el servidor. Ho farem tan bon punt tornis a tenir connexió."
     },
@@ -735,36 +730,15 @@
       "body": "La passkey que has triat ja no és al teu compte. Entra amb el teu correu per fer-ne servir una altra o crear-ne una de nova."
     },
     "email": {
-      "title": "Introdueix el teu correu",
-      "subtitle": "T'enviarem un codi per comprovar que és teu.",
-      "label": "Correu",
-      "send": "Enviar el codi",
       "rate-limited": "Has demanat massa codis. Torna-ho a provar d'aquí a una estona."
     },
-    "code": {
-      "title": "Introdueix el codi",
-      "sent": "L'hem enviat a {{email}}.",
-      "validity": "Caduca d'aquí a 10 minuts.",
-      "label": "Codi",
-      "invalid": "El codi no és correcte",
-      "unusable": "Aquest codi ja no serveix. Demana'n un de nou.",
-      "resend": "Reenviar el codi",
-      "change-email": "Canviar el correu",
-      "continue": "Continuar"
-    },
     "choose-passkey": {
-      "title": "Ja tens un compte",
-      "body": "Entra amb una passkey que ja facis servir en aquest compte, en aquest dispositiu o en un altre de proper.",
-      "use": "Fer servir la meva passkey",
       "none-prompt": "No en tens cap a mà?",
       "create": "Crear una passkey nova"
     },
     "create-passkey": {
-      "title": "Crea la teva passkey",
-      "body": "Entraràs al wallet amb la teva empremta, la teva cara o el PIN del teu dispositiu, sense contrasenyes.",
       "attestations-warning": "Una passkey nova no dona accés a les atestacions que vas obtenir amb una altra.",
-      "shared-device-tip": "Equip compartit? Desa-la al teu mòbil o en una clau de seguretat, no en aquest equip.",
-      "button": "Crear la passkey"
+      "shared-device-tip": "Equip compartit? Desa-la al teu mòbil o en una clau de seguretat, no en aquest equip."
     },
     "passkey-incompatible": {
       "title": "Aquesta passkey no és compatible",

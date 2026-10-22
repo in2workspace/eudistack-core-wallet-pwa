@@ -1,62 +1,19 @@
 // Shared look with the browser-mode LoginPage (login.page.scss): only the pieces
 // the server-mode access flow adds. Colours come from the tenant theme tokens.
 
-.access-steps {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin: 0 0 24px;
-  padding: 0;
-  list-style: none;
-  color: var(--auth-ink-muted);
-  font-size: 0.875rem;
-}
-
-.access-steps__item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.access-steps__number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--auth-border);
-  border-radius: 50%;
-  font-weight: 600;
-}
-
-.access-steps__item--current,
-.access-steps__item--done {
-  color: var(--auth-ink);
-  font-weight: 600;
-
-  .access-steps__number {
-    border-color: var(--auth-ink);
-    background: var(--auth-ink);
-    color: var(--surface-page, #fff);
-  }
-}
-
 .access-banner {
   margin: 0 auto 24px;
 }
 
 .access-secondary {
   margin-top: 24px;
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
 
-.access-install {
-  margin-top: 32px;
-
-  ion-icon {
-    vertical-align: middle;
-    margin-right: 4px;
-  }
+// 5px between the prompt and its link (login.page.scss gives the link 28px + 8px padding).
+.access-secondary + .auth-link-button {
+  margin-top: 5px;
+  padding-top: 0;
 }
 
 .access-callout {
@@ -75,6 +32,21 @@
   }
 }
 
+.access-callout--tip {
+  font-size: 10px;
+  line-height: 1.45;
+
+  ion-icon {
+    margin-top: 0;
+    font-size: 12px;
+  }
+}
+
+// Keeps the tip close to the field it is about (login.page.scss sets 48px, 56px on mobile).
+.access-callout--tip + .auth-field--device {
+  margin-top: 16px;
+}
+
 .access-callout--warning {
   color: var(--auth-ink);
   font-weight: 600;
@@ -84,13 +56,12 @@
   }
 }
 
-.auth-title:focus {
-  outline: none;
-}
-
+// The heading takes the focus programmatically on every screen change (screen
+// readers announce it). It is not interactive, so it shows no focus ring:
+// Chrome would otherwise paint :focus-visible on it at page load.
+.auth-title:focus,
 .auth-title:focus-visible {
-  outline: 2px solid var(--auth-ink);
-  outline-offset: 4px;
+  outline: none;
 }
 
 .sr-only {

@@ -164,9 +164,11 @@
       "install-subtitle": "For the best experience and offline access, install the wallet app on your device.",
       "install-button": "Install App",
       "continue-browser": "Continue in browser",
+      "email-label": "Email",
       "verify-title": "Verify your email address",
       "code-sent-prefix": "Enter the verification code sent to your email address",
       "code-validity": "The code is valid for a limited time.",
+      "code-label": "Code",
       "resend-in": "Didn't receive the code? Resend available in {{time}}",
       "new-code-in": "You can request a new code in {{time}}",
       "resend-prompt": "Didn't receive the code?",
@@ -199,7 +201,10 @@
     },
     "errors": {
       "too-many-attempts": "Too many attempts. Please try again later.",
+      "too-many-attempts-otp": "Too many incorrect attempts. Please request a new code.",
       "too-many-attempts-wait": "You have exceeded the allowed number of attempts. Wait for the countdown to end before requesting a new code.",
+      "otp-expired": "The code has expired. Tap Resend to get a new one at your email.",
+      "otp-invalid": "The code is incorrect. Check it and try again.",
       "passkey-register-failed": "Failed to register this device. Please try again.",
       "passkey-login-cancelled": "You cancelled signing in with your passkey. You can try again whenever you like.",
       "passkey-cancelled": "You cancelled the passkey verification. You can try again whenever you like.",
@@ -701,14 +706,7 @@
     "toast": "The app has been updated to version {{version}}"
   },
   "wallet-access": {
-    "back": "Back",
     "waiting-passkey": "Waiting for your passkey…",
-    "steps": {
-      "aria": "Steps to sign in with your email",
-      "email": "Email",
-      "code": "Code",
-      "passkey": "Passkey"
-    },
     "requirements": {
       "title": "This browser is not supported",
       "body": "To use the wallet you need a browser that supports passkeys.",
@@ -723,9 +721,6 @@
       "email-prompt": "First time, or no passkey here?",
       "email-button": "Sign in with my email",
       "session-expired": "Your session has expired. Please sign in again.",
-      "install-aria": "Install the wallet",
-      "install-hint": "Install the wallet on your device.",
-      "install-button": "Install",
       "ios-steps-title": "Add the wallet to your Home Screen",
       "logout-pending": "We could not confirm the logout with the server. We will do it as soon as you are back online."
     },
@@ -739,36 +734,15 @@
       "body": "The passkey you chose is no longer in your account. Sign in with your email to use another one or create a new one."
     },
     "email": {
-      "title": "Enter your email",
-      "subtitle": "We will send you a code to check that it is yours.",
-      "label": "Email",
-      "send": "Send code",
       "rate-limited": "You have requested too many codes. Please try again later."
     },
-    "code": {
-      "title": "Enter the code",
-      "sent": "We have sent it to {{email}}.",
-      "validity": "It expires in 10 minutes.",
-      "label": "Code",
-      "invalid": "The code is not correct",
-      "unusable": "This code can no longer be used. Request a new one.",
-      "resend": "Resend code",
-      "change-email": "Change email",
-      "continue": "Continue"
-    },
     "choose-passkey": {
-      "title": "You already have an account",
-      "body": "Sign in with a passkey you already use for this account, on this device or on a nearby one.",
-      "use": "Use my passkey",
       "none-prompt": "None at hand?",
       "create": "Create a new passkey"
     },
     "create-passkey": {
-      "title": "Create your passkey",
-      "body": "You will sign in to the wallet with your fingerprint, your face or your device PIN, with no passwords.",
       "attestations-warning": "A new passkey does not give access to the attestations you obtained with another one.",
-      "shared-device-tip": "Shared computer? Save it on your phone or on a security key, not on this computer.",
-      "button": "Create passkey"
+      "shared-device-tip": "Shared computer? Save it on your phone or on a security key, not on this computer."
     },
     "passkey-incompatible": {
       "title": "This passkey is not compatible",
