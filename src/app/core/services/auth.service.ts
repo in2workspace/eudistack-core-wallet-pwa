@@ -63,6 +63,14 @@ export const SESSION_REFRESH_LOCK = 'eudistack-wallet-session-refresh';
  */
 export const SERVER_LOGOUT_PENDING_KEY = 'wallet_server_logout_pending';
 
+/**
+ * Set in sessionStorage while this tab or window has a session (FR-19). It
+ * survives a reload but not closing the tab or the window, so a reopened Wallet
+ * App does not resume the session of the refresh cookie and asks for the
+ * passkey again. Not a credential: it only allows the start-up resume.
+ */
+export const SESSION_IN_TAB_KEY = 'wallet_session_in_tab';
+
 const AUTH_CHANNEL = 'auth';
 const SESSION_ENDED_MESSAGE = 'walletSessionEnded';
 const SESSION_OPENED_MESSAGE = 'walletSessionOpened';
@@ -128,8 +136,9 @@ interface WebLocks {
  * memory; the refresh token only in the HttpOnly refresh cookie, so nothing
  * stored by this app can open or renew a session (FR-16).
  *
- * - Start-up: `POST /auth/refresh` resumes a session after a reload or a reopen
- *   (FR-19). Guards wait for it through `isInitialized$()`. A temporary failure
+ * - Start-up: `POST /auth/refresh` resumes a session after a reload (FR-19),
+ *   never in a tab or window opened anew (see SESSION_IN_TAB_KEY), which shows
+ *   the access screen. Guards wait for it through `isInitialized$()`. A temporary failure
  *   is retried once (after a short delay or when back online) before showing the
  *   access screen, and again in the background when the connection returns.
  * - Renewal: 30 s before the access token expires, only if there has been
@@ -412,6 +421,11 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       await this.serverSessionData.sessionEnded();
       return false;
     }
+    if (!readSessionInTab()) {
+      // Reopened, not reloaded: the user signs in again with the passkey. The
+      // cookie's session is left alone, another tab may be using it.
+      return false;
+    }
     return this.attemptResume(true);
   }
 
@@ -564,6 +578,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     this.sessionPasskey.set(session.passkeyId, credentialId ?? null);
     this.name$.next(readEmailClaim(session.accessToken));
     this.authenticated$.next(true);
+    writeSessionInTab(true);
     this.scheduleRenewal();
   }
 
@@ -641,6 +656,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     this.authenticated$.next(false);
     this.registrationTicket.clear();
     this.sessionPasskey.clear();
+    writeSessionInTab(false);
     if (wasActive) {
       void this.serverSessionData.sessionEnded();
     }
@@ -789,4 +805,25 @@ function base64UrlToText(segment: string): string {
   const binary = atob(base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '='));
   // `atob` yields one char per byte (0–255), so the code point is the byte value.
   return new TextDecoder().decode(Uint8Array.from(binary, char => char.codePointAt(0) as number));
+}
+
+/** sessionStorage can throw (blocked storage): no marker then, so nothing is resumed. */
+function readSessionInTab(): boolean {
+  try {
+    return sessionStorage.getItem(SESSION_IN_TAB_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeSessionInTab(open: boolean): void {
+  try {
+    if (open) {
+      sessionStorage.setItem(SESSION_IN_TAB_KEY, '1');
+    } else {
+      sessionStorage.removeItem(SESSION_IN_TAB_KEY);
+    }
+  } catch {
+    // Blocked storage: the session simply is not resumed after a reload.
+  }
 }

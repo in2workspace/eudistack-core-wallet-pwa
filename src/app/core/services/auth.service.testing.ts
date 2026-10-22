@@ -4,7 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Router } from '@angular/router';
 import { of, Subject } from 'rxjs';
 import { environment } from 'src/environments/environment';
-import { RemoteAuthService } from './auth.service';
+import { RemoteAuthService, SESSION_IN_TAB_KEY } from './auth.service';
 import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
 import { TenantService } from './tenant.service';
 import { PasskeyCeremonyService, PasskeySession, SessionResponse } from './passkey-ceremony.service';
@@ -80,8 +80,17 @@ export interface AuthHarness {
   activity$: Subject<void>;
 }
 
-/** Builds RemoteAuthService with its collaborators mocked. The start-up resume is left pending. */
-export function createAuthHarness(): AuthHarness {
+/**
+ * Builds RemoteAuthService with its collaborators mocked. The start-up resume is left pending.
+ * By default the tab already had a session (a reload); `reopened` starts it as a tab or window
+ * opened anew, which does not resume.
+ */
+export function createAuthHarness(options: { reopened?: boolean } = {}): AuthHarness {
+  if (options.reopened) {
+    sessionStorage.removeItem(SESSION_IN_TAB_KEY);
+  } else {
+    sessionStorage.setItem(SESSION_IN_TAB_KEY, '1');
+  }
   (globalThis as unknown as { BroadcastChannel: unknown }).BroadcastChannel = BroadcastChannelMock;
   const harness = {
     router: { navigateByUrl: jest.fn().mockResolvedValue(true) },

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom, of } from 'rxjs';
-import { AuthService, isRefreshTokenRejected, RemoteAuthService, SESSION_REFRESH_LOCK } from './auth.service';
+import { AuthService, isRefreshTokenRejected, RemoteAuthService, SESSION_IN_TAB_KEY, SESSION_REFRESH_LOCK } from './auth.service';
 import { AUTH_SERVICE_PROVIDER } from './auth-service.provider';
 import { LocalAuthService } from './local-auth.service';
 import { WalletDiscoveryService } from './wallet-discovery.service';
@@ -146,11 +146,32 @@ describe('RemoteAuthService (EUD-8)', () => {
       await settle();
     });
 
-    it('never stores a token in localStorage or sessionStorage', async () => {
+    it('never stores a token in localStorage or sessionStorage, only the session-in-tab marker', async () => {
       await answerStartupRefresh(harness, session());
 
       expect(localStorage.length).toBe(0);
-      expect(sessionStorage.length).toBe(0);
+      expect(sessionStorage.length).toBe(1);
+      expect(sessionStorage.getItem(SESSION_IN_TAB_KEY)).toBe('1');
+    });
+  });
+
+  describe('reload vs reopen (FR-19)', () => {
+    it('marks the tab when a session opens and clears the mark when it ends', async () => {
+      await answerStartupRefresh(harness, session());
+      expect(sessionStorage.getItem(SESSION_IN_TAB_KEY)).toBe('1');
+
+      service.forceLogout();
+
+      expect(sessionStorage.getItem(SESSION_IN_TAB_KEY)).toBeNull();
+    });
+
+    it('marks the tab when a session opens with a passkey', async () => {
+      await answerStartupRefresh(harness, 'rejected');
+      harness.ceremony.signIn.mockResolvedValue(passkeySession());
+
+      await service.signInWithPasskey();
+
+      expect(sessionStorage.getItem(SESSION_IN_TAB_KEY)).toBe('1');
     });
   });
 
@@ -176,6 +197,8 @@ describe('RemoteAuthService (EUD-8)', () => {
         return run;
       });
       Object.defineProperty(navigator, 'locks', { value: { request }, configurable: true });
+      // jsdom shares sessionStorage between the two "tabs": the other one starts as a reload.
+      sessionStorage.setItem(SESSION_IN_TAB_KEY, '1');
       const otherTab = TestBed.runInInjectionContext(() => new RemoteAuthService());
       try {
         await settle();
@@ -601,6 +624,37 @@ describe('RemoteAuthService (EUD-8)', () => {
 
       expect(service.isLoggedIn()).toBe(false);
     });
+  });
+});
+
+describe('RemoteAuthService — tab or window opened anew (FR-19)', () => {
+  afterEach(() => {
+    TestBed.inject(RemoteAuthService).dispose();
+    TestBed.resetTestingModule();
+  });
+
+  it('does not resume the session of the refresh cookie: the passkey is asked again', async () => {
+    sessionStorage.clear();
+    const harness = createAuthHarness({ reopened: true });
+
+    const resumed = await harness.service.resumeSession();
+
+    expect(resumed).toBe(false);
+    expect(harness.service.isLoggedIn()).toBe(false);
+    harness.http.expectNone(`${AUTH_BASE}/refresh`);
+    // The cookie's session may be in use in another tab: neither ended nor its attestations dropped.
+    harness.http.expectNone(`${AUTH_BASE}/sessions/current`);
+    expect(harness.sessionData.sessionEnded).not.toHaveBeenCalled();
+    harness.http.verify();
+  });
+
+  it('marks the service initialized so the guards send the user to the access screen', async () => {
+    sessionStorage.clear();
+    const harness = createAuthHarness({ reopened: true });
+
+    await harness.service.resumeSession();
+
+    expect(await firstValueFrom(harness.service.isInitialized$())).toBe(true);
   });
 });
 
