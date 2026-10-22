@@ -1,9 +1,7 @@
 import { BrowserCodeReader } from '@zxing/browser';
 
-export const SCANNER_IDEAL_RESOLUTION = { width: 1920, height: 1080 };
-export const SCANNER_MIN_SIDE = 720;
-export const SCANNER_MIN_RETRIES = 2;
-export const SCANNER_RETRY_DELAY_MS = 300;
+const SCANNER_IDEAL_RESOLUTION = { width: 1920, height: 1080 };
+const SCANNER_MIN_SIDE = 720;
 
 const highResolutionMarker = Symbol('highResolutionScannerStream');
 
@@ -21,21 +19,14 @@ export function requestHighResolutionScannerStream(): void {
     if (required === constraints) {
       return original.call(this, constraints);
     }
-    for (let attempt = 0; ; attempt++) {
-      try {
-        return await original.call(this, required);
-      } catch (error) {
-        if (!isOverconstrained(error)) {
-          throw error;
-        }
-        if (attempt >= SCANNER_MIN_RETRIES) {
-          break;
-        }
-        await new Promise(resolve => setTimeout(resolve, SCANNER_RETRY_DELAY_MS * (attempt + 1)));
+    try {
+      return await original.call(this, required);
+    } catch (error) {
+      if (!isOverconstrained(error)) {
+        throw error;
       }
+      return original.call(this, withScannerResolution(constraints, false) as MediaStreamConstraints);
     }
-    const fallback = withScannerResolution(constraints, false) as MediaStreamConstraints;
-    return original.call(this, fallback);
   };
   Object.defineProperty(patched, highResolutionMarker, { value: true });
   prototype.getUserMedia = patched;

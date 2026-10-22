@@ -69,7 +69,8 @@ describe('requestHighResolutionScannerStream', () => {
     });
   });
 
-  it('retries the minimum resolution after a transient overconstrained error', async () => {
+  it('falls back to the ideal resolution right away when the camera cannot reach the minimum', async () => {
+    jest.useFakeTimers();
     const getUserMedia = jest.fn()
       .mockRejectedValueOnce({ name: 'OverconstrainedError' })
       .mockResolvedValueOnce(fakeStream);
@@ -77,35 +78,24 @@ describe('requestHighResolutionScannerStream', () => {
 
     await readerGetUserMedia({ video: { deviceId: 'cam' } });
 
+    expect(jest.getTimerCount()).toBe(0);
+    jest.useRealTimers();
     expect(getUserMedia).toHaveBeenCalledTimes(2);
-    expect(getUserMedia).toHaveBeenLastCalledWith({
-      video: { deviceId: 'cam', width: { min: 720, ideal: 1920 }, height: { min: 720, ideal: 1080 } }
-    });
-  });
-
-  it('falls back to the ideal resolution when the minimum keeps failing', async () => {
-    const getUserMedia = jest.fn()
-      .mockRejectedValueOnce({ name: 'OverconstrainedError' })
-      .mockRejectedValueOnce({ name: 'OverconstrainedError' })
-      .mockRejectedValueOnce({ name: 'OverconstrainedError' })
-      .mockResolvedValueOnce(fakeStream);
-    mockBrowser(getUserMedia);
-
-    await readerGetUserMedia({ video: { deviceId: 'cam' } });
-
-    expect(getUserMedia).toHaveBeenCalledTimes(4);
     expect(getUserMedia).toHaveBeenLastCalledWith({
       video: { deviceId: 'cam', width: { ideal: 1920 }, height: { ideal: 1080 } }
     });
   });
 
-  it('propagates any other camera error', async () => {
-    const getUserMedia = jest.fn().mockRejectedValue({ name: 'NotAllowedError' });
-    mockBrowser(getUserMedia);
+  it.each(['NotAllowedError', 'NotReadableError', 'AbortError'])(
+    'propagates %s without retrying so CameraService keeps handling it',
+    async name => {
+      const getUserMedia = jest.fn().mockRejectedValue({ name });
+      mockBrowser(getUserMedia);
 
-    await expect(readerGetUserMedia({ video: { deviceId: 'cam' } })).rejects.toEqual({ name: 'NotAllowedError' });
-    expect(getUserMedia).toHaveBeenCalledTimes(1);
-  });
+      await expect(readerGetUserMedia({ video: { deviceId: 'cam' } })).rejects.toEqual({ name });
+      expect(getUserMedia).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it('passes boolean video requests through unchanged', async () => {
     const getUserMedia = jest.fn().mockResolvedValue(fakeStream);
