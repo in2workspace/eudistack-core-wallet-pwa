@@ -2,7 +2,8 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { tenantGuard } from './core/guards/tenant.guard';
 import { authLandingGuard, iosInstallGuard, iosInstallRouteGuard } from './core/guards/ios-install.guard';
-import { hybridOnboardingGuard, hybridOnboardingRouteGuard } from './core/guards/hybrid-onboarding.guard';
+import { accessRouteGuard, browserModeAuthRouteGuard } from './core/guards/access.guard';
+import { passkeyPrfOnboardingGuard, passkeyPrfOnboardingRouteGuard } from './core/guards/passkey-prf-onboarding.guard';
 
 export const routes: Routes = [
   {
@@ -18,11 +19,11 @@ export const routes: Routes = [
       ),
   },
   {
-    path: 'hybrid-onboarding',
-    canActivate: [tenantGuard, authGuard, hybridOnboardingRouteGuard],
+    path: 'passkey-prf-onboarding',
+    canActivate: [tenantGuard, authGuard, passkeyPrfOnboardingRouteGuard],
     loadComponent: () =>
-      import('./features/hybrid-onboarding/hybrid-onboarding.page').then(
-        m => m.HybridOnboardingPage
+      import('./features/passkey-prf-onboarding/passkey-prf-onboarding.page').then(
+        m => m.PasskeyPrfOnboardingPage
       ),
   },
   {
@@ -35,11 +36,19 @@ export const routes: Routes = [
     canActivate: [tenantGuard, iosInstallGuard],
     children: [
       {
+        // Server mode (EUD-8): single access screen for sign-in and the email flow.
+        path: 'access',
+        canActivate: [accessRouteGuard],
+        loadComponent: () => import('./features/auth/access/access.page').then(m => m.AccessPage),
+      },
+      {
         path: 'login',
+        canActivate: [browserModeAuthRouteGuard],
         loadComponent: () => import('./features/auth/login/login.page').then(m => m.LoginPage),
       },
       {
         path: 'register',
+        canActivate: [browserModeAuthRouteGuard],
         loadComponent: () => import('./features/auth/login/login.page').then(m => m.LoginPage),
       },
     ]
@@ -54,7 +63,7 @@ export const routes: Routes = [
   },
   {
     path: 'tabs',
-    canActivate: [tenantGuard, hybridOnboardingGuard],
+    canActivate: [tenantGuard, passkeyPrfOnboardingGuard],
     loadChildren: () => import('./features/tabs/tabs.routes').then(m => m.default),
   },
   {

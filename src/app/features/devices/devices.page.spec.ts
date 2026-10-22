@@ -12,7 +12,7 @@ import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.s
 import { WALLET_DISCOVERY_GATEWAY } from 'src/app/core/gateways/wallet-discovery.gateway';
 import { AuthService } from 'src/app/core/services/auth.service';
 import { PasskeyApiService, PasskeyInfo } from 'src/app/core/services/passkey-api.service';
-import { PasskeyStoreService } from 'src/app/core/services/passkey-store.service';
+import { SessionPasskeyService } from 'src/app/core/services/session-passkey.service';
 
 /** Minimal fake gateway — never hits the network. */
 const fakeGateway = { fetch: () => of() };
@@ -40,9 +40,25 @@ const mockPasskeyApi = {
   revokeSessions: jest.fn().mockReturnValue(of({})),
 };
 
-const mockPasskeyStore = {
+/** WebAuthn credential ID of the passkey that opened the session in each test. */
+const mockSessionCredential = {
   getCredentialId: jest.fn().mockReturnValue('current-cred-id'),
-  clearCredentialId: jest.fn().mockResolvedValue(undefined),
+};
+
+let currentPage: DevicesPage | null = null;
+
+/**
+ * The page identifies the current device by the session's passkey id (EUD-8 FR-15).
+ * Tests state the session's credential ID; it maps to the id of the listed passkey
+ * with that credential, or to an id that matches none.
+ */
+const mockSessionPasskey = {
+  passkeyId: () => {
+    const credentialId = mockSessionCredential.getCredentialId();
+    if (!credentialId) return null;
+    const listed = currentPage?.passkeys() ?? [];
+    return listed.find(passkey => passkey.credentialId === credentialId)?.id ?? 'passkey-of-another-device';
+  },
 };
 
 const mockAuthService = {
@@ -72,7 +88,7 @@ async function createModule(walletMode: 'browser' | 'server' = 'server'): Promis
       { provide: WalletDiscoveryService, useValue: makeDiscoveryStub(walletMode) },
       { provide: WALLET_DISCOVERY_GATEWAY, useValue: fakeGateway },
       { provide: PasskeyApiService, useValue: mockPasskeyApi },
-      { provide: PasskeyStoreService, useValue: mockPasskeyStore },
+      { provide: SessionPasskeyService, useValue: mockSessionPasskey },
       { provide: AuthService, useValue: mockAuthService },
       { provide: AlertController, useValue: mockAlertController },
       { provide: Router, useValue: routerSpy },
@@ -82,6 +98,7 @@ async function createModule(walletMode: 'browser' | 'server' = 'server'): Promis
   }).compileComponents();
 
   const fixture = TestBed.createComponent(DevicesPage);
+  currentPage = fixture.componentInstance;
   fixture.detectChanges();
   return fixture;
 }
@@ -157,7 +174,7 @@ describe('T7: DevicesPage > device list rendering (EUD-143)', () => {
     jest.clearAllMocks();
     // Reset to safe defaults before each test
     mockPasskeyApi.listPasskeys.mockReturnValue(of([]));
-    mockPasskeyStore.getCredentialId.mockReturnValue('current-cred-id');
+    mockSessionCredential.getCredentialId.mockReturnValue('current-cred-id');
   });
 
   afterEach(() => {
@@ -197,7 +214,7 @@ describe('T7: DevicesPage > device list rendering (EUD-143)', () => {
   // --- AC-03 -----------------------------------------------------------
 
   it('AC-03: should show this-device badge on the entry matching currentCredentialId', async () => {
-    mockPasskeyStore.getCredentialId.mockReturnValue('cred-1');
+    mockSessionCredential.getCredentialId.mockReturnValue('cred-1');
     mockPasskeyApi.listPasskeys.mockReturnValue(of([BASE_PASSKEY]));
     const fixture = await createModule('server');
     const el: HTMLElement = fixture.nativeElement;
@@ -213,7 +230,7 @@ describe('T7: DevicesPage > device list rendering (EUD-143)', () => {
       { ...BASE_PASSKEY, id: '1', credentialId: 'cred-1', displayName: 'Device A' },
       { ...BASE_PASSKEY, id: '2', credentialId: 'cred-2', displayName: 'Device B' },
     ];
-    mockPasskeyStore.getCredentialId.mockReturnValue('cred-1');
+    mockSessionCredential.getCredentialId.mockReturnValue('cred-1');
     mockPasskeyApi.listPasskeys.mockReturnValue(of(passkeys));
     const fixture = await createModule('server');
     const badges = fixture.nativeElement.querySelectorAll('.this-device-badge');
@@ -224,7 +241,7 @@ describe('T7: DevicesPage > device list rendering (EUD-143)', () => {
   // --- EC-01 -----------------------------------------------------------
 
   it('EC-01: should show list with one device and mark it as the current device', async () => {
-    mockPasskeyStore.getCredentialId.mockReturnValue('cred-1');
+    mockSessionCredential.getCredentialId.mockReturnValue('cred-1');
     mockPasskeyApi.listPasskeys.mockReturnValue(of([BASE_PASSKEY]));
     const fixture = await createModule('server');
     const el: HTMLElement = fixture.nativeElement;
@@ -260,7 +277,7 @@ describe('T7: DevicesPage > device list rendering (EUD-143)', () => {
   // --- EC-03 -----------------------------------------------------------
 
   it('EC-03: should not mark any device when currentCredentialId does not match any entry', async () => {
-    mockPasskeyStore.getCredentialId.mockReturnValue('non-existent-cred');
+    mockSessionCredential.getCredentialId.mockReturnValue('non-existent-cred');
     mockPasskeyApi.listPasskeys.mockReturnValue(of([BASE_PASSKEY]));
     const fixture = await createModule('server');
     const badges = fixture.nativeElement.querySelectorAll('.this-device-badge');
@@ -269,7 +286,7 @@ describe('T7: DevicesPage > device list rendering (EUD-143)', () => {
   });
 
   it('EC-03: should not mark any device when currentCredentialId is null (fail-safe AD-2)', async () => {
-    mockPasskeyStore.getCredentialId.mockReturnValue(null);
+    mockSessionCredential.getCredentialId.mockReturnValue(null);
     mockPasskeyApi.listPasskeys.mockReturnValue(of([BASE_PASSKEY]));
     const fixture = await createModule('server');
     const badges = fixture.nativeElement.querySelectorAll('.this-device-badge');
@@ -315,7 +332,7 @@ describe('T8: DevicesPage > error scenarios (EUD-143)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPasskeyApi.listPasskeys.mockReturnValue(of([]));
-    mockPasskeyStore.getCredentialId.mockReturnValue('current-cred-id');
+    mockSessionCredential.getCredentialId.mockReturnValue('current-cred-id');
   });
 
   afterEach(() => {
@@ -449,8 +466,7 @@ describe('EUD-144 T8: DevicesPage > revoke device — happy path', () => {
     jest.clearAllMocks();
     mockPasskeyApi.listPasskeys.mockReturnValue(of([OTHER_PASSKEY]));
     mockPasskeyApi.deletePasskey.mockReturnValue(of(undefined));
-    mockPasskeyStore.getCredentialId.mockReturnValue('current-cred-id');
-    mockPasskeyStore.clearCredentialId.mockResolvedValue(undefined);
+    mockSessionCredential.getCredentialId.mockReturnValue('current-cred-id');
     mockAlertController.create.mockResolvedValue({ present: jest.fn() });
   });
 
@@ -480,8 +496,6 @@ describe('EUD-144 T8: DevicesPage > revoke device — happy path', () => {
     const fixture = await createModule('server');
 
     await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
-
-    expect(mockPasskeyStore.clearCredentialId).not.toHaveBeenCalled();
     expect(mockAuthService.forceLogout).not.toHaveBeenCalled();
   });
 
@@ -528,7 +542,7 @@ describe('EUD-144 T8: DevicesPage > revoke device — happy path', () => {
 
   it('EC-04: should not force logout when revoking another device while the current device is also listed', async () => {
     mockPasskeyApi.listPasskeys.mockReturnValue(of([BASE_PASSKEY, OTHER_PASSKEY]));
-    mockPasskeyStore.getCredentialId.mockReturnValue(BASE_PASSKEY.credentialId);
+    mockSessionCredential.getCredentialId.mockReturnValue(BASE_PASSKEY.credentialId);
     mockAlertController.create.mockImplementation((opts) => {
       pressAlertButton(opts, 'destructive');
       return Promise.resolve({ present: jest.fn() });
@@ -536,15 +550,13 @@ describe('EUD-144 T8: DevicesPage > revoke device — happy path', () => {
     const fixture = await createModule('server');
 
     await fixture.componentInstance.deletePasskey(OTHER_PASSKEY);
-
-    expect(mockPasskeyStore.clearCredentialId).not.toHaveBeenCalled();
     expect(mockAuthService.forceLogout).not.toHaveBeenCalled();
     expect(fixture.componentInstance.passkeys().some(p => p.id === BASE_PASSKEY.id)).toBe(true);
   });
 
   it('EC-04: should use the standard (non-reinforced) message when revoking another device while the current device is also listed', async () => {
     mockPasskeyApi.listPasskeys.mockReturnValue(of([BASE_PASSKEY, OTHER_PASSKEY]));
-    mockPasskeyStore.getCredentialId.mockReturnValue(BASE_PASSKEY.credentialId);
+    mockSessionCredential.getCredentialId.mockReturnValue(BASE_PASSKEY.credentialId);
     mockAlertController.create.mockResolvedValue({ present: jest.fn() });
     const fixture = await createModule('server');
 
@@ -578,10 +590,7 @@ describe('EUD-144 T9: DevicesPage > self-revoke', () => {
     callOrder = [];
     mockPasskeyApi.listPasskeys.mockReturnValue(of([CURRENT_PASSKEY]));
     mockPasskeyApi.deletePasskey.mockReturnValue(of(undefined));
-    mockPasskeyStore.getCredentialId.mockReturnValue(CURRENT_PASSKEY.credentialId);
-    mockPasskeyStore.clearCredentialId.mockImplementation(async () => {
-      callOrder.push('clearCredentialId');
-    });
+    mockSessionCredential.getCredentialId.mockReturnValue(CURRENT_PASSKEY.credentialId);
     mockAuthService.forceLogout.mockImplementation(() => {
       callOrder.push('forceLogout');
     });
@@ -608,37 +617,33 @@ describe('EUD-144 T9: DevicesPage > self-revoke', () => {
     );
   });
 
-  it('AC-06: should clear the local credential id and force logout after revoking the current device', async () => {
+  it('AC-06: should force logout after revoking the current device', async () => {
     const fixture = await createModule('server');
 
     await fixture.componentInstance.deletePasskey(CURRENT_PASSKEY);
-
-    expect(mockPasskeyStore.clearCredentialId).toHaveBeenCalled();
     expect(mockAuthService.forceLogout).toHaveBeenCalled();
   });
 
-  it('AC-06 (R-2): should clear the local credential id before forcing logout', async () => {
+  it('AC-06 (R-2): should force logout exactly once after revoking the current device', async () => {
     const fixture = await createModule('server');
 
     await fixture.componentInstance.deletePasskey(CURRENT_PASSKEY);
 
-    expect(callOrder).toEqual(['clearCredentialId', 'forceLogout']);
+    expect(callOrder).toEqual(['forceLogout']);
   });
 
   // --- EC-03 ---------------------------------------------------------------
 
   it('EC-03: should not clear the credential id or force logout when the local credential id cannot be resolved (null)', async () => {
-    mockPasskeyStore.getCredentialId.mockReturnValue(null);
+    mockSessionCredential.getCredentialId.mockReturnValue(null);
     const fixture = await createModule('server');
 
     await fixture.componentInstance.deletePasskey(CURRENT_PASSKEY);
-
-    expect(mockPasskeyStore.clearCredentialId).not.toHaveBeenCalled();
     expect(mockAuthService.forceLogout).not.toHaveBeenCalled();
   });
 
   it('EC-03: should use the standard (non-reinforced) message when the local credential id cannot be resolved (null)', async () => {
-    mockPasskeyStore.getCredentialId.mockReturnValue(null);
+    mockSessionCredential.getCredentialId.mockReturnValue(null);
     const fixture = await createModule('server');
 
     await fixture.componentInstance.deletePasskey(CURRENT_PASSKEY);
@@ -658,8 +663,7 @@ describe('EUD-144 T10: DevicesPage > revoke device — error/edge scenarios', ()
   beforeEach(() => {
     jest.clearAllMocks();
     mockPasskeyApi.listPasskeys.mockReturnValue(of([OTHER_PASSKEY]));
-    mockPasskeyStore.getCredentialId.mockReturnValue('current-cred-id');
-    mockPasskeyStore.clearCredentialId.mockResolvedValue(undefined);
+    mockSessionCredential.getCredentialId.mockReturnValue('current-cred-id');
     mockAlertController.create.mockImplementation((opts) => {
       pressAlertButton(opts, 'destructive');
       return Promise.resolve({ present: jest.fn() });
@@ -732,14 +736,12 @@ describe('EUD-144 T10: DevicesPage > revoke device — error/edge scenarios', ()
 
   it('ES-04: should not force logout on a failed self-revoke when the backend responds 5xx', async () => {
     mockPasskeyApi.listPasskeys.mockReturnValue(of([CURRENT_PASSKEY]));
-    mockPasskeyStore.getCredentialId.mockReturnValue(CURRENT_PASSKEY.credentialId);
+    mockSessionCredential.getCredentialId.mockReturnValue(CURRENT_PASSKEY.credentialId);
     mockPasskeyApi.deletePasskey.mockReturnValue(throwError(() => ({ status: 500 })));
     const fixture = await createModule('server');
 
     await fixture.componentInstance.deletePasskey(CURRENT_PASSKEY);
     await Promise.resolve();
-
-    expect(mockPasskeyStore.clearCredentialId).not.toHaveBeenCalled();
     expect(mockAuthService.forceLogout).not.toHaveBeenCalled();
   });
 
@@ -759,7 +761,7 @@ describe('EUD-144 T10: DevicesPage > revoke device — error/edge scenarios', ()
 
   it('ES-05: should not force logout on a failed self-revoke when the request times out', async () => {
     mockPasskeyApi.listPasskeys.mockReturnValue(of([CURRENT_PASSKEY]));
-    mockPasskeyStore.getCredentialId.mockReturnValue(CURRENT_PASSKEY.credentialId);
+    mockSessionCredential.getCredentialId.mockReturnValue(CURRENT_PASSKEY.credentialId);
     mockPasskeyApi.deletePasskey.mockReturnValue(
       throwError(() => ({ name: 'TimeoutError', message: 'Timeout' }))
     );
@@ -767,8 +769,6 @@ describe('EUD-144 T10: DevicesPage > revoke device — error/edge scenarios', ()
 
     await fixture.componentInstance.deletePasskey(CURRENT_PASSKEY);
     await Promise.resolve();
-
-    expect(mockPasskeyStore.clearCredentialId).not.toHaveBeenCalled();
     expect(mockAuthService.forceLogout).not.toHaveBeenCalled();
   });
 });
@@ -804,7 +804,7 @@ describe('DevicesPage > current/other split and device icons', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPasskeyApi.listPasskeys.mockReturnValue(of([]));
-    mockPasskeyStore.getCredentialId.mockReturnValue('current-cred-id');
+    mockSessionCredential.getCredentialId.mockReturnValue('current-cred-id');
   });
 
   afterEach(() => {
@@ -856,7 +856,7 @@ describe('DevicesPage > current/other split and device icons', () => {
   });
 
   it('EC-03: explains the situation instead of guessing when the current device is unknown', async () => {
-    mockPasskeyStore.getCredentialId.mockReturnValue(null);
+    mockSessionCredential.getCredentialId.mockReturnValue(null);
     mockPasskeyApi.listPasskeys.mockReturnValue(of([LAPTOP, PHONE]));
     const fixture = await createModule('server');
     const el: HTMLElement = fixture.nativeElement;

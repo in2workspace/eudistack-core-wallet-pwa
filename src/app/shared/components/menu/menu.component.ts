@@ -2,11 +2,11 @@ import { Component, computed, inject } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NavigationStart, Router, RouterModule } from '@angular/router';
 import { filter } from 'rxjs';
-import { AuthService } from 'src/app/core/services/auth.service';
+import { ACCESS_ROUTE, AuthService } from 'src/app/core/services/auth.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
-import { IonicModule, PopoverController } from '@ionic/angular';
+import { AlertController, IonicModule, PopoverController } from '@ionic/angular';
 import { CommonModule } from '@angular/common';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
     // eslint-disable-next-line @angular-eslint/component-selector
@@ -20,6 +20,8 @@ export class MenuComponent {
   private readonly popOverController = inject(PopoverController);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly alertController = inject(AlertController);
+  private readonly translate = inject(TranslateService);
 
   private readonly discoverySnapshot = inject(WalletDiscoveryService).snapshot();
 
@@ -46,10 +48,34 @@ export class MenuComponent {
     }
   }
 
+  /**
+   * Server mode asks first (EUD-8, wireframe "Cerrar sesión"): ending the session
+   * in the service means signing in again with the passkey. Browser mode closes
+   * straight away, as before.
+   */
   public logout(): void {
-    this.authService.logout().subscribe(() => {
-      this.router.navigate(['/auth/login']);
+    void this.popOverController.dismiss().catch(() => undefined);
+    if (this.discoverySnapshot()?.mode !== 'server') {
+      this.endSession();
+      return;
+    }
+    void this.confirmLogout();
+  }
+
+  private async confirmLogout(): Promise<void> {
+    const alert = await this.alertController.create({
+      header: this.translate.instant('wallet-access.logout.title'),
+      buttons: [
+        { text: this.translate.instant('wallet-access.logout.cancel'), role: 'cancel' },
+        { text: this.translate.instant('wallet-access.logout.confirm'), role: 'confirm', handler: () => this.endSession() },
+      ],
     });
-    this.popOverController.dismiss();
+    await alert.present();
+  }
+
+  private endSession(): void {
+    this.authService.logout().subscribe(() => {
+      void this.router.navigateByUrl(this.discoverySnapshot()?.mode === 'server' ? ACCESS_ROUTE : '/auth/login');
+    });
   }
 }

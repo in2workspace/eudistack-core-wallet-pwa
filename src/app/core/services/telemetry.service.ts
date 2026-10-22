@@ -6,8 +6,8 @@ export type TelemetryEvent =
   | 'ios_pwa_installed'
   | 'wallet_discovery_resolved'
   | 'wallet_discovery_fallback'
-  | 'hybrid_onboarding_shown'
-  | 'hybrid_onboarding_accepted'
+  | 'passkey_prf_onboarding_shown'
+  | 'passkey_prf_onboarding_accepted'
   | 'about_legal_document_load_failed'
   | 'about_oss_licenses_unavailable'
   // --- EUD-142 (runtime UI translation) ---
