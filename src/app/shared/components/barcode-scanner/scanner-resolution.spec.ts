@@ -29,10 +29,12 @@ describe('withScannerResolution', () => {
 });
 
 describe('requestHighResolutionScannerStream', () => {
+  type ReaderPrototype = { getUserMedia?: (c: MediaStreamConstraints) => Promise<MediaStream> };
+  const prototype = BrowserCodeReader.prototype as unknown as ReaderPrototype;
+  const originalReaderGetUserMedia = prototype.getUserMedia;
   const originalMediaDevices = navigator.mediaDevices;
   const readerGetUserMedia = (constraints: MediaStreamConstraints): Promise<MediaStream> =>
-    (BrowserCodeReader.prototype as unknown as { getUserMedia: (c: MediaStreamConstraints) => Promise<MediaStream> })
-      .getUserMedia(constraints);
+    prototype.getUserMedia!(constraints);
 
   function mockBrowser(getUserMedia: jest.Mock): void {
     Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia }, configurable: true });
@@ -43,13 +45,41 @@ describe('requestHighResolutionScannerStream', () => {
     Object.defineProperty(navigator, 'mediaDevices', { value: originalMediaDevices, configurable: true });
   });
 
-  it('patches the zxing reader once and asks first for the minimum resolution', async () => {
-    const getUserMedia = jest.fn().mockResolvedValue(fakeStream);
-    mockBrowser(getUserMedia);
-    const patched = (BrowserCodeReader.prototype as unknown as { getUserMedia: unknown }).getUserMedia;
+  afterAll(() => {
+    prototype.getUserMedia = originalReaderGetUserMedia;
+  });
+
+  it('relies on zxing still exposing getUserMedia on BrowserCodeReader', () => {
+    expect(typeof originalReaderGetUserMedia).toBe('function');
+  });
+
+  it('does not patch the zxing reader twice', () => {
+    mockBrowser(jest.fn());
+    const patched = prototype.getUserMedia;
+
     requestHighResolutionScannerStream();
 
-    expect((BrowserCodeReader.prototype as unknown as { getUserMedia: unknown }).getUserMedia).toBe(patched);
+    expect(prototype.getUserMedia).toBe(patched);
+    expect(patched).not.toBe(originalReaderGetUserMedia);
+  });
+
+  it('warns and leaves the reader untouched when zxing no longer exposes getUserMedia', () => {
+    const current = prototype.getUserMedia;
+    const warn = jest.spyOn(console, 'warn').mockImplementation();
+    delete prototype.getUserMedia;
+
+    requestHighResolutionScannerStream();
+
+    expect(prototype.getUserMedia).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('BrowserCodeReader.getUserMedia not found'));
+    prototype.getUserMedia = current;
+    warn.mockRestore();
+  });
+
+  it('asks the camera first for the minimum resolution', async () => {
+    const getUserMedia = jest.fn().mockResolvedValue(fakeStream);
+    mockBrowser(getUserMedia);
+
     await readerGetUserMedia({ video: { deviceId: { exact: 'cam' } } });
     expect(getUserMedia).toHaveBeenCalledTimes(1);
     expect(getUserMedia).toHaveBeenCalledWith({
@@ -69,7 +99,7 @@ describe('requestHighResolutionScannerStream', () => {
     });
   });
 
-  it('falls back to the ideal resolution right away when the camera cannot reach the minimum', async () => {
+  it('falls back right away to the ideal resolution on a camera that cannot reach the minimum (e.g. 640x480 only)', async () => {
     jest.useFakeTimers();
     const getUserMedia = jest.fn()
       .mockRejectedValueOnce({ name: 'OverconstrainedError' })
@@ -84,6 +114,16 @@ describe('requestHighResolutionScannerStream', () => {
     expect(getUserMedia).toHaveBeenLastCalledWith({
       video: { deviceId: 'cam', width: { ideal: 1920 }, height: { ideal: 1080 } }
     });
+  });
+
+  it('propagates the error when the fallback request also fails', async () => {
+    const getUserMedia = jest.fn()
+      .mockRejectedValueOnce({ name: 'OverconstrainedError' })
+      .mockRejectedValueOnce({ name: 'NotFoundError' });
+    mockBrowser(getUserMedia);
+
+    await expect(readerGetUserMedia({ video: { deviceId: 'cam' } })).rejects.toEqual({ name: 'NotFoundError' });
+    expect(getUserMedia).toHaveBeenCalledTimes(2);
   });
 
   it.each(['NotAllowedError', 'NotReadableError', 'AbortError'])(

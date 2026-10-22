@@ -11,7 +11,11 @@ type PatchableReader = { getUserMedia: GetUserMedia };
 export function requestHighResolutionScannerStream(): void {
   const prototype = BrowserCodeReader.prototype as unknown as PatchableReader;
   const original = prototype.getUserMedia;
-  if (!original || original[highResolutionMarker]) {
+  if (typeof original !== 'function') {
+    console.warn('Scanner: BrowserCodeReader.getUserMedia not found, the camera keeps the browser default resolution.');
+    return;
+  }
+  if (original[highResolutionMarker]) {
     return;
   }
   const patched = async function (this: unknown, constraints: MediaStreamConstraints): Promise<MediaStream> {
