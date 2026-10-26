@@ -42,6 +42,7 @@ describe('requestHighResolutionScannerStream', () => {
   }
 
   afterEach(() => {
+    jest.useRealTimers();
     Object.defineProperty(navigator, 'mediaDevices', { value: originalMediaDevices, configurable: true });
   });
 
@@ -109,7 +110,6 @@ describe('requestHighResolutionScannerStream', () => {
     await readerGetUserMedia({ video: { deviceId: 'cam' } });
 
     expect(jest.getTimerCount()).toBe(0);
-    jest.useRealTimers();
     expect(getUserMedia).toHaveBeenCalledTimes(2);
     expect(getUserMedia).toHaveBeenLastCalledWith({
       video: { deviceId: 'cam', width: { ideal: 1920 }, height: { ideal: 1080 } }
