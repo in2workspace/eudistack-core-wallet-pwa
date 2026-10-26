@@ -49,7 +49,12 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     patchStatus: jest.Mock;
     remove: jest.Mock;
   };
-  let mockWalletService: { refreshCredentials: jest.Mock; getAllVCs: jest.Mock; updateCredentialStatus: jest.Mock };
+  let mockWalletService: {
+    refreshCredentials: jest.Mock;
+    loadCredentialsForPresentation: jest.Mock;
+    getAllVCs: jest.Mock;
+    updateCredentialStatus: jest.Mock;
+  };
   let mockToastServiceHandler: {
     showErrorAlertByTranslateLabel: jest.Mock;
     showToast: jest.Mock;
@@ -95,6 +100,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
 
     mockWalletService = {
       refreshCredentials: jest.fn().mockReturnValue(of([])),
+      loadCredentialsForPresentation: jest.fn().mockReturnValue(of([])),
       getAllVCs: jest.fn().mockReturnValue(of([])),
       updateCredentialStatus: jest.fn().mockReturnValue(of(null)),
     };
@@ -209,7 +215,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
 
   describe('when the credential load fails (status === error)', () => {
     beforeEach(() => {
-      // refreshCredentials completes but the store ends in 'error'
+      // loadCredentialsForPresentation completes but the store ends in 'error'
       mockCredentialCacheService.status.mockReturnValue('error');
       mockCredentialCacheService.getAll.mockReturnValue([mockValidVc]);
     });

@@ -100,15 +100,16 @@ function domExceptionName(error: unknown): string | undefined {
  * Single entry point for WebAuthn ceremonies: whatever the browser rejects with
  * (or a `null` result, which some engines return on dismissal) becomes a
  * classified PasskeyError, so callers never surface a raw DOMException text.
+ * Also wraps `@simplewebauthn/browser`, whose `WebAuthnError` keeps the DOMException `name`.
  * `timeoutMs` must be the `timeout` sent in the options (omit it when none was).
  */
-export async function runPasskeyCeremony(
+export async function runPasskeyCeremony<T = Credential>(
   ceremony: PasskeyCeremony,
   timeoutMs: number | undefined,
-  ceremonyFn: () => Promise<Credential | null>
-): Promise<Credential> {
+  ceremonyFn: () => Promise<T | null>
+): Promise<T> {
   const startedAt = Date.now();
-  let credential: Credential | null;
+  let credential: T | null;
   try {
     credential = await ceremonyFn();
   } catch (e: unknown) {

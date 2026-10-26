@@ -1,13 +1,6 @@
 <ion-content [fullscreen]="true" class="auth-bg">
   <div class="auth-page">
     <div class="auth-wrapper">
-      @if (canGoBack()) {
-        <button type="button" class="auth-back" (click)="goBackToEmail()">
-          <ion-icon name="chevron-back-outline"></ion-icon>
-          {{ 'auth.register.back' | translate }}
-        </button>
-      }
-
       <!-- Shape comes from /assets/svg via CSS mask -->
       <div
         class="auth-watermark"
@@ -94,131 +87,6 @@
               }
             }
           }
-
-          <!-- Step 2: Email -->
-          @case ('email') {
-            <h1 class="auth-title">{{ 'auth.login.email-title' | translate }}</h1>
-            <p class="auth-subtitle">{{ 'auth.login.email-subtitle' | translate: { brand: brandName() } }}</p>
-
-            <div class="auth-field auth-field--email">
-              <label class="auth-field__label" for="login-email">
-                {{ 'auth.register.email-label' | translate }}
-              </label>
-              <ion-input
-                id="login-email"
-                [(ngModel)]="email"
-                type="email"
-                inputmode="email"
-                autocomplete="email"
-                [placeholder]="'auth.register.email-placeholder' | translate"
-                class="auth-input"
-                (keyup.enter)="sendCode()"
-              ></ion-input>
-            </div>
-
-            <button
-              type="button"
-              class="auth-button auth-button--email"
-              [disabled]="!email() || loading || resendSecondsLeft() > 0"
-              (click)="sendCode()"
-            >
-              <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
-              <span *ngIf="!loading && resendSecondsLeft() === 0">{{ 'auth.register.send-code' | translate }}</span>
-              <span *ngIf="!loading && resendSecondsLeft() > 0">{{ 'auth.register.retry-in' | translate: { time: resendCountdown() } }}</span>
-            </button>
-          }
-
-          <!-- Step 3: Verify email -->
-          @case ('code') {
-            <h1 class="auth-title">{{ 'auth.register.verify-title' | translate }}</h1>
-            <p class="auth-subtitle">
-              {{ 'auth.register.code-sent-prefix' | translate }} <strong>{{ email() }}</strong>.<br />
-              {{ 'auth.register.code-validity' | translate }}
-            </p>
-
-            <div class="auth-field auth-field--otp">
-              <span class="auth-field__label">{{ 'auth.register.code-label' | translate }}</span>
-              <app-otp-input
-                #otpRef
-                [length]="6"
-                [autofocus]="true"
-                [error]="!!errorMessage"
-                [errorMessage]="errorMessage"
-                (changed)="onOtpChanged($event)"
-                (completed)="verifyCode()"
-              ></app-otp-input>
-            </div>
-
-            <p class="auth-resend">
-              @if (resendSecondsLeft() > 0) {
-                {{ (rateLimited() ? 'auth.register.new-code-in' : 'auth.register.resend-in') | translate: { time: resendCountdown() } }}
-              } @else {
-                {{ (codeState() === 'expired' ? 'auth.register.code-expired-prompt' : codeState() === 'exhausted' ? 'auth.register.code-exhausted-prompt' : 'auth.register.resend-prompt') | translate }}
-                <button type="button" class="auth-inline-link" [disabled]="loading" (click)="resendCode()">
-                  {{ 'auth.register.resend-action' | translate }}
-                </button>
-              }
-            </p>
-
-            <button
-              type="button"
-              class="auth-button auth-button--code"
-              [disabled]="!canSubmitCode() || loading"
-              (click)="verifyCode()"
-            >
-              <ion-spinner *ngIf="loading" name="crescent" class="btn-spinner"></ion-spinner>
-              <span *ngIf="!loading">{{ 'auth.register.continue' | translate }}</span>
-            </button>
-          }
-
-          <!-- Step 4: Passkey -->
-          @case ('passkey') {
-            @if (needsPasskeySetup) {
-              <h1 class="auth-title">
-                {{ 'auth.passkey.verified-title' | translate }}<br />
-                {{ 'auth.passkey.setup-title' | translate }}
-              </h1>
-              <p class="auth-subtitle">
-                {{ 'auth.passkey.verified-subtitle' | translate }}<br />
-                {{ 'auth.passkey.setup-subtitle' | translate }}
-              </p>
-
-              <div class="auth-field auth-field--device">
-                <label class="auth-field__label" for="passkey-device-name">
-                  {{ 'auth.passkey.device-name-label' | translate }}
-                </label>
-                <ion-input
-                  id="passkey-device-name"
-                  [(ngModel)]="deviceName"
-                  type="text"
-                  maxlength="100"
-                  [placeholder]="'auth.passkey.device-name-placeholder' | translate"
-                  class="auth-input"
-                  (keyup.enter)="deviceName.trim() && !loading && createPasskeyForDevice()"
-                ></ion-input>
-              </div>
-
-              <button
-                type="button"
-                class="auth-button"
-                [disabled]="loading || !deviceName.trim()"
-                (click)="createPasskeyForDevice()"
-              >
-                {{ 'auth.passkey.register-button' | translate }}
-              </button>
-
-              @if (showEdgeWindowsPasskeyHint) {
-                <p class="auth-hint">{{ 'auth.passkey.edge-windows-hint' | translate }}</p>
-              }
-            } @else {
-              <h1 class="auth-title">{{ 'auth.login.title-welcome' | translate }}</h1>
-              <p class="auth-subtitle">{{ 'auth.login.verify-passkey' | translate }}</p>
-
-              <button type="button" class="auth-button" [disabled]="loading" (click)="verifyPasskey()">
-                {{ 'auth.login.passkey-button' | translate }}
-              </button>
-            }
-          }
         }
 
         @if (errorMessage) {
@@ -235,13 +103,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Blocking overlay while the passkey runs -->
-  @if (loading && step() === 'passkey') {
-    <div class="auth-overlay">
-      <ion-spinner name="crescent"></ion-spinner>
-    </div>
-  }
 
   <!-- "Need help?" modal-->
   <ion-modal class="auth-help-modal" [isOpen]="showMacStepsModal" (didDismiss)="closeMacSteps()">

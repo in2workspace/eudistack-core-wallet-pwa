@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { PasskeyApiService, PasskeyInfo, RegisterPasskeyRequest } from './passkey-api.service';
+import { PasskeyApiService, PasskeyInfo } from './passkey-api.service';
 import { UrlResolverService } from './url-resolver.service';
 
 describe('PasskeyApiService', () => {
@@ -43,34 +43,6 @@ describe('PasskeyApiService', () => {
 
   it('should be created', () => {
     expect(service).toBeTruthy();
-  });
-
-  describe('registerPasskey', () => {
-    it('should POST to /passkeys', () => {
-      const request: RegisterPasskeyRequest = {
-        credentialId: 'cred-123',
-        displayName: 'My Device',
-        userAgent: 'Mozilla/5.0'
-      };
-
-      service.registerPasskey(request).subscribe(response => {
-        expect(response).toEqual(mockPasskey);
-      });
-
-      const req = httpMock.expectOne(`${mockAuthBase}/passkeys`);
-      expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual(request);
-      req.flush(mockPasskey);
-    });
-
-    it('should forward the optional refreshToken in the request body', () => {
-      service.registerPasskey({ credentialId: 'cred-123', displayName: 'My Device', refreshToken: 'r1' })
-        .subscribe();
-
-      const req = httpMock.expectOne(`${mockAuthBase}/passkeys`);
-      expect(req.request.body).toEqual({ credentialId: 'cred-123', displayName: 'My Device', refreshToken: 'r1' });
-      req.flush(mockPasskey);
-    });
   });
 
   describe('listPasskeys', () => {
@@ -128,16 +100,4 @@ describe('PasskeyApiService', () => {
     });
   });
 
-  describe('confirmSession', () => {
-    it('should POST the refresh token to /passkeys/{id}/confirm-session', () => {
-      service.confirmSession('1', 'refresh-abc').subscribe(response => {
-        expect(response).toBeNull();
-      });
-
-      const req = httpMock.expectOne(`${mockAuthBase}/passkeys/1/confirm-session`);
-      expect(req.request.method).toBe('POST');
-      expect(req.request.body).toEqual({ refreshToken: 'refresh-abc' });
-      req.flush(null);
-    });
-  });
 });

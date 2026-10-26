@@ -1,6 +1,6 @@
 const apiV1Path = '/api/v1';
 const apiV1KeysPath = `${apiV1Path}/keys`;
-const apiV1HybridPath = `${apiV1KeysPath}/hybrid`;
+const apiV1PasskeyPrfPath = `${apiV1KeysPath}/passkey-prf`;
 
 const OPENID_OFFER = `${apiV1Path}/openid-credential-offer` as const;
 
@@ -16,12 +16,11 @@ export const SERVER_PATH = Object.freeze({
   KEYS_BY_ID: (keyId: string) => `${apiV1KeysPath}/${encodeURIComponent(keyId)}`,
   KEYS_SIGN: (keyId: string) => `${apiV1KeysPath}/${encodeURIComponent(keyId)}/sign`,
   KEYS_EXPORT: (keyId: string) => `${apiV1KeysPath}/${encodeURIComponent(keyId)}/export`,
-  HYBRID_SIGN_PREPARE: `${apiV1HybridPath}/sign/prepare`,
-  HYBRID_SIGN_SUBMIT: `${apiV1HybridPath}/sign/submit`,
-  HYBRID_CONSTRAINT_ACCEPTED: `${apiV1HybridPath}/constraint-accepted`,
-  HYBRID_ONBOARDING_INIT: `${apiV1HybridPath}/onboarding/init`,
-  HYBRID_ONBOARDING_COMMIT: `${apiV1HybridPath}/onboarding/commit`,
-  HYBRID_ONBOARDING_BLOCK: `${apiV1HybridPath}/onboarding/block`,
+  PASSKEY_PRF_SIGN_PREPARE: `${apiV1PasskeyPrfPath}/sign/prepare`,
+  PASSKEY_PRF_SIGN_SUBMIT: `${apiV1PasskeyPrfPath}/sign/submit`,
+  PASSKEY_PRF_CONSTRAINT_ACCEPTED: `${apiV1PasskeyPrfPath}/constraint-accepted`,
+  PASSKEY_PRF_ONBOARDING_INIT: `${apiV1PasskeyPrfPath}/onboarding/init`,
+  PASSKEY_PRF_ONBOARDING_COMMIT: `${apiV1PasskeyPrfPath}/onboarding/commit`,
 });
 
 export const WALLET_DISCOVERY_PATH = '/business-wallet/.well-known/wallet-config-metadata' as const;

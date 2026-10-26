@@ -116,6 +116,28 @@ export class WalletService {
     );
   }
 
+  /**
+   * Loads the attestations a presentation can choose from. In server mode they
+   * come from `GET /api/v1/credentials`, which only returns the attestations of
+   * the session's passkey, so a stale local copy is never offered (EUD-8, EUD-11
+   * prd §3.3). Like `refreshCredentials()`, it always completes: a failed fetch
+   * leaves the store in 'error'.
+   */
+  public loadCredentialsForPresentation(): Observable<VerifiableCredential[]> {
+    if (this.isBrowserMode()) {
+      return this.refreshCredentials();
+    }
+    this.credentialCache.setLoading();
+    return this.syncCredentials().pipe(
+      map(() => this.credentialCache.getAll()),
+      catchError((error: unknown) => {
+        console.error('Error syncing credentials for a presentation:', error);
+        this.credentialCache.setError();
+        return of(this.credentialCache.getAll());
+      })
+    );
+  }
+
   public deleteVC(credentialId: string): Observable<any> {
     if (this.isBrowserMode()) {
       return from(this.credentialStorage.deleteCredential(credentialId));

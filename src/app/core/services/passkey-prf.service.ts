@@ -46,8 +46,8 @@ export class PasskeyPrfService {
 
   /**
    * Local WebAuthn assertion of the device passkey (no PRF, no server).
-   * Shared by server-mode resume (`RemoteAuthService.unlockWithPasskey`) and
-   * browser-mode login (`LoginPage.authenticateLocally`).
+   * Browser mode only (`LoginPage.authenticateLocally`): in server mode the
+   * Wallet Unit Service issues and verifies every challenge (EUD-8).
    */
   async assertLocalPasskey(): Promise<void> {
     const credentialId = this.getCredentialId();

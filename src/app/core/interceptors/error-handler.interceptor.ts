@@ -41,13 +41,12 @@ export class HttpErrorInterceptor implements HttpInterceptor {
 
     return next.handle(request).pipe(
       catchError((errorResp: HttpErrorResponse) => {
-        // authInterceptor already forced a logout for this exact 401 (expired/invalid
-        // session). Show the dedicated message once here instead of falling through
-        // to the generic branch below, which would duplicate it with an unrelated
-        // "Something went wrong" toast (previously: same 401 handled twice by two
-        // uncoordinated interceptors).
+        // authInterceptor already ended the session for this exact 401 and sent the
+        // user to the access screen, which tells them the session has expired (EUD-8,
+        // FR-18). Falling through to the generic branch below would stack an unrelated
+        // "Something went wrong" toast on top of it.
         if (this.sessionExpiryMarker.isSessionExpired(errorResp)) {
-          this.toastServiceHandler.showInfoAlertByTranslateLabel('errors.session-expired').subscribe();
+          this.logHandledSilentlyErrorMsg('Session expired');
           return throwError(() => errorResp);
         }
 
@@ -96,16 +95,15 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           urlObj.href.endsWith(SERVER_PATH.CREDENTIAL_RESPONSE) ||
           // REQUEST SIGNATURE endpoint
           pathname.endsWith(SERVER_PATH.CREDENTIALS_SIGNED_BY_ID) ||
-          // Auth endpoints. `includes` (not `startsWith`): serverUrl() falls back to
+          // Auth endpoints: the access screen shows every outcome of the email flow,
+          // the passkey ceremonies and the session itself, and the device management
+          // page its own. `includes` (not `startsWith`): serverUrl() falls back to
           // `${origin}/business-wallet`, so the real path is prefixed
-          // (`/business-wallet/api/v1/auth/...`), not a bare `/api/v1/auth/...` — a
-          // `startsWith` check here never matched outside unit tests, letting a 429
-          // on register/verify-email pop the generic modal on top of the inline
-          // banner the login page already shows (EUD bug: duplicate 429 feedback).
+          // (`/business-wallet/api/v1/auth/...`), not a bare `/api/v1/auth/...`.
           pathname.includes('/api/v1/auth/') ||
-          // Hybrid signing endpoints — never toast or expose body (NFR-S-536-03 defense-in-depth)
-          pathname.endsWith(SERVER_PATH.HYBRID_SIGN_PREPARE) ||
-          pathname.endsWith(SERVER_PATH.HYBRID_SIGN_SUBMIT) ||
+          // passkey+prf signing endpoints — never toast or expose body (NFR-S-536-03 defense-in-depth)
+          pathname.endsWith(SERVER_PATH.PASSKEY_PRF_SIGN_PREPARE) ||
+          pathname.endsWith(SERVER_PATH.PASSKEY_PRF_SIGN_SUBMIT) ||
           // Background sync the user never triggered directly: activity history
           // (sync after login, list on Actividad, append after saving/deleting a
           // credential) and credential lifecycle status persistence. Callers already
