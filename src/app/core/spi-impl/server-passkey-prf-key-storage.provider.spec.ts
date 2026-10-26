@@ -7,7 +7,7 @@ import { AppError } from '../models/error/AppError';
 import { KeyInfo } from '../models/StoredKeyRecord';
 import { PasskeyPrfKeyEnrollmentService, PasskeyPrfEnrollmentResult } from 'src/app/features/passkey-prf-keymanager/passkey-prf-key-enrollment.service';
 import { SignService } from 'src/app/features/passkey-prf-keymanager/sign.service';
-import { OID4VCIKeyGenContext } from '../spi/key-storage.provider.service';
+import { KeyStorageProvider, OID4VCIKeyGenContext } from '../spi/key-storage.provider.service';
 
 // JSDOM does not implement crypto.subtle; polyfill with Node's built-in WebCrypto API
 // (generateKeyPair() computes a real JWK thumbprint via computeJwkThumbprint()).
@@ -114,7 +114,8 @@ describe('ServerPasskeyPrfKeyStorageProvider', () => {
   });
 
   it('sign() throws PasskeyPrfAdapterError with code prepare_sign_failed', async () => {
-    const { provider } = setup();
+    // Called as the rest of the app does: through the KeyStorageProvider contract.
+    const provider: KeyStorageProvider = setup().provider;
     await expect(provider.sign('k1', new Uint8Array([1, 2, 3])))
       .rejects.toBeInstanceOf(PasskeyPrfAdapterError);
 
