@@ -1,227 +1,321 @@
 /**
- * Unit tests for authInterceptor (EUDISTACK-502 bootstrap timing fix).
+ * authInterceptor (EUDISTACK-502 bootstrap timing, EUD-8 credential routing).
  *
- * Tests covered:
- *  T-auth-1 — well-known endpoint bypasses AuthService: no auth header added
- *  T-auth-2 — own-backend request with token adds Authorization header
- *  T-auth-3 — /api/v1/auth/* passes through without Authorization header
- *  T-auth-4 — /api/v1/auth/passkeys includes Authorization header (exception)
- *  T-auth-5 — external URL passes through without Authorization header
- *  T-auth-6 — /assets/* bypasses AuthService (ThemeService bootstrap timing fix)
- *  T-auth-7 — 401 on own-backend: refresh fails → forceLogout
- *  T-auth-8 — 401 on own-backend marks the error via SessionExpiryMarkerService
- *  T-auth-9 — 401 then successful refresh retries once with new Bearer and does not forceLogout
- *  T-auth-10 — refresh failure that already ended the session (e.g. transient, token kept) does not forceLogout
- *  T-auth-11 — 401 again after a successful refresh logs out keeping the device refresh token
+ * Which credential each request of the Wallet Unit Service carries
+ * (EUD-8 `annex/openapi.yaml`):
+ *  - email verification: none;
+ *  - passkey registration and sign-in: the registration ticket, if any, plus the cookie;
+ *  - renewal: the cookie and `X-Wallet-Request`, no token;
+ *  - ending sessions: the session token, the cookie and `X-Wallet-Request`;
+ *  - device management and the rest of the API: the session token, renewed once on a 401.
  */
 
 import { TestBed } from '@angular/core/testing';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
-import { HttpClient, HttpErrorResponse, HttpStatusCode, provideHttpClient, withInterceptors } from '@angular/common/http';
-import { of, throwError, Observable } from 'rxjs';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { Observable, of, Subject, throwError } from 'rxjs';
 
-import { AuthService, TokenPairResponse } from '../services/auth.service';
+import { AccessTokenResponse, AuthService, ForceLogoutOptions } from '../services/auth.service';
 import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
-import { authInterceptor } from './auth.interceptor';
+import { RegistrationTicketService } from '../services/registration-ticket.service';
+import { authInterceptor, WALLET_REQUEST_HEADER } from './auth.interceptor';
 import { environment } from 'src/environments/environment';
 
 const OWN_BACKEND = environment.server_url || 'http://localhost:8083';
+const AUTH = `${OWN_BACKEND}/api/v1/auth`;
+const UNAUTHORIZED = { status: 401, statusText: 'Unauthorized' };
 
 class MockAuthService extends AuthService {
-  private _token = '';
+  token = '';
   loggedIn = true;
-  setToken(t: string) { this._token = t; }
-  getToken() { return this._token; }
-  isLoggedIn$() { return null as any; }
-  isInitialized$() { return null as any; }
+  refresh: () => Observable<AccessTokenResponse> = () => throwError(() => new HttpErrorResponse({ status: 401 }));
+  ready: () => Observable<void> = () => of(undefined);
+  readonly forceLogoutCalls: (ForceLogoutOptions | undefined)[] = [];
+  activity = 0;
+  getToken() { return this.token; }
+  isLoggedIn$() { return of(this.loggedIn); }
+  isInitialized$() { return of(true); }
   isLoggedIn() { return this.loggedIn; }
-  getName$() { return null as any; }
-  logout() { return null as any; }
-  forceLogout() {}
-  refreshAccessToken(): Observable<TokenPairResponse> {
-    return throwError(() => new Error('No refresh token'));
-  }
+  getName$() { return of(''); }
+  logout() { return of(undefined); }
+  forceLogout(options?: ForceLogoutOptions) { this.forceLogoutCalls.push(options); }
+  refreshAccessToken(): Observable<AccessTokenResponse> { return this.refresh(); }
+  override recordActivity() { this.activity++; }
+  override whenAccessTokenReady() { return this.ready(); }
 }
 
 describe('authInterceptor', () => {
-  let httpClient: HttpClient;
+  let http: HttpClient;
   let httpMock: HttpTestingController;
-  let mockAuth: MockAuthService;
-  let sessionExpiryMarker: SessionExpiryMarkerService;
+  let auth: MockAuthService;
+  let ticket: RegistrationTicketService;
+  let marker: SessionExpiryMarkerService;
 
   beforeEach(() => {
-    mockAuth = new MockAuthService();
-
+    auth = new MockAuthService();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
-        { provide: AuthService, useValue: mockAuth },
+        { provide: AuthService, useValue: auth },
       ],
     });
-
-    httpClient = TestBed.inject(HttpClient);
+    http = TestBed.inject(HttpClient);
     httpMock = TestBed.inject(HttpTestingController);
-    sessionExpiryMarker = TestBed.inject(SessionExpiryMarkerService);
+    ticket = TestBed.inject(RegistrationTicketService);
+    marker = TestBed.inject(SessionExpiryMarkerService);
   });
 
   afterEach(() => httpMock.verify());
 
-  it('T-auth-1: well-known endpoint passes through without Authorization header', () => {
-    const url = `${OWN_BACKEND}/business-wallet/.well-known/wallet-config-metadata`;
+  describe('bootstrap and external requests', () => {
+    it('passes the wallet discovery endpoint through untouched', () => {
+      const url = `${OWN_BACKEND}/business-wallet/.well-known/wallet-config-metadata`;
+      auth.token = 'session-token';
+      http.get(url).subscribe();
 
-    httpClient.get(url).subscribe();
+      expect(httpMock.expectOne(url).request.headers.has('Authorization')).toBe(false);
+    });
 
-    const req = httpMock.expectOne(url);
-    expect(req.request.headers.has('Authorization')).toBe(false);
-    req.flush({ wallet_mode: 'server', natural_persons_only: false, supported_credentials: [], version: 1 });
+    it('passes static assets through untouched', () => {
+      auth.token = 'session-token';
+      http.get('/assets/tenants/sandbox/theme.json').subscribe();
+
+      expect(httpMock.expectOne('/assets/tenants/sandbox/theme.json').request.headers.has('Authorization')).toBe(false);
+    });
+
+    it('never sends a token to another origin', () => {
+      auth.token = 'session-token';
+      http.get('https://issuer.example/.well-known/openid-credential-issuer').subscribe();
+
+      expect(httpMock.expectOne('https://issuer.example/.well-known/openid-credential-issuer')
+        .request.headers.has('Authorization')).toBe(false);
+    });
   });
 
-  it('T-auth-2: own-backend request with token adds Authorization header', () => {
-    mockAuth.setToken('test-jwt');
-    const url = `${OWN_BACKEND}/api/v1/credentials`;
+  describe('email verification', () => {
+    it.each(['register', 'verify-email'])('sends /auth/%s with no credential', path => {
+      auth.token = 'session-token';
+      ticket.set('rt_1', 300);
+      http.post(`${AUTH}/${path}`, {}).subscribe();
 
-    httpClient.get(url).subscribe();
-
-    const req = httpMock.expectOne(url);
-    expect(req.request.headers.get('Authorization')).toBe('Bearer test-jwt');
-    req.flush([]);
+      const request = httpMock.expectOne(`${AUTH}/${path}`).request;
+      expect(request.headers.has('Authorization')).toBe(false);
+      expect(request.headers.has(WALLET_REQUEST_HEADER)).toBe(false);
+    });
   });
 
-  it('T-auth-3: /api/v1/auth/* passes through without Authorization header', () => {
-    mockAuth.setToken('test-jwt');
-    const url = `${OWN_BACKEND}/api/v1/auth/register`;
+  describe('passkey registration and sign-in', () => {
+    it.each(['passkeys/registration/options', 'passkeys/registration', 'sessions/options', 'sessions'])(
+      'sends the registration ticket and the cookie to /auth/%s in the email flow',
+      path => {
+        auth.token = 'session-token';
+        ticket.set('rt_1', 300);
+        http.post(`${AUTH}/${path}`, {}).subscribe();
 
-    httpClient.post(url, {}).subscribe();
+        const request = httpMock.expectOne(`${AUTH}/${path}`).request;
+        expect(request.headers.get('Authorization')).toBe('Bearer rt_1');
+        expect(request.withCredentials).toBe(true);
+      }
+    );
 
-    const req = httpMock.expectOne(url);
-    expect(req.request.headers.has('Authorization')).toBe(false);
-    req.flush({});
+    it.each(['sessions', 'passkeys/registration'])('adds X-Wallet-Request to POST /auth/%s, which reads the cookie', path => {
+      http.post(`${AUTH}/${path}`, {}).subscribe();
+
+      expect(httpMock.expectOne(`${AUTH}/${path}`).request.headers.get(WALLET_REQUEST_HEADER)).toBe('1');
+    });
+
+    it.each(['sessions/options', 'passkeys/registration/options'])('does not add it to /auth/%s', path => {
+      http.post(`${AUTH}/${path}`, {}).subscribe();
+
+      expect(httpMock.expectOne(`${AUTH}/${path}`).request.headers.has(WALLET_REQUEST_HEADER)).toBe(false);
+    });
+
+    it('signs in with no credential but the cookie outside the email flow (system picker)', () => {
+      http.post(`${AUTH}/sessions/options`, {}).subscribe();
+
+      const request = httpMock.expectOne(`${AUTH}/sessions/options`).request;
+      expect(request.headers.has('Authorization')).toBe(false);
+      expect(request.withCredentials).toBe(true);
+    });
+
+    it('does not renew or end the session on a 401 of a ceremony (unknown passkey, invalid ticket)', () => {
+      let failed: HttpErrorResponse | undefined;
+      http.post(`${AUTH}/sessions`, {}).subscribe({ error: err => failed = err });
+      httpMock.expectOne(`${AUTH}/sessions`).flush({ type: 'unknown_credential' }, UNAUTHORIZED);
+
+      expect(failed?.status).toBe(401);
+      expect(auth.forceLogoutCalls).toHaveLength(0);
+    });
   });
 
-  it('T-auth-4: /api/v1/auth/passkeys includes Authorization header', () => {
-    mockAuth.setToken('test-jwt');
-    const url = `${OWN_BACKEND}/api/v1/auth/passkeys`;
+  describe('cookie endpoints', () => {
+    it('renews with the cookie and X-Wallet-Request, never a token', () => {
+      auth.token = 'session-token';
+      http.post(`${AUTH}/refresh`, null).subscribe();
 
-    httpClient.get(url).subscribe();
+      const request = httpMock.expectOne(`${AUTH}/refresh`).request;
+      expect(request.headers.get(WALLET_REQUEST_HEADER)).toBe('1');
+      expect(request.withCredentials).toBe(true);
+      expect(request.headers.has('Authorization')).toBe(false);
+    });
 
-    const req = httpMock.expectOne(url);
-    expect(req.request.headers.get('Authorization')).toBe('Bearer test-jwt');
-    req.flush([]);
+    it.each(['sessions/current', 'sessions/others'])('ends /auth/%s with the session token, the cookie and X-Wallet-Request', path => {
+      auth.token = 'session-token';
+      http.delete(`${AUTH}/${path}`).subscribe();
+
+      const request = httpMock.expectOne(`${AUTH}/${path}`).request;
+      expect(request.headers.get('Authorization')).toBe('Bearer session-token');
+      expect(request.headers.get(WALLET_REQUEST_HEADER)).toBe('1');
+      expect(request.withCredentials).toBe(true);
+    });
+
+    it('does not retry ending a session on a 401: the caller decides', () => {
+      auth.token = 'session-token';
+      http.delete(`${AUTH}/sessions/current`).subscribe({ error: () => undefined });
+      httpMock.expectOne(`${AUTH}/sessions/current`).flush({ type: 'invalid_session' }, UNAUTHORIZED);
+
+      expect(auth.forceLogoutCalls).toHaveLength(0);
+    });
   });
 
-  it('T-auth-5: external URL passes through without Authorization header', () => {
-    mockAuth.setToken('test-jwt');
-    const url = 'https://external.example.com/resource';
+  describe('session-authenticated API', () => {
+    it.each([`${AUTH}/passkeys`, `${AUTH}/passkeys/p1/revoke-sessions`, `${OWN_BACKEND}/api/v1/credentials`])(
+      'sends the session token, not the ticket, to %s',
+      url => {
+        auth.token = 'session-token';
+        ticket.set('rt_1', 300);
+        http.get(url).subscribe();
 
-    httpClient.get(url).subscribe();
+        const request = httpMock.expectOne(url).request;
+        expect(request.headers.get('Authorization')).toBe('Bearer session-token');
+        expect(request.headers.has(WALLET_REQUEST_HEADER)).toBe(false);
+      }
+    );
 
-    const req = httpMock.expectOne(url);
-    expect(req.request.headers.has('Authorization')).toBe(false);
-    req.flush({});
-  });
+    it('counts an API call as activity (FR-19)', () => {
+      http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe();
+      httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).flush([]);
 
-  it('T-auth-6: /assets/* bypasses auth header (ThemeService bootstrap timing)', () => {
-    mockAuth.setToken('test-jwt');
-    const url = '/assets/tenants/sandbox/theme.json';
+      expect(auth.activity).toBe(1);
+    });
 
-    httpClient.get(url).subscribe();
+    it('does not count the renewal itself as activity', () => {
+      http.post(`${AUTH}/refresh`, null).subscribe();
+      httpMock.expectOne(`${AUTH}/refresh`).flush({});
 
-    const req = httpMock.expectOne(url);
-    expect(req.request.headers.has('Authorization')).toBe(false);
-    req.flush({});
-  });
+      expect(auth.activity).toBe(0);
+    });
 
-  it('T-auth-7: 401 response on own-backend triggers forceLogout', () => {
-    const forceLogoutSpy = jest.spyOn(mockAuth, 'forceLogout');
-    mockAuth.setToken('expired-jwt');
-    const url = `${OWN_BACKEND}/api/v1/credentials`;
+    it('on a 401 renews once and retries with the new token', () => {
+      auth.token = 'old';
+      auth.refresh = () => { auth.token = 'new'; return of({ accessToken: 'new', expiresIn: 300 }); };
+      let body: unknown;
+      http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe(value => body = value);
 
-    httpClient.get(url).subscribe({ error: () => {} });
+      httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).flush(null, UNAUTHORIZED);
+      const retry = httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`);
+      expect(retry.request.headers.get('Authorization')).toBe('Bearer new');
+      retry.flush(['vc']);
 
-    const req = httpMock.expectOne(url);
-    req.flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
+      expect(body).toEqual(['vc']);
+      expect(auth.forceLogoutCalls).toHaveLength(0);
+    });
 
-    expect(forceLogoutSpy).toHaveBeenCalledTimes(1);
-  });
+    it('goes to the access screen with the expired notice when the renewal is rejected (FR-18)', () => {
+      auth.token = 'old';
+      let failed: HttpErrorResponse | undefined;
+      http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe({ error: err => failed = err });
 
-  it('T-auth-8: 401 response on own-backend marks the error as session-expired', () => {
-    mockAuth.setToken('expired-jwt');
-    const url = `${OWN_BACKEND}/api/v1/credentials`;
-    let capturedError: HttpErrorResponse | undefined;
+      httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).flush(null, UNAUTHORIZED);
 
-    httpClient.get(url).subscribe({ error: (e) => { capturedError = e; } });
+      expect(auth.forceLogoutCalls).toEqual([{ sessionExpired: true }]);
+      expect(marker.isSessionExpired(failed!)).toBe(true);
+    });
 
-    const req = httpMock.expectOne(url);
-    req.flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
+    it('ends the session when the renewal answers 401 invalid_session', () => {
+      auth.refresh = () => throwError(() => new HttpErrorResponse({ status: 401, error: { type: 'invalid_session', status: 401 } }));
+      let failed: HttpErrorResponse | undefined;
+      http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe({ error: err => failed = err });
 
-    expect(capturedError).toBeTruthy();
-    expect(sessionExpiryMarker.isSessionExpired(capturedError as HttpErrorResponse)).toBe(true);
-  });
+      httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).flush(null, UNAUTHORIZED);
 
-  it('T-auth-9: 401 then successful refresh retries once with new Bearer and does not forceLogout', () => {
-    const forceLogoutSpy = jest.spyOn(mockAuth, 'forceLogout');
-    mockAuth.setToken('expired-jwt');
-    mockAuth.refreshAccessToken = () => {
-      mockAuth.setToken('new-jwt');
-      return of({ accessToken: 'new-jwt', refreshToken: 'r', expiresIn: 900 });
-    };
-    const url = `${OWN_BACKEND}/api/v1/credentials`;
+      expect(auth.forceLogoutCalls).toEqual([{ sessionExpired: true }]);
+      expect(marker.isSessionExpired(failed!)).toBe(true);
+    });
 
-    httpClient.get(url).subscribe();
+    it.each([
+      [0, null],
+      [400, { type: 'invalid_request', status: 400 }],
+      [403, { type: 'forbidden', status: 403 }],
+      [403, { type: 'access_denied', status: 403 }],
+      [404, null],
+      [429, { type: 'rate_limited', status: 429 }],
+      [500, null],
+      [503, null],
+    ])('keeps the session when the renewal fails with %s (not an ended session)', (status, error) => {
+      auth.token = 'old';
+      auth.refresh = () => throwError(() => new HttpErrorResponse({ status, error }));
+      let failed: HttpErrorResponse | undefined;
+      http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe({ error: err => failed = err });
 
-    const first = httpMock.expectOne(url);
-    first.flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
+      httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).flush(null, UNAUTHORIZED);
 
-    const second = httpMock.expectOne(url);
-    expect(second.request.headers.get('Authorization')).toBe('Bearer new-jwt');
-    second.flush([]);
+      expect(auth.forceLogoutCalls).toHaveLength(0);
+      expect(failed?.status).toBe(401);
+      expect(marker.isSessionExpired(failed!)).toBe(false);
+    });
 
-    expect(forceLogoutSpy).not.toHaveBeenCalled();
-  });
+    it('waits for the renewal of an expired token before sending, instead of sending without a token', () => {
+      const renewal = new Subject<void>();
+      auth.ready = () => renewal.asObservable();
+      http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe();
 
-  it('T-auth-10: refresh failure that already ended the session does not forceLogout (keeps the device refresh token)', () => {
-    const forceLogoutSpy = jest.spyOn(mockAuth, 'forceLogout');
-    mockAuth.setToken('expired-jwt');
-    mockAuth.refreshAccessToken = () => {
-      // RemoteAuthService soft-logs-out on a transient /refresh failure.
-      mockAuth.loggedIn = false;
-      return throwError(() => new HttpErrorResponse({ status: 0, statusText: 'Unknown Error' }));
-    };
-    const url = `${OWN_BACKEND}/api/v1/credentials`;
-    let capturedError: HttpErrorResponse | undefined;
+      httpMock.expectNone(`${OWN_BACKEND}/api/v1/credentials`);
+      auth.token = 'renewed';
+      renewal.next();
+      renewal.complete();
 
-    httpClient.get(url).subscribe({ error: (e) => { capturedError = e; } });
+      expect(httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).request.headers.get('Authorization')).toBe('Bearer renewed');
+    });
 
-    const req = httpMock.expectOne(url);
-    req.flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
+    it('ends the session when the retried call is rejected again', () => {
+      auth.refresh = () => of({ accessToken: 'new', expiresIn: 300 });
+      http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe({ error: () => undefined });
 
-    expect(forceLogoutSpy).not.toHaveBeenCalled();
-    expect(sessionExpiryMarker.isSessionExpired(capturedError as HttpErrorResponse)).toBe(true);
-  });
+      httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).flush(null, UNAUTHORIZED);
+      httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).flush(null, UNAUTHORIZED);
 
-  it('T-auth-11: 401 again after a successful refresh logs out keeping the device refresh token', () => {
-    // Arrange
-    const forceLogoutSpy = jest.spyOn(mockAuth, 'forceLogout');
-    mockAuth.setToken('expired-jwt');
-    mockAuth.refreshAccessToken = () => {
-      mockAuth.setToken('new-jwt');
-      return of({ accessToken: 'new-jwt', refreshToken: 'r', expiresIn: 900 });
-    };
-    const url = `${OWN_BACKEND}/api/v1/credentials`;
-    let capturedError: HttpErrorResponse | undefined;
+      expect(auth.forceLogoutCalls).toEqual([{ sessionExpired: true }]);
+    });
 
-    // Act
-    httpClient.get(url).subscribe({ error: (e) => { capturedError = e; } });
-    httpMock.expectOne(url).flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
-    httpMock.expectOne(url).flush({ message: 'Unauthorized' }, { status: HttpStatusCode.Unauthorized, statusText: 'Unauthorized' });
+    it('does not end the session when the retried call fails for another reason', () => {
+      auth.refresh = () => of({ accessToken: 'new', expiresIn: 300 });
+      http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe({ error: () => undefined });
 
-    // Assert
-    expect(forceLogoutSpy).toHaveBeenCalledTimes(1);
-    expect(forceLogoutSpy).toHaveBeenCalledWith({ keepRefreshToken: true });
-    expect(sessionExpiryMarker.isSessionExpired(capturedError as HttpErrorResponse)).toBe(true);
+      httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).flush(null, UNAUTHORIZED);
+      httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).flush(null, { status: 500, statusText: 'Server Error' });
+
+      expect(auth.forceLogoutCalls).toHaveLength(0);
+    });
+
+    it('does not force a logout when the user is already signed out', () => {
+      auth.loggedIn = false;
+      http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe({ error: () => undefined });
+
+      httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).flush(null, UNAUTHORIZED);
+
+      expect(auth.forceLogoutCalls).toHaveLength(0);
+    });
+
+    it('passes other errors through without renewing', () => {
+      const refresh = jest.fn(() => of({ accessToken: 'new', expiresIn: 300 }));
+      auth.refresh = refresh;
+      http.get(`${OWN_BACKEND}/api/v1/credentials`).subscribe({ error: () => undefined });
+
+      httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).flush(null, { status: 403, statusText: 'Forbidden' });
+
+      expect(refresh).not.toHaveBeenCalled();
+    });
   });
 });

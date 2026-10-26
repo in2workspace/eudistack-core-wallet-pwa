@@ -73,4 +73,71 @@ describe('PasskeyStoreService', () => {
       expect(service.getWebAuthnUserId('alice@example.com')).toBe('handle-A');
     });
   });
+
+  describe('server mode purge (EUD-8)', () => {
+    beforeEach(() => localStorage.clear());
+
+    it('drops the local passkey data, including the per-email user handles', async () => {
+      await service.setWebAuthnUserId('alice@example.com', 'handle-A');
+      await service.setCredentialId('cred-1');
+
+      await service.purgeServerModeEntries();
+
+      expect(service.getCredentialId()).toBeNull();
+      expect(service.hasPasskey()).toBe(false);
+      expect(service.getWebAuthnUserId('alice@example.com')).toBeNull();
+      expect(deletedKeys.sort()).toEqual(['credential_id', 'has_passkey', 'webauthn_user_id:alice@example.com']);
+    });
+
+    it('drops the old refresh token and the legacy flags from localStorage', async () => {
+      localStorage.setItem('wallet_refresh_token', 'rt');
+      localStorage.setItem('wallet_passkey_credential_id', 'cred');
+      localStorage.setItem('wallet_has_passkey', 'true');
+      localStorage.setItem('unrelated', 'kept');
+
+      await service.purgeServerModeEntries();
+
+      expect(localStorage.getItem('wallet_refresh_token')).toBeNull();
+      expect(localStorage.getItem('wallet_passkey_credential_id')).toBeNull();
+      expect(localStorage.getItem('wallet_has_passkey')).toBeNull();
+      expect(localStorage.getItem('unrelated')).toBe('kept');
+    });
+
+    it('does not open the database when there is nothing to delete', async () => {
+      await service.purgeServerModeEntries();
+
+      expect(deletedKeys).toEqual([]);
+    });
+
+    it('purges on init in server mode instead of migrating the legacy entries', async () => {
+      localStorage.setItem('wallet_passkey_credential_id', 'legacy-cred');
+      jest.spyOn(service as unknown as { wrapRequest: () => Promise<unknown> }, 'wrapRequest').mockResolvedValue([
+        { key: 'credential_id', value: 'cred-1' },
+        { key: 'webauthn_user_id:alice@example.com', value: 'handle-A' },
+      ]);
+      (service as unknown as { openDatabase: jest.Mock }).openDatabase.mockResolvedValue({
+        transaction: () => ({ objectStore: () => ({ getAll: () => ({}), delete: (key: string) => deletedKeys.push(key) }) }),
+        close: () => undefined,
+      });
+
+      await service.init({ serverMode: true });
+
+      expect(service.getCredentialId()).toBeNull();
+      expect(service.getWebAuthnUserId('alice@example.com')).toBeNull();
+      expect(localStorage.getItem('wallet_passkey_credential_id')).toBeNull();
+    });
+
+    it('keeps browser mode as it was: loads the data and migrates the legacy entries', async () => {
+      localStorage.setItem('wallet_passkey_credential_id', 'legacy-cred');
+      jest.spyOn(service as unknown as { wrapRequest: () => Promise<unknown> }, 'wrapRequest').mockResolvedValue([]);
+      (service as unknown as { openDatabase: jest.Mock }).openDatabase.mockResolvedValue({
+        transaction: () => ({ objectStore: () => ({ getAll: () => ({}) }) }),
+        close: () => undefined,
+      });
+
+      await service.init();
+
+      expect(service.getCredentialId()).toBe('legacy-cred');
+    });
+  });
 });

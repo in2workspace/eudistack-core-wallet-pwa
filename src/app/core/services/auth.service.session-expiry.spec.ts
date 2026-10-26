@@ -1,186 +1,139 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { Router } from '@angular/router';
-import { of } from 'rxjs';
-import { RemoteAuthService, TokenPairResponse } from './auth.service';
-import { PasskeyStoreService } from './passkey-store.service';
-import { PasskeyPrfService } from './passkey-prf.service';
-import { IssuerMetadataCacheService } from './issuer-metadata-cache.service';
-import { TenantService } from './tenant.service';
-import { ToastServiceHandler } from '../../shared/services/toast.service';
-import { environment } from 'src/environments/environment';
+import { RemoteAuthService } from './auth.service';
+import { answerStartupRefresh, AUTH_BASE, AuthHarness, createAuthHarness, session, settle } from './auth.service.testing';
 
-const AUTH_BASE = `${environment.server_url}/api/v1/auth`;
-const REFRESH_TOKEN_KEY = 'wallet_refresh_token';
-const SHORT_TTL_SECONDS = 90;
-const REFRESH_LEAD_SECONDS = 60;
-const REFRESH_DELAY_MS = (SHORT_TTL_SECONDS - REFRESH_LEAD_SECONDS) * 1000;
+const TOKEN_LIFETIME_S = 300;
+const RENEW_AT_MS = (TOKEN_LIFETIME_S - 30) * 1000;
 
-class BroadcastChannelMock {
-  onmessage: ((ev: MessageEvent) => unknown) | null = null;
-  postMessage(_message: unknown): void {}
-  close(): void {}
-}
-
-function buildAccessToken(): string {
-  const payload = btoa(JSON.stringify({ email: 'user@example.com' }));
-  return `header.${payload}.signature`;
-}
-
-describe('RemoteAuthService — session expiry redirect', () => {
+/**
+ * Activity-based renewal (EUD-8 design §2.4, FR-18, FR-19): the access token is
+ * renewed 30 s before it expires only if there has been activity since the
+ * last renewal; otherwise it is left to expire and the next activity renews it,
+ * and the service decides whether the session is still alive.
+ */
+describe('RemoteAuthService — activity-based renewal', () => {
+  let harness: AuthHarness;
   let service: RemoteAuthService;
-  let httpMock: HttpTestingController;
-  let routerMock: { navigate: jest.Mock };
-  let passkeyStoreMock: { hasPasskey: jest.Mock };
-  let toastMock: { showInfoAlertByTranslateLabel: jest.Mock };
 
-  beforeAll(() => {
-    (globalThis as unknown as { BroadcastChannel: unknown }).BroadcastChannel = BroadcastChannelMock;
-  });
-
-  beforeEach(() => {
-    jest.useFakeTimers();
-    localStorage.clear();
-
-    routerMock = { navigate: jest.fn() };
-    passkeyStoreMock = { hasPasskey: jest.fn().mockReturnValue(true) };
-    toastMock = { showInfoAlertByTranslateLabel: jest.fn().mockReturnValue(of(undefined)) };
-
-    TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      providers: [
-        RemoteAuthService,
-        { provide: Router, useValue: routerMock },
-        { provide: PasskeyStoreService, useValue: passkeyStoreMock },
-        { provide: IssuerMetadataCacheService, useValue: { fetchAndCacheIfMissing: jest.fn().mockResolvedValue(undefined) } },
-        { provide: TenantService, useValue: { resolveIssuerBaseUrl: jest.fn().mockResolvedValue('https://issuer.example/issuer') } },
-        { provide: ToastServiceHandler, useValue: toastMock },
-        { provide: PasskeyPrfService, useValue: { assertLocalPasskey: jest.fn().mockResolvedValue(undefined) } },
-      ],
-    });
-
-    service = TestBed.inject(RemoteAuthService);
-    httpMock = TestBed.inject(HttpTestingController);
+  beforeEach(async () => {
+    jest.useFakeTimers({ doNotFake: ['queueMicrotask', 'nextTick'] });
+    harness = createAuthHarness();
+    service = harness.service;
+    await answerStartupRefresh(harness, session({ expiresIn: TOKEN_LIFETIME_S }));
   });
 
   afterEach(() => {
     service.dispose();
+    harness.http.verify();
+    TestBed.resetTestingModule();
     jest.useRealTimers();
-    localStorage.clear();
   });
 
-  function loginWithShortLivedToken(): void {
-    const response: TokenPairResponse = {
-      accessToken: buildAccessToken(),
-      refreshToken: 'refresh-1',
-      expiresIn: SHORT_TTL_SECONDS,
-    };
-    service.verifyEmail('user@example.com', '123456').subscribe();
-    httpMock.expectOne(`${AUTH_BASE}/verify-email`).flush(response);
-    routerMock.navigate.mockClear();
+  async function advance(ms: number): Promise<void> {
+    jest.advanceTimersByTime(ms);
+    await settle();
   }
 
-  function dropStoredRefreshToken(): void {
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    (service as unknown as { refreshTokenValue: string | null }).refreshTokenValue = null;
-  }
+  it('renews 30 s before expiry when the user was active since the last renewal', async () => {
+    await advance(60_000);
+    harness.activity$.next();
 
-  describe('background refresh rejected by the server', () => {
-    it('backgroundRefresh_refreshTokenRejectedWith401_redirectsToLogin', () => {
-      // Arrange
-      loginWithShortLivedToken();
+    await advance(RENEW_AT_MS - 60_000);
 
-      // Act
-      jest.advanceTimersByTime(REFRESH_DELAY_MS);
-      httpMock.expectOne(`${AUTH_BASE}/refresh`).flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
-
-      // Assert
-      expect(toastMock.showInfoAlertByTranslateLabel).toHaveBeenCalledWith('errors.session-expired');
-      expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/login']);
-    });
-
-    it('backgroundRefresh_serverError500_redirectsToLogin', () => {
-      // Arrange
-      loginWithShortLivedToken();
-
-      // Act
-      jest.advanceTimersByTime(REFRESH_DELAY_MS);
-      httpMock.expectOne(`${AUTH_BASE}/refresh`).flush('Error', { status: 500, statusText: 'Server Error' });
-
-      // Assert
-      expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/login']);
-    });
+    harness.http.expectOne(`${AUTH_BASE}/refresh`).flush(session({ accessToken: 'renewed' }));
+    await settle();
+    expect(service.getToken()).toBe('renewed');
   });
 
-  describe('background refresh without a stored refresh token', () => {
-    it('backgroundRefresh_refreshTokenMissingWithPasskey_showsNoticeAndRedirectsToLogin', () => {
-      // Arrange
-      loginWithShortLivedToken();
-      dropStoredRefreshToken();
+  it('keeps renewing while the activity goes on, past the token lifetime (AC-13)', async () => {
+    for (let round = 0; round < 4; round++) {
+      await advance(10_000);
+      harness.activity$.next();
+      await advance(RENEW_AT_MS - 10_000);
+      harness.http.expectOne(`${AUTH_BASE}/refresh`).flush(session({ accessToken: `round-${round}` }));
+      await settle();
+    }
 
-      // Act
-      jest.advanceTimersByTime(REFRESH_DELAY_MS);
-
-      // Assert
-      httpMock.expectNone(`${AUTH_BASE}/refresh`);
-      expect(toastMock.showInfoAlertByTranslateLabel).toHaveBeenCalledWith('errors.session-expired');
-      expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/login']);
-      expect(service.isLoggedIn()).toBe(false);
-    });
-
-    it('backgroundRefresh_refreshTokenMissingWithoutPasskey_redirectsToRegister', () => {
-      // Arrange
-      passkeyStoreMock.hasPasskey.mockReturnValue(false);
-      loginWithShortLivedToken();
-      dropStoredRefreshToken();
-
-      // Act
-      jest.advanceTimersByTime(REFRESH_DELAY_MS);
-
-      // Assert
-      expect(routerMock.navigate).toHaveBeenCalledWith(['/auth/register']);
-      expect(service.isLoggedIn()).toBe(false);
-    });
-
-    it('backgroundRefresh_refreshTokenMissing_redirectsExactlyOnce', () => {
-      // Arrange
-      loginWithShortLivedToken();
-      dropStoredRefreshToken();
-
-      // Act
-      jest.advanceTimersByTime(REFRESH_DELAY_MS);
-
-      // Assert
-      expect(routerMock.navigate).toHaveBeenCalledTimes(1);
-    });
+    expect(service.isLoggedIn()).toBe(true);
+    expect(service.getToken()).toBe('round-3');
   });
 
-  describe('refreshAccessToken without a stored refresh token', () => {
-    it('refreshAccessToken_noActiveSession_failsWithoutRedirecting', () => {
-      // Arrange
-      const errors: Error[] = [];
+  it('counts API calls as activity', async () => {
+    await advance(60_000);
+    service.recordActivity();
 
-      // Act
-      service.refreshAccessToken().subscribe({ error: (err: Error) => errors.push(err) });
+    await advance(RENEW_AT_MS - 60_000);
 
-      // Assert
-      expect(errors.map(err => err.message)).toEqual(['No refresh token']);
-      expect(routerMock.navigate).not.toHaveBeenCalled();
-    });
+    harness.http.expectOne(`${AUTH_BASE}/refresh`).flush(session());
+    await settle();
+  });
 
-    it('refreshAccessToken_serviceDisposed_failsWithoutRedirecting', () => {
-      // Arrange
-      loginWithShortLivedToken();
-      dropStoredRefreshToken();
-      service.dispose();
-      const errors: Error[] = [];
+  it('lets the token expire without activity, and stays on the wallet (the service owns the inactivity limit)', async () => {
+    await advance(RENEW_AT_MS);
+    harness.http.expectNone(`${AUTH_BASE}/refresh`);
 
-      // Act
-      service.refreshAccessToken().subscribe({ error: (err: Error) => errors.push(err) });
+    await advance(30_000);
 
-      // Assert
-      expect(errors.map(err => err.message)).toEqual(['No refresh token']);
-      expect(routerMock.navigate).not.toHaveBeenCalled();
-    });
+    expect(service.getToken()).toBe('');
+    expect(service.isLoggedIn()).toBe(true);
+    expect(harness.router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('renews on the next activity after the token expired, when the session is still alive (AC-14)', async () => {
+    await advance(TOKEN_LIFETIME_S * 1000);
+    expect(service.getToken()).toBe('');
+
+    harness.activity$.next();
+    await settle();
+
+    harness.http.expectOne(`${AUTH_BASE}/refresh`).flush(session({ accessToken: 'back' }));
+    await settle();
+    expect(service.getToken()).toBe('back');
+  });
+
+  it('goes to the access screen with the expired notice when the next activity finds the session over (AC-15)', async () => {
+    await advance(TOKEN_LIFETIME_S * 1000);
+
+    harness.activity$.next();
+    await settle();
+    harness.http.expectOne(`${AUTH_BASE}/refresh`)
+      .flush({ type: 'invalid_session', status: 401 }, { status: 401, statusText: 'Unauthorized' });
+    await settle();
+
+    expect(service.isLoggedIn()).toBe(false);
+    expect(harness.router.navigateByUrl).toHaveBeenCalledWith('/auth/access');
+    expect(service.consumeSessionExpiredNotice()).toBe(true);
+    expect(harness.sessionData.sessionEnded).toHaveBeenCalled();
+  });
+
+  it('ends the session when a renewal hits the maximum duration, even with activity (AC-16)', async () => {
+    await advance(10_000);
+    harness.activity$.next();
+    await advance(RENEW_AT_MS - 10_000);
+
+    harness.http.expectOne(`${AUTH_BASE}/refresh`)
+      .flush({ type: 'invalid_session', status: 401 }, { status: 401, statusText: 'Unauthorized' });
+    await settle();
+
+    expect(service.isLoggedIn()).toBe(false);
+    expect(service.consumeSessionExpiredNotice()).toBe(true);
+  });
+
+  it('ignores activity once signed out', async () => {
+    service.forceLogout();
+
+    harness.activity$.next();
+    await settle();
+
+    harness.http.expectNone(`${AUTH_BASE}/refresh`);
+  });
+
+  it('stops the timers when disposed', async () => {
+    harness.activity$.next();
+    service.dispose();
+
+    await advance(TOKEN_LIFETIME_S * 1000);
+
+    harness.http.expectNone(`${AUTH_BASE}/refresh`);
   });
 });

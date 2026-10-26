@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { Router } from '@angular/router';
 import { PasskeyPrfService } from './passkey-prf.service';
-import { AuthService, TokenPairResponse } from './auth.service';
+import { AccessTokenResponse, AuthService } from './auth.service';
 
 /**
  * Auth service for browser-only (PRF) mode.
@@ -49,7 +49,7 @@ export class LocalAuthService extends AuthService {
     return '';
   }
 
-  refreshAccessToken(): Observable<TokenPairResponse> {
+  refreshAccessToken(): Observable<AccessTokenResponse> {
     return throwError(() => new Error('No refresh token in browser mode'));
   }
 

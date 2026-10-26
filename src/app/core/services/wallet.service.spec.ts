@@ -378,6 +378,49 @@ describe('WalletService', () => {
   });
 
   // ---------------------------------------------------------------------------
+  // EUD-8: the attestations offered to a presentation come from the service in
+  // server mode, which only returns those of the session's passkey.
+  // ---------------------------------------------------------------------------
+  describe('loadCredentialsForPresentation', () => {
+    it('reads the local store in browser mode', (done) => {
+      createModule('browser');
+
+      service.loadCredentialsForPresentation().subscribe(credentials => {
+        expect(credentials.length).toBe(1);
+        expect(mockCredentialStorage.replaceAllCredentials).not.toHaveBeenCalled();
+        done();
+      });
+    });
+
+    it('replaces the local store with GET /api/v1/credentials in server mode', async () => {
+      createModule('server');
+      const loaded: VerifiableCredential[][] = [];
+
+      service.loadCredentialsForPresentation().subscribe(credentials => loaded.push(credentials));
+      httpTestingController.expectOne(environment.server_url + SERVER_PATH.CREDENTIALS).flush([mockCredential]);
+      await new Promise(resolve => setTimeout(resolve));
+
+      expect(mockCredentialStorage.replaceAllCredentials).toHaveBeenCalledWith([mockCredential]);
+      expect(credentialCache.status()).toBe('loaded');
+      expect(loaded).toHaveLength(1);
+    });
+
+    it('leaves the store in error, never a stale list, when the service cannot be reached', async () => {
+      createModule('server');
+      const loaded: VerifiableCredential[][] = [];
+
+      service.loadCredentialsForPresentation().subscribe(credentials => loaded.push(credentials));
+      httpTestingController.expectOne(environment.server_url + SERVER_PATH.CREDENTIALS)
+        .flush('down', { status: 503, statusText: 'Service Unavailable' });
+      await new Promise(resolve => setTimeout(resolve));
+
+      expect(credentialCache.status()).toBe('error');
+      expect(mockCredentialStorage.replaceAllCredentials).not.toHaveBeenCalled();
+      expect(loaded).toHaveLength(1);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // postOid4vpAuthorizationResponse — must send withCredentials, since this call
   // is cross-origin (wallet.<tenant>.* -> verifier.<tenant>.*) and the Verifier's
   // SSO session cookie only reaches the browser if the request opts into
