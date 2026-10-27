@@ -793,6 +793,14 @@
       "offer-discarded": "L'atestació que volies rebre s'ha descartat. Primer necessites el teu wallet.",
       "button": "Obtenir el meu wallet",
       "back": "Tornar"
+    },
+    "not-me": {
+      "title": "No has creat tu aquest compte?",
+      "body": "Tancarem totes les seves sessions, retirarem la passkey que es va crear i avisarem la teva organització.",
+      "confirm": "No he estat jo",
+      "cancel": "Cancel·lar",
+      "done": "Fet. Si vols fer servir el wallet, entra amb el teu correu.",
+      "invalid": "Aquest enllaç ja no és vàlid."
     }
   }
 }

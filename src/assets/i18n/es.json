@@ -797,6 +797,14 @@
       "offer-discarded": "La atestación que querías recibir se ha descartado. Primero necesitas tu wallet.",
       "button": "Obtener mi wallet",
       "back": "Volver"
+    },
+    "not-me": {
+      "title": "¿No has creado tú esta cuenta?",
+      "body": "Cerraremos todas sus sesiones, retiraremos la passkey que se creó y avisaremos a tu organización.",
+      "confirm": "No he sido yo",
+      "cancel": "Cancelar",
+      "done": "Hecho. Si quieres usar el wallet, entra con tu email.",
+      "invalid": "Este enlace ya no es válido."
     }
   }
 }

@@ -138,6 +138,14 @@ describe('App Routing', () => {
       expect(routes[index].loadComponent).toBeDefined();
     });
 
+    it('should define the public "it was not me" route before the catch-all, with only tenantGuard (EUD-315)', () => {
+      const index = routes.findIndex(r => r.path === 'no-he-sido-yo/:token');
+      expect(index).toBeGreaterThanOrEqual(0);
+      expect(index).toBeLessThan(routes.findIndex(r => r.path === '**'));
+      expect(routes[index].canActivate).toEqual([tenantGuard]);
+      expect(routes[index].loadComponent).toBeDefined();
+    });
+
     it('should define wildcard route as catch-all', () => {
       const wildcardRoute = routes.find(r => r.path === '**');
       expect(wildcardRoute).toBeDefined();

@@ -797,6 +797,14 @@
       "offer-discarded": "The attestation you wanted to receive has been discarded. You need your wallet first.",
       "button": "Get my wallet",
       "back": "Back"
+    },
+    "not-me": {
+      "title": "Didn't you create this account?",
+      "body": "We will end all its sessions, remove the passkey that was created and notify your organisation.",
+      "confirm": "It wasn't me",
+      "cancel": "Cancel",
+      "done": "Done. If you want to use the wallet, sign in with your email.",
+      "invalid": "This link is no longer valid."
     }
   }
 }
