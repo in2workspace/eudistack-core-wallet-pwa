@@ -770,6 +770,13 @@
       "registration-failed": "No s'ha pogut registrar la passkey. Torna-ho a provar.",
       "prf-check-incomplete": "La passkey no s'ha registrat perquè no s'ha completat la comprovació. Pots tornar-ho a provar o desar-la en un altre lloc.",
       "generic": "No s'ha pogut completar l'operació. Torna-ho a provar."
+    },
+    "ticket": {
+      "redeeming": "Comprovant el teu enllaç…",
+      "failed-title": "No hem pogut comprovar el teu enllaç"
+    },
+    "invalid-ticket": {
+      "button": "Anar a l'accés"
     }
   }
 }

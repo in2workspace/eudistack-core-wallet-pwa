@@ -774,6 +774,13 @@
       "registration-failed": "The passkey could not be registered. Please try again.",
       "prf-check-incomplete": "The passkey was not registered because the check was not completed. You can try again or save it somewhere else.",
       "generic": "The operation could not be completed. Please try again."
+    },
+    "ticket": {
+      "redeeming": "Checking your link…",
+      "failed-title": "We could not check your link"
+    },
+    "invalid-ticket": {
+      "button": "Go to sign-in"
     }
   }
 }

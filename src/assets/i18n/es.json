@@ -774,6 +774,13 @@
       "registration-failed": "No se ha podido registrar la passkey. Inténtalo de nuevo.",
       "prf-check-incomplete": "La passkey no se ha registrado porque no se ha completado la comprobación. Puedes volver a intentarlo o guardarla en otro sitio.",
       "generic": "No se ha podido completar la operación. Inténtalo de nuevo."
+    },
+    "ticket": {
+      "redeeming": "Comprobando tu enlace…",
+      "failed-title": "No hemos podido comprobar tu enlace"
+    },
+    "invalid-ticket": {
+      "button": "Ir al acceso"
     }
   }
 }

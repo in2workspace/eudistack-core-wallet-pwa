@@ -1,0 +1,26 @@
+<ion-content [fullscreen]="true" class="auth-bg">
+  <div class="auth-page">
+    <div class="auth-wrapper">
+      <main class="auth-content" [attr.aria-busy]="state() === 'redeeming'">
+        @if (state() === 'redeeming') {
+          <output class="auth-checking">
+            <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
+            <p class="init-status">{{ 'wallet-access.ticket.redeeming' | translate }}</p>
+          </output>
+        } @else {
+          <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.ticket.failed-title' | translate }}</h1>
+          <div class="error-box" role="alert">
+            <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+            <span>{{ errorKey() | translate }}</span>
+          </div>
+          <button type="button" class="auth-button" (click)="retry()">
+            {{ 'wallet-access.rejected.retry' | translate }}
+          </button>
+          <button type="button" class="auth-link-button" (click)="goToAccess()">
+            {{ 'wallet-access.invalid-ticket.button' | translate }}
+          </button>
+        }
+      </main>
+    </div>
+  </div>
+</ion-content>

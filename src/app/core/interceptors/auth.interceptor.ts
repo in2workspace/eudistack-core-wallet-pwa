@@ -19,7 +19,10 @@ const AUTH_PATH = '/api/v1/auth/';
  * How a request to the Wallet Unit Service's own `/api/v1/auth/*` is credentialed
  * (EUD-8 `annex/openapi.yaml`):
  *
- * - `public`: email verification — nothing.
+ * - `public`: email verification and the "it was not me" disavowal (EUD-315) — nothing.
+ * - `optional-session`: redeeming an onboarding ticket (EUD-315) — the session
+ *   token only when a session is open, and never a renewal nor a retry on a 401
+ *   (`invalid_ticket` is a 401 and says nothing about the session).
  * - `ticket`: passkey registration, and sign-in during the email flow — the
  *   registration ticket, if any, plus the cookie (opening a session ends the one
  *   of the cookie and sets a new one). The two calls that open a session
@@ -29,14 +32,15 @@ const AUTH_PATH = '/api/v1/auth/';
  * - `session-cookie`: ending sessions — the session token, the cookie and `X-Wallet-Request`.
  * - `session`: device management (`/auth/passkeys`) and any other API — the session token.
  */
-type AuthRoute = 'public' | 'ticket' | 'ticket-cookie' | 'cookie' | 'session-cookie' | 'session';
+type AuthRoute = 'public' | 'optional-session' | 'ticket' | 'ticket-cookie' | 'cookie' | 'session-cookie' | 'session';
 
 function authRouteOf(url: string): AuthRoute {
   const authPathAt = url.indexOf(AUTH_PATH);
   if (authPathAt < 0) return 'session';
   const path = url.slice(authPathAt + AUTH_PATH.length).split(/[?#]/)[0];
 
-  if (path === 'register' || path === 'verify-email') return 'public';
+  if (path === 'register' || path === 'verify-email' || path === 'onboarding-tickets/disavowals') return 'public';
+  if (path === 'onboarding-tickets/redeem') return 'optional-session';
   if (path === 'refresh') return 'cookie';
   if (path === 'sessions/current' || path === 'sessions/others') return 'session-cookie';
   if (path === 'sessions' || path === 'passkeys/registration') return 'ticket-cookie';
@@ -69,6 +73,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   switch (route) {
     case 'public':
       return next(req);
+    case 'optional-session':
+      return sendWithOptionalSession(req, next);
     case 'ticket':
       return next(withTicket(req, inject(RegistrationTicketService).get()));
     case 'ticket-cookie':
@@ -81,6 +87,22 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     case 'session':
       return sendWithSession(req, next);
   }
+};
+
+/**
+ * A call that tells the service who is signed in, if anyone (onboarding ticket
+ * redemption, EUD-315). An open session whose access token lapsed renews it
+ * first, so the service can recognise the account; no session, no token. The
+ * call is never retried and a 401 never ends the session.
+ */
+const sendWithOptionalSession: HttpInterceptorFn = (req, next) => {
+  const authService = inject(AuthService);
+  if (!authService.isLoggedIn()) {
+    return next(req);
+  }
+  return authService.whenAccessTokenReady().pipe(
+    switchMap(() => next(withSessionToken(req, authService.getToken())))
+  );
 };
 
 /**

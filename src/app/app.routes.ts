@@ -67,6 +67,14 @@ export const routes: Routes = [
     loadChildren: () => import('./features/tabs/tabs.routes').then(m => m.default),
   },
   {
+    // EUD-315: onboarding address. Public: it decides itself between the access
+    // screen and the wallet once the ticket is redeemed.
+    path: 't/:ticket',
+    canActivate: [tenantGuard],
+    loadComponent: () =>
+      import('./features/onboarding-ticket/onboarding-ticket.page').then(m => m.OnboardingTicketPage),
+  },
+  {
     path: '**',
     canActivate: [tenantGuard, authLandingGuard],
     children: [],
