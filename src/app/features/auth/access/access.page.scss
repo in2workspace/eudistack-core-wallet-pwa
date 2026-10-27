@@ -89,3 +89,10 @@ dialog.help-modal {
   border: 0;
   color: inherit;
 }
+
+// EUD-315, FR-36: notice for whoever has no wallet yet, in restricted onboarding mode.
+.access-signup {
+  max-width: var(--auth-control-width);
+  margin-left: auto;
+  margin-right: auto;
+}

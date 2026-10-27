@@ -76,6 +76,13 @@
               </output>
             }
 
+            @if (ticketHasWallet()) {
+              <output class="error-box error-box--notice access-banner">
+                <ion-icon name="wallet-outline" aria-hidden="true"></ion-icon>
+                <span>{{ 'wallet-access.access.ticket-has-wallet' | translate }}</span>
+              </output>
+            }
+
             <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.access.title' | translate }}</h1>
             <p class="auth-subtitle">{{ 'wallet-access.access.subtitle' | translate }}</p>
 
@@ -83,10 +90,26 @@
               {{ 'wallet-access.access.passkey-button' | translate }}
             </button>
 
-            <p class="auth-subtitle access-secondary">{{ 'wallet-access.access.email-prompt' | translate }}</p>
+            <p class="auth-subtitle access-secondary">
+              {{ (restrictedMode() ? 'wallet-access.access.restricted-email-prompt' : 'wallet-access.access.email-prompt') | translate }}
+            </p>
             <button type="button" class="auth-link-button" [disabled]="busy()" (click)="startEmailFlow()">
               {{ 'wallet-access.access.email-button' | translate }}
             </button>
+
+            @if (restrictedMode()) {
+              <aside class="auth-notice access-signup" aria-labelledby="access-signup-title">
+                <p class="auth-notice__title" id="access-signup-title">{{ 'wallet-access.access.restricted-title' | translate }}</p>
+                @if (signupUrl()) {
+                  <p class="auth-notice__text">{{ 'wallet-access.access.restricted-text' | translate: { site: signupSite() } }}</p>
+                  <button type="button" class="auth-notice__link" (click)="openSignup(signupUrl())">
+                    {{ 'wallet-access.access.restricted-button' | translate }}
+                  </button>
+                } @else {
+                  <p class="auth-notice__text">{{ 'wallet-access.access.restricted-text-no-url' | translate }}</p>
+                }
+              </aside>
+            }
           }
 
           @case ('rejected') {
@@ -201,14 +224,20 @@
           }
 
           @case ('create-passkey') {
-            <h1 #heading class="auth-title" tabindex="-1">
-              {{ 'auth.passkey.verified-title' | translate }}<br />
-              {{ 'auth.passkey.setup-title' | translate }}
-            </h1>
-            <p class="auth-subtitle">
-              {{ 'auth.passkey.verified-subtitle' | translate }}<br />
-              {{ 'auth.passkey.setup-subtitle' | translate }}
-            </p>
+            @if (ticketFlow()) {
+              <!-- Onboarding ticket (FR-27): no email was verified and there is no step indicator. -->
+              <h1 #heading class="auth-title" tabindex="-1">{{ 'auth.passkey.setup-title' | translate }}</h1>
+              <p class="auth-subtitle">{{ 'auth.passkey.setup-subtitle' | translate }}</p>
+            } @else {
+              <h1 #heading class="auth-title" tabindex="-1">
+                {{ 'auth.passkey.verified-title' | translate }}<br />
+                {{ 'auth.passkey.setup-title' | translate }}
+              </h1>
+              <p class="auth-subtitle">
+                {{ 'auth.passkey.verified-subtitle' | translate }}<br />
+                {{ 'auth.passkey.setup-subtitle' | translate }}
+              </p>
+            }
 
             @if (showAttestationsWarning()) {
               <p class="access-callout access-callout--warning">
@@ -256,6 +285,38 @@
             <p class="auth-subtitle">{{ 'wallet-access.check-passkey.body' | translate }}</p>
             <button type="button" class="auth-button" [disabled]="busy()" (click)="checkCreatedPasskey()">
               {{ 'wallet-access.check-passkey.button' | translate }}
+            </button>
+          }
+
+          @case ('invalid-ticket') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.invalid-ticket.title' | translate }}</h1>
+            <p class="auth-subtitle">{{ 'wallet-access.invalid-ticket.body' | translate }}</p>
+            <button type="button" class="auth-button" (click)="backToAccess()">
+              {{ 'wallet-access.invalid-ticket.button' | translate }}
+            </button>
+          }
+
+          @case ('no-wallet') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.no-wallet.title' | translate }}</h1>
+            <p class="auth-subtitle">
+              {{ 'wallet-access.no-wallet.body' | translate: { email: noWalletEmail(), brand: brandName() } }}
+              @if (noWalletSignupUrl()) {
+                {{ 'wallet-access.no-wallet.go-to' | translate: { site: noWalletSignupSite() } }}
+              }
+            </p>
+            @if (offerDiscarded()) {
+              <p class="access-callout access-callout--warning">
+                <ion-icon name="warning-outline" aria-hidden="true"></ion-icon>
+                <span>{{ 'wallet-access.no-wallet.offer-discarded' | translate }}</span>
+              </p>
+            }
+            @if (noWalletSignupUrl()) {
+              <button type="button" class="auth-button" (click)="openSignup(noWalletSignupUrl())">
+                {{ 'wallet-access.no-wallet.button' | translate }}
+              </button>
+            }
+            <button type="button" class="auth-link-button" (click)="backToAccess()">
+              {{ 'wallet-access.no-wallet.back' | translate }}
             </button>
           }
 

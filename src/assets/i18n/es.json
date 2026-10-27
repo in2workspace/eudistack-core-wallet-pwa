@@ -723,7 +723,13 @@
       "email-button": "Entrar con mi email",
       "session-expired": "Tu sesión ha caducado. Vuelve a entrar.",
       "ios-steps-title": "Añade el wallet a tu pantalla de inicio",
-      "logout-pending": "No hemos podido confirmar el cierre de sesión con el servidor. Lo haremos en cuanto vuelvas a tener conexión."
+      "logout-pending": "No hemos podido confirmar el cierre de sesión con el servidor. Lo haremos en cuanto vuelvas a tener conexión.",
+      "ticket-has-wallet": "Ya tienes un wallet. Entra con tu passkey para recibir tu atestación.",
+      "restricted-email-prompt": "¿Ya tienes wallet y no tienes tu passkey aquí?",
+      "restricted-title": "¿Aún no tienes wallet?",
+      "restricted-text": "Obtenlo en {{site}}.",
+      "restricted-text-no-url": "Tu organización te dirá cómo obtenerlo.",
+      "restricted-button": "Obtener mi wallet"
     },
     "rejected": {
       "title": "No hemos podido verificarte",
@@ -780,7 +786,17 @@
       "failed-title": "No hemos podido comprobar tu enlace"
     },
     "invalid-ticket": {
-      "button": "Ir al acceso"
+      "button": "Ir al acceso",
+      "title": "Este enlace ya no es válido",
+      "body": "Ha caducado o ya se ha usado. Pide uno nuevo a quien te lo dio."
+    },
+    "no-wallet": {
+      "title": "Este email no tiene wallet",
+      "body": "{{email}} no tiene un wallet de {{brand}}.",
+      "go-to": "Para obtenerlo, ve a {{site}}.",
+      "offer-discarded": "La atestación que querías recibir se ha descartado. Primero necesitas tu wallet.",
+      "button": "Obtener mi wallet",
+      "back": "Volver"
     }
   }
 }

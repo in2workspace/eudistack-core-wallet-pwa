@@ -719,7 +719,13 @@
       "email-button": "Entrar amb el meu correu",
       "session-expired": "La teva sessió ha caducat. Torna a entrar.",
       "ios-steps-title": "Afegeix el wallet a la pantalla d'inici",
-      "logout-pending": "No hem pogut confirmar el tancament de sessió amb el servidor. Ho farem tan bon punt tornis a tenir connexió."
+      "logout-pending": "No hem pogut confirmar el tancament de sessió amb el servidor. Ho farem tan bon punt tornis a tenir connexió.",
+      "ticket-has-wallet": "Ja tens un wallet. Entra amb la teva passkey per rebre la teva atestació.",
+      "restricted-email-prompt": "Ja tens wallet i no tens la teva passkey aquí?",
+      "restricted-title": "Encara no tens wallet?",
+      "restricted-text": "Obtén-lo a {{site}}.",
+      "restricted-text-no-url": "La teva organització et dirà com obtenir-lo.",
+      "restricted-button": "Obtenir el meu wallet"
     },
     "rejected": {
       "title": "No t'hem pogut verificar",
@@ -776,7 +782,17 @@
       "failed-title": "No hem pogut comprovar el teu enllaç"
     },
     "invalid-ticket": {
-      "button": "Anar a l'accés"
+      "button": "Anar a l'accés",
+      "title": "Aquest enllaç ja no és vàlid",
+      "body": "Ha caducat o ja s'ha fet servir. Demana'n un de nou a qui te'l va donar."
+    },
+    "no-wallet": {
+      "title": "Aquest correu no té wallet",
+      "body": "{{email}} no té un wallet de {{brand}}.",
+      "go-to": "Per obtenir-lo, ves a {{site}}.",
+      "offer-discarded": "L'atestació que volies rebre s'ha descartat. Primer necessites el teu wallet.",
+      "button": "Obtenir el meu wallet",
+      "back": "Tornar"
     }
   }
 }

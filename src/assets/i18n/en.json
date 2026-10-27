@@ -723,7 +723,13 @@
       "email-button": "Sign in with my email",
       "session-expired": "Your session has expired. Please sign in again.",
       "ios-steps-title": "Add the wallet to your Home Screen",
-      "logout-pending": "We could not confirm the logout with the server. We will do it as soon as you are back online."
+      "logout-pending": "We could not confirm the logout with the server. We will do it as soon as you are back online.",
+      "ticket-has-wallet": "You already have a wallet. Sign in with your passkey to receive your attestation.",
+      "restricted-email-prompt": "Already have a wallet but not your passkey here?",
+      "restricted-title": "Don't have a wallet yet?",
+      "restricted-text": "Get it at {{site}}.",
+      "restricted-text-no-url": "Your organisation will tell you how to get it.",
+      "restricted-button": "Get my wallet"
     },
     "rejected": {
       "title": "We could not verify you",
@@ -780,7 +786,17 @@
       "failed-title": "We could not check your link"
     },
     "invalid-ticket": {
-      "button": "Go to sign-in"
+      "button": "Go to sign-in",
+      "title": "This link is no longer valid",
+      "body": "It has expired or has already been used. Ask whoever gave it to you for a new one."
+    },
+    "no-wallet": {
+      "title": "This email has no wallet",
+      "body": "{{email}} has no {{brand}} wallet.",
+      "go-to": "To get one, go to {{site}}.",
+      "offer-discarded": "The attestation you wanted to receive has been discarded. You need your wallet first.",
+      "button": "Get my wallet",
+      "back": "Back"
     }
   }
 }
