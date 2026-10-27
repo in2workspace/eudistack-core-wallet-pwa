@@ -32,6 +32,7 @@ import { RouterModule } from '@angular/router';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { TranslateModule } from '@ngx-translate/core';
 import { IonicModule } from '@ionic/angular';
+import { requestHighResolutionScannerStream } from './scanner-resolution';
 
 // ! Since console.error is intercepted (to capture the error already caught by zxing), be careful to avoid recursion
 // ! (i.e., console.error should not be called within the execution flow of another console.error)
@@ -143,6 +144,7 @@ export class BarcodeScannerComponent implements OnInit {
   
     public async ngOnInit(): Promise<void> {
       this.modifyConsoleErrorToHandleScannerErrors();
+      requestHighResolutionScannerStream();
     }
   
     public async ngAfterViewInit(): Promise<void> {

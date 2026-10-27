@@ -17,6 +17,7 @@
     class="scanner"
     [autostart]="false"
     [formats]="allowedFormats"
+    [tryHarder]="true"
     (scanSuccess)="onCodeResult($event)"
     (scanError)="onScanError($event)"
     (scanFailure)="onScanFailure($event)"

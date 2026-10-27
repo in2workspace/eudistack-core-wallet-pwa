@@ -1,6 +1,6 @@
 {
   "name": "eudistack-core-wallet-pwa",
-  "version": "3.18.0",
+  "version": "3.18.1",
   "author": "EUDIStack",
   "homepage": "https://ionicframework.com/",
   "scripts": {
@@ -41,6 +41,7 @@
     "@ngx-translate/http-loader": "^16.0.1",
     "@noble/curves": "^2.2.0",
     "@simplewebauthn/browser": "^14.0.0",
+    "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
     "@zxing/ngx-scanner": "^19.0.0",
     "angularx-qrcode": "^19.0.0",
