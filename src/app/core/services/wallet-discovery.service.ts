@@ -2,7 +2,11 @@ import { inject, Injectable, signal, Signal } from '@angular/core';
 import { firstValueFrom, TimeoutError } from 'rxjs';
 
 import { environment } from 'src/environments/environment';
-import { isValidWalletConfigMetadataDto } from '../gateways/http-wallet-discovery.gateway';
+import {
+  isValidWalletConfigMetadataDto,
+  readOnboardingMode,
+  readSignupUrl,
+} from '../gateways/http-wallet-discovery.gateway';
 import { WALLET_DISCOVERY_GATEWAY } from '../gateways/wallet-discovery.gateway';
 import {
   WalletDiscoveryFallbackReason,
@@ -129,6 +133,8 @@ export class WalletDiscoveryService {
           mode: dto.wallet_mode as WalletMode,
           source: 'discovery',
           keyManager: dto.key_manager,
+          onboardingMode: readOnboardingMode(dto),
+          signupUrl: readSignupUrl(dto),
           resolvedAt: Date.now(),
         };
 
@@ -195,6 +201,11 @@ export class WalletDiscoveryService {
       mode: envSnap.mode,
       source: 'fallback',
       keyManager: null,
+      // EUD-315: without the metadata the mode is unknown; `open` keeps the
+      // access screen as before EUD-315. The service still enforces the real
+      // mode (verify-email answers `no_account` in a restricted tenant).
+      onboardingMode: 'open',
+      signupUrl: null,
       resolvedAt: Date.now(),
       fallbackReason: reason,
     };

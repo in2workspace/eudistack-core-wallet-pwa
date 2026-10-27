@@ -15,6 +15,15 @@
 export type WalletMode = 'browser' | 'server';
 
 /**
+ * How first registrations work in the tenant (EUD-315, design §2.7).
+ *
+ * - `'open'`:       anyone can create an account with their email and a code.
+ * - `'restricted'`: accounts are only created with an onboarding ticket; the
+ *                   email flow only serves accounts that already exist.
+ */
+export type OnboardingMode = 'open' | 'restricted';
+
+/**
  * Reason why the discovery fell back to `environment.wallet_mode` instead of
  * using the live well-known response.
  *
@@ -58,6 +67,18 @@ export interface WalletDiscoverySnapshot {
    */
   keyManager: string | null;
 
+  /**
+   * Onboarding mode of the tenant (EUD-315). `'open'` when the metadata does not
+   * carry it (older service) and in every fallback snapshot.
+   */
+  onboardingMode: OnboardingMode;
+
+  /**
+   * Tenant's onboarding address (where a user without a wallet gets one). Only
+   * in `'restricted'` mode and only when it is a valid http(s) URL; `null` otherwise.
+   */
+  signupUrl: string | null;
+
   /** `Date.now()` timestamp (ms) at the moment the snapshot was committed. */
   resolvedAt: number;
 
@@ -72,11 +93,16 @@ export interface WalletDiscoverySnapshot {
  * Data-transfer object that mirrors the JSON body of
  * `GET /.well-known/wallet-config-metadata` (EUDISTACK-413 contract).
  *
- * Contract: { wallet_mode: 'browser'|'server', key_manager: string|null }
+ * Contract: { wallet_mode: 'browser'|'server', key_manager: string|null,
+ *             onboarding_mode?: 'open'|'restricted', signup_url?: string } (EUD-315)
  * This DTO is used only inside the gateway layer; the rest of the application
  * works with `WalletDiscoverySnapshot`.
  */
 export interface WalletConfigMetadataDto {
   wallet_mode: string;
   key_manager: string | null;
+  /** EUD-315. Optional: older services do not send it. */
+  onboarding_mode?: string;
+  /** EUD-315. Only sent in `restricted` mode, when the tenant has one. */
+  signup_url?: string | null;
 }
