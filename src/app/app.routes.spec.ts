@@ -5,7 +5,7 @@ import { routes } from './app.routes';
 import { HttpClientModule } from '@angular/common/http';
 import { logsEnabledGuard } from './core/guards/logs-enabled.guard';
 import { authGuard } from './core/guards/auth.guard';
-import { hybridOnboardingGuard, hybridOnboardingRouteGuard } from './core/guards/hybrid-onboarding.guard';
+import { passkeyPrfOnboardingGuard, passkeyPrfOnboardingRouteGuard } from './core/guards/passkey-prf-onboarding.guard';
 import { PasskeyStoreService } from './core/services/passkey-store.service';
 import { TenantService } from './core/services/tenant.service';
 import { WalletDiscoveryService } from './core/services/wallet-discovery.service';
@@ -17,8 +17,8 @@ describe('App Routing', () => {
 
   const mockLogsEnabledGuard = jest.fn().mockReturnValue(true);
   const mockAuthGuard = jest.fn().mockReturnValue(of(true));
-  const mockHybridOnboardingGuard = jest.fn().mockReturnValue(true);
-  const mockHybridOnboardingRouteGuard = jest.fn().mockReturnValue(true);
+  const mockPasskeyPrfOnboardingGuard = jest.fn().mockReturnValue(true);
+  const mockPasskeyPrfOnboardingRouteGuard = jest.fn().mockReturnValue(true);
   const mockPasskeyStore = { hasPasskey: jest.fn().mockReturnValue(true), getCredentialId: jest.fn() };
   const mockWalletDiscovery = { mode: () => 'browser' };
   const mockTenantService = { tenant: () => 'sandbox', resolve: () => Promise.resolve(), buildFallbackUrl: () => '' };
@@ -32,8 +32,8 @@ describe('App Routing', () => {
       providers: [
         { provide: authGuard, useValue: mockAuthGuard },
         { provide: logsEnabledGuard, useValue: mockLogsEnabledGuard },
-        { provide: hybridOnboardingGuard, useValue: mockHybridOnboardingGuard },
-        { provide: hybridOnboardingRouteGuard, useValue: mockHybridOnboardingRouteGuard },
+        { provide: passkeyPrfOnboardingGuard, useValue: mockPasskeyPrfOnboardingGuard },
+        { provide: passkeyPrfOnboardingRouteGuard, useValue: mockPasskeyPrfOnboardingRouteGuard },
         { provide: PasskeyStoreService, useValue: mockPasskeyStore },
         { provide: TenantService, useValue: mockTenantService },
         { provide: WalletDiscoveryService, useValue: mockWalletDiscovery },

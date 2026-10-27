@@ -1,0 +1,91 @@
+// Shared look with the browser-mode LoginPage (login.page.scss): only the pieces
+// the server-mode access flow adds. Colours come from the tenant theme tokens.
+
+.access-banner {
+  margin: 0 auto 24px;
+}
+
+.access-secondary {
+  margin-top: 24px;
+  margin-bottom: 0;
+}
+
+// 5px between the prompt and its link (login.page.scss gives the link 28px + 8px padding).
+.access-secondary + .auth-link-button {
+  margin-top: 5px;
+  padding-top: 0;
+}
+
+.access-callout {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  max-width: var(--auth-control-width);
+  margin: 0 auto 16px;
+  text-align: left;
+  color: var(--auth-ink-muted);
+
+  ion-icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+    font-size: 1.1rem;
+  }
+}
+
+.access-callout--tip {
+  font-size: 10px;
+  line-height: 1.45;
+
+  ion-icon {
+    margin-top: 0;
+    font-size: 12px;
+  }
+}
+
+// Keeps the tip close to the field it is about (login.page.scss sets 48px, 56px on mobile).
+.access-callout--tip + .auth-field--device {
+  margin-top: 16px;
+}
+
+.access-callout--warning {
+  color: var(--auth-ink);
+  font-weight: 600;
+
+  ion-icon {
+    color: var(--status-warning, var(--auth-ink));
+  }
+}
+
+// The heading takes the focus programmatically on every screen change (screen
+// readers announce it). It is not interactive, so it shows no focus ring:
+// Chrome would otherwise paint :focus-visible on it at page load.
+.auth-title:focus,
+.auth-title:focus-visible {
+  outline: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// The help modals render a native, already open <dialog> inside ion-modal, which
+// owns the overlay, the focus and Escape. Reset the browser's dialog box so it
+// looks like the .help-modal block of login.page.scss.
+dialog.help-modal {
+  position: relative;
+  inset: auto;
+  width: auto;
+  max-width: none;
+  height: auto;
+  margin: 0;
+  border: 0;
+  color: inherit;
+}

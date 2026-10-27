@@ -3,6 +3,8 @@ import { CanActivateFn, Router } from '@angular/router';
 import { IosInstallService } from 'src/app/shared/services/ios-install.service';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
 import { PasskeyStoreService } from '../services/passkey-store.service';
+import { ACCESS_ROUTE, AuthService } from '../services/auth.service';
+import { WALLET_HOME_ROUTE, whenAuthInitialized } from './auth.guard';
 
 /**
  * Redirects iOS Safari browser-mode users to the install onboarding wizard
@@ -28,19 +30,30 @@ export const iosInstallGuard: CanActivateFn = () => {
 };
 
 /**
- * Redirects to /auth/login if a passkey was previously registered on this
- * device, otherwise to /auth/register.
+ * Landing (`/` and unknown paths). Server mode: once the start-up resume has
+ * settled, the wallet if a session is open, the access screen otherwise.
+ * Browser mode: /auth/login if a passkey was registered on this device,
+ * otherwise /auth/register, with the iOS Safari install wizard first (AC-008.1–2).
  * Saves the original URL (with query params) so it can be restored after auth.
- * Intercepts iOS Safari browser-mode users and redirects to /ios-install (AC-008.1–2).
  */
 export const authLandingGuard: CanActivateFn = (_route, state) => {
   const router = inject(Router);
   const passkeyStore = inject(PasskeyStoreService);
   const iosInstall = inject(IosInstallService);
   const targetUrl = state.url;
-  if (targetUrl && targetUrl !== '/' && !targetUrl.startsWith('/auth')) {
-    sessionStorage.setItem(PENDING_DEEP_LINK_KEY, targetUrl);
+
+  if (iosInstall.isServerMode()) {
+    const authService = inject(AuthService);
+    return whenAuthInitialized(authService, () => {
+      if (authService.isLoggedIn()) {
+        return router.parseUrl(WALLET_HOME_ROUTE);
+      }
+      savePendingDeepLink(targetUrl);
+      return router.parseUrl(ACCESS_ROUTE);
+    });
   }
+
+  savePendingDeepLink(targetUrl);
   const hasPasskey = passkeyStore.hasPasskey();
   if (iosInstall.shouldShowInstallWizard()) {
     const wizardState = iosInstall.wizardState(hasPasskey);
@@ -48,6 +61,12 @@ export const authLandingGuard: CanActivateFn = (_route, state) => {
   }
   return router.createUrlTree([hasPasskey ? '/auth/login' : '/auth/register']);
 };
+
+function savePendingDeepLink(targetUrl: string): void {
+  if (targetUrl && targetUrl !== '/' && !targetUrl.startsWith('/auth')) {
+    sessionStorage.setItem(PENDING_DEEP_LINK_KEY, targetUrl);
+  }
+}
 
 /**
  * Inverse guard: prevents direct navigation to `/ios-install` from non-iOS

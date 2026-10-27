@@ -2,7 +2,7 @@ import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testin
 import { DebugElement, signal } from '@angular/core';
 import { By } from '@angular/platform-browser';
 import { MenuComponent } from './menu.component';
-import { IonicModule, PopoverController } from '@ionic/angular';
+import { AlertController, IonicModule, PopoverController } from '@ionic/angular';
 import { AuthService } from 'src/app/core/services/auth.service';
 import { ActivatedRoute, NavigationEnd, NavigationStart, Router } from '@angular/router';
 import { of, Subject } from 'rxjs';
@@ -30,6 +30,8 @@ describe('MenuComponent', () => {
     events: new Subject<unknown>(),
   };
 
+  const mockAlertController = { create: jest.fn() };
+
   const discoverySnapshot = signal<WalletDiscoverySnapshot | null>(null);
   const mockDiscovery = { snapshot: () => discoverySnapshot };
 
@@ -54,6 +56,7 @@ describe('MenuComponent', () => {
         { provide: Router, useValue: mockRouter },
         { provide: ActivatedRoute, useValue: {} },
         { provide: WalletDiscoveryService, useValue: mockDiscovery },
+        { provide: AlertController, useValue: mockAlertController },
       ],
     })
     .overrideProvider(PopoverController, { useValue: popoverController })
@@ -197,6 +200,60 @@ describe('MenuComponent', () => {
 
       expect(event.preventDefault).not.toHaveBeenCalled();
       expect(logoutSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('logout confirmation (EUD-8, "Cerrar sesión")', () => {
+    const snapshot = (mode: 'browser' | 'server'): WalletDiscoverySnapshot =>
+      ({ mode, source: 'discovery', keyManager: null, resolvedAt: 0 });
+    let buttons: { role?: string; handler?: () => void }[];
+
+    beforeEach(() => {
+      buttons = [];
+      mockAlertController.create.mockImplementation(async (options: { buttons: typeof buttons }) => {
+        buttons = options.buttons;
+        return { present: jest.fn().mockResolvedValue(undefined) };
+      });
+    });
+
+    it('asks before ending the session in server mode', async () => {
+      setSnapshot(snapshot('server'));
+
+      component.logout();
+      await Promise.resolve();
+
+      expect(mockAlertController.create).toHaveBeenCalledWith(expect.objectContaining({ header: 'wallet-access.logout.title' }));
+      expect(mockAuthService.logout).not.toHaveBeenCalled();
+    });
+
+    it('ends the session and goes to the access screen on confirm', async () => {
+      setSnapshot(snapshot('server'));
+      component.logout();
+      await Promise.resolve();
+
+      buttons.find(button => button.role === 'confirm')!.handler!();
+
+      expect(mockAuthService.logout).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).toHaveBeenCalledWith('/auth/access');
+    });
+
+    it('keeps the session on cancel', async () => {
+      setSnapshot(snapshot('server'));
+      component.logout();
+      await Promise.resolve();
+
+      expect(buttons.find(button => button.role === 'cancel')?.handler).toBeUndefined();
+      expect(mockAuthService.logout).not.toHaveBeenCalled();
+    });
+
+    it('closes straight away in browser mode, as before', () => {
+      setSnapshot(snapshot('browser'));
+
+      component.logout();
+
+      expect(mockAlertController.create).not.toHaveBeenCalled();
+      expect(mockAuthService.logout).toHaveBeenCalled();
+      expect(mockRouter.navigateByUrl).toHaveBeenCalledWith('/auth/login');
     });
   });
 });
