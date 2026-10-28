@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Onboarding with a ticket (EUD-315)**: a system authorised by the tenant can hand a user an onboarding address `https://<rpId>/t/<ticket>` (usually as a QR).
+  - New public route `/t/:ticket` (`OnboardingTicketPage`): removes the ticket from the address bar and the history, checks passkey support (Requisitos no cumplidos otherwise, without redeeming), redeems it with `POST /auth/onboarding-tickets/redeem` and goes to Crear passkey without email, code or step texts (email without account or without passkeys), to Acceso with the notice "Ya tienes un wallet…" (account with passkeys), straight to the wallet (a session of the ticket's account is open) or to the new Ticket no válido screen (`invalid_ticket`). A session of another account is closed first. Temporary failures keep the ticket in memory and offer a retry.
+  - The offer that comes with the ticket is kept as the pending deep link `/tabs/credentials?credential_offer_uri=…` and resumed once the session is open; without an offer nothing is resumed.
+  - The auth interceptor sends the session token to the redemption only when a session is open, and never renews nor retries it on a 401; the disavowal is public.
+  - New public route `/no-he-sido-yo/:token` (`NotMePage`): the holder confirms or cancels "No he sido yo" from the new-account email; it calls `POST /auth/onboarding-tickets/disavowals` only on confirm, never starts a session, and shows the result or "Este enlace ya no es válido.".
+- **Restricted onboarding mode (EUD-315)**: the wallet reads `onboarding_mode` and `signup_url` from `/.well-known/wallet-config-metadata` (absent = `open`, unknown = `restricted`, `signup_url` only as an http(s) URL; `open` when the metadata is unavailable).
+  - In restricted mode Acceso changes the email prompt to "¿Ya tienes wallet y no tienes tu passkey aquí?" and adds the notice "¿Aún no tienes wallet?" with "Obtener mi wallet" to `signup_url` (no button without it).
+  - A 403 `no_account` from `POST /auth/verify-email` shows the new Sin wallet screen with the masked email and the button to the signup address; the saved offer is discarded (and the screen says so) and the email forgotten.
+- Texts in Spanish, English and Catalan (`wallet-access.ticket.*`, `invalid-ticket.*`, `no-wallet.*`, `not-me.*`, `access.ticket-has-wallet`, `access.restricted-*`).
+
+### Tests
+
+- Unit tests for the new pages, `OnboardingTicketService`, the interceptor routes, the metadata readers, `noAccountSignupUrl`, and regression tests that standard offers (scanner, `/protocol/callback?credential_offer_uri=`, pending deep link) keep working unchanged.
+
 ## [3.18.3] - 2026-11-06
 
 ### Fixed
