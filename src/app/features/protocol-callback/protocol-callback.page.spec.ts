@@ -52,6 +52,15 @@ describe('ProtocolCallbackPage', () => {
     });
   });
 
+  it('still hands a standard openid-credential-offer:// offer to the credentials page (EUD-315, AC-11)', () => {
+    queryParamsSubject.next({ credential_offer_uri: 'openid-credential-offer://?credential_offer_uri=https%3A%2F%2Fissuer.example%2Fcredential-offer%2F3f2a' });
+    fixture.detectChanges();
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/credentials'], {
+      queryParams: { credentialOfferUri: 'openid-credential-offer://?credential_offer_uri=https%3A%2F%2Fissuer.example%2Fcredential-offer%2F3f2a' },
+    });
+  });
+
   it('should navigate to /tabs/credentials with authorizationRequest when authorization_request param is present', () => {
     queryParamsSubject.next({ authorization_request: 'openid4vp://?client_id=did:key:z6Mk&request_uri=https://verifier/auth' });
     fixture.detectChanges();

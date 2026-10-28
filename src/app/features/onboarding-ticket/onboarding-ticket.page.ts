@@ -39,7 +39,7 @@ export const TICKET_FREE_PATH = '/t';
 @Component({
   selector: 'app-onboarding-ticket',
   templateUrl: './onboarding-ticket.page.html',
-  styleUrls: ['../auth/login/login.page.scss'],
+  styleUrls: ['../auth/login/login.page.scss', './onboarding-ticket.page.scss'],
   imports: [IonicModule, TranslateModule],
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
