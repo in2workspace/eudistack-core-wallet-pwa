@@ -222,6 +222,7 @@
               <span>{{ 'wallet-access.create-passkey.shared-device-tip' | translate }}</span>
             </p>
 
+            <!-- Device name input hidden for now: the passkey is registered with defaultDeviceName().
             <div class="auth-field auth-field--device">
               <span class="auth-field__label" id="access-device-name-label">{{ 'auth.passkey.device-name-label' | translate }}</span>
               <ion-input
@@ -236,6 +237,8 @@
                 (keyup.enter)="createPasskey()"
               ></ion-input>
             </div>
+            -->
+
 
             <button type="button" class="auth-button" [disabled]="busy()" (click)="createPasskey()">
               {{ 'auth.passkey.register-button' | translate }}
@@ -272,7 +275,7 @@
           }
         }
 
-        @if (errorMessage() && screen() !== 'code') {
+        @if (errorMessage()) {
           <div class="error-box" role="alert">
             <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
             <span>{{ errorMessage() }}</span>
