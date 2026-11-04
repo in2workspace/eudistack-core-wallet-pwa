@@ -22,6 +22,11 @@ interface NavigateAck {
 }
 
 const CHANNEL_NAME = 'wallet-single-instance';
+const LEADER_LOCK_NAME = 'wallet-single-instance';
+// How long a new tab waits for the leader lock when the leader does not answer. It only
+// covers a reload, whose previous document may not have released the lock yet: a busy or
+// throttled leader still holds it, so this tab ends up as a follower either way.
+const LEADER_LOCK_WAIT_MS = 1000;
 const ELECTION_TIMEOUT_MS = 300;
 const NAVIGATE_ACK_TIMEOUT_MS = 500;
 
@@ -78,15 +83,68 @@ export class SingleInstanceService implements OnDestroy {
       this.handleMessage(ev.data);
     };
 
+    return 'locks' in navigator ? this.electWithLock() : this.electWithMessages();
+  }
+
+  /**
+   * The leader is whoever holds the lock, and the browser releases it when the tab closes
+   * or crashes, so two leaders cannot exist however long the current one takes to answer.
+   * NEW_TAB is only sent so that a responsive leader spares this tab the wait.
+   *
+   * A follower leaves its request queued instead of aborting it: Chrome can keep an aborted
+   * request pending without ever rejecting it, so a rejection cannot be what ends the wait.
+   */
+  private electWithLock(): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      const currentUrl = window.location.pathname + window.location.search;
+      let decided = false;
+
+      const becomeFollower = () => {
+        if (decided) return;
+        decided = true;
+        clearTimeout(waitTimeout);
+        void this.handOffToLeader(currentUrl);
+        resolve(false);
+      };
+      const waitTimeout = setTimeout(becomeFollower, LEADER_LOCK_WAIT_MS);
+
+      this.channel!.onmessage = (ev: MessageEvent<SingleInstanceMessage>) => {
+        if (ev.data.type === 'LEADER_ACK') {
+          becomeFollower();
+        } else {
+          this.handleMessage(ev.data);
+        }
+      };
+
+      navigator.locks.request(LEADER_LOCK_NAME, () => {
+        if (decided) {
+          // Late grant to a follower: returning releases the lock for the next tab.
+          return undefined;
+        }
+        decided = true;
+        clearTimeout(waitTimeout);
+        this.becomeLeader();
+        resolve(true);
+        // Never settles: the lock is held for the whole life of the tab.
+        return new Promise<void>(() => undefined);
+      }).catch(() => {
+        if (decided) return;
+        // The browser refused the lock (e.g. site storage blocked).
+        decided = true;
+        clearTimeout(waitTimeout);
+        void this.electWithMessages().then(resolve);
+      });
+
+      this.postNewTab(currentUrl);
+    });
+  }
+
+  /** Fallback without Web Locks: a leader that takes too long to answer ends up with a second leader. */
+  private electWithMessages(): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
       const currentUrl = window.location.pathname + window.location.search;
 
-      this.channel!.postMessage({
-        type: 'NEW_TAB',
-        tabId: this.tabId,
-        url: currentUrl,
-      } satisfies SingleInstanceMessage);
-// TODO: There is a potential race condition here. This should be improved in a future update.
+      this.postNewTab(currentUrl);
       const timeout = setTimeout(() => {
         this.becomeLeader();
         resolve(true);
@@ -104,6 +162,14 @@ export class SingleInstanceService implements OnDestroy {
         }
       };
     });
+  }
+
+  private postNewTab(url: string): void {
+    this.channel!.postMessage({
+      type: 'NEW_TAB',
+      tabId: this.tabId,
+      url,
+    } satisfies SingleInstanceMessage);
   }
 
   private becomeLeader(): void {
