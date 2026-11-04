@@ -72,6 +72,17 @@
   --ui-selection-bg: #2563EB;
   --ui-selection-fg: #FFFFFF;
 
+  /**
+   * Action tokens — brand-independent, never overridden by ThemeService.
+   * Color for actions drawn on content surfaces: text buttons, links, alert
+   * confirm buttons, icon badges and state borders. The tenant primary color is
+   * for the header/footer chrome only and may not contrast with the content
+   * (CGCOM's primary is white). `--action-contrast-color` goes on top of it.
+   */
+  --action-color: #2563EB;
+  --action-color-rgb: 37, 99, 235;
+  --action-contrast-color: #FFFFFF;
+
   /** Ionic color palette — mapped to semantic tokens **/
   --ion-color-primary: var(--primary-color);
   --ion-color-primary-rgb: var(--primary-color-rgb);
@@ -184,6 +195,10 @@
   --ui-focus-ring-rgb: 96, 165, 250;
   --ui-selection-bg: #60A5FA;
   --ui-selection-fg: #0F1117;
+
+  --action-color: #60A5FA;
+  --action-color-rgb: 96, 165, 250;
+  --action-contrast-color: #0F1117;
 
   --ion-background-color: var(--surface-page);
   --ion-text-color: var(--text-primary);
