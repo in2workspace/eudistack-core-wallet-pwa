@@ -228,6 +228,7 @@ describe('PasskeyCeremonyService (EUD-8)', () => {
         expect(extensions.prf.eval.first).toHaveLength(32);
         expect(serviceExtensions.prf).toEqual({});
         expect(Object.keys(body).sort()).toEqual(['ceremonyId', 'credential', 'prfSupported']);
+        expect(body['credential']).toEqual(registrationResponse({ enabled: true }));
       });
 
       it('wipes the PRF output of the creation and sends only prf.enabled, with no extra ceremony (Windows Hello)', async () => {
