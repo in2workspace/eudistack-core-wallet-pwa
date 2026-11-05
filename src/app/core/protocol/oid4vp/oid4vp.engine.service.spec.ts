@@ -407,6 +407,84 @@ describe('Oid4vpEngineService — presentation guards', () => {
   });
 });
 
+describe('Oid4vpEngineService — key of the chosen attestation (EUD-11 design §2.1)', () => {
+  function sdJwtWithCnf(): string {
+    return buildSdJwt(
+      { iss: 'https://issuer.example.com', iat: 1_700_000_000, exp: 1_700_003_600, vct: 'vct-x', cnf: HOLDER_CNF },
+      [['given_name', 'Jane']]
+    );
+  }
+
+  function selectorWithHolderKey(sdJwt: string, holderKeyId: string | undefined): VCReply {
+    return {
+      ...selectorResponseFor(sdJwt),
+      selectedVcList: [{ name: 'Empleado ACME', credentialEncoded: sdJwt, holder_key_id: holderKeyId } as any],
+    };
+  }
+
+  it('signs with the holder_key_id of the chosen attestation, without looking the key up by kid', async () => {
+    // Arrange
+    const { service, keyStorageProvider, credentialCacheService } = setup();
+    const sdJwt = sdJwtWithCnf();
+    credentialCacheService.extractSignedJwt.mockReturnValue(sdJwt);
+    jest.spyOn(service as any, 'computeSdHash').mockResolvedValue('fake-sd-hash');
+
+    // Act
+    await service.buildVerifiablePresentationWithSelectedVCs(selectorWithHolderKey(sdJwt, 'holder-9'));
+
+    // Assert
+    expect(keyStorageProvider.sign).toHaveBeenCalledWith('holder-9', expect.any(Uint8Array));
+    expect(keyStorageProvider.resolveKeyIdByKid).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the key whose thumbprint is the cnf when the attestation has no holder_key_id (browser mode)', async () => {
+    // Arrange
+    const { service, keyStorageProvider, credentialCacheService } = setup();
+    const sdJwt = sdJwtWithCnf();
+    credentialCacheService.extractSignedJwt.mockReturnValue(sdJwt);
+    jest.spyOn(service as any, 'computeSdHash').mockResolvedValue('fake-sd-hash');
+
+    // Act
+    await service.buildVerifiablePresentationWithSelectedVCs(selectorWithHolderKey(sdJwt, undefined));
+
+    // Assert
+    expect(keyStorageProvider.resolveKeyIdByKid).toHaveBeenCalledWith('thumbprint-1');
+    expect(keyStorageProvider.sign).toHaveBeenCalledWith('key-1', expect.any(Uint8Array));
+  });
+
+  it('asks the key storage to sign once per presentation (one use of the passkey)', async () => {
+    // Arrange
+    const { service, keyStorageProvider, credentialCacheService } = setup();
+    const sdJwt = sdJwtWithCnf();
+    credentialCacheService.extractSignedJwt.mockReturnValue(sdJwt);
+    jest.spyOn(service as any, 'computeSdHash').mockResolvedValue('fake-sd-hash');
+
+    // Act
+    await service.buildVerifiablePresentationWithSelectedVCs(selectorWithHolderKey(sdJwt, 'holder-9'));
+
+    // Assert
+    expect(keyStorageProvider.sign).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not present when the key storage refuses to sign (derived key is not the stored one)', async () => {
+    // Arrange
+    const { service, keyStorageProvider, credentialCacheService, walletService } = setup();
+    const sdJwt = sdJwtWithCnf();
+    credentialCacheService.extractSignedJwt.mockReturnValue(sdJwt);
+    jest.spyOn(service as any, 'computeSdHash').mockResolvedValue('fake-sd-hash');
+    keyStorageProvider.sign.mockRejectedValue(Object.assign(new Error('mismatch'), {
+      code: 'key_mismatch', translationKey: 'errors.passkey-key-mismatch',
+    }));
+
+    // Act
+    const result = service.buildVerifiablePresentationWithSelectedVCs(selectorWithHolderKey(sdJwt, 'holder-9'));
+
+    // Assert
+    await expect(result).rejects.toMatchObject({ translationKey: 'errors.passkey-key-mismatch' });
+    expect(walletService.postOid4vpAuthorizationResponse).not.toHaveBeenCalled();
+  });
+});
+
 describe('Oid4vpEngineService.logPresentedActivity — credential naming', () => {
   it('names the credential by its name, then its first type, then Unknown', async () => {
     const { service, activityService } = setup();
