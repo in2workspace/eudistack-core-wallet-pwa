@@ -104,7 +104,7 @@ export class Oid4vpEngineService {
 
     console.debug('[OID4VP] Step 5: Resolving signing key...');
     const thumbprint = await this.keyStorageProvider.computeJwkThumbprint(publicKey);
-    const keyId = await this.findKeyIdByThumbprint(thumbprint);
+    const keyId = await this.findKeyId(thumbprint, selectorResponse);
     console.debug('[OID4VP] Step 5 OK: keyId resolved');
 
     console.debug('[OID4VP] Step 6: Signing VP JWT...');
@@ -126,7 +126,7 @@ export class Oid4vpEngineService {
   ): Promise<void> {
     console.debug('[OID4VP-SDJWT] Resolving signing key...');
     const thumbprint = await this.keyStorageProvider.computeJwkThumbprint(publicKey);
-    const keyId = await this.findKeyIdByThumbprint(thumbprint);
+    const keyId = await this.findKeyId(thumbprint, selectorResponse);
 
     console.debug('[OID4VP-SDJWT] Building KB-JWT...');
     const sdHash = await this.computeSdHash(sdJwtCompact);
@@ -248,8 +248,13 @@ export class Oid4vpEngineService {
     return signedJwt;
   }
 
-  private async findKeyIdByThumbprint(thumbprint: string): Promise<string> {
-    const keyId = await this.keyStorageProvider.resolveKeyIdByKid(thumbprint);
+  /**
+   * The key of the attestation the user chose: with server and passkey custody, its `holder_key_id`;
+   * in the browser, the key whose thumbprint is the `cnf` of the attestation.
+   */
+  private async findKeyId(thumbprint: string, selectorResponse: VCReply): Promise<string> {
+    const keyId = selectorResponse.selectedVcList[0]?.holder_key_id
+      ?? await this.keyStorageProvider.resolveKeyIdByKid(thumbprint);
     if (!keyId) {
       console.error('[OID4VP] FAIL: No local key for thumbprint=', thumbprint);
       throw new Oid4vpError(`No local key found for kid=${thumbprint}`, {

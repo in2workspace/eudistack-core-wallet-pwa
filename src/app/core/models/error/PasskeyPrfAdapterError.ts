@@ -1,6 +1,6 @@
 import { AppError } from './AppError';
 
-export type PasskeyPrfAdapterErrorCode = 'wrap_unavailable_on_this_device' | 'prepare_sign_failed' | 'prf_unavailable';
+export type PasskeyPrfAdapterErrorCode = 'wrap_unavailable_on_this_device' | 'prepare_sign_failed' | 'prf_unavailable' | 'key_mismatch';
 
 export class PasskeyPrfAdapterError extends AppError {
   public override readonly code: PasskeyPrfAdapterErrorCode;

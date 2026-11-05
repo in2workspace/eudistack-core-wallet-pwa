@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { base64UrlEncode, base64UrlDecode } from '../utils/base64url';
+import { deriveP256KeyFromBytes } from '../utils/p256-key-derivation.util';
 import { AppError } from '../models/error/AppError';
 import { PasskeyError, runPasskeyCeremony } from '../models/error/PasskeyError';
-import { p256 } from '@noble/curves/nist.js';
 import { PasskeyStoreService } from './passkey-store.service';
 import { WEBAUTHN_CREATE_HINTS, WEBAUTHN_ASSERTION_HINTS } from '../constants/webauthn.constants';
 
@@ -149,7 +149,7 @@ export class PasskeyPrfService {
 
     try {
       const master = await this.evaluatePrf(credentialIdBytes, MASTER_SALT);
-      return this.deriveP256KeyFromBytes(master, salt);
+      return deriveP256KeyFromBytes(master, salt, HKDF_INFO);
     } finally {
       this.prfLock = null;
       resolve();
@@ -197,56 +197,6 @@ export class PasskeyPrfService {
     }
 
     return new Uint8Array(prfResults.first);
-  }
-
-  private async deriveP256KeyFromBytes(
-    prfOutput: Uint8Array,
-    salt: Uint8Array
-  ): Promise<{ privateKey: CryptoKey; publicKeyJwk: JsonWebKey }> {
-    // Step 1: Import PRF output as HKDF master key
-    const masterKey = await globalThis.crypto.subtle.importKey(
-      'raw',
-      prfOutput.slice(), // .slice() ensures ArrayBuffer-backed Uint8Array
-      'HKDF',
-      false,
-      ['deriveBits']
-    );
-
-    // Step 2: Derive 256 bits via HKDF
-    const derivedBits = await globalThis.crypto.subtle.deriveBits(
-      {
-        name: 'HKDF',
-        salt: salt.slice(), // .slice() ensures ArrayBuffer-backed Uint8Array
-        hash: 'SHA-256',
-        info: new TextEncoder().encode(HKDF_INFO).slice(),
-      },
-      masterKey,
-      256
-    );
-
-    const d = new Uint8Array(derivedBits);
-
-    // Step 3: Compute public key point using @noble/curves
-    const publicKeyUncompressed = p256.getPublicKey(d, false); // 65 bytes: 04 || x || y
-    const x = publicKeyUncompressed.slice(1, 33);
-    const y = publicKeyUncompressed.slice(33, 65);
-
-    const dB64 = base64UrlEncode(d);
-    const xB64 = base64UrlEncode(x);
-    const yB64 = base64UrlEncode(y);
-
-    // Step 4: Import as non-extractable ECDSA CryptoKey
-    const privateKey = await globalThis.crypto.subtle.importKey(
-      'jwk',
-      { kty: 'EC', crv: 'P-256', d: dB64, x: xB64, y: yB64 },
-      { name: 'ECDSA', namedCurve: 'P-256' },
-      false, // non-extractable
-      ['sign']
-    );
-
-    const publicKeyJwk: JsonWebKey = { kty: 'EC', crv: 'P-256', x: xB64, y: yB64 };
-
-    return { privateKey, publicKeyJwk };
   }
 
   private async detectPrfSupport(): Promise<PrfSupportStatus> {

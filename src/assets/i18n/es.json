@@ -499,7 +499,8 @@
       "not-supported": "Tu navegador no admite el acceso a la cámara. Considera utilizar un navegador diferente.",
       "default": "Error inesperado. Revisa los permisos de tu navegador y asegúrate de que ninguna otra aplicación esté utilizando la cámara. Intenta actualizar la página."
     },
-    "prf-unsupported": "Tu autenticador no soporta PRF. Este tenant requiere una passkey compatible con PRF para completar el proceso de activación. Utiliza otro dispositivo o contacta con tu administrador."
+    "prf-unsupported": "Tu autenticador no soporta PRF. Este tenant requiere una passkey compatible con PRF para completar el proceso de activación. Utiliza otro dispositivo o contacta con tu administrador.",
+    "passkey-key-mismatch": "Esta credencial no puede usarse con la passkey con la que has iniciado sesión. Inicia sesión con la passkey con la que la obtuviste o solicítala de nuevo."
   },
   "activity": {
     "title": "Actividad",

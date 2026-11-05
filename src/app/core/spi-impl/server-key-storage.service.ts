@@ -18,15 +18,6 @@ interface SignResponseDto {
   signature: string;
 }
 
-interface KeyInfoResponseDto {
-  keyId: string;
-  algorithm: string;
-  publicKeyJwk: JsonWebKey;
-  kid: string;
-  exists: boolean;
-  createdAt: string;
-}
-
 interface CredentialListItemDto {
   id: string;
   kid?: string;
@@ -100,20 +91,12 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
   }
 
   async hasKey(keyId: string): Promise<boolean> {
-    try {
-      const url = `${this.baseUrl}${SERVER_PATH.KEYS_BY_ID(keyId)}`;
-      const response = await firstValueFrom(
-        this.http.get<KeyInfoResponseDto>(url)
-      );
-      return response.exists;
-    } catch {
-      return false;
-    }
+    return (await this.listKeys()).some(key => key.keyId === keyId);
   }
 
-  async deleteKey(keyId: string): Promise<void> {
-    const url = `${this.baseUrl}${SERVER_PATH.KEYS_BY_ID(keyId)}`;
-    await firstValueFrom(this.http.delete<void>(url));
+  /** Nothing to do: the Wallet Unit Service deletes the key together with its attestation. */
+  async deleteKey(): Promise<void> {
+    // no-op
   }
 
   async listKeys(): Promise<KeyInfo[]> {
@@ -143,22 +126,11 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
     return false;
   }
 
-  async resolveKeyIdByKid(kid: string): Promise<string | null> {
-    const url = `${this.baseUrl}${SERVER_PATH.CREDENTIALS}`;
-    const credentials = await firstValueFrom(
-      this.http.get<CredentialListItemDto[]>(url)
-    );
-    const match = credentials.find(c => c.kid === kid && c.holder_key_id != null);
-    return match?.holder_key_id ?? null;
-  }
-
-  async exportKey(keyId: string): Promise<JsonWebKey> {
-    const url = `${this.baseUrl}${SERVER_PATH.KEYS_EXPORT(keyId)}`;
-    return firstValueFrom(this.http.get<JsonWebKey>(url));
-  }
-
-  async importKey(keyId: string, jwk: JsonWebKey): Promise<void> {
-    const url = `${this.baseUrl}${SERVER_PATH.KEYS_IMPORT}`;
-    await firstValueFrom(this.http.post<void>(url, { keyId, jwk }));
+  /**
+   * A presentation finds the key by the `holder_key_id` of the attestation the user chose, so there is
+   * nothing to look up by `kid` (the Wallet Unit Service has no such operation).
+   */
+  async resolveKeyIdByKid(): Promise<string | null> {
+    return null;
   }
 }

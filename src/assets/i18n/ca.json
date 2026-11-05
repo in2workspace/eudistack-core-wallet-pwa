@@ -280,7 +280,8 @@
       "not-supported": "El teu navegador no admet l'accés a la càmera. Considera utilitzar un navegador diferent.",
       "default": "Error inesperat. Comprova els permisos del teu navegador i assegura't que cap altra aplicació estigui utilitzant la càmera. Intenta refrescar la pàgina."
     },
-    "prf-unsupported": "El teu autenticador no és compatible amb PRF. Aquest tenant requereix una passkey compatible amb PRF per completar el procés d'activació. Utilitza un altre dispositiu o contacta amb l'administrador."
+    "prf-unsupported": "El teu autenticador no és compatible amb PRF. Aquest tenant requereix una passkey compatible amb PRF per completar el procés d'activació. Utilitza un altre dispositiu o contacta amb l'administrador.",
+    "passkey-key-mismatch": "Aquesta credencial no es pot utilitzar amb la passkey amb què has iniciat sessió. Inicia sessió amb la passkey amb què la vas obtenir o sol·licita-la de nou."
   },
   "settings": {
     "theme": "Tema",

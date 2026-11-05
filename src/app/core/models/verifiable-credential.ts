@@ -14,6 +14,8 @@ export interface VerifiableCredential {
   credentialStatus: CredentialStatus;
   credentialEncoded?: string;
   credentialFormat?: string;
+  /** Server custody: id of the key of this attestation; with passkey custody, the id its salt is stored under. */
+  holder_key_id?: string;
 }
 
 // Must match credential_configuration_id / vct advertised by the issuer metadata endpoint

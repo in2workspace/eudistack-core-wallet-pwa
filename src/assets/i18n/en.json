@@ -499,7 +499,8 @@
       "not-supported": "Your browser does not support camera access. Consider using a different browser.",
       "default": "Unexpected error. Check your browser permissions and make sure no other application is using the camera. Try refreshing the page."
     },
-    "prf-unsupported": "Your authenticator does not support PRF. This tenant requires a PRF-compatible passkey to complete the onboarding process. Please use a different device or contact your administrator."
+    "prf-unsupported": "Your authenticator does not support PRF. This tenant requires a PRF-compatible passkey to complete the onboarding process. Please use a different device or contact your administrator.",
+    "passkey-key-mismatch": "This credential cannot be used with the passkey you signed in with. Sign in with the passkey you obtained it with, or request it again."
   },
   "activity": {
     "title": "Activity",
