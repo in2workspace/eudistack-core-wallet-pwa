@@ -95,8 +95,8 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
   }
 
   /** Nothing to do: the Wallet Unit Service deletes the key together with its attestation. */
-  async deleteKey(): Promise<void> {
-    // no-op
+  deleteKey(): Promise<void> {
+    return Promise.resolve();
   }
 
   async listKeys(): Promise<KeyInfo[]> {
@@ -130,7 +130,7 @@ export class ServerKeyStorageProvider extends KeyStorageProvider {
    * A presentation finds the key by the `holder_key_id` of the attestation the user chose, so there is
    * nothing to look up by `kid` (the Wallet Unit Service has no such operation).
    */
-  async resolveKeyIdByKid(): Promise<string | null> {
-    return null;
+  resolveKeyIdByKid(): Promise<string | null> {
+    return Promise.resolve(null);
   }
 }

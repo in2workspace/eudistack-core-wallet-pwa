@@ -32,30 +32,40 @@ export async function deriveP256KeyFromBytes(
     ['deriveBits']
   );
 
-  for (let attempt = 0; attempt < MAX_DERIVATION_ATTEMPTS; attempt++) {
-    const derivedBits = await globalThis.crypto.subtle.deriveBits(
-      {
-        name: 'HKDF',
-        salt: salt.slice(),
-        hash: 'SHA-256',
-        info: new TextEncoder().encode(attempt === 0 ? info : `${info}:${attempt}`).slice(),
-      },
-      masterKey,
-      256
-    );
+  return deriveValidKey(masterKey, salt, info, 0);
+}
 
-    const d = new Uint8Array(derivedBits);
-    try {
-      if (!p256.utils.isValidSecretKey(d)) {
-        continue;
-      }
-      return await importP256Key(d);
-    } finally {
-      d.fill(0);
-    }
+/** Retries with the next counter until the scalar is valid; recursion keeps the `await` out of a loop. */
+async function deriveValidKey(
+  masterKey: CryptoKey,
+  salt: Uint8Array,
+  info: string,
+  attempt: number
+): Promise<DerivedP256Key> {
+  if (attempt >= MAX_DERIVATION_ATTEMPTS) {
+    throw new AppError('P-256 key derivation did not produce a valid private key');
   }
 
-  throw new AppError('P-256 key derivation did not produce a valid private key');
+  const derivedBits = await globalThis.crypto.subtle.deriveBits(
+    {
+      name: 'HKDF',
+      salt: salt.slice(),
+      hash: 'SHA-256',
+      info: new TextEncoder().encode(attempt === 0 ? info : `${info}:${attempt}`).slice(),
+    },
+    masterKey,
+    256
+  );
+
+  const d = new Uint8Array(derivedBits);
+  try {
+    if (p256.utils.isValidSecretKey(d)) {
+      return await importP256Key(d);
+    }
+  } finally {
+    d.fill(0);
+  }
+  return deriveValidKey(masterKey, salt, info, attempt + 1);
 }
 
 async function importP256Key(d: Uint8Array): Promise<DerivedP256Key> {
