@@ -64,14 +64,15 @@ export class ServerPasskeyPrfKeyStorageProvider extends KeyStorageProvider {
    */
   override async sign(keyId: string, data: Uint8Array): Promise<Uint8Array> {
     const material = await this.saltApi.get(keyId);
+    // Without a stored public key the derived key cannot be checked: do not ask the user for the passkey.
+    const storedPublicJwk = material.public_jwk;
+    if (!storedPublicJwk) {
+      throw this.keyMismatch();
+    }
     const { privateKey, publicKeyJwk } = await this.holderKey.derive(base64UrlDecode(material.prf_salt), material.kdf.info);
 
-    if (!material.public_jwk
-      || await this.computeJwkThumbprint(publicKeyJwk) !== await this.computeJwkThumbprint(material.public_jwk)) {
-      throw new PasskeyPrfAdapterError('The derived key is not the key of this attestation', {
-        code: 'key_mismatch',
-        translationKey: 'errors.passkey-key-mismatch',
-      });
+    if (await this.computeJwkThumbprint(publicKeyJwk) !== await this.computeJwkThumbprint(storedPublicJwk)) {
+      throw this.keyMismatch();
     }
 
     const signature = await globalThis.crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, data.slice());
@@ -96,6 +97,13 @@ export class ServerPasskeyPrfKeyStorageProvider extends KeyStorageProvider {
 
   override resolveKeyIdByKid(): Promise<string | null> {
     return this.server.resolveKeyIdByKid();
+  }
+
+  private keyMismatch(): PasskeyPrfAdapterError {
+    return new PasskeyPrfAdapterError('The derived key is not the key of this attestation', {
+      code: 'key_mismatch',
+      translationKey: 'errors.passkey-key-mismatch',
+    });
   }
 
   private async signProof(

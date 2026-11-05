@@ -242,6 +242,7 @@ describe('ServerPasskeyPrfKeyStorageProvider', () => {
 
       // Act + Assert
       await expect(provider.sign('holder-1', new Uint8Array([1]))).rejects.toMatchObject({ code: 'key_mismatch' });
+      expect(holderKey.derive).not.toHaveBeenCalled();
     });
 
     it('does not use the passkey when the service does not give the salt (404)', async () => {
