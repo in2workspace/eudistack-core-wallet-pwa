@@ -4,6 +4,9 @@ import { IonicModule } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { BehaviorSubject, distinctUntilChanged, shareReplay } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { IosInstallService } from 'src/app/shared/services/ios-install.service';
+import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { StorageService } from 'src/app/shared/services/storage.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { CameraService } from 'src/app/shared/services/camera.service';
@@ -12,6 +15,9 @@ import { DEFAULT_NATIVE_LANGUAGES } from 'src/app/core/constants/ui-translation.
 import { LanguageTag } from 'src/app/core/models/ui-text-translation.model';
 
 type SettingsPanelId = 'language' | 'theme' | 'camera';
+
+const IOS_INSTALL_STEPS = ['step1', 'step2', 'step3', 'step4'] as const;
+const MAC_INSTALL_STEPS = ['step-1', 'step-2', 'step-3'] as const;
 
 const LANGUAGE_NAMES: Readonly<Record<string, string>> = {
   en: 'English',
@@ -58,6 +64,24 @@ export class SettingsPage implements OnInit {
   public readonly availableDevices$ = this.cameraService.availableDevices$;
   public readonly selectedDevice$ = this.cameraService.selectedCamera$;
 
+  private readonly pwaInstall = inject(PwaInstallService);
+  private readonly iosInstall = inject(IosInstallService);
+  private readonly installable = toSignal(this.pwaInstall.installable$, { initialValue: false });
+
+  /** Only when the app is not installed and this browser can install it. iOS and macOS Safari cannot launch the install, so they show the steps. */
+  public readonly installMethod = computed<'prompt' | 'ios' | 'mac' | null>(() => {
+    if (this.pwaInstall.isStandalone) return null;
+    if (this.installable()) return 'prompt';
+    if (this.iosInstall.isIosSafariBrowserMode()) return 'ios';
+    if (this.pwaInstall.isMacSafari) return 'mac';
+    return null;
+  });
+  public readonly installSteps = signal<'ios' | 'mac' | null>(null);
+  /** iOS isolates Safari's storage from the installed app, so credentials kept in the browser stay behind. */
+  public readonly credentialsStayInSafari = !this.iosInstall.isServerMode();
+  public readonly iosInstallSteps = IOS_INSTALL_STEPS;
+  public readonly macInstallSteps = MAC_INSTALL_STEPS;
+
   public selectedTargetLanguage: LanguageTag | null = null;
   public isChangingDevice = false;
 
@@ -78,6 +102,15 @@ export class SettingsPage implements OnInit {
 
   public backToWallet(): void {
     void this.router.navigate(['/tabs/credentials']);
+  }
+
+  public async install(): Promise<void> {
+    const method = this.installMethod();
+    if (method === 'prompt') {
+      await this.pwaInstall.promptInstall();
+      return;
+    }
+    this.installSteps.set(method);
   }
 
   public isExpanded(panel: SettingsPanelId): boolean {

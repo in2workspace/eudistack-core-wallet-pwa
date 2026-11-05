@@ -191,8 +191,8 @@
   min-height: 36px;
 
   &.has-focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb, 45, 88, 167), 0.15);
+    border-color: var(--action-color);
+    box-shadow: 0 0 0 3px rgba(var(--action-color-rgb), 0.15);
   }
 }
 

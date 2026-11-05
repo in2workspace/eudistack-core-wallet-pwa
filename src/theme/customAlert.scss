@@ -8,13 +8,13 @@
   --custom-alert-ok-bg: #e7f8e4;
   --custom-alert-ok-info-bg: #d0efff;
   --custom-alert-ok-text: var(--status-success);
-  /* generic alert buttons: confirm keeps the brand color, cancel is muted */
-  --alert-action-color: var(--ion-color-primary);
+  /* generic alert buttons: confirm uses the action color, cancel is muted */
+  --alert-action-color: var(--action-color);
   --alert-cancel-color: var(--text-secondary);
 }
 
 .dark-theme{
-  --alert-action-color: var(--ui-focus-ring);
+  --alert-action-color: var(--action-color);
   --alert-cancel-color: var(--text-secondary);
   --custom-alert-error-bg: #9c2b2e;
   --custom-alert-error-border: 1px solid #e84e4f;
@@ -34,7 +34,7 @@ ion-alert{
 // nor the native light defaults of iOS inputs.
 // Same scoped selectors Ionic uses (.sc-ion-alert-*), otherwise its
 // `color: var(--ion-color-primary)` wins on specificity.
-// Confirm = accent (brand in light, light blue in dark); cancel = muted, so
+// Confirm = action color (blue in light, light blue in dark); cancel = muted, so
 // the two buttons are told apart in both themes.
 ion-alert .alert-button.sc-ion-alert-md,
 ion-alert .alert-button.sc-ion-alert-ios {

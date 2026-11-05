@@ -227,6 +227,7 @@
     "error": "Username or password incorrect"
   },
   "settings": {
+    "install-ios-browser-notice": "Credentials stored in Safari do not carry over to the installed app.",
     "theme": "Theme",
     "title": "Settings",
     "privacy-blur": "Privacy blur",

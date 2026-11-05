@@ -8,6 +8,9 @@ import { StorageService } from 'src/app/shared/services/storage.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { CameraService } from 'src/app/shared/services/camera.service';
 import { UiTextTranslationService } from 'src/app/core/services/ui-text-translation.service';
+import { BehaviorSubject } from 'rxjs';
+import { IosInstallService } from 'src/app/shared/services/ios-install.service';
+import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 
 describe('SettingsPage', () => {
   let component: SettingsPage;
@@ -27,8 +30,26 @@ describe('SettingsPage', () => {
     activate: jest.Mock;
     deactivate: jest.Mock;
   };
+  let installable$: BehaviorSubject<boolean>;
+  let pwaInstall: { installable$: BehaviorSubject<boolean>; isStandalone: boolean; isMacSafari: boolean; promptInstall: jest.Mock };
+  let iosInstall: { isIosSafariBrowserMode: jest.Mock; isServerMode: jest.Mock };
+
+  const installRow = (): HTMLButtonElement | null =>
+    fixture.nativeElement.querySelector('.settings-install');
 
   beforeEach(async () => {
+    installable$ = new BehaviorSubject<boolean>(false);
+    pwaInstall = {
+      installable$,
+      isStandalone: false,
+      isMacSafari: false,
+      promptInstall: jest.fn().mockResolvedValue(true),
+    };
+    iosInstall = {
+      isIosSafariBrowserMode: jest.fn().mockReturnValue(false),
+      isServerMode: jest.fn().mockReturnValue(true),
+    };
+
     router = { navigate: jest.fn().mockResolvedValue(true) };
     storage = { get: jest.fn().mockResolvedValue('es'), set: jest.fn() };
     prefs = { darkMode: jest.fn().mockReturnValue(false), toggleDarkMode: jest.fn() };
@@ -62,6 +83,8 @@ describe('SettingsPage', () => {
         { provide: UserPreferencesService, useValue: prefs },
         { provide: CameraService, useValue: camera },
         { provide: UiTextTranslationService, useValue: uiTranslation },
+        { provide: PwaInstallService, useValue: pwaInstall },
+        { provide: IosInstallService, useValue: iosInstall },
       ],
     }).compileComponents();
 
@@ -551,6 +574,99 @@ describe('SettingsPage', () => {
       component.retryTranslation();
 
       expect(uiTranslation.activate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('install entry (ER04, ER07)', () => {
+    const rebuild = (): void => {
+      fixture = TestBed.createComponent(SettingsPage);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+    };
+
+    it('is hidden when this browser offers no way to install', () => {
+      expect(component.installMethod()).toBeNull();
+      expect(installRow()).toBeNull();
+    });
+
+    it('launches the browser install prompt where it is available', async () => {
+      installable$.next(true);
+      fixture.detectChanges();
+      expect(component.installMethod()).toBe('prompt');
+      expect(installRow()).not.toBeNull();
+
+      await component.install();
+
+      expect(pwaInstall.promptInstall).toHaveBeenCalled();
+      expect(component.installSteps()).toBeNull();
+    });
+
+    it('disappears once the prompt is no longer available, as after installing', () => {
+      installable$.next(true);
+      fixture.detectChanges();
+
+      installable$.next(false);
+      fixture.detectChanges();
+
+      expect(installRow()).toBeNull();
+    });
+
+    it('shows the Add to Home Screen steps on iOS Safari, which has no install prompt', async () => {
+      iosInstall.isIosSafariBrowserMode.mockReturnValue(true);
+      rebuild();
+      expect(component.installMethod()).toBe('ios');
+      expect(installRow()).not.toBeNull();
+
+      await component.install();
+
+      expect(pwaInstall.promptInstall).not.toHaveBeenCalled();
+      expect(component.installSteps()).toBe('ios');
+    });
+
+    it('warns on iOS that credentials kept in Safari do not reach the installed app, only in browser mode', () => {
+      expect(component.credentialsStayInSafari).toBe(false);
+
+      iosInstall.isServerMode.mockReturnValue(false);
+      rebuild();
+
+      expect(component.credentialsStayInSafari).toBe(true);
+    });
+
+    it('shows the Add to Dock steps on macOS Safari', async () => {
+      pwaInstall.isMacSafari = true;
+      rebuild();
+      expect(component.installMethod()).toBe('mac');
+
+      await component.install();
+
+      expect(component.installSteps()).toBe('mac');
+    });
+
+    it('prefers the real prompt over the manual steps', () => {
+      installable$.next(true);
+      iosInstall.isIosSafariBrowserMode.mockReturnValue(true);
+      rebuild();
+
+      expect(component.installMethod()).toBe('prompt');
+    });
+
+    it('is hidden when the app already runs installed, even if the prompt fired', () => {
+      pwaInstall.isStandalone = true;
+      installable$.next(true);
+      iosInstall.isIosSafariBrowserMode.mockReturnValue(true);
+      rebuild();
+
+      expect(component.installMethod()).toBeNull();
+      expect(installRow()).toBeNull();
+    });
+
+    it('fires the install from the entry itself', () => {
+      installable$.next(true);
+      fixture.detectChanges();
+
+      installRow()!.click();
+
+      expect(pwaInstall.promptInstall).toHaveBeenCalled();
     });
   });
 
