@@ -132,7 +132,7 @@ export class SingleInstanceService implements OnDestroy {
         // The browser refused the lock (e.g. site storage blocked).
         decided = true;
         clearTimeout(waitTimeout);
-        void this.electWithMessages().then(resolve);
+        resolve(this.electWithMessages());
       });
 
       this.postNewTab(currentUrl);
