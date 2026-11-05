@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.18.2] - 2026-11-05
+
 ### Fixed
 
 - **Sign-up with Windows Hello on tenants with passkey custody**: Creating the passkey now also asks for the PRF, so Windows Hello confirms it and no second dialog opens. The PRF output is wiped and never sent to the service. Managers that do not confirm the PRF at creation still get the check with one use of the passkey.
