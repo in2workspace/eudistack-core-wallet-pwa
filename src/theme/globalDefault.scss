@@ -32,6 +32,18 @@ ion-toast {
   --button-color: var(--text-primary);
 }
 
+// Outline buttons without a color inherit the tenant primary from Ionic, which may
+// not contrast with the content (CGCOM's is white). :where() keeps the specificity
+// at zero, so a page can still give a button its own color.
+:where(ion-button.button-outline:not(.ion-color)) {
+  --color: var(--action-color);
+  --border-color: var(--action-color);
+  --background-hover: var(--action-color);
+  --background-activated: var(--action-color);
+  --background-focused: var(--action-color);
+  --ripple-color: var(--action-color);
+}
+
 ion-toast::part(container) {
   background-color: var(--surface-card) !important;
   border: 1px solid var(--border-default) !important;

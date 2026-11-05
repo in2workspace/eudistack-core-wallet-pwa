@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Actions invisible on light tenant brands**: Text buttons, links, icon badges and state borders on content surfaces no longer use the tenant primary color, which is white on CGCOM. They use the new brand-independent `--action-color` tokens, so the color of these elements changes on every tenant; the header, footer and filled buttons keep the brand color.
+- **Actions invisible on light tenant brands**: Text and outline buttons, links, icon badges and state borders on content surfaces no longer use the tenant primary color, which is white on CGCOM. They use the new brand-independent `--action-color` tokens, so the color of these elements changes on every tenant; the header, footer and filled buttons keep the brand color.
 - **iOS install page theme**: The page follows the theme chosen in the app instead of the operating system's.
 - **Dark titles on the dark theme**: The titles of the multi-device notice, the signing error and "Tenant not found" use `--text-primary`, so they stay readable.
 - **Wallet usable in two tabs at once**: The leader tab is now elected with the Web Locks API, so a leader that is slow to answer can no longer end up with a second one. Browsers without Web Locks keep the previous election.
