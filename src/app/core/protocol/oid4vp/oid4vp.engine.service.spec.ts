@@ -433,7 +433,8 @@ describe('Oid4vpEngineService â€” key of the chosen attestation (EUD-11 design Â
     await service.buildVerifiablePresentationWithSelectedVCs(selectorWithHolderKey(sdJwt, 'holder-9'));
 
     // Assert
-    expect(keyStorageProvider.sign).toHaveBeenCalledWith('holder-9', expect.any(Uint8Array));
+    expect(keyStorageProvider.sign).toHaveBeenCalledWith('holder-9', expect.anything());
+    expect(ArrayBuffer.isView(keyStorageProvider.sign.mock.calls[0][1])).toBe(true);
     expect(keyStorageProvider.resolveKeyIdByKid).not.toHaveBeenCalled();
   });
 
@@ -449,7 +450,8 @@ describe('Oid4vpEngineService â€” key of the chosen attestation (EUD-11 design Â
 
     // Assert
     expect(keyStorageProvider.resolveKeyIdByKid).toHaveBeenCalledWith('thumbprint-1');
-    expect(keyStorageProvider.sign).toHaveBeenCalledWith('key-1', expect.any(Uint8Array));
+    expect(keyStorageProvider.sign).toHaveBeenCalledWith('key-1', expect.anything());
+    expect(ArrayBuffer.isView(keyStorageProvider.sign.mock.calls[0][1])).toBe(true);
   });
 
   it('asks the key storage to sign once per presentation (one use of the passkey)', async () => {

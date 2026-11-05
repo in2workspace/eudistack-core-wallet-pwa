@@ -1,8 +1,21 @@
+/// <reference types="node" />
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { UrlResolverService } from '../services/url-resolver.service';
 import { ServerKeyStorageProvider } from './server-key-storage.service';
+
+// JSDOM does not implement crypto.subtle; polyfill with Node's built-in WebCrypto API
+// (isCnfBoundToPublicKey() computes real JWK thumbprints).
+if (!globalThis.crypto?.subtle) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { webcrypto } = require('crypto') as { webcrypto: Crypto };
+  Object.defineProperty(globalThis, 'crypto', {
+    value: webcrypto,
+    configurable: true,
+    writable: true,
+  });
+}
 
 const BASE = 'https://wallet.example';
 
