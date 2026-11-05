@@ -184,11 +184,12 @@ describe('PasskeyCeremonyService (EUD-8)', () => {
       expect(body?.credential.clientExtensionResults).toEqual({ prf: { enabled: true } });
     });
 
-    it('without passkey custody reports prf.enabled as is and runs no extra ceremony', async () => {
+    it('without passkey custody uses the service options as received, reports prf.enabled as is and runs no extra ceremony', async () => {
       (startRegistration as jest.Mock).mockResolvedValue(registrationResponse());
       let body: Record<string, unknown> = {};
       await register(req => { body = req.request.body; req.flush(session); });
 
+      expect((startRegistration as jest.Mock).mock.calls[0][0].optionsJSON.extensions).toEqual({ prf: {} });
       expect(body['prfSupported']).toBe(false);
       expect(credentialsGet).not.toHaveBeenCalled();
     });
@@ -200,6 +201,61 @@ describe('PasskeyCeremonyService (EUD-8)', () => {
         await register(req => req.flush(session));
 
         expect(credentialsGet).not.toHaveBeenCalled();
+      });
+
+      it('asks for the PRF at creation with a random local salt, on a copy of the service options', async () => {
+        const serviceOptions = {
+          ...creationOptions.publicKey,
+          hints: ['client-device'],
+          extensions: { prf: {}, credProps: true },
+        };
+        let body: Record<string, unknown> = {};
+
+        const result = service.register();
+        http.expectOne(`${AUTH}/passkeys/registration/options`).flush({ ceremonyId: 'c-reg', publicKey: serviceOptions });
+        await flush();
+        const registration = http.expectOne(`${AUTH}/passkeys/registration`);
+        body = registration.request.body;
+        registration.flush(session);
+        await result;
+
+        const { optionsJSON } = (startRegistration as jest.Mock).mock.calls[0][0];
+        const { extensions, ...otherOptions } = optionsJSON;
+        const { extensions: serviceExtensions, ...otherServiceOptions } = serviceOptions;
+        expect(otherOptions).toEqual(otherServiceOptions);
+        expect(extensions.credProps).toBe(serviceExtensions.credProps);
+        expect(extensions.prf.eval.first).toBeInstanceOf(Uint8Array);
+        expect(extensions.prf.eval.first).toHaveLength(32);
+        expect(serviceExtensions.prf).toEqual({});
+        expect(Object.keys(body).sort()).toEqual(['ceremonyId', 'credential', 'prfSupported']);
+      });
+
+      it('wipes the PRF output of the creation and sends only prf.enabled, with no extra ceremony (Windows Hello)', async () => {
+        const output = new Uint8Array(32).fill(7);
+        (startRegistration as jest.Mock).mockResolvedValue(
+          registrationResponse({ enabled: true, results: { first: output.buffer } })
+        );
+        let body: { credential: { clientExtensionResults: unknown }; prfSupported: boolean } | undefined;
+
+        await register(req => { body = req.request.body; req.flush(session); });
+
+        expect(output.every(byte => byte === 0)).toBe(true);
+        expect(body?.credential.clientExtensionResults).toEqual({ prf: { enabled: true } });
+        expect(body?.prfSupported).toBe(true);
+        expect(credentialsGet).not.toHaveBeenCalled();
+      });
+
+      it('wipes a PRF output the creation returned without confirming the PRF, and still runs the check', async () => {
+        const output = new Uint8Array(32).fill(7);
+        (startRegistration as jest.Mock).mockResolvedValue(
+          registrationResponse({ enabled: false, results: { first: output.buffer } })
+        );
+        credentialsGet.mockResolvedValue(prfAssertion(new Uint8Array(32).fill(1).buffer));
+
+        await register(req => req.flush(session));
+
+        expect(output.every(byte => byte === 0)).toBe(true);
+        expect(credentialsGet).toHaveBeenCalledTimes(1);
       });
 
       it('uses the new passkey once when creation does not confirm the PRF, and registers it with a PRF result (AC-06)', async () => {

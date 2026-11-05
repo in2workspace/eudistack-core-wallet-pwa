@@ -67,7 +67,8 @@ export interface PasskeySession {
  * WebAuthn ceremonies against the Wallet Unit Service (EUD-8, design §2.4):
  * the service issues the challenge and verifies the result, the browser runs
  * the ceremony with `@simplewebauthn/browser` and the options as received
- * (rp, user handle, timeouts, hints and extensions are the service's).
+ * (rp, user handle, timeouts, hints and extensions are the service's). The one
+ * exception is the local PRF salt added at creation with passkey custody.
  *
  * The registration ticket and the cookie travel through the auth interceptor.
  * No PRF output is ever sent to the service.
@@ -112,9 +113,11 @@ export class PasskeyCeremonyService {
   async register(displayName?: string): Promise<PasskeySession> {
     const { ceremonyId, publicKey } =
       await this.requestOptions<PublicKeyCredentialCreationOptionsJSON>('passkeys/registration/options');
+    const optionsJSON = this.hasPasskeyCustody() ? withPrfEvaluationAtCreation(publicKey) : publicKey;
     const credential = await runPasskeyCeremony<RegistrationResponseJSON>(
-      'create', publicKey.timeout, () => startRegistration({ optionsJSON: publicKey })
+      'create', publicKey.timeout, () => startRegistration({ optionsJSON })
     );
+    discardCreationPrfOutput(credential);
     return this.registerCreated(ceremonyId, publicKey, credential, displayName?.trim(), true);
   }
 
@@ -169,8 +172,13 @@ export class PasskeyCeremonyService {
    * `prfSupported` of the registration (design §2.4). Without passkey custody it
    * just reports `prf.enabled`. With it, a creation that does not confirm the PRF
    * is followed by one use of the new passkey with a random local salt: some
-   * managers only give the PRF on use (Windows Hello in Chrome/Edge ≤ 146,
-   * Samsung Pass). The PRF output is only checked for presence and discarded.
+   * managers only give the PRF on use (Samsung Pass). The PRF output is only
+   * checked for presence and discarded.
+   *
+   * Windows Hello does not reach this check because `prf.eval` at creation makes
+   * it confirm the PRF. Checked on Chrome and Edge 156 (EUD-348): with `prf: {}`
+   * it does not confirm it, and a use in the first seconds after creation does
+   * not offer the new passkey.
    */
   private async confirmPrf(
     credential: RegistrationResponseJSON,
@@ -258,6 +266,31 @@ export class PasskeyCeremonyService {
       default:
         return err;
     }
+  }
+}
+
+/**
+ * A copy of the creation options that also evaluates the PRF (WebAuthn L3
+ * §10.1.4), with a random local salt: the output is only discarded, and neither
+ * the salt nor the output reach the service.
+ */
+function withPrfEvaluationAtCreation(
+  publicKey: PublicKeyCredentialCreationOptionsJSON,
+): PublicKeyCredentialCreationOptionsJSON {
+  return {
+    ...publicKey,
+    extensions: {
+      ...publicKey.extensions,
+      prf: { eval: { first: globalThis.crypto.getRandomValues(new Uint8Array(PRF_CHECK_SALT_BYTES)) } },
+    } as AuthenticationExtensionsClientInputs,
+  };
+}
+
+function discardCreationPrfOutput(credential: RegistrationResponseJSON): void {
+  const results = credential.clientExtensionResults as { prf?: { results?: { first?: BufferSource } } };
+  const first = results?.prf?.results?.first;
+  if (first) {
+    zeroize(first);
   }
 }
 
