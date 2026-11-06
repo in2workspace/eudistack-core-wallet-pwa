@@ -13,4 +13,6 @@ export interface FinalizeIssuancePayload{
   credentialConfigurationId: string;
   holderKeyId?: string;
   holderKid?: string;
+  /** Public key of the holder key (wire name: the payload is posted as is). The Wallet Unit Service compares it with the `cnf` of the attestation. */
+  holder_public_jwk?: JsonWebKey;
 }

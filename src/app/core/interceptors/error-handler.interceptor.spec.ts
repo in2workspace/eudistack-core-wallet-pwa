@@ -408,12 +408,12 @@ it('keeps the backend message as-is for REQUEST_CREDENTIAL on "Incorrect PIN" (n
   req.flush({ message: 'Incorrect PIN' }, { status: 400, statusText: 'Bad Request' });
 });
 
-it('passkey-prf sign prepare 500 → handled silently, no toast, no error body logged (B1/NFR-S-536-03)', () => {
-  const testUrl = `${environment.server_url}${SERVER_PATH.PASSKEY_PRF_SIGN_PREPARE}`;
+it('passkey custody salt creation 500 → handled silently, no toast, no error body logged', () => {
+  const testUrl = `${environment.server_url}${SERVER_PATH.PASSKEY_PRF_SALTS}`;
   const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
   const consoleSpy = jest.spyOn(console, 'error');
 
-  httpClient.post(testUrl, {}).subscribe({
+  httpClient.post(testUrl, { credential_id: 'holder-1' }).subscribe({
     error: (err) => {
       expect(err).toBeTruthy();
       expect(toastSpy).not.toHaveBeenCalled();
@@ -425,21 +425,19 @@ it('passkey-prf sign prepare 500 → handled silently, no toast, no error body l
   req.flush({ message: 'Internal error' }, { status: 500, statusText: 'Internal Server Error' });
 });
 
-it('passkey-prf sign submit 500 → handled silently, no toast, no error body logged (B1/NFR-S-536-03)', () => {
-  const testUrl = `${environment.server_url}${SERVER_PATH.PASSKEY_PRF_SIGN_SUBMIT}`;
+it('passkey custody salt lookup 404 → handled silently, no toast', () => {
+  const testUrl = `${environment.server_url}${SERVER_PATH.PASSKEY_PRF_SALT('holder-1')}`;
   const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
-  const consoleSpy = jest.spyOn(console, 'error');
 
-  httpClient.post(testUrl, {}).subscribe({
+  httpClient.get(testUrl).subscribe({
     error: (err) => {
       expect(err).toBeTruthy();
       expect(toastSpy).not.toHaveBeenCalled();
-      expect(consoleSpy).not.toHaveBeenCalledWith('Error occurred:', expect.anything());
     },
   });
 
   const req = httpMock.expectOne(testUrl);
-  req.flush({ message: 'Internal error' }, { status: 500, statusText: 'Internal Server Error' });
+  req.flush({ title: 'not found' }, { status: 404, statusText: 'Not Found' });
 });
 
 it('wallet discovery 404 → handled silently (no toast, no console.error) [M1 fix]', () => {

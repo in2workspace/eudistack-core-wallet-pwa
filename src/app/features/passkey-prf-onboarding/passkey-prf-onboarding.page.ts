@@ -3,8 +3,6 @@ import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AlertController, IonicModule } from '@ionic/angular';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { catchError, of } from 'rxjs';
-import { PasskeyPrfAuditService } from 'src/app/core/services/passkey-prf-audit.service';
 import { PasskeyPrfOnboardingService } from 'src/app/core/services/passkey-prf-onboarding.service';
 import { TelemetryService } from 'src/app/core/services/telemetry.service';
 import { takePendingDeepLink } from 'src/app/shared/helpers/pending-deep-link';
@@ -21,7 +19,6 @@ export class PasskeyPrfOnboardingPage implements OnInit {
   private readonly router = inject(Router);
   private readonly alertController = inject(AlertController);
   private readonly passkeyPrfOnboarding = inject(PasskeyPrfOnboardingService);
-  private readonly passkeyPrfAudit = inject(PasskeyPrfAuditService);
   private readonly telemetry = inject(TelemetryService);
   private readonly translate = inject(TranslateService);
 
@@ -39,7 +36,6 @@ export class PasskeyPrfOnboardingPage implements OnInit {
     this.passkeyPrfOnboarding.markAccepted();
     this.telemetry.track('passkey_prf_onboarding_accepted');
     void this.router.navigateByUrl(takePendingDeepLink() ?? '/tabs');
-    this.passkeyPrfAudit.recordConstraintAccepted().pipe(catchError(() => of(null))).subscribe();
   }
 
   async openLearnMore(): Promise<void> {

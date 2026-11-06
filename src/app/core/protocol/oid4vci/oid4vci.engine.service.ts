@@ -157,6 +157,7 @@ export class Oid4vciEngineService {
         credentialConfigurationId,
         holderKeyId,
         holderKid,
+        holder_public_jwk: proofPublicJwk ?? undefined,
       };
     }});
 
