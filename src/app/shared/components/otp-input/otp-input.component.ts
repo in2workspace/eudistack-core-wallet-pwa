@@ -64,12 +64,12 @@ import { TranslateService } from '@ngx-translate/core';
 
       &:focus {
         border-color: var(--neutral-medium);
-        box-shadow: 0 0 0 3px rgb(var(--primary-color-rgb, 37, 99, 235), 0.12);
+        box-shadow: 0 0 0 3px rgb(var(--action-color-rgb), 0.12);
         background: var(--surface-card, #FFFFFF);
       }
 
       &.filled {
-        border-color: var(--primary-color);
+        border-color: var(--action-color);
         background: var(--surface-card, #FFFFFF);
       }
 

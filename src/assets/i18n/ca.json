@@ -283,6 +283,7 @@
     "prf-unsupported": "El teu autenticador no és compatible amb PRF. Aquest tenant requereix una passkey compatible amb PRF per completar el procés d'activació. Utilitza un altre dispositiu o contacta amb l'administrador."
   },
   "settings": {
+    "install-ios-browser-notice": "Les credencials que tinguis desades a Safari no passen a l'app instal·lada.",
     "theme": "Tema",
     "title": "Configuració",
     "privacy-blur": "Desenfocament de privacitat",

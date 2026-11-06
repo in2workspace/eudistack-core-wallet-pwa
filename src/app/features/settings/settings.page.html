@@ -199,6 +199,59 @@
           </section>
         }
       </article>
+
+      @if (installMethod()) {
+        <article class="settings-row">
+          <h2 class="settings-row__heading">
+            <button type="button" class="settings-row__header settings-install" (click)="install()">
+              <span class="settings-row__label">{{ "menu.install" | translate }}</span>
+              <span class="settings-row__toggle" aria-hidden="true">
+                <ion-icon name="download-outline"></ion-icon>
+              </span>
+            </button>
+          </h2>
+        </article>
+      }
     </div>
   </div>
+
+  <ion-modal class="install-steps-modal" [isOpen]="installSteps() !== null" (didDismiss)="installSteps.set(null)">
+    <ng-template>
+      <dialog class="install-steps" open aria-labelledby="settings-install-title">
+        <button type="button" class="install-steps__close" (click)="installSteps.set(null)" [attr.aria-label]="'auth.access.help.close' | translate">
+          <ion-icon name="close-outline" aria-hidden="true"></ion-icon>
+        </button>
+
+        @if (installSteps() === 'ios') {
+          <h2 class="install-steps__title" id="settings-install-title">{{ "wallet-access.access.ios-steps-title" | translate }}</h2>
+          <ol class="install-steps__list" [attr.aria-label]="'ios-install.steps-aria' | translate">
+            @for (step of iosInstallSteps; track step; let i = $index) {
+              <li class="install-steps__item">
+                <span class="install-steps__number" aria-hidden="true">{{ i + 1 }}</span>
+                <span>{{ "ios-install." + step | translate }}</span>
+              </li>
+            }
+          </ol>
+          @if (credentialsStayInSafari) {
+            <p class="install-steps__caution">{{ "settings.install-ios-browser-notice" | translate }}</p>
+          }
+        } @else {
+          <h2 class="install-steps__title" id="settings-install-title">{{ "auth.access.mac-modal-title" | translate }}</h2>
+          <ol class="install-steps__list" [attr.aria-label]="'auth.access.mac-steps-aria' | translate">
+            @for (step of macInstallSteps; track step; let i = $index) {
+              <li class="install-steps__item">
+                <span class="install-steps__number" aria-hidden="true">{{ i + 1 }}</span>
+                <span>{{ "auth.access.mac-" + step | translate }}</span>
+              </li>
+            }
+          </ol>
+          <p class="install-steps__caution">{{ "auth.access.mac-reauth-notice" | translate }}</p>
+        }
+
+        <button type="button" class="install-steps__done" (click)="installSteps.set(null)">
+          {{ "auth.access.help.close" | translate }}
+        </button>
+      </dialog>
+    </ng-template>
+  </ion-modal>
 </ion-content>

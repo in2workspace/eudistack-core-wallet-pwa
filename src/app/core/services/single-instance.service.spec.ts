@@ -109,6 +109,39 @@ async function flushMicrotasks(): Promise<void> {
   }
 }
 
+/** Exclusive Web Lock: requests queue up, and a grant lasts until the callback's result settles. */
+class LockManagerMock {
+  held = false;
+  private readonly queue: (() => void)[] = [];
+
+  request(name: string, callback: (lock: unknown) => unknown): Promise<unknown> {
+    return new Promise((resolve) => {
+      const grant = () => {
+        this.held = true;
+        void Promise.resolve(callback({ name, mode: 'exclusive' })).then((value) => {
+          this.release();
+          resolve(value);
+        });
+      };
+      if (this.held) {
+        this.queue.push(grant);
+      } else {
+        void Promise.resolve().then(grant);
+      }
+    });
+  }
+
+  /** The holder lets go of the lock; a closed or reloaded tab does it through the browser. */
+  release(): void {
+    this.held = false;
+    this.queue.shift()?.();
+  }
+}
+
+function setNavigatorLocks(value: unknown): void {
+  Object.defineProperty(navigator, 'locks', { value, configurable: true });
+}
+
 describe('SingleInstanceService', () => {
   let service: SingleInstanceService;
   let routerMock: jest.Mocked<Pick<Router, 'navigateByUrl'>>;
@@ -478,6 +511,170 @@ describe('SingleInstanceService', () => {
       consumer({});
 
       expect(routerMock.navigateByUrl).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('leader election with Web Locks', () => {
+    let locks: LockManagerMock;
+    let sentToLeader: SentMessage[];
+
+    const settled = (election: Promise<boolean>): { value?: boolean } => {
+      const state: { value?: boolean } = {};
+      void election.then((isLeader) => { state.value = isLeader; });
+      return state;
+    };
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      document.body.innerHTML = '';
+      locks = new LockManagerMock();
+      setNavigatorLocks(locks);
+      sentToLeader = [];
+      window.history.pushState({}, '', '/wallet/');
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      delete (navigator as any).locks;
+      window.history.replaceState({}, '', '/');
+    });
+
+    it('makes the first tab leader as soon as the lock is granted, without waiting for anyone', async () => {
+      const election = settled(service.elect());
+
+      await flushMicrotasks();
+
+      expect(election.value).toBe(true);
+      expect((service as any).isLeader).toBe(true);
+    });
+
+    it('never releases the lock while the tab lives', async () => {
+      void service.elect();
+      await flushMicrotasks();
+
+      jest.advanceTimersByTime(60_000);
+      await flushMicrotasks();
+
+      expect(locks.held).toBe(true);
+    });
+
+    it('answers NEW_TAB once it is the leader', async () => {
+      void service.elect();
+      await flushMicrotasks();
+      const received: SentMessage[] = [];
+      const newTab = new BroadcastChannelMock('wallet-single-instance');
+      newTab.onmessage = (ev: MessageEvent) => received.push(ev.data as SentMessage);
+
+      newTab.postMessage({ type: 'NEW_TAB', tabId: 'new-tab', url: '/wallet/' });
+
+      expect(received).toEqual([{ type: 'LEADER_ACK', tabId: (service as any).tabId }]);
+    });
+
+    it('becomes a follower right away when a responsive leader answers', async () => {
+      locks.held = true;
+      installFakeLeader(sentToLeader, { ackOutcome: null });
+
+      const election = settled(service.elect());
+      await flushMicrotasks();
+
+      expect(election.value).toBe(false);
+      expect(document.body.innerHTML).toContain('EUDI Wallet ya está abierto');
+    });
+
+    it('stays a follower when the leader is too busy to answer: the two-tabs bug (ER08)', async () => {
+      locks.held = true;
+
+      const election = settled(service.elect());
+
+      // The old election declared itself leader here, at 300 ms.
+      jest.advanceTimersByTime(999);
+      await flushMicrotasks();
+      expect(election.value).toBeUndefined();
+      expect((service as any).isLeader).toBe(false);
+
+      jest.advanceTimersByTime(1);
+      await flushMicrotasks();
+      expect(election.value).toBe(false);
+      expect((service as any).isLeader).toBe(false);
+      expect(authServiceMock.dispose).toHaveBeenCalled();
+      expect(document.body.innerHTML).toContain('EUDI Wallet ya está abierto');
+    });
+
+    it('becomes leader when the lock is released during the wait, as in a reload', async () => {
+      locks.held = true;
+
+      const election = settled(service.elect());
+      jest.advanceTimersByTime(200);
+      locks.release();
+      await flushMicrotasks();
+
+      expect(election.value).toBe(true);
+      expect((service as any).isLeader).toBe(true);
+
+      jest.advanceTimersByTime(1000);
+      await flushMicrotasks();
+      expect(document.body.innerHTML).not.toContain('EUDI Wallet ya está abierto');
+    });
+
+    it('releases a lock granted after it already became a follower, so the next tab can lead', async () => {
+      locks.held = true;
+      installFakeLeader(sentToLeader, { ackOutcome: null });
+      const election = settled(service.elect());
+      await flushMicrotasks();
+      expect(election.value).toBe(false);
+
+      locks.release();
+      await flushMicrotasks();
+
+      expect(locks.held).toBe(false);
+      expect((service as any).isLeader).toBe(false);
+    });
+
+    it('still hands a deep link off to a leader that holds the lock', async () => {
+      window.history.pushState({}, '', '/wallet/protocol/callback?credential_offer_uri=abc');
+      locks.held = true;
+      installFakeLeader(sentToLeader, { ackOutcome: 'navigated' });
+
+      const election = settled(service.elect());
+      await flushMicrotasks();
+
+      expect(election.value).toBe(false);
+      expect(sentToLeader).toContainEqual({
+        type: 'NAVIGATE',
+        tabId: (service as any).tabId,
+        url: '/wallet/protocol/callback?credential_offer_uri=abc',
+      });
+      expect(document.body.innerHTML).toContain('Credencial lista para aprobar');
+    });
+
+    it('falls back to the message election when the browser refuses the lock', async () => {
+      setNavigatorLocks({ request: jest.fn().mockRejectedValue(new DOMException('Denied', 'SecurityError')) });
+
+      const election = settled(service.elect());
+      await flushMicrotasks();
+      jest.advanceTimersByTime(300);
+      await flushMicrotasks();
+
+      expect(election.value).toBe(true);
+      expect((service as any).isLeader).toBe(true);
+    });
+  });
+
+  describe('leader election without Web Locks', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    it('becomes leader when nobody answers within the election timeout', async () => {
+      let isLeader: boolean | undefined;
+      void service.elect().then((value) => { isLeader = value; });
+
+      jest.advanceTimersByTime(299);
+      await flushMicrotasks();
+      expect(isLeader).toBeUndefined();
+
+      jest.advanceTimersByTime(1);
+      await flushMicrotasks();
+      expect(isLeader).toBe(true);
     });
   });
 

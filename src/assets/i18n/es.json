@@ -214,6 +214,7 @@
     "error": "Nombre de usuario o contraseña incorrectos"
   },
   "settings": {
+    "install-ios-browser-notice": "Las credenciales que tengas guardadas en Safari no pasan a la app instalada.",
     "theme": "Tema",
     "title": "Configuración",
     "privacy-blur": "Desenfoque de privacidad",

@@ -153,12 +153,12 @@
 
   &:hover,
   &:focus-within {
-    border-color: var(--primary-color);
+    border-color: var(--action-color);
     box-shadow: 0 2px 10px rgb(0 0 0 / 0.10);
   }
 
   &--open {
-    border-color: var(--primary-color);
+    border-color: var(--action-color);
   }
 }
 
@@ -268,10 +268,10 @@
 .about-panel-retry {
   margin-top: 4px;
   padding: 8px 16px;
-  border: 1px solid var(--primary-color);
+  border: 1px solid var(--action-color);
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--primary-color);
+  color: var(--action-color);
   font: inherit;
   font-size: 14px;
   font-weight: 600;
@@ -303,7 +303,7 @@
   }
 
   a {
-    color: var(--primary-color);
+    color: var(--action-color);
     overflow-wrap: anywhere;
   }
 }
@@ -445,7 +445,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--primary-color);
+  color: var(--action-color);
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;

@@ -7,12 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.18.2] - 2026-11-05
+## [3.18.3] - 2026-11-06
 
 ### Fixed
 
 - **Sign-up with Windows Hello on tenants with passkey custody**: Creating the passkey now also asks for the PRF, so Windows Hello confirms it and no second dialog opens. The PRF output is wiped and never sent to the service. Managers that do not confirm the PRF at creation still get the check with one use of the passkey.
 - **Silent return after the PRF check**: Cancelling the check, or letting it time out, now says that the passkey was not registered and that the user can try again or save it somewhere else. Added the message in English, Spanish and Catalan.
+
+## [3.18.2] - 2026-11-04
+
+### Added
+
+- **Install entry in Settings**: Settings shows "Install App" again while the app is not installed and the browser can install it. Chromium launches the native prompt; iOS and macOS Safari, which have no prompt, show the manual steps. On iOS in browser mode the steps warn that credentials stored in Safari do not carry over to the installed app. Added the warning in English, Spanish and Catalan.
+
+### Fixed
+
+- **Actions invisible on light tenant brands**: Text and outline buttons, links, icon badges and state borders on content surfaces no longer use the tenant primary color, which is white on CGCOM. They use the new brand-independent `--action-color` tokens, so the color of these elements changes on every tenant; the header, footer and filled buttons keep the brand color.
+- **iOS install page theme**: The page follows the theme chosen in the app instead of the operating system's.
+- **Dark titles on the dark theme**: The titles of the multi-device notice, the signing error and "Tenant not found" use `--text-primary`, so they stay readable.
+- **Wallet usable in two tabs at once**: The leader tab is now elected with the Web Locks API, so a leader that is slow to answer can no longer end up with a second one. Browsers without Web Locks keep the previous election.
 
 ## [3.18.1] - 2026-10-27
 
