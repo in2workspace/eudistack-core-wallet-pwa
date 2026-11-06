@@ -35,12 +35,12 @@
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: var(--ion-color-primary, #3880ff);
+  background: var(--action-color);
   margin-bottom: 16px;
 
   ion-icon {
     font-size: 36px;
-    color: #fff;
+    color: var(--action-contrast-color);
   }
 }
 
@@ -82,14 +82,14 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: var(--ion-color-primary, #3880ff);
+  background: var(--action-color);
   display: flex;
   align-items: center;
   justify-content: center;
 
   ion-icon {
     font-size: 22px;
-    color: #fff;
+    color: var(--action-contrast-color);
   }
 }
 
@@ -100,8 +100,8 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--ion-color-primary, #3880ff);
-  color: #fff;
+  background: var(--action-color);
+  color: var(--action-contrast-color);
   font-size: 0.625rem;
   font-weight: 700;
   display: flex;
@@ -140,13 +140,13 @@
   cursor: pointer;
   text-align: center;
   font-size: 0.875rem;
-  color: var(--ion-color-primary, #3880ff);
+  color: var(--action-color);
   text-decoration: underline;
   padding: 8px 0;
   margin-bottom: 16px;
 
   &:focus-visible {
-    outline: 2px solid var(--ion-color-primary, #3880ff);
+    outline: 2px solid var(--ui-focus-ring);
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -174,14 +174,16 @@
 }
 
 // --- Dark mode ---
+// Follows the app theme (`.dark-theme` on <html>), not the OS preference, so a
+// theme chosen in Settings applies here too.
 
-@media (prefers-color-scheme: dark) {
+:host-context(.dark-theme) {
   .ios-onboarding-bg {
-    --background: #121212;
+    --background: var(--surface-page);
   }
 
   .ios-onboarding-card {
-    background: var(--ion-card-background, #1e1e1e);
+    background: var(--surface-card);
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
   }
 }

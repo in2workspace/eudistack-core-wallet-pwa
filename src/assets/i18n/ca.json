@@ -284,6 +284,7 @@
     "passkey-key-mismatch": "Aquesta credencial no es pot utilitzar amb la passkey amb què has iniciat sessió. Inicia sessió amb la passkey amb què la vas obtenir o sol·licita-la de nou."
   },
   "settings": {
+    "install-ios-browser-notice": "Les credencials que tinguis desades a Safari no passen a l'app instal·lada.",
     "theme": "Tema",
     "title": "Configuració",
     "privacy-blur": "Desenfocament de privacitat",

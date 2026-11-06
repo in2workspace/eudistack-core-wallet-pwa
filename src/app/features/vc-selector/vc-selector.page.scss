@@ -219,7 +219,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--primary-color);
+    outline: 2px solid var(--ui-focus-ring);
     outline-offset: 3px;
     border-radius: 22px;
   }
