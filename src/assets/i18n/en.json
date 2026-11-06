@@ -772,6 +772,7 @@
     "errors": {
       "ticket-expired": "Too much time has passed since you verified your email. Request a new code.",
       "registration-failed": "The passkey could not be registered. Please try again.",
+      "prf-check-incomplete": "The passkey was not registered because the check was not completed. You can try again or save it somewhere else.",
       "generic": "The operation could not be completed. Please try again."
     }
   }
