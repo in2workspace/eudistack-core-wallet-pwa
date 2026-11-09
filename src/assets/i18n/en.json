@@ -501,7 +501,8 @@
       "default": "Unexpected error. Check your browser permissions and make sure no other application is using the camera. Try refreshing the page."
     },
     "prf-unsupported": "Your authenticator does not support PRF. This tenant requires a PRF-compatible passkey to complete the onboarding process. Please use a different device or contact your administrator.",
-    "passkey-key-mismatch": "This credential cannot be used with the passkey you signed in with. Sign in with the passkey you obtained it with, or request it again."
+    "passkey-key-mismatch": "This credential cannot be used with the passkey you signed in with. Sign in with the passkey you obtained it with, or request it again.",
+    "credential-key-not-accepted": "The credential could not be saved because it is not bound to the key of this device. Request it again."
   },
   "activity": {
     "title": "Activity",

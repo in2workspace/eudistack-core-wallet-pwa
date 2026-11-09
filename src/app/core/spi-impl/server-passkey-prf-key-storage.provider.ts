@@ -7,6 +7,7 @@ import { base64UrlDecode, base64UrlEncode } from '../utils/base64url';
 import { ServerKeyStorageProvider } from './server-key-storage.service';
 import { PrfSaltApi } from 'src/app/features/passkey-prf-keymanager/prf-salt.api';
 import { PasskeyPrfHolderKeyService } from 'src/app/features/passkey-prf-keymanager/passkey-prf-holder-key.service';
+import { PASSKEY_PRF_HKDF_INFO } from 'src/app/features/passkey-prf-keymanager/passkey-prf-kdf.const';
 
 /**
  * Holder keys of a tenant with passkey custody (EUD-11 design §2.2). The service never has a private key:
@@ -40,7 +41,8 @@ export class ServerPasskeyPrfKeyStorageProvider extends KeyStorageProvider {
     }
 
     const material = await this.saltApi.create(context.credentialId);
-    const { privateKey, publicKeyJwk } = await this.holderKey.derive(base64UrlDecode(material.prf_salt), material.kdf.info);
+    this.requirePinnedKdf(material.kdf.info);
+    const { privateKey, publicKeyJwk } = await this.holderKey.derive(base64UrlDecode(material.prf_salt), PASSKEY_PRF_HKDF_INFO);
     const jwsProof = await this.signProof(privateKey, publicKeyJwk, context);
 
     return {
@@ -64,12 +66,13 @@ export class ServerPasskeyPrfKeyStorageProvider extends KeyStorageProvider {
    */
   override async sign(keyId: string, data: Uint8Array): Promise<Uint8Array> {
     const material = await this.saltApi.get(keyId);
+    this.requirePinnedKdf(material.kdf.info);
     // Without a stored public key the derived key cannot be checked: do not ask the user for the passkey.
     const storedPublicJwk = material.public_jwk;
     if (!storedPublicJwk) {
       throw this.keyMismatch();
     }
-    const { privateKey, publicKeyJwk } = await this.holderKey.derive(base64UrlDecode(material.prf_salt), material.kdf.info);
+    const { privateKey, publicKeyJwk } = await this.holderKey.derive(base64UrlDecode(material.prf_salt), PASSKEY_PRF_HKDF_INFO);
 
     if (await this.computeJwkThumbprint(publicKeyJwk) !== await this.computeJwkThumbprint(storedPublicJwk)) {
       throw this.keyMismatch();
@@ -97,6 +100,13 @@ export class ServerPasskeyPrfKeyStorageProvider extends KeyStorageProvider {
 
   override resolveKeyIdByKid(): Promise<string | null> {
     return this.server.resolveKeyIdByKid();
+  }
+
+  /** The label of the key derivation is fixed in the app: the service cannot choose how the key is derived. */
+  private requirePinnedKdf(info: string): void {
+    if (info !== PASSKEY_PRF_HKDF_INFO) {
+      throw new PasskeyPrfAdapterError('The service asked for a key derivation this app does not use');
+    }
   }
 
   private keyMismatch(): PasskeyPrfAdapterError {

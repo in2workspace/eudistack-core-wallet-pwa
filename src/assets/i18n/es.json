@@ -501,7 +501,8 @@
       "default": "Error inesperado. Revisa los permisos de tu navegador y asegúrate de que ninguna otra aplicación esté utilizando la cámara. Intenta actualizar la página."
     },
     "prf-unsupported": "Tu autenticador no soporta PRF. Este tenant requiere una passkey compatible con PRF para completar el proceso de activación. Utiliza otro dispositivo o contacta con tu administrador.",
-    "passkey-key-mismatch": "Esta credencial no puede usarse con la passkey con la que has iniciado sesión. Inicia sesión con la passkey con la que la obtuviste o solicítala de nuevo."
+    "passkey-key-mismatch": "Esta credencial no puede usarse con la passkey con la que has iniciado sesión. Inicia sesión con la passkey con la que la obtuviste o solicítala de nuevo.",
+    "credential-key-not-accepted": "No se ha podido guardar la credencial porque no está ligada a la clave de este dispositivo. Solicítala de nuevo."
   },
   "activity": {
     "title": "Actividad",

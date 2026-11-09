@@ -245,6 +245,16 @@ describe('ServerPasskeyPrfKeyStorageProvider', () => {
       expect(holderKey.derive).not.toHaveBeenCalled();
     });
 
+    it('does not use the passkey when the service asks for another key derivation', async () => {
+      // Arrange
+      const { provider, saltApi, holderKey } = setup();
+      saltApi.get.mockResolvedValue({ ...saltDto(), kdf: { algorithm: 'HKDF-SHA-256', info: 'another-label' } });
+
+      // Act + Assert
+      await expect(provider.sign('holder-1', new Uint8Array([1]))).rejects.toThrow('key derivation');
+      expect(holderKey.derive).not.toHaveBeenCalled();
+    });
+
     it('does not use the passkey when the service does not give the salt (404)', async () => {
       // Arrange
       const { provider, saltApi, holderKey } = setup();
