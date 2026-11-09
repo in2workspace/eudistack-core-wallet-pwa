@@ -52,8 +52,8 @@
               {{ 'auth.access.continue-wallet' | translate: { brand: brandName() } }}
             </button>
 
-            <aside class="auth-notice">
-              <p class="auth-notice__title">{{ 'auth.access.already-title' | translate: { brand: brandName() } }}</p>
+            <aside class="auth-notice" aria-labelledby="install-notice-title">
+              <p class="auth-notice__title" id="install-notice-title">{{ 'auth.access.already-title' | translate: { brand: brandName() } }}</p>
               <p class="auth-notice__text">{{ 'auth.access.already-text' | translate }}</p>
               <button type="button" class="auth-notice__link" (click)="showInstallHelp.set(true)">
                 {{ 'auth.access.help-link' | translate }}
