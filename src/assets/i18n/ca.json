@@ -769,6 +769,7 @@
     "errors": {
       "ticket-expired": "Ha passat massa temps des que vas verificar el teu correu. Demana un codi nou.",
       "registration-failed": "No s'ha pogut registrar la passkey. Torna-ho a provar.",
+      "prf-check-incomplete": "La passkey no s'ha registrat perquè no s'ha completat la comprovació. Pots tornar-ho a provar o desar-la en un altre lloc.",
       "generic": "No s'ha pogut completar l'operació. Torna-ho a provar."
     }
   }

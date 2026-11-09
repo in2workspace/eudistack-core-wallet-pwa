@@ -592,7 +592,20 @@ describe('AccessPage (EUD-8)', () => {
       expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs/credentials');
     });
 
-    it('goes back to Crear passkey when the user cancels the tapped check', async () => {
+    it.each(['passkey_cancelled', 'passkey_timeout'] as const)(
+      'explains that the passkey was not registered when the PRF check ends with %s (FR-08)',
+      async code => {
+        await reachCreate(false);
+        auth.registerPasskey.mockRejectedValue(new PasskeyError(code, 'get'));
+
+        await page.createPasskey();
+
+        expect(page.screen()).toBe('create-passkey');
+        expect(page.errorMessage()).toBe('wallet-access.errors.prf-check-incomplete');
+      },
+    );
+
+    it('goes back to Crear passkey and explains it when the user cancels the tapped check (FR-08)', async () => {
       await reachCreate(false);
       auth.registerPasskey.mockRejectedValue(new PrfCheckNeedsGestureError(jest.fn()));
       auth.completeRegistration.mockRejectedValue(new PasskeyError('passkey_cancelled', 'get'));
@@ -601,6 +614,7 @@ describe('AccessPage (EUD-8)', () => {
       await page.checkCreatedPasskey();
 
       expect(page.screen()).toBe('create-passkey');
+      expect(page.errorMessage()).toBe('wallet-access.errors.prf-check-incomplete');
     });
 
     it('says the registration failed when the service cannot verify it', async () => {

@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Encrypted-key model of the passkey custody**: wrap, unwrap, sign and memory services, their APIs, the 5-minute key cache and the calls to `/onboarding/*`, `/sign/*` and `/constraint-accepted`.
 - **Calls to key endpoints the service does not have** (`GET` and `DELETE /keys/{id}`, `/keys/{id}/export`, `/keys/import`), and `exportKey`/`importKey` from the key storage SPI.
 
+## [3.18.3] - 2026-11-06
+
+### Fixed
+
+- **Sign-up with Windows Hello on tenants with passkey custody**: Creating the passkey now also asks for the PRF, so Windows Hello confirms it and no second dialog opens. The PRF output is wiped and never sent to the service. Managers that do not confirm the PRF at creation still get the check with one use of the passkey.
+- **Silent return after the PRF check**: Cancelling the check, or letting it time out, now says that the passkey was not registered and that the user can try again or save it somewhere else. Added the message in English, Spanish and Catalan.
+
 ## [3.18.2] - 2026-11-04
 
 ### Added

@@ -437,6 +437,7 @@ export class AccessPage implements OnDestroy {
       this.pendingPrfCheck = null;
       if (err instanceof PasskeyError && err.isUserAbort) {
         this.goTo('create-passkey');
+        this.explainUserAbort(err);
         return;
       }
       this.handleRegistrationError(err);
@@ -521,6 +522,7 @@ export class AccessPage implements OnDestroy {
       return;
     }
     if (err instanceof PasskeyError && err.isUserAbort) {
+      this.explainUserAbort(err);
       return;
     }
     if (err instanceof WalletAuthError) {
@@ -539,6 +541,16 @@ export class AccessPage implements OnDestroy {
       }
     }
     this.showFailure(err);
+  }
+
+  /**
+   * Leaving the creation dialog needs no explanation. A `get` during registration
+   * can only be the PRF check: the passkey exists but was not registered (FR-08).
+   */
+  private explainUserAbort(err: PasskeyError): void {
+    if (err.ceremony === 'get') {
+      this.errorMessage.set(this.translate.instant('wallet-access.errors.prf-check-incomplete'));
+    }
   }
 
   /** The registration ticket has expired or was used: the email has to be verified again. */
