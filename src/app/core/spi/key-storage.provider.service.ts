@@ -25,10 +25,6 @@ export abstract class KeyStorageProvider {
   ): Promise<boolean>;
   abstract resolveKeyIdByKid(kid: string): Promise<string | null>;
 
-  // Optional backup methods (Enterprise)
-  abstract exportKey?(keyId: string): Promise<JsonWebKey>;
-  abstract importKey?(keyId: string, jwk: JsonWebKey): Promise<void>;
-
   /** Optional lifecycle hook; implementations may override. */
   async init(): Promise<void> { /* no-op by default */ }
 

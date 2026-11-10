@@ -3,14 +3,15 @@ import { TestBed } from '@angular/core/testing';
 import { ServerPasskeyPrfKeyStorageProvider } from './server-passkey-prf-key-storage.provider';
 import { ServerKeyStorageProvider } from './server-key-storage.service';
 import { PasskeyPrfAdapterError } from '../models/error/PasskeyPrfAdapterError';
-import { AppError } from '../models/error/AppError';
 import { KeyInfo } from '../models/StoredKeyRecord';
-import { PasskeyPrfKeyEnrollmentService, PasskeyPrfEnrollmentResult } from 'src/app/features/passkey-prf-keymanager/passkey-prf-key-enrollment.service';
-import { SignService } from 'src/app/features/passkey-prf-keymanager/sign.service';
-import { KeyStorageProvider, OID4VCIKeyGenContext } from '../spi/key-storage.provider.service';
+import { OID4VCIKeyGenContext } from '../spi/key-storage.provider.service';
+import { JWT_PROOF_CLAIM } from '../constants/jwt.constants';
+import { base64UrlDecode, base64UrlEncode } from '../utils/base64url';
+import { PrfSaltApi, PrfSaltDto } from 'src/app/features/passkey-prf-keymanager/prf-salt.api';
+import { PasskeyPrfHolderKeyService } from 'src/app/features/passkey-prf-keymanager/passkey-prf-holder-key.service';
 
 // JSDOM does not implement crypto.subtle; polyfill with Node's built-in WebCrypto API
-// (generateKeyPair() computes a real JWK thumbprint via computeJwkThumbprint()).
+// (the provider signs with a real key and computes real JWK thumbprints).
 if (!globalThis.crypto?.subtle) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { webcrypto } = require('crypto') as { webcrypto: Crypto };
@@ -21,19 +22,41 @@ if (!globalThis.crypto?.subtle) {
   });
 }
 
-const PUBLIC_KEY_JWK: JsonWebKey = { kty: 'EC', crv: 'P-256', x: 'abc', y: 'def' };
-const ENROLLMENT_RESULT: PasskeyPrfEnrollmentResult = {
-  publicKeyJwk: PUBLIC_KEY_JWK,
-  jwsProof: 'header.payload.sig',
-};
+const SALT_BYTES = new Uint8Array(32).fill(7);
+const KDF_INFO = 'eudistack:passkey-prf:p256:v1';
 const CONTEXT: OID4VCIKeyGenContext = {
-  credentialId: 'cred-1',
-  format: 'vc+sd-jwt',
+  credentialId: 'holder-1',
+  format: 'dc+sd-jwt',
   supportedAlgs: ['ES256'],
   issuerIdentifier: 'https://issuer.example',
   cNonce: 'nonce-1',
 };
 const KEY_INFO: KeyInfo[] = [{ keyId: 'k1', algorithm: 'ES256', createdAt: '2026-01-01T00:00:00Z' }];
+
+interface TestKey {
+  privateKey: CryptoKey;
+  publicKey: CryptoKey;
+  publicKeyJwk: JsonWebKey;
+}
+
+async function generateTestKey(): Promise<TestKey> {
+  const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  const jwk = await crypto.subtle.exportKey('jwk', pair.publicKey);
+  return {
+    privateKey: pair.privateKey,
+    publicKey: pair.publicKey,
+    publicKeyJwk: { kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y },
+  };
+}
+
+function saltDto(publicJwk?: JsonWebKey): PrfSaltDto {
+  return {
+    credential_id: CONTEXT.credentialId,
+    prf_salt: base64UrlEncode(SALT_BYTES),
+    kdf: { algorithm: 'HKDF-SHA-256', info: KDF_INFO },
+    public_jwk: publicJwk,
+  };
+}
 
 function buildServerMock(): jest.Mocked<ServerKeyStorageProvider> {
   return {
@@ -42,149 +65,240 @@ function buildServerMock(): jest.Mocked<ServerKeyStorageProvider> {
     deleteKey: jest.fn().mockResolvedValue(undefined),
     listKeys: jest.fn().mockResolvedValue(KEY_INFO),
     isCnfBoundToPublicKey: jest.fn().mockResolvedValue(true),
-    resolveKeyIdByKid: jest.fn().mockResolvedValue('k1'),
-    exportKey: jest.fn().mockResolvedValue({ kty: 'EC' } as JsonWebKey),
-    importKey: jest.fn().mockResolvedValue(undefined),
+    resolveKeyIdByKid: jest.fn().mockResolvedValue(null),
     buildPresentationJws: jest.fn(),
     sign: jest.fn(),
   } as unknown as jest.Mocked<ServerKeyStorageProvider>;
 }
 
-function buildEnrollmentMock(): jest.Mocked<PasskeyPrfKeyEnrollmentService> {
-  return {
-    enroll: jest.fn().mockResolvedValue(ENROLLMENT_RESULT),
-  } as unknown as jest.Mocked<PasskeyPrfKeyEnrollmentService>;
-}
-
-function buildSignServiceMock(): jest.Mocked<SignService> {
-  return {
-    sign: jest.fn().mockResolvedValue('header.payload.signature'),
-  } as unknown as jest.Mocked<SignService>;
-}
-
 function setup(): {
   provider: ServerPasskeyPrfKeyStorageProvider;
   server: jest.Mocked<ServerKeyStorageProvider>;
-  enrollment: jest.Mocked<PasskeyPrfKeyEnrollmentService>;
-  signService: jest.Mocked<SignService>;
+  saltApi: { create: jest.Mock; get: jest.Mock };
+  holderKey: { derive: jest.Mock };
 } {
   const server = buildServerMock();
-  const enrollment = buildEnrollmentMock();
-  const signService = buildSignServiceMock();
+  const saltApi = { create: jest.fn(), get: jest.fn() };
+  const holderKey = { derive: jest.fn() };
   TestBed.configureTestingModule({
     providers: [
       ServerPasskeyPrfKeyStorageProvider,
       { provide: ServerKeyStorageProvider, useValue: server },
-      { provide: PasskeyPrfKeyEnrollmentService, useValue: enrollment },
-      { provide: SignService, useValue: signService },
+      { provide: PrfSaltApi, useValue: saltApi },
+      { provide: PasskeyPrfHolderKeyService, useValue: holderKey },
     ],
   });
-  return { provider: TestBed.inject(ServerPasskeyPrfKeyStorageProvider), server, enrollment, signService };
+  return { provider: TestBed.inject(ServerPasskeyPrfKeyStorageProvider), server, saltApi, holderKey };
 }
 
 describe('ServerPasskeyPrfKeyStorageProvider', () => {
-  it('generateKeyPair() delegates to PasskeyPrfKeyEnrollmentService and returns the prebuilt OID4VCI proof', async () => {
-    const { provider, server, enrollment } = setup();
-    const result = await provider.generateKeyPair('ES256', 'k1', CONTEXT);
-
-    expect(enrollment.enroll).toHaveBeenCalledWith(CONTEXT);
-    expect(server.generateKeyPair).not.toHaveBeenCalled();
-    expect(result.publicKeyJwk).toBe(PUBLIC_KEY_JWK);
-    expect(result.prebuiltJwsProof).toBe('header.payload.sig');
-    expect(result.kid).toEqual(expect.any(String));
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
-  it('generateKeyPair() returns the real credentialId as keyId, not the engine-supplied keyId', async () => {
-    // context.credentialId round-trips through resolveKeyIdByKid -> buildPresentationJws,
-    // so SignService.sign() can call the passkey+prf handshake without a separate lookup.
-    // wallet_credential.holder_key_id was widened to VARCHAR(512) to fit it
-    // (V5__widen_holder_key_id_for_passkey-prf.sql — was VARCHAR(36), see the 22001 regression).
-    const { provider } = setup();
-    const result = await provider.generateKeyPair('ES256', 'k1', CONTEXT);
+  describe('generateKeyPair', () => {
+    it('asks for the salt of the new attestation, derives its key and returns the proof signed with it', async () => {
+      // Arrange
+      const { provider, saltApi, holderKey } = setup();
+      const key = await generateTestKey();
+      saltApi.create.mockResolvedValue(saltDto());
+      holderKey.derive.mockResolvedValue({ privateKey: key.privateKey, publicKeyJwk: key.publicKeyJwk });
 
-    expect(result.keyId).not.toBe('k1');
-    expect(result.keyId).toBe(CONTEXT.credentialId);
-  });
+      // Act
+      const info = await provider.generateKeyPair('ES256', 'ignored', CONTEXT);
 
-  it('generateKeyPair() rejects with AppError when called without an OID4VCI context', async () => {
-    const { provider, enrollment } = setup();
+      // Assert
+      expect(saltApi.create).toHaveBeenCalledWith('holder-1');
+      expect(holderKey.derive).toHaveBeenCalledWith(SALT_BYTES, KDF_INFO);
+      expect(info.keyId).toBe('holder-1');
+      expect(info.algorithm).toBe('ES256');
+      expect(info.publicKeyJwk).toEqual(key.publicKeyJwk);
+      expect(info.kid).toBe(await provider.computeJwkThumbprint(key.publicKeyJwk));
+      const [header, payload, signature] = (info.prebuiltJwsProof as string).split('.');
+      expect(JSON.parse(new TextDecoder().decode(base64UrlDecode(header)))).toMatchObject({
+        alg: 'ES256',
+        typ: JWT_PROOF_CLAIM,
+        jwk: key.publicKeyJwk,
+      });
+      expect(JSON.parse(new TextDecoder().decode(base64UrlDecode(payload)))).toMatchObject({
+        aud: ['https://issuer.example'],
+        nonce: 'nonce-1',
+      });
+      const valid = await crypto.subtle.verify(
+        { name: 'ECDSA', hash: 'SHA-256' },
+        key.publicKey,
+        base64UrlDecode(signature).slice(),
+        new TextEncoder().encode(`${header}.${payload}`)
+      );
+      expect(valid).toBe(true);
+    });
 
-    await expect(provider.generateKeyPair('ES256', 'k1')).rejects.toBeInstanceOf(AppError);
-    expect(enrollment.enroll).not.toHaveBeenCalled();
-  });
+    it('uses a single derivation for the whole issuance (one use of the passkey)', async () => {
+      // Arrange
+      const { provider, saltApi, holderKey } = setup();
+      const key = await generateTestKey();
+      saltApi.create.mockResolvedValue(saltDto());
+      holderKey.derive.mockResolvedValue({ privateKey: key.privateKey, publicKeyJwk: key.publicKeyJwk });
 
-  it('sign() throws PasskeyPrfAdapterError with code prepare_sign_failed', async () => {
-    // Called as the rest of the app does: through the KeyStorageProvider contract.
-    const provider: KeyStorageProvider = setup().provider;
-    await expect(provider.sign('k1', new Uint8Array([1, 2, 3])))
-      .rejects.toBeInstanceOf(PasskeyPrfAdapterError);
+      // Act
+      await provider.generateKeyPair('ES256', 'ignored', CONTEXT);
 
-    await provider.sign('k1', new Uint8Array()).catch((e: PasskeyPrfAdapterError) => {
-      expect(e.code).toBe('prepare_sign_failed');
+      // Assert
+      expect(holderKey.derive).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects without an issuance context', async () => {
+      // Arrange
+      const { provider, saltApi } = setup();
+
+      // Act + Assert
+      await expect(provider.generateKeyPair('ES256', 'k')).rejects.toBeInstanceOf(PasskeyPrfAdapterError);
+      expect(saltApi.create).not.toHaveBeenCalled();
+    });
+
+    it('propagates a failed derivation (e.g. the user cancelled the passkey) and returns no proof', async () => {
+      // Arrange
+      const { provider, saltApi, holderKey } = setup();
+      saltApi.create.mockResolvedValue(saltDto());
+      holderKey.derive.mockRejectedValue(new Error('cancelled'));
+
+      // Act + Assert
+      await expect(provider.generateKeyPair('ES256', 'k', CONTEXT)).rejects.toThrow('cancelled');
+    });
+
+    it('propagates a failed salt request without using the passkey', async () => {
+      // Arrange
+      const { provider, saltApi, holderKey } = setup();
+      saltApi.create.mockRejectedValue(new Error('404'));
+
+      // Act + Assert
+      await expect(provider.generateKeyPair('ES256', 'k', CONTEXT)).rejects.toThrow('404');
+      expect(holderKey.derive).not.toHaveBeenCalled();
     });
   });
 
-  it('buildPresentationJws() delegates to SignService with format mapped from signingType', async () => {
-    const { provider, signService } = setup();
-    const payload = { nonce: 'n1', aud: 'https://verifier.example', sd_hash: 'hash1', iat: 123 };
+  describe('sign', () => {
+    it('derives the key of the attestation and signs the data with it', async () => {
+      // Arrange
+      const { provider, saltApi, holderKey } = setup();
+      const key = await generateTestKey();
+      saltApi.get.mockResolvedValue(saltDto(key.publicKeyJwk));
+      holderKey.derive.mockResolvedValue({ privateKey: key.privateKey, publicKeyJwk: key.publicKeyJwk });
+      const data = new TextEncoder().encode('header.payload');
 
-    const result = await provider.buildPresentationJws!(CONTEXT.credentialId, payload, 'KB_JWT');
+      // Act
+      const signature = await provider.sign('holder-1', data);
 
-    expect(signService.sign).toHaveBeenCalledWith(CONTEXT.credentialId, payload, 'vc+sd-jwt');
-    expect(result).toBe('header.payload.signature');
+      // Assert
+      expect(saltApi.get).toHaveBeenCalledWith('holder-1');
+      expect(holderKey.derive).toHaveBeenCalledWith(SALT_BYTES, KDF_INFO);
+      expect(signature).toHaveLength(64);
+      const valid = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key.publicKey, signature.slice(), data);
+      expect(valid).toBe(true);
+    });
+
+    it('uses the passkey on every signature: two signatures derive twice', async () => {
+      // Arrange
+      const { provider, saltApi, holderKey } = setup();
+      const key = await generateTestKey();
+      saltApi.get.mockResolvedValue(saltDto(key.publicKeyJwk));
+      holderKey.derive.mockResolvedValue({ privateKey: key.privateKey, publicKeyJwk: key.publicKeyJwk });
+
+      // Act
+      await provider.sign('holder-1', new Uint8Array([1]));
+      await provider.sign('holder-1', new Uint8Array([2]));
+
+      // Assert
+      expect(holderKey.derive).toHaveBeenCalledTimes(2);
+      expect(saltApi.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not sign when the derived public key is not the stored one', async () => {
+      // Arrange
+      const { provider, saltApi, holderKey } = setup();
+      const derived = await generateTestKey();
+      const stored = await generateTestKey();
+      saltApi.get.mockResolvedValue(saltDto(stored.publicKeyJwk));
+      holderKey.derive.mockResolvedValue({ privateKey: derived.privateKey, publicKeyJwk: derived.publicKeyJwk });
+      const signSpy = jest.spyOn(crypto.subtle, 'sign');
+
+      // Act
+      const result = provider.sign('holder-1', new Uint8Array([1]));
+
+      // Assert
+      await expect(result).rejects.toMatchObject({
+        code: 'key_mismatch',
+        translationKey: 'errors.passkey-key-mismatch',
+      });
+      expect(signSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not sign when the service has no public key for the attestation', async () => {
+      // Arrange
+      const { provider, saltApi, holderKey } = setup();
+      const derived = await generateTestKey();
+      saltApi.get.mockResolvedValue(saltDto(undefined));
+      holderKey.derive.mockResolvedValue({ privateKey: derived.privateKey, publicKeyJwk: derived.publicKeyJwk });
+
+      // Act + Assert
+      await expect(provider.sign('holder-1', new Uint8Array([1]))).rejects.toMatchObject({ code: 'key_mismatch' });
+      expect(holderKey.derive).not.toHaveBeenCalled();
+    });
+
+    it('does not use the passkey when the service asks for another key derivation', async () => {
+      // Arrange
+      const { provider, saltApi, holderKey } = setup();
+      saltApi.get.mockResolvedValue({ ...saltDto(), kdf: { algorithm: 'HKDF-SHA-256', info: 'another-label' } });
+
+      // Act + Assert
+      await expect(provider.sign('holder-1', new Uint8Array([1]))).rejects.toThrow('key derivation');
+      expect(holderKey.derive).not.toHaveBeenCalled();
+    });
+
+    it('does not use the passkey when the service does not give the salt (404)', async () => {
+      // Arrange
+      const { provider, saltApi, holderKey } = setup();
+      saltApi.get.mockRejectedValue(new Error('404'));
+
+      // Act + Assert
+      await expect(provider.sign('holder-1', new Uint8Array([1]))).rejects.toThrow('404');
+      expect(holderKey.derive).not.toHaveBeenCalled();
+    });
   });
 
-  it('buildPresentationJws() maps VP_ENVELOPE signingType to jwt_vc_json format', async () => {
-    const { provider, signService } = setup();
-    const payload = { id: 'vp-1', vp: {} };
+  describe('operations delegated to the server provider', () => {
+    it('hasKey, deleteKey and listKeys', async () => {
+      // Arrange
+      const { provider, server } = setup();
 
-    await provider.buildPresentationJws!(CONTEXT.credentialId, payload, 'VP_ENVELOPE');
+      // Act + Assert
+      await expect(provider.hasKey('k1')).resolves.toBe(true);
+      await expect(provider.deleteKey()).resolves.toBeUndefined();
+      await expect(provider.listKeys()).resolves.toEqual(KEY_INFO);
+      expect(server.hasKey).toHaveBeenCalledWith('k1');
+      expect(server.deleteKey).toHaveBeenCalled();
+    });
 
-    expect(signService.sign).toHaveBeenCalledWith(CONTEXT.credentialId, payload, 'jwt_vc_json');
-  });
+    it('isCnfBoundToPublicKey and resolveKeyIdByKid', async () => {
+      // Arrange
+      const { provider, server } = setup();
+      const jwk: JsonWebKey = { kty: 'EC', crv: 'P-256', x: 'x', y: 'y' };
 
-  it('delegates hasKey to server', async () => {
-    const { provider, server } = setup();
-    await provider.hasKey('k1');
-    expect(server.hasKey).toHaveBeenCalledWith('k1');
-  });
+      // Act + Assert
+      await expect(provider.isCnfBoundToPublicKey({ jwk }, jwk)).resolves.toBe(true);
+      await expect(provider.resolveKeyIdByKid()).resolves.toBeNull();
+      expect(server.isCnfBoundToPublicKey).toHaveBeenCalledWith({ jwk }, jwk);
+      expect(server.resolveKeyIdByKid).toHaveBeenCalled();
+    });
 
-  it('delegates deleteKey to server', async () => {
-    const { provider, server } = setup();
-    await provider.deleteKey('k1');
-    expect(server.deleteKey).toHaveBeenCalledWith('k1');
-  });
+    it('does not offer a presentation signed by the service nor key export or import', () => {
+      // Arrange
+      const { provider } = setup();
 
-  it('delegates listKeys to server', async () => {
-    const { provider, server } = setup();
-    const result = await provider.listKeys();
-    expect(result).toBe(KEY_INFO);
-  });
-
-  it('delegates isCnfBoundToPublicKey to server', async () => {
-    const { provider, server } = setup();
-    await provider.isCnfBoundToPublicKey({}, { kty: 'EC' });
-    expect(server.isCnfBoundToPublicKey).toHaveBeenCalled();
-  });
-
-  it('delegates resolveKeyIdByKid to server', async () => {
-    const { provider, server } = setup();
-    const result = await provider.resolveKeyIdByKid('k1');
-    expect(server.resolveKeyIdByKid).toHaveBeenCalledWith('k1');
-    expect(result).toBe('k1');
-  });
-
-  it('delegates exportKey to server', async () => {
-    const { provider, server } = setup();
-    const result = await provider.exportKey!('k1');
-    expect(server.exportKey).toHaveBeenCalledWith('k1');
-    expect(result).toEqual({ kty: 'EC' });
-  });
-
-  it('delegates importKey to server', async () => {
-    const { provider, server } = setup();
-    const jwk: JsonWebKey = { kty: 'EC', crv: 'P-256' };
-    await provider.importKey!('k1', jwk);
-    expect(server.importKey).toHaveBeenCalledWith('k1', jwk);
+      // Act + Assert
+      expect((provider as unknown as Record<string, unknown>)['buildPresentationJws']).toBeUndefined();
+      expect((provider as unknown as Record<string, unknown>)['exportKey']).toBeUndefined();
+      expect((provider as unknown as Record<string, unknown>)['importKey']).toBeUndefined();
+    });
   });
 });

@@ -340,7 +340,7 @@ describe('PasskeyPrfService', () => {
       const validScalar = new Uint8Array(32);
       validScalar[31] = 1;
       (globalThis.crypto.subtle.importKey as jest.Mock).mockResolvedValue({});
-      (globalThis.crypto.subtle.deriveBits as jest.Mock).mockResolvedValue(validScalar.buffer);
+      (globalThis.crypto.subtle.deriveBits as jest.Mock).mockImplementation(() => Promise.resolve(validScalar.slice().buffer));
 
       const firstCall = service.deriveSigningKey(new Uint8Array(32));
       const secondCall = service.deriveSigningKey(new Uint8Array(32));

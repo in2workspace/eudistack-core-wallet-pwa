@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.19.0] - 2026-11-04
+
+### Added
+
+- **Passkey custody: the holder key is derived on the device on every signature (EUD-326)**: with `key_manager = passkey-prf` the Wallet App asks the Wallet Unit Service for the salt of the attestation, uses the passkey of the session with the PRF extension (user verification required), derives a non-extractable P-256 key with HKDF-SHA-256, signs the proof of possession or the presentation itself and drops the key. There is no cache: each signature uses the passkey once.
+- **Public key check before presenting**: the derived public key is compared with the one the service stores for the attestation; if they differ the Wallet App does not sign and shows a notice (`errors.passkey-key-mismatch`, in English, Spanish and Catalan).
+- **Public key sent when an attestation is stored**: the payload that saves the attestation carries `holder_public_jwk`, so the service can check it against the `cnf` of the attestation.
+- **Specs** for the shared derivation, the holder key service, the salt API, the passkey and server key storage providers, and the OID4VP and OID4VCI changes.
+
+### Changed
+
+- **Server custody: the presentation finds the key by the `holder_key_id` of the chosen attestation** instead of going through all of them by `kid`.
+- **P-256 derivation core shared** in `core/utils/p256-key-derivation.util.ts`, with a range check of the private scalar and zero-filling; the browser mode keeps its own salt and info.
+
+### Removed
+
+- **Encrypted-key model of the passkey custody**: wrap, unwrap, sign and memory services, their APIs, the 5-minute key cache and the calls to `/onboarding/*`, `/sign/*` and `/constraint-accepted`.
+- **Calls to key endpoints the service does not have** (`GET` and `DELETE /keys/{id}`, `/keys/{id}/export`, `/keys/import`), and `exportKey`/`importKey` from the key storage SPI.
+
 ## [3.18.3] - 2026-11-06
 
 ### Fixed

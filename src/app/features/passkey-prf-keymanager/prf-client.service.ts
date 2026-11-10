@@ -9,17 +9,18 @@ import { WEBAUTHN_ASSERTION_HINTS } from 'src/app/core/constants/webauthn.consta
  * Thin wrapper that evaluates the WebAuthn PRF extension with a given salt.
  *
  * Returns the raw PRF output bytes (32 bytes per CTAP2.1 spec). The output
- * is used as HKDF input material for AES-256-GCM wrap key derivation.
+ * is used as HKDF input material for the P-256 holder key derivation; the caller
+ * zero-fills it.
  *
  * The PRF is always evaluated with the passkey that opened the session: the
  * Wallet Unit Service binds each attestation to that passkey and only returns
- * the session passkey's attestations (EUD-8 FR-15, EUD-11 prd §3.3). Whether the
+ * the session passkey's attestations (EUD-8 FR-15, EUD-11 prd §3.3). The user
+ * verification is always required: every signature uses the passkey. Whether the
  * authenticator offers the PRF is checked when the passkey is registered
  * (EUD-8 FR-08), not here.
  *
  * The PRF salt itself is NEVER logged (NFR-06).
  *
- * Spec: EUDISTACK-534 AC-01; technical-design.md §3.2 T13.
  */
 @Injectable({ providedIn: 'root' })
 export class PrfClientService {
@@ -30,7 +31,7 @@ export class PrfClientService {
    * contract as sign-in and PRF signing). Only "the authenticator answered but
    * produced no PRF output" is reported as `prf_unavailable`.
    */
-  async evaluateForWrap(prfSalt: Uint8Array): Promise<Uint8Array> {
+  async evaluate(prfSalt: Uint8Array): Promise<Uint8Array> {
     const credentialId = await this.sessionPasskey.resolveCredentialId();
 
     const prfOutput = this.readPrfOutput(await this.assertWithPrf(credentialId, prfSalt));
