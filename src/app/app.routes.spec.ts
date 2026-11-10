@@ -130,8 +130,8 @@ describe('App Routing', () => {
       expect(tabsRoute!.loadChildren).toBeDefined();
     });
 
-    it('should define the public onboarding address t/:ticket before the catch-all, with only tenantGuard (EUD-315)', () => {
-      const index = routes.findIndex(r => r.path === 't/:ticket');
+    it('should define the public onboarding address t (ticket in the fragment) before the catch-all, with only tenantGuard (EUD-315)', () => {
+      const index = routes.findIndex(r => r.path === 't');
       expect(index).toBeGreaterThanOrEqual(0);
       expect(index).toBeLessThan(routes.findIndex(r => r.path === '**'));
       expect(routes[index].canActivate).toEqual([tenantGuard]);
@@ -139,7 +139,7 @@ describe('App Routing', () => {
     });
 
     it('should define the public "it was not me" route before the catch-all, with only tenantGuard (EUD-315)', () => {
-      const index = routes.findIndex(r => r.path === 'no-he-sido-yo/:token');
+      const index = routes.findIndex(r => r.path === 'no-he-sido-yo');
       expect(index).toBeGreaterThanOrEqual(0);
       expect(index).toBeLessThan(routes.findIndex(r => r.path === '**'));
       expect(routes[index].canActivate).toEqual([tenantGuard]);

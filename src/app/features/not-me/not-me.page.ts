@@ -9,7 +9,7 @@ import { ACCESS_ROUTE } from 'src/app/core/services/auth.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 import { DISAVOWAL_TOKEN_PATTERN, OnboardingTicketService } from 'src/app/core/services/onboarding-ticket.service';
 
-/** What replaces `/no-he-sido-yo/<token>` in the address bar: the token is a secret. */
+/** What replaces `/no-he-sido-yo#<token>` in the address bar: the token is a secret. */
 export const NOT_ME_TOKEN_FREE_PATH = '/no-he-sido-yo';
 
 /**
@@ -21,7 +21,8 @@ export const NOT_ME_TOKEN_FREE_PATH = '/no-he-sido-yo';
 export type NotMeScreen = 'confirm' | 'done' | 'invalid';
 
 /**
- * Page the "it was not me" link of the new-account email opens (`/no-he-sido-yo/:token`).
+ * Page the "it was not me" link of the new-account email opens (`/no-he-sido-yo#<token>`;
+ * the token is in the fragment, which never reaches the server, P18).
  * It never starts a session nor asks for a passkey (AC-10): the only call is the
  * public disavowal, and only after the holder confirms (EC-10).
  */
@@ -49,7 +50,7 @@ export class NotMePage implements OnInit {
   private token = '';
 
   public ngOnInit(): void {
-    this.token = this.route.snapshot.paramMap.get('token') ?? '';
+    this.token = this.route.snapshot.fragment ?? '';
     this.location.replaceState(NOT_ME_TOKEN_FREE_PATH);
     if (this.discovery.mode() !== 'server') {
       // Accounts and their disavowal belong to the Wallet Unit Service (server mode).

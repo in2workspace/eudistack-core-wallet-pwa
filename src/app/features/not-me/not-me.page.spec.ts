@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Location } from '@angular/common';
-import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { of, throwError } from 'rxjs';
 import { NOT_ME_TOKEN_FREE_PATH, NotMePage } from './not-me.page';
@@ -41,7 +41,7 @@ describe('NotMePage (EUD-315)', () => {
       providers: [
         { provide: Router, useValue: router },
         { provide: Location, useValue: location },
-        { provide: ActivatedRoute, useFactory: () => ({ snapshot: { paramMap: convertToParamMap({ token: tokenParam }) } }) },
+        { provide: ActivatedRoute, useFactory: () => ({ snapshot: { fragment: tokenParam } }) },
         { provide: WalletDiscoveryService, useValue: { mode } },
         { provide: OnboardingTicketService, useValue: { disavow } },
         // Any use of a session would fail loudly: the page must never touch one (AC-10).

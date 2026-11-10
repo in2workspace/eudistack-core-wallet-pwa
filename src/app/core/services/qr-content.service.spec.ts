@@ -35,7 +35,7 @@ describe('QrContentService', () => {
   });
 
   it('does not take an onboarding address for a credential offer (EUD-315)', () => {
-    expect(service.parse('https://sandbox.stg.eudistack.net/t/Zk3q9Xw2Lp7Rt4Vb8Nc1Ha')).toEqual({ kind: 'unsupported' });
+    expect(service.parse('https://sandbox.stg.eudistack.net/t#Zk3q9Xw2Lp7Rt4Vb8Nc1Ha')).toEqual({ kind: 'unsupported' });
   });
 
   it('classifies an openid4vp deep link as an authorization request', () => {

@@ -23,11 +23,13 @@ import {
   takePendingDeepLink,
 } from 'src/app/shared/helpers/pending-deep-link';
 
-/** What replaces `/t/<ticket>` in the address bar and in the history (AC-04). */
+/** What replaces `/t#<ticket>` in the address bar and in the history (AC-04). */
 export const TICKET_FREE_PATH = '/t';
 
 /**
- * Onboarding address `/t/:ticket` (EUD-315, design §2.6, wireframes "CanjeTicket").
+ * Onboarding address `/t#<ticket>` (EUD-315, design §2.6, wireframes "CanjeTicket").
+ * The ticket is in the fragment, which never reaches the server: not in access logs
+ * nor in the Referer header (P18).
  * Not a screen of its own: a wait notice while the ticket is redeemed, then
  * - Crear passkey without the step indicator (email without account, or without passkeys),
  * - Acceso with the "you already have a wallet" notice (account with passkeys),
@@ -63,7 +65,7 @@ export class OnboardingTicketPage implements OnInit {
   private ticket = '';
 
   public ngOnInit(): void {
-    this.ticket = this.route.snapshot.paramMap.get('ticket') ?? '';
+    this.ticket = this.route.snapshot.fragment ?? '';
     // AC-04: the ticket leaves the address bar before anything else, replacing
     // its history entry. Location applies the base href (/wallet/ when deployed).
     this.location.replaceState(TICKET_FREE_PATH);

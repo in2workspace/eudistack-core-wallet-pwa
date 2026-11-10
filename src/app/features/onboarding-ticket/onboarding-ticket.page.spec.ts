@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Location } from '@angular/common';
-import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { BehaviorSubject, of, throwError } from 'rxjs';
 import { OnboardingTicketPage, TICKET_FREE_PATH } from './onboarding-ticket.page';
@@ -82,7 +82,7 @@ describe('OnboardingTicketPage (EUD-315)', () => {
       providers: [
         { provide: Router, useValue: router },
         { provide: Location, useValue: location },
-        { provide: ActivatedRoute, useFactory: () => ({ snapshot: { paramMap: convertToParamMap({ ticket: ticketParam }) } }) },
+        { provide: ActivatedRoute, useFactory: () => ({ snapshot: { fragment: ticketParam } }) },
         { provide: WalletDiscoveryService, useValue: { mode } },
         { provide: WebAuthnBrowserService, useValue: { isPasskeySupported: supported } },
         { provide: OnboardingTicketService, useValue: tickets },
