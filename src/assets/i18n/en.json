@@ -51,6 +51,23 @@
     "nocred-scan": "Scan QR code",
     "show-data": "Show data",
     "hide-data": "Hide data",
+    "sync": {
+      "updating": "Updating…",
+      "updated-at": "Updated at {{time}}",
+      "button": "Sync",
+      "retry": "Retry",
+      "stale": "We couldn't update your credentials. They may not be up to date.",
+      "load-error": "We couldn't load your credentials. If the problem persists, report it to {{supportLink}}."
+    },
+    "filters": {
+      "title": "Filters",
+      "type": "Type",
+      "issuer": "Issuer",
+      "status": "Status",
+      "all": "All",
+      "clear": "Clear filters",
+      "no-results": "No credential matches the filters."
+    },
     "how-it-works": {
       "title": "How does it work?",
       "step-scan": "Scan a QR code",
@@ -335,7 +352,8 @@
     "lifecycle-valid": "Valid",
     "lifecycle-issued": "Unsigned",
     "lifecycle-revoked": "Revoked",
-    "lifecycle-expired": "Expired"
+    "lifecycle-expired": "Expired",
+    "status-unchecked": "The status could not be checked. Last known status: {{status}}."
   },
   "vc-fields": {
     "delete": "Delete credential",
@@ -486,6 +504,7 @@
     "qr-expired": "The QR session has expired. Please refresh the credential offer.",
     "unsigned": "The signed credential is not yet available",
     "loading-VCs": "There was an error loading credentials. Please try again. If the problem persists, report it to {{supportLink}}.",
+    "delete-credential": "We couldn't delete the credential. Please try again.",
     "Errunsigned": "Credential could not be obtained",
     "no-connection": "Connection was lost. Please check your network and try again.",
     "navigation": "There was an unexpected problem when trying to access the page. If the problem persists, report it to {{supportLink}}.",

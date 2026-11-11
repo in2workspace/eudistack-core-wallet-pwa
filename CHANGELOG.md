@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.20.0] - 2026-11-11
+
+### Added
+
+- **On-demand synchronization (EUD-325)**: pulling the list down and the new sync button in the header synchronize with the Wallet Unit Service and check the status again. The list stays visible while it runs.
+- **Time of the last synchronization** under the title ("Updated at …"), and "Updating…" while it runs.
+- **Notices when the synchronization fails**: if the session opens without its attestations the list shows "We couldn't load your credentials" with a retry and no attestation of an earlier session; if a later one fails the list stays visible with a notice that it may be out of date and a retry.
+- **Filters by type, issuer and status**, which combine, with "Clear filters" and a "no results" state. Unsigned attestations are only listed without a status filter.
+- **Status that could not be checked**: when the status list of an issuer does not answer, the detail says so and shows the last known status.
+- **Notice when an attestation cannot be deleted**: it stays in the local copy and the user is told to try again.
+- **Specs** for the status check service, the filters, the synchronization state, the deletion during a synchronization and the access entry.
+
+### Changed
+
+- **The list waits for the synchronization on every way in** (passkey access, resume on reload and protocol link), not only with a protocol link.
+- **The status check is a single service** (`CredentialStatusCheckService`) instead of logic inside the list page; it flags the attestations whose status list did not answer.
+- **A synchronization no longer brings back an attestation deleted while it was running.**
+- **The list no longer reads the local copy while the session attestations are loading or failed to load**, so the loading and error states are not replaced by an empty wallet.
+
 ## [3.19.0] - 2026-11-04
 
 ### Added

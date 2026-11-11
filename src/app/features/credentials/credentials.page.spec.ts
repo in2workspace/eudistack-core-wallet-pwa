@@ -18,6 +18,9 @@ import { IssuerNotificationService } from 'src/app/core/services/issuer-notifica
 import { IssuerMetadataCacheService } from 'src/app/core/services/issuer-metadata-cache.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { HapticService } from 'src/app/shared/services/haptic.service';
+import { CredentialStatusCheckService } from 'src/app/core/services/credential-status-check.service';
+import { ServerSessionDataService } from 'src/app/core/services/server-session-data.service';
+import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
 import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
 import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
@@ -48,12 +51,22 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     snapshot: jest.Mock;
     patchStatus: jest.Mock;
     remove: jest.Mock;
+    lastSyncAt: jest.Mock;
+    syncing: jest.Mock;
+    syncError: jest.Mock;
+    uncheckedStatusIds: jest.Mock;
+    markStatusUnchecked: jest.Mock;
+    clearStatusUnchecked: jest.Mock;
   };
+  let mockStatusCheck: { checkAll: jest.Mock; reapplyKnownRevocations: jest.Mock; rememberRevocation: jest.Mock };
+  let mockSessionData: { refresh: jest.Mock };
+  let mockDiscovery: { mode: jest.Mock };
   let mockWalletService: {
     refreshCredentials: jest.Mock;
     loadCredentialsForPresentation: jest.Mock;
     getAllVCs: jest.Mock;
     updateCredentialStatus: jest.Mock;
+    deleteVC: jest.Mock;
   };
   let mockToastServiceHandler: {
     showErrorAlertByTranslateLabel: jest.Mock;
@@ -96,13 +109,28 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       snapshot: jest.fn().mockReturnValue({ status: 'loaded', credentials: [] }),
       patchStatus: jest.fn(),
       remove: jest.fn(),
+      lastSyncAt: jest.fn().mockReturnValue(null),
+      syncing: jest.fn().mockReturnValue(false),
+      syncError: jest.fn().mockReturnValue(null),
+      uncheckedStatusIds: jest.fn().mockReturnValue(new Set<string>()),
+      markStatusUnchecked: jest.fn(),
+      clearStatusUnchecked: jest.fn(),
     };
+
+    mockStatusCheck = {
+      checkAll: jest.fn().mockResolvedValue(undefined),
+      reapplyKnownRevocations: jest.fn(),
+      rememberRevocation: jest.fn(),
+    };
+    mockSessionData = { refresh: jest.fn().mockResolvedValue(undefined) };
+    mockDiscovery = { mode: jest.fn().mockReturnValue('server') };
 
     mockWalletService = {
       refreshCredentials: jest.fn().mockReturnValue(of([])),
       loadCredentialsForPresentation: jest.fn().mockReturnValue(of([])),
       getAllVCs: jest.fn().mockReturnValue(of([])),
       updateCredentialStatus: jest.fn().mockReturnValue(of(null)),
+      deleteVC: jest.fn().mockReturnValue(of(null)),
     };
 
     mockToastServiceHandler = {
@@ -140,6 +168,9 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
         { provide: ActivityService, useValue: { log: jest.fn() } },
         { provide: HapticService, useValue: { notification: jest.fn(), impact: jest.fn().mockResolvedValue(undefined) } },
         { provide: CredentialVerificationService, useValue: { isRevoked: jest.fn().mockResolvedValue('not-revoked') } },
+        { provide: CredentialStatusCheckService, useValue: mockStatusCheck },
+        { provide: ServerSessionDataService, useValue: mockSessionData },
+        { provide: WalletDiscoveryService, useValue: mockDiscovery },
         { provide: Oid4vciEngineService, useValue: { performOid4vciFlow: jest.fn() } },
         { provide: ModalController, useValue: mockModalController },
         // privacyBlur() is only exercised by the translate="no" shielding tests below,
@@ -301,6 +332,24 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       expect(refreshSpy).toHaveBeenCalledTimes(1);
     });
 
+    it('does NOT refresh for display while the session attestations are loading', () => {
+      const refreshSpy = stubCdrAndSpyRefresh();
+      mockCredentialCacheService.syncing.mockReturnValue(true);
+
+      component.ionViewWillEnter();
+
+      expect(refreshSpy).not.toHaveBeenCalled();
+    });
+
+    it('does NOT refresh for display when the session attestations could not be loaded', () => {
+      const refreshSpy = stubCdrAndSpyRefresh();
+      mockCredentialCacheService.syncError.mockReturnValue('initial');
+
+      component.ionViewWillEnter();
+
+      expect(refreshSpy).not.toHaveBeenCalled();
+    });
+
     it('does NOT refresh for display when a VP authorization request is pending', () => {
       const refreshSpy = stubCdrAndSpyRefresh();
       (component as unknown as { authorizationRequest: string }).authorizationRequest =
@@ -422,63 +471,166 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     }));
   });
 
-  describe('checkCredentialStatuses — background revocation check', () => {
-    const validVcWithStatusList: VerifiableCredential = {
-      ...mockValidVc,
-      credentialStatus: {
-        id: 'status-1',
-        type: 'BitstringStatusListEntry',
-        statusPurpose: 'revocation',
-        statusListIndex: '3',
-        statusListCredential: 'https://issuer.example.com/status-list/1',
-      },
-    } as any;
+  describe('on-demand synchronization', () => {
+    it('handleRefresh synchronizes with the service and completes the refresher', async () => {
+      // Arrange
+      const complete = jest.fn();
 
-    let verificationService: { isRevoked: jest.Mock };
+      // Act
+      component.handleRefresh({ target: { complete } });
+      await new Promise(resolve => setTimeout(resolve));
+
+      // Assert
+      expect(mockSessionData.refresh).toHaveBeenCalledTimes(1);
+      expect(mockWalletService.refreshCredentials).not.toHaveBeenCalled();
+      expect(complete).toHaveBeenCalledTimes(1);
+    });
+
+    it('syncNow only reloads the local copy in browser mode', async () => {
+      // Arrange
+      mockDiscovery.mode.mockReturnValue('browser');
+
+      // Act
+      await component.syncNow();
+
+      // Assert
+      expect(mockSessionData.refresh).not.toHaveBeenCalled();
+      expect(mockWalletService.refreshCredentials).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows "updating" in the header while synchronizing and the time of the last synchronization otherwise', () => {
+      // Arrange
+      mockCredentialCacheService.syncing.mockReturnValue(true);
+      fixture.detectChanges();
+
+      // Act + Assert
+      const header = fixture.nativeElement.querySelector('.list-header__sync');
+      expect(header.textContent).toContain('credentials.sync.updating');
+    });
+
+    it('shows the time of the last successful synchronization', () => {
+      // Arrange
+      mockCredentialCacheService.lastSyncAt.mockReturnValue(new Date('2026-11-10T10:42:00'));
+
+      // Act
+      fixture.detectChanges();
+
+      // Assert
+      const header = fixture.nativeElement.querySelector('.list-header__sync');
+      expect(header.textContent).toContain('credentials.sync.updated-at');
+    });
+
+    it('keeps the list and shows the stale notice with a retry when a later synchronization fails', () => {
+      // Arrange
+      mockCredentialCacheService.credentials.mockReturnValue([mockValidVc]);
+      mockCredentialCacheService.syncError.mockReturnValue('refresh');
+
+      // Act
+      fixture.detectChanges();
+
+      // Assert
+      expect(fixture.nativeElement.querySelector('.sync-notice')).toBeTruthy();
+      expect(fixture.nativeElement.querySelectorAll('app-vc-view').length).toBe(1);
+    });
+
+    it('shows no stale notice when the synchronization went well', () => {
+      // Arrange
+      mockCredentialCacheService.credentials.mockReturnValue([mockValidVc]);
+
+      // Act
+      fixture.detectChanges();
+
+      // Assert
+      expect(fixture.nativeElement.querySelector('.sync-notice')).toBeNull();
+    });
+
+    it('shows the load error with a retry, and no list, when the session could not load its attestations', () => {
+      // Arrange
+      mockCredentialCacheService.syncError.mockReturnValue('initial');
+      mockCredentialCacheService.status.mockReturnValue('error');
+
+      // Act
+      fixture.detectChanges();
+
+      // Assert
+      expect(fixture.nativeElement.querySelector('.empty-state[role="alert"]')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.sync-notice')).toBeNull();
+      expect(fixture.nativeElement.querySelectorAll('app-vc-view').length).toBe(0);
+    });
+  });
+
+  describe('filters', () => {
+    const employee = { id: 'a', name: 'Employee', lifeCycleStatus: 'VALID', issuer: { id: 'i1', organization: 'Acme' } } as any;
+    const machine = { id: 'b', name: 'Machine', lifeCycleStatus: 'REVOKED', issuer: { id: 'i2', organization: 'Globex' } } as any;
 
     beforeEach(() => {
-      verificationService = TestBed.inject(CredentialVerificationService) as unknown as { isRevoked: jest.Mock };
-      mockCredentialCacheService.snapshot.mockReturnValue({
-        status: 'loaded',
-        credentials: [validVcWithStatusList],
-      });
+      mockCredentialCacheService.credentials.mockReturnValue([employee, machine]);
     });
 
-    it('should patch the credential to REVOKED when the check confirms revocation', async () => {
+    it('lists every credential when no filter is set', () => {
+      expect(component.filteredList()).toEqual([employee, machine]);
+      expect(component.filtersActive()).toBe(false);
+    });
+
+    it('offers the types and issuers of the list', () => {
+      expect(component.typeOptions()).toEqual(['Employee', 'Machine']);
+      expect(component.issuerOptions()).toEqual(['Acme', 'Globex']);
+    });
+
+    it('combines the filters', () => {
+      component.setFilter('type', 'Employee');
+      component.setFilter('status', 'REVOKED');
+
+      expect(component.filteredList()).toEqual([]);
+      expect(component.filtersActive()).toBe(true);
+    });
+
+    it('shows "no results" with a way to clear the filters when none matches', () => {
+      component.setFilter('issuer', 'Acme');
+      component.setFilter('status', 'REVOKED');
+
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.empty-state-subtitle').textContent)
+        .toContain('credentials.filters.no-results');
+      expect(fixture.nativeElement.querySelectorAll('app-vc-view').length).toBe(0);
+    });
+
+    it('clearFilters brings back the full list', () => {
+      component.setFilter('type', 'Machine');
+
+      component.clearFilters();
+
+      expect(component.filteredList()).toEqual([employee, machine]);
+      expect(component.filtersActive()).toBe(false);
+    });
+  });
+
+  describe('vcDelete', () => {
+    it('does not log the activity and tells the user when the service cannot delete the credential', () => {
       // Arrange
-      verificationService.isRevoked.mockResolvedValue('revoked');
+      mockWalletService.deleteVC.mockReturnValue(throwError(() => new Error('service down')));
+      const activity = TestBed.inject(ActivityService) as unknown as { log: jest.Mock };
 
       // Act
-      await (component as unknown as { checkCredentialStatuses: () => Promise<void> }).checkCredentialStatuses();
+      component.vcDelete(mockValidVc);
 
       // Assert
-      expect(mockCredentialCacheService.patchStatus).toHaveBeenCalledWith('vc-valid', 'REVOKED');
-      expect(mockWalletService.updateCredentialStatus).toHaveBeenCalledWith('vc-valid', 'REVOKED');
+      expect(mockToastServiceHandler.showErrorAlertByTranslateLabel).toHaveBeenCalledWith('errors.delete-credential');
+      expect(activity.log).not.toHaveBeenCalled();
+      expect(mockToastServiceHandler.showToast).not.toHaveBeenCalledWith('vc-view.delete-success');
     });
 
-    it('should NOT change the cached status when the check cannot be completed (fail-closed, not fail-open)', async () => {
+    it('logs the activity and confirms when the credential is deleted', () => {
       // Arrange
-      verificationService.isRevoked.mockResolvedValue('unknown');
+      const activity = TestBed.inject(ActivityService) as unknown as { log: jest.Mock };
 
       // Act
-      await (component as unknown as { checkCredentialStatuses: () => Promise<void> }).checkCredentialStatuses();
-
-      // Assert — this is the fail-open regression guard: a network failure must
-      // never be silently treated as a confirmed "not revoked" credential.
-      expect(mockCredentialCacheService.patchStatus).not.toHaveBeenCalled();
-      expect(mockWalletService.updateCredentialStatus).not.toHaveBeenCalled();
-    });
-
-    it('should NOT change the cached status when the check confirms the credential is not revoked', async () => {
-      // Arrange
-      verificationService.isRevoked.mockResolvedValue('not-revoked');
-
-      // Act
-      await (component as unknown as { checkCredentialStatuses: () => Promise<void> }).checkCredentialStatuses();
+      component.vcDelete({ ...mockValidVc, name: 'Employee' } as VerifiableCredential);
 
       // Assert
-      expect(mockCredentialCacheService.patchStatus).not.toHaveBeenCalled();
-      expect(mockWalletService.updateCredentialStatus).not.toHaveBeenCalled();
+      expect(activity.log).toHaveBeenCalledWith('deleted', 'Employee', '');
+      expect(mockToastServiceHandler.showToast).toHaveBeenCalledWith('vc-view.delete-success');
     });
   });
 
@@ -515,20 +667,10 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     it('patches the cache and only remembers a revocation', () => {
       component.onCredentialStatusChanged({ id: 'vc-1', status: 'REVOKED' });
       expect(mockCredentialCacheService.patchStatus).toHaveBeenCalledWith('vc-1', 'REVOKED');
-      expect((component as any).revokedCredentialIds.has('vc-1')).toBe(true);
+      expect(mockStatusCheck.rememberRevocation).toHaveBeenCalledWith('vc-1');
 
       component.onCredentialStatusChanged({ id: 'vc-2', status: 'EXPIRED' });
-      expect((component as any).revokedCredentialIds.has('vc-2')).toBe(false);
-    });
-
-    it('re-applies a remembered revocation after a pull-to-refresh', () => {
-      const complete = jest.fn();
-      (component as any).revokedCredentialIds.add('vc-revoked');
-
-      component.handleRefresh({ target: { complete } });
-
-      expect(mockCredentialCacheService.patchStatus).toHaveBeenCalledWith('vc-revoked', 'REVOKED');
-      expect(complete).toHaveBeenCalledTimes(1);
+      expect(mockStatusCheck.rememberRevocation).not.toHaveBeenCalledWith('vc-2');
     });
   });
 
@@ -676,34 +818,6 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
 
       expect(mockCredentialCacheService.findCredentialsByScope).toHaveBeenCalledWith('doctorid');
     }));
-  });
-
-  describe('checkCredentialStatuses — expiry detection', () => {
-    const withCredentials = (credentials: unknown[]) =>
-      mockCredentialCacheService.snapshot.mockReturnValue({ status: 'loaded', credentials });
-
-    it('expires a VALID credential whose validUntil has passed and persists it', async () => {
-      withCredentials([
-        { id: 'vc-old', lifeCycleStatus: 'VALID', validUntil: '2020-01-01T00:00:00.000Z' },
-      ]);
-
-      await (component as any).checkCredentialStatuses();
-
-      expect(mockCredentialCacheService.patchStatus).toHaveBeenCalledWith('vc-old', 'EXPIRED');
-      expect(mockWalletService.updateCredentialStatus).toHaveBeenCalledWith('vc-old', 'EXPIRED');
-    });
-
-    it('leaves a future, unparseable or absent validUntil untouched', async () => {
-      withCredentials([
-        { id: 'vc-new', lifeCycleStatus: 'VALID', validUntil: '2099-01-01T00:00:00.000Z' },
-        { id: 'vc-bad', lifeCycleStatus: 'VALID', validUntil: 'not-a-date' },
-        { id: 'vc-none', lifeCycleStatus: 'VALID' },
-      ]);
-
-      await (component as any).checkCredentialStatuses();
-
-      expect(mockCredentialCacheService.patchStatus).not.toHaveBeenCalled();
-    });
   });
 
   describe('handleContentExecutionError', () => {

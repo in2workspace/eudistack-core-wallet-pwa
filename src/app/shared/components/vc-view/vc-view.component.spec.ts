@@ -13,6 +13,7 @@ import { ComponentRef } from '@angular/core';
 import { SupportChannelService } from 'src/app/core/services/support-channel.service';
 import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
+import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 import { convertToParamMap, Router } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
@@ -552,6 +553,32 @@ describe('VcViewComponent', () => {
       expect(component.verifyOverall).toBe('unknown');
       expect(toastSpy).toHaveBeenCalledWith('verification.result-unknown', 5000, 'warning');
       expect(updateStatusSpy).not.toHaveBeenCalled();
+    });
+
+    it('flags the status as not checked when the status list does not answer, and clears the flag once it does', async () => {
+      // Arrange
+      const cache = TestBed.inject(CredentialCacheService);
+      verificationService.getCheckKeys.mockReturnValue(['status']);
+      verificationService.runCheck.mockResolvedValue({ key: 'status', status: 'error', detail: 'verification.detail-check-error' });
+      jest.spyOn((component as any).toastService, 'showInfoToastByTranslateLabel').mockImplementation(() => {});
+
+      // Act
+      await component.verifyCredential();
+
+      // Assert
+      expect(cache.uncheckedStatusIds().has('testId')).toBe(true);
+      expect(component.statusUnchecked()).toBe(true);
+
+      // Arrange — the list answers the next time
+      verificationService.runCheck.mockResolvedValue({ key: 'status', status: 'passed' });
+      (component as any).verifyLocked = false;
+
+      // Act
+      await component.verifyCredential();
+
+      // Assert
+      expect(cache.uncheckedStatusIds().has('testId')).toBe(false);
+      expect(component.statusUnchecked()).toBe(false);
     });
 
     it('should end as "invalid" and persist REVOKED when the status check confirms revocation', async () => {

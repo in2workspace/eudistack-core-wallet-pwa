@@ -129,6 +129,12 @@
             {{ statusBadge().label | translate }}
           </span>
 
+          @if (statusUnchecked()) {
+            <p class="verify-card__unchecked" role="status">
+              {{ 'vc-view.status-unchecked' | translate: { status: (lastKnownStatusLabel() | translate) } }}
+            </p>
+          }
+
           <ul class="verify-rows">
             @for(row of verificationRows; track row.key) {
               <li class="verify-rows__item">
