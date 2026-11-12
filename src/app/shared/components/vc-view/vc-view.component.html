@@ -130,9 +130,9 @@
           </span>
 
           @if (statusUnchecked()) {
-            <p class="verify-card__unchecked" role="status">
+            <output class="verify-card__unchecked">
               {{ 'vc-view.status-unchecked' | translate: { status: (lastKnownStatusLabel() | translate) } }}
-            </p>
+            </output>
           }
 
           <ul class="verify-rows">
