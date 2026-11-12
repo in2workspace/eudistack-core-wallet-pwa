@@ -18,6 +18,8 @@ export const AUTH_PROBLEM_TYPE = {
   AUTHENTICATION_FAILED: 'authentication_failed',
   INVALID_SESSION: 'invalid_session',
   RATE_LIMITED: 'rate_limited',
+  /** EUD-315: valid code, restricted onboarding mode and the email has no account. */
+  NO_ACCOUNT: 'no_account',
 } as const;
 
 /** Outcomes of a passkey ceremony against the service that the access screen shows differently. */
@@ -53,4 +55,30 @@ export function authProblemType(err: unknown): string | null {
   }
   const legacy = (err.error as { error?: unknown } | null)?.error;
   return typeof legacy === 'string' ? legacy : null;
+}
+
+/**
+ * Tenant's onboarding address carried by a 403 `no_account` of
+ * `POST /auth/verify-email` (EUD-315), or `null` when absent or not an
+ * absolute http(s) URL (the Wallet App opens it from a button).
+ */
+export function noAccountSignupUrl(err: unknown): string | null {
+  if (!(err instanceof HttpErrorResponse) || authProblemType(err) !== AUTH_PROBLEM_TYPE.NO_ACCOUNT) return null;
+  const body: unknown = typeof err.error === 'string' ? safeJson(err.error) : err.error;
+  const raw = body && typeof body === 'object' ? (body as Record<string, unknown>)['signupUrl'] : undefined;
+  if (typeof raw !== 'string') return null;
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function safeJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }

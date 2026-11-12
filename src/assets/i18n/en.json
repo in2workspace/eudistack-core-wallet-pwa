@@ -639,6 +639,8 @@
     "title-already-open": "EUDI Wallet is already open",
     "subtitle-deep-link": "The credential has been sent to the active {{type}} of EUDI Wallet. You can close this {{type}}.",
     "subtitle-already-open": "EUDI Wallet is already open in another {{type}}. You can close this one.",
+    "title-continued": "Continue in EUDI Wallet",
+    "subtitle-continued": "We have carried on in the EUDI Wallet {{type}} you already had open. Go to it to continue.",
     "title-offer-ready": "Credential ready to approve",
     "subtitle-offer-ready": "The credential is waiting for you in the EUDI Wallet {{type}} you already had open. Go there to approve it.",
     "title-offer-pending-login": "Sign in to continue",
@@ -725,7 +727,13 @@
       "email-button": "Sign in with my email",
       "session-expired": "Your session has expired. Please sign in again.",
       "ios-steps-title": "Add the wallet to your Home Screen",
-      "logout-pending": "We could not confirm the logout with the server. We will do it as soon as you are back online."
+      "logout-pending": "We could not confirm the logout with the server. We will do it as soon as you are back online.",
+      "ticket-has-wallet": "You already have a wallet. Sign in with your passkey to receive your attestation.",
+      "restricted-email-prompt": "Already have a wallet but not your passkey here?",
+      "restricted-title": "Don't have a wallet yet?",
+      "restricted-text": "Get it at {{site}}.",
+      "restricted-text-no-url": "Your organisation will tell you how to get it.",
+      "restricted-button": "Get my wallet"
     },
     "rejected": {
       "title": "We could not verify you",
@@ -776,6 +784,32 @@
       "registration-failed": "The passkey could not be registered. Please try again.",
       "prf-check-incomplete": "The passkey was not registered because the check was not completed. You can try again or save it somewhere else.",
       "generic": "The operation could not be completed. Please try again."
+    },
+    "ticket": {
+      "redeeming": "Checking your link…",
+      "failed-title": "We could not check your link"
+    },
+    "invalid-ticket": {
+      "back-to-wallet": "Back to wallet",
+      "button": "Go to sign-in",
+      "title": "This link is not valid",
+      "body": "This link is not valid or can no longer be used. Ask whoever gave it to you for a new one."
+    },
+    "no-wallet": {
+      "title": "This email has no wallet",
+      "body": "{{email}} has no {{brand}} wallet.",
+      "go-to": "To get one, go to {{site}}.",
+      "offer-discarded": "The attestation you wanted to receive has been discarded. You need your wallet first.",
+      "button": "Get my wallet",
+      "back": "Back"
+    },
+    "not-me": {
+      "title": "Didn't you create this account?",
+      "body": "We will end all its sessions, remove the passkey that was created and notify your organisation.",
+      "confirm": "It wasn't me",
+      "cancel": "Cancel",
+      "done": "Done. If you want to use the wallet, sign in with your email.",
+      "invalid": "This link is no longer valid."
     }
   }
 }

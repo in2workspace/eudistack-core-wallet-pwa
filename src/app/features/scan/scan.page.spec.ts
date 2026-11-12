@@ -88,6 +88,15 @@ describe('ScanPage', () => {
     );
   });
 
+  it('hands a standard openid-credential-offer:// offer to the credentials page unchanged (EUD-315, AC-11)', () => {
+    component.qrCodeEmit('openid-credential-offer://?credential_offer_uri=https%3A%2F%2Fissuer.example%2Fcredential-offer%2F3f2a');
+
+    expect(router.navigate).toHaveBeenCalledWith(
+      ['/tabs/credentials'],
+      { queryParams: { credentialOfferUri: 'openid-credential-offer://?credential_offer_uri=https%3A%2F%2Fissuer.example%2Fcredential-offer%2F3f2a' } }
+    );
+  });
+
   it('hands an authorization request to the credentials page', () => {
     const qr = 'openid4vp://authorize?request_uri=https://verifier.com';
 

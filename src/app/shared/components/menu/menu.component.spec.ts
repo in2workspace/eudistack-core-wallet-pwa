@@ -75,7 +75,7 @@ describe('MenuComponent', () => {
     const snapshotOf = (
       mode: 'browser' | 'server',
       source: 'discovery' | 'fallback'
-    ): WalletDiscoverySnapshot => ({ mode, source, keyManager: null, resolvedAt: 0 });
+    ): WalletDiscoverySnapshot => ({ mode, source, keyManager: null, onboardingMode: 'open', signupUrl: null, resolvedAt: 0 });
 
     it('hides the entry only when discovery positively reports browser mode', () => {
       setSnapshot(snapshotOf('browser', 'discovery'));
@@ -205,7 +205,7 @@ describe('MenuComponent', () => {
 
   describe('logout confirmation (EUD-8, "Cerrar sesión")', () => {
     const snapshot = (mode: 'browser' | 'server'): WalletDiscoverySnapshot =>
-      ({ mode, source: 'discovery', keyManager: null, resolvedAt: 0 });
+      ({ mode, source: 'discovery', keyManager: null, onboardingMode: 'open', signupUrl: null, resolvedAt: 0 });
     let buttons: { role?: string; handler?: () => void }[];
 
     beforeEach(() => {

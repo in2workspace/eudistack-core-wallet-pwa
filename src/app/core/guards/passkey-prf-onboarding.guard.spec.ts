@@ -11,6 +11,8 @@ const mockSnapshot = (keyManager: string | null): WalletDiscoverySnapshot => ({
   mode: keyManager ? 'server' : 'browser',
   source: 'discovery',
   keyManager,
+  onboardingMode: 'open',
+  signupUrl: null,
   resolvedAt: Date.now(),
 });
 

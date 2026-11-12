@@ -11,9 +11,11 @@ import { PasskeyCeremonyService, PasskeySession, PrfCheckNeedsGestureError } fro
 import { WebAuthnBrowserService } from 'src/app/core/services/webauthn-browser.service';
 import { SupportChannelService } from 'src/app/core/services/support-channel.service';
 import { PasskeyError } from 'src/app/core/models/error/PasskeyError';
-import { AUTH_PROBLEM_TYPE, authProblemType, WalletAuthError } from 'src/app/core/models/error/WalletAuthError';
+import { AUTH_PROBLEM_TYPE, authProblemType, noAccountSignupUrl, WalletAuthError } from 'src/app/core/models/error/WalletAuthError';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
-import { takePendingDeepLink } from 'src/app/shared/helpers/pending-deep-link';
+import { clearPendingDeepLink, takePendingDeepLink } from 'src/app/shared/helpers/pending-deep-link';
+import { OnboardingTicketService } from 'src/app/core/services/onboarding-ticket.service';
+import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { IosInstallService } from 'src/app/shared/services/ios-install.service';
 import { OtpInputComponent } from 'src/app/shared/components/otp-input/otp-input.component';
@@ -34,7 +36,9 @@ export type AccessScreen =
   | 'create-passkey'
   | 'passkey-incompatible'
   | 'check-passkey'
-  | 'other-sessions';
+  | 'other-sessions'
+  | 'invalid-ticket'
+  | 'no-wallet';
 
 const RESEND_COOLDOWN_SECONDS = 180;
 const EMAIL_MAX_LENGTH = 254;
@@ -61,6 +65,27 @@ interface RateLimit {
   email: string;
   until: number;
   blocksVerify: boolean;
+}
+
+/**
+ * `a***@dominio.es`: the first character of the local part and the domain, so
+ * the Sin wallet screen shows which email it means without spelling it out.
+ */
+export function maskEmail(email: string): string {
+  const trimmed = email.trim();
+  const at = trimmed.lastIndexOf('@');
+  if (at < 1) return '***';
+  return `${trimmed.charAt(0)}***${trimmed.slice(at)}`;
+}
+
+/** Name shown for the tenant's onboarding address: its host, without `www.`. */
+function signupSiteName(url: string | null): string {
+  if (!url) return '';
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
 }
 
 const sameEmail = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -107,6 +132,8 @@ export class AccessPage implements OnDestroy {
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly onboardingTickets = inject(OnboardingTicketService);
+  private readonly discovery = inject(WalletDiscoveryService);
   private readonly installable = toSignal(this.pwaInstall.installable$, { initialValue: false });
   private readonly theme = toSignal(inject(ThemeService).getTheme());
 
@@ -123,6 +150,14 @@ export class AccessPage implements OnDestroy {
   readonly showInstallHelp = signal(false);
   /** Whether the account of the email flow already had passkeys (verify-email). */
   readonly accountHadPasskeys = signal(false);
+  /** EUD-315: Crear passkey entered from an onboarding ticket (no email, no code, no steps). */
+  readonly ticketFlow = signal(false);
+  /** EUD-315, FR-28: Acceso entered from a ticket whose account already has passkeys. */
+  readonly ticketHasWallet = signal(false);
+  /** EUD-315, Sin wallet: masked email, onboarding address and whether an offer was discarded. */
+  readonly noWalletEmail = signal('');
+  readonly noWalletSignupUrl = signal<string | null>(null);
+  readonly offerDiscarded = signal(false);
 
   readonly iosInstallSteps = IOS_INSTALL_STEPS;
   readonly macInstallSteps = MAC_INSTALL_STEPS;
@@ -161,6 +196,12 @@ export class AccessPage implements OnDestroy {
   });
 
   readonly watermarkStyle = computed(() => watermarkStyle(this.watermark()));
+
+  /** EUD-315, FR-36: onboarding mode of the tenant, from its metadata. */
+  readonly restrictedMode = computed(() => this.discovery.snapshot()()?.onboardingMode === 'restricted');
+  readonly signupUrl = computed(() => this.discovery.snapshot()()?.signupUrl ?? null);
+  readonly signupSite = computed(() => signupSiteName(this.signupUrl()));
+  readonly noWalletSignupSite = computed(() => signupSiteName(this.noWalletSignupUrl()));
 
   /** Screens with the top-left back button (see goBack). */
   readonly canGoBack = computed(() =>
@@ -211,8 +252,14 @@ export class AccessPage implements OnDestroy {
   });
 
   ionViewWillEnter(): void {
-    // A ticket from an earlier visit must not leak into this one (it is in memory only).
-    this.authService.leaveEmailFlow();
+    const entry = this.onboardingTickets.takeAccessEntry();
+    // A ticket from an earlier visit must not leak into this one (it is in memory
+    // only). The one an onboarding ticket has just given is kept (EUD-315).
+    if (entry !== 'ticket-create-passkey') {
+      this.authService.leaveEmailFlow();
+    }
+    this.ticketFlow.set(entry === 'ticket-create-passkey');
+    this.ticketHasWallet.set(entry === 'ticket-has-wallet');
     this.accountHadPasskeys.set(false);
     this.pendingPrfCheck = null;
     this.busy.set(false);
@@ -230,8 +277,13 @@ export class AccessPage implements OnDestroy {
     ]).then(([supported, installable]) => {
       if (!supported) {
         this.goTo('requirements');
+      } else if (entry === 'ticket-create-passkey') {
+        this.goTo('create-passkey');
+      } else if (entry === 'invalid-ticket') {
+        this.goTo('invalid-ticket');
       } else {
-        this.goTo(this.showsInstallScreen(installable) ? 'install' : 'access');
+        // After a ticket the user signs in at once: no install screen first.
+        this.goTo(entry === null && this.showsInstallScreen(installable) ? 'install' : 'access');
       }
     });
   }
@@ -264,6 +316,7 @@ export class AccessPage implements OnDestroy {
 
   startEmailFlow(): void {
     this.sessionExpired.set(false);
+    this.ticketHasWallet.set(false);
     this.goTo('email');
   }
 
@@ -271,15 +324,28 @@ export class AccessPage implements OnDestroy {
     this.pendingPrfCheck = null;
     this.authService.leaveEmailFlow();
     this.accountHadPasskeys.set(false);
+    this.ticketFlow.set(false);
     this.goTo('access');
+  }
+
+  /** FR-34, FR-36: opens the tenant's onboarding address. */
+  openSignup(url: string | null): void {
+    if (url) {
+      window.open(url, '_blank', 'noopener');
+    }
   }
 
   /**
    * Top-left back button. Code goes back to Email; Elegir passkey too, and Crear
    * passkey to Elegir passkey when the account had passkeys. Leaving the
-   * verified email forgets its ticket. Email and Passkey desconocida go to Acceso.
+   * verified email forgets its ticket. Email and Passkey desconocida go to Acceso,
+   * and so does Crear passkey of an onboarding ticket, which had no email (EUD-315).
    */
   goBack(): void {
+    if (this.ticketFlow()) {
+      this.backToAccess();
+      return;
+    }
     switch (this.screen()) {
       case 'code':
         this.changeEmail();
@@ -531,6 +597,13 @@ export class AccessPage implements OnDestroy {
           this.goTo('passkey-incompatible');
           return;
         case 'invalid_ticket':
+          if (this.ticketFlow()) {
+            // The onboarding's registration ticket expired: a new onboarding address is needed.
+            this.ticketFlow.set(false);
+            this.authService.leaveEmailFlow();
+            this.goTo('invalid-ticket');
+            return;
+          }
           this.restartEmailFlow();
           return;
         case 'registration_failed':
@@ -619,9 +692,30 @@ export class AccessPage implements OnDestroy {
       this.showRateLimitMessage('auth.errors.too-many-attempts-wait');
     } else if (type === AUTH_PROBLEM_TYPE.INVALID_CODE) {
       this.errorMessage.set(this.translate.instant('auth.errors.otp-invalid'));
+    } else if (type === AUTH_PROBLEM_TYPE.NO_ACCOUNT) {
+      this.showNoWallet(noAccountSignupUrl(err));
     } else {
       this.showFailure(err);
     }
+  }
+
+  /**
+   * Sin wallet (EUD-315, FR-34): restricted mode and the verified email has no
+   * account. The saved offer is discarded and the email forgotten; the screen
+   * keeps only its masked form.
+   */
+  private showNoWallet(signupUrl: string | null): void {
+    this.noWalletEmail.set(maskEmail(this.email()));
+    this.noWalletSignupUrl.set(signupUrl ?? this.signupUrl());
+    this.offerDiscarded.set(sessionStorage.getItem(PENDING_DEEP_LINK_KEY) !== null);
+    clearPendingDeepLink();
+    this.authService.leaveEmailFlow();
+    this.email.set('');
+    this.otpValue.set('');
+    this.codeState.set('active');
+    this.resendAvailableAt.set(0);
+    this.rateLimit.set(null);
+    this.goTo('no-wallet');
   }
 
   private discardCode(state: Exclude<CodeState, 'active'>): void {

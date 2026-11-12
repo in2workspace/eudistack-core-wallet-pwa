@@ -21,6 +21,9 @@ import { TimeoutError } from 'rxjs';
 import {
   HttpWalletDiscoveryGateway,
   WALLET_DISCOVERY_TIMEOUT_MS,
+  isValidWalletConfigMetadataDto,
+  readOnboardingMode,
+  readSignupUrl,
 } from './http-wallet-discovery.gateway';
 import { UrlResolverService } from '../services/url-resolver.service';
 import { WalletConfigMetadataDto } from '../models/wallet-discovery.model';
@@ -197,4 +200,42 @@ describe('HttpWalletDiscoveryGateway > fetch > times out at 2000ms', () => {
     httpMock.expectOne(expectedUrl).flush(BROWSER_DTO);
     httpMock.verify();
   }));
+});
+
+// ---------------------------------------------------------------------------
+// EUD-315 — onboarding mode and signup URL (AC-15, AC-18, EC-09)
+// ---------------------------------------------------------------------------
+
+describe('HttpWalletDiscoveryGateway > onboarding metadata', () => {
+  const dto = (extra: Partial<WalletConfigMetadataDto>): WalletConfigMetadataDto =>
+    ({ wallet_mode: 'server', key_manager: 'db', ...extra });
+
+  it('keeps a payload valid whatever the onboarding fields carry', () => {
+    expect(isValidWalletConfigMetadataDto(dto({ onboarding_mode: 'restricted', signup_url: 'https://x.example/' }))).toBe(true);
+    expect(isValidWalletConfigMetadataDto({ ...dto({}), onboarding_mode: 42, signup_url: {} })).toBe(true);
+  });
+
+  it('reads open when onboarding_mode is absent (older service) or open', () => {
+    expect(readOnboardingMode(dto({}))).toBe('open');
+    expect(readOnboardingMode(dto({ onboarding_mode: 'open' }))).toBe('open');
+  });
+
+  it('reads restricted for restricted and for any unknown value', () => {
+    expect(readOnboardingMode(dto({ onboarding_mode: 'restricted' }))).toBe('restricted');
+    expect(readOnboardingMode(dto({ onboarding_mode: 'closed' }))).toBe('restricted');
+    expect(readOnboardingMode({ ...dto({}), onboarding_mode: 1 } as unknown as WalletConfigMetadataDto)).toBe('restricted');
+  });
+
+  it('reads the signup URL only in restricted mode', () => {
+    expect(readSignupUrl(dto({ onboarding_mode: 'restricted', signup_url: 'https://portal.example.org/' })))
+      .toBe('https://portal.example.org/');
+    expect(readSignupUrl(dto({ onboarding_mode: 'open', signup_url: 'https://portal.example.org/' }))).toBeNull();
+  });
+
+  it('drops a missing, malformed or non-http(s) signup URL', () => {
+    expect(readSignupUrl(dto({ onboarding_mode: 'restricted' }))).toBeNull();
+    expect(readSignupUrl(dto({ onboarding_mode: 'restricted', signup_url: '' }))).toBeNull();
+    expect(readSignupUrl(dto({ onboarding_mode: 'restricted', signup_url: 'not a url' }))).toBeNull();
+    expect(readSignupUrl(dto({ onboarding_mode: 'restricted', signup_url: 'javascript:alert(1)' }))).toBeNull();
+  });
 });

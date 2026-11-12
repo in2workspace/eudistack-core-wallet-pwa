@@ -4,7 +4,7 @@ import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
 import { BehaviorSubject, of, throwError } from 'rxjs';
-import { AccessPage, hasEmailFormat } from './access.page';
+import { AccessPage, hasEmailFormat, maskEmail } from './access.page';
 import { RemoteAuthService } from 'src/app/core/services/auth.service';
 import { PasskeyCeremonyService, PrfCheckNeedsGestureError } from 'src/app/core/services/passkey-ceremony.service';
 import { WebAuthnBrowserService } from 'src/app/core/services/webauthn-browser.service';
@@ -15,6 +15,9 @@ import { IosInstallService } from 'src/app/shared/services/ios-install.service';
 import { PasskeyError } from 'src/app/core/models/error/PasskeyError';
 import { WalletAuthError } from 'src/app/core/models/error/WalletAuthError';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
+import { OnboardingAccessEntry, OnboardingTicketService } from 'src/app/core/services/onboarding-ticket.service';
+import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
+import { WalletDiscoverySnapshot } from 'src/app/core/models/wallet-discovery.model';
 
 function problem(status: number, type: string, headers?: HttpHeaders): HttpErrorResponse {
   return new HttpErrorResponse({ status, error: { type, status }, headers });
@@ -48,6 +51,10 @@ describe('AccessPage (EUD-8)', () => {
     promptInstall: jest.Mock;
   };
   let iosTab: jest.Mock;
+  let accessEntry: jest.Mock<OnboardingAccessEntry | null, []>;
+  const discoverySnapshot = signal<WalletDiscoverySnapshot | null>(null);
+  const setOnboarding = (onboardingMode: 'open' | 'restricted', signupUrl: string | null): void =>
+    discoverySnapshot.set({ mode: 'server', source: 'discovery', keyManager: null, onboardingMode, signupUrl, resolvedAt: 0 });
 
   const settle = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
 
@@ -89,6 +96,8 @@ describe('AccessPage (EUD-8)', () => {
       promptInstall: jest.fn().mockResolvedValue(true),
     };
     iosTab = jest.fn().mockReturnValue(false);
+    accessEntry = jest.fn().mockReturnValue(null);
+    setOnboarding('open', null);
 
     await TestBed.configureTestingModule({
       imports: [AccessPage, TranslateModule.forRoot()],
@@ -101,6 +110,8 @@ describe('AccessPage (EUD-8)', () => {
         { provide: PwaInstallService, useValue: pwa },
         { provide: IosInstallService, useValue: { isIosSafariBrowserMode: iosTab } },
         { provide: Router, useValue: router },
+        { provide: OnboardingTicketService, useValue: { takeAccessEntry: accessEntry } },
+        { provide: WalletDiscoveryService, useValue: { snapshot: () => discoverySnapshot.asReadonly() } },
       ],
     }).compileComponents();
   });
@@ -659,6 +670,210 @@ describe('AccessPage (EUD-8)', () => {
     });
   });
 
+  describe('onboarding ticket entries (EUD-315)', () => {
+    it('goes to Crear passkey with the ticket, no email and no step texts (AC-03)', async () => {
+      accessEntry.mockReturnValue('ticket-create-passkey');
+      await create();
+
+      expect(page.screen()).toBe('create-passkey');
+      expect(auth.leaveEmailFlow).not.toHaveBeenCalled();
+      expect(text()).toContain('auth.passkey.setup-title');
+      expect(text()).not.toContain('auth.passkey.verified-title');
+      expect(text()).not.toContain('auth.passkey.verified-subtitle');
+    });
+
+    it('opens the wallet and resumes the offer after creating the passkey (AC-03)', async () => {
+      sessionStorage.setItem(PENDING_DEEP_LINK_KEY, '/tabs/credentials?credential_offer_uri=openid-credential-offer%3A%2F%2F');
+      accessEntry.mockReturnValue('ticket-create-passkey');
+      await create();
+
+      await page.createPasskey();
+
+      expect(auth.sessionDataReady).toHaveBeenCalled();
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs/credentials?credential_offer_uri=openid-credential-offer%3A%2F%2F');
+    });
+
+    it('goes to Ticket no válido when the registration ticket of the onboarding expired', async () => {
+      accessEntry.mockReturnValue('ticket-create-passkey');
+      auth.registerPasskey.mockRejectedValue(new WalletAuthError('invalid_ticket'));
+      await create();
+
+      await page.createPasskey();
+
+      expect(page.screen()).toBe('invalid-ticket');
+      expect(page.ticketFlow()).toBe(false);
+    });
+
+    it('lets the user try another authenticator without leaving the ticket flow (EC-11)', async () => {
+      accessEntry.mockReturnValue('ticket-create-passkey');
+      auth.registerPasskey.mockRejectedValue(new WalletAuthError('passkey_prf_unsupported'));
+      await create();
+
+      await page.createPasskey();
+      page.retryWithOtherAuthenticator();
+
+      expect(page.screen()).toBe('create-passkey');
+      expect(page.ticketFlow()).toBe(true);
+    });
+
+    it('goes back to Acceso, not to Email, from the top-left back button of the ticket flow', async () => {
+      accessEntry.mockReturnValue('ticket-create-passkey');
+      await create();
+
+      page.goBack();
+
+      expect(page.screen()).toBe('access');
+      expect(auth.leaveEmailFlow).toHaveBeenCalled();
+    });
+
+    it('shows the "you already have a wallet" notice on Acceso (AC-08)', async () => {
+      accessEntry.mockReturnValue('ticket-has-wallet');
+      await create();
+
+      expect(page.screen()).toBe('access');
+      expect(text()).toContain('wallet-access.access.ticket-has-wallet');
+      expect(auth.leaveEmailFlow).toHaveBeenCalled();
+    });
+
+    it('resumes the offer after signing in from the notice (AC-08)', async () => {
+      sessionStorage.setItem(PENDING_DEEP_LINK_KEY, '/tabs/credentials?credential_offer_uri=x');
+      accessEntry.mockReturnValue('ticket-has-wallet');
+      await create();
+
+      await page.signInWithPasskey();
+
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs/credentials?credential_offer_uri=x');
+    });
+
+    it('skips the install screen after a ticket', async () => {
+      installDecision$.next(true);
+      accessEntry.mockReturnValue('ticket-has-wallet');
+      await create();
+
+      expect(page.screen()).toBe('access');
+    });
+
+    it('shows Ticket no válido, whose button goes to Acceso (AC-06)', async () => {
+      accessEntry.mockReturnValue('invalid-ticket');
+      await create();
+
+      expect(page.screen()).toBe('invalid-ticket');
+      expect(text()).toContain('wallet-access.invalid-ticket.title');
+      expect(text()).toContain('wallet-access.invalid-ticket.body');
+
+      page.backToAccess();
+
+      expect(page.screen()).toBe('access');
+    });
+
+    it('shows the requirements before any ticket screen without passkey support', async () => {
+      supported.mockResolvedValue(false);
+      accessEntry.mockReturnValue('ticket-create-passkey');
+      await create();
+
+      expect(page.screen()).toBe('requirements');
+    });
+  });
+
+  describe('onboarding mode (EUD-315)', () => {
+    it('shows no signup notice in open mode (AC-15)', async () => {
+      await create();
+
+      expect(text()).toContain('wallet-access.access.email-prompt');
+      expect(text()).not.toContain('wallet-access.access.restricted-title');
+    });
+
+    it('changes the email prompt and offers the signup address in restricted mode (AC-15)', async () => {
+      setOnboarding('restricted', 'https://www.portal.example.org/alta');
+      const open = jest.spyOn(window, 'open').mockReturnValue(null);
+      await create();
+
+      expect(text()).toContain('wallet-access.access.restricted-email-prompt');
+      expect(text()).not.toContain('wallet-access.access.email-prompt');
+      expect(text()).toContain('wallet-access.access.restricted-title');
+      expect(page.signupSite()).toBe('portal.example.org');
+
+      const button = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'))
+        .find(b => b.textContent?.includes('wallet-access.access.restricted-button'));
+      button?.click();
+
+      expect(open).toHaveBeenCalledWith('https://www.portal.example.org/alta', '_blank', 'noopener');
+    });
+
+    it('shows the notice without the button when there is no signup address (EC-09)', async () => {
+      setOnboarding('restricted', null);
+      await create();
+
+      expect(text()).toContain('wallet-access.access.restricted-title');
+      expect(text()).toContain('wallet-access.access.restricted-text-no-url');
+      expect(text()).not.toContain('wallet-access.access.restricted-button');
+    });
+
+    describe('Sin wallet (AC-13)', () => {
+      async function verifyWithoutAccount(err: HttpErrorResponse): Promise<void> {
+        await create();
+        auth.verifyEmailCode.mockReturnValue(throwError(() => err));
+        page.startEmailFlow();
+        page.email.set('ana@dominio.es');
+        page.sendCode();
+        page.onOtpChanged('123456');
+        page.verifyCode();
+        fixture.detectChanges();
+      }
+
+      const noAccount = (signupUrl?: string) =>
+        new HttpErrorResponse({ status: 403, error: { type: 'no_account', title: 'No wallet', status: 403, signupUrl } });
+
+      it('shows the masked email, discards the offer and forgets the email', async () => {
+        setOnboarding('restricted', 'https://portal.example.org/');
+        sessionStorage.setItem(PENDING_DEEP_LINK_KEY, '/tabs/credentials?credential_offer_uri=x');
+        await verifyWithoutAccount(noAccount('https://signup.example.org/'));
+
+        expect(page.screen()).toBe('no-wallet');
+        expect(page.noWalletEmail()).toBe('a***@dominio.es');
+        expect(page.email()).toBe('');
+        expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBeNull();
+        expect(text()).toContain('wallet-access.no-wallet.offer-discarded');
+        expect(page.noWalletSignupUrl()).toBe('https://signup.example.org/');
+        expect(text()).toContain('wallet-access.no-wallet.button');
+      });
+
+      it('does not mention a discarded offer when there was none', async () => {
+        await verifyWithoutAccount(noAccount('https://signup.example.org/'));
+
+        expect(page.screen()).toBe('no-wallet');
+        expect(text()).not.toContain('wallet-access.no-wallet.offer-discarded');
+      });
+
+      it('opens the signup address from "Get my wallet" and goes back to Acceso', async () => {
+        const open = jest.spyOn(window, 'open').mockReturnValue(null);
+        await verifyWithoutAccount(noAccount('https://signup.example.org/'));
+
+        page.openSignup(page.noWalletSignupUrl());
+        page.backToAccess();
+
+        expect(open).toHaveBeenCalledWith('https://signup.example.org/', '_blank', 'noopener');
+        expect(page.screen()).toBe('access');
+      });
+
+      it('falls back to the tenant signup address when the problem has none', async () => {
+        setOnboarding('restricted', 'https://portal.example.org/');
+        await verifyWithoutAccount(noAccount());
+
+        expect(page.noWalletSignupUrl()).toBe('https://portal.example.org/');
+      });
+
+      it('shows no button without any signup address (EC-09)', async () => {
+        setOnboarding('restricted', null);
+        await verifyWithoutAccount(noAccount());
+
+        expect(page.screen()).toBe('no-wallet');
+        expect(text()).not.toContain('wallet-access.no-wallet.button');
+        expect(text()).not.toContain('wallet-access.no-wallet.go-to');
+      });
+    });
+  });
+
   describe('accessibility (WCAG 2.1 AA)', () => {
     beforeEach(create);
 
@@ -706,6 +921,17 @@ describe('AccessPage (EUD-8)', () => {
       expect((fixture.nativeElement as HTMLElement).querySelector('[role="alert"]')?.textContent)
         .toContain('auth.errors.passkey-security');
     });
+  });
+});
+
+describe('maskEmail (EUD-315)', () => {
+  it.each([
+    ['ana@dominio.es', 'a***@dominio.es'],
+    ['  Ana.Garcia@sub.dominio.es ', 'A***@sub.dominio.es'],
+    ['x@y.z', 'x***@y.z'],
+    ['no-at-sign', '***'],
+  ])('masks %s as %s', (email, masked) => {
+    expect(maskEmail(email)).toBe(masked);
   });
 });
 

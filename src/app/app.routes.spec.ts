@@ -5,6 +5,7 @@ import { routes } from './app.routes';
 import { HttpClientModule } from '@angular/common/http';
 import { logsEnabledGuard } from './core/guards/logs-enabled.guard';
 import { authGuard } from './core/guards/auth.guard';
+import { tenantGuard } from './core/guards/tenant.guard';
 import { passkeyPrfOnboardingGuard, passkeyPrfOnboardingRouteGuard } from './core/guards/passkey-prf-onboarding.guard';
 import { PasskeyStoreService } from './core/services/passkey-store.service';
 import { TenantService } from './core/services/tenant.service';
@@ -127,6 +128,22 @@ describe('App Routing', () => {
       const tabsRoute = routes.find(r => r.path === 'tabs');
       expect(tabsRoute).toBeDefined();
       expect(tabsRoute!.loadChildren).toBeDefined();
+    });
+
+    it('should define the public onboarding address t (ticket in the fragment) before the catch-all, with only tenantGuard (EUD-315)', () => {
+      const index = routes.findIndex(r => r.path === 't');
+      expect(index).toBeGreaterThanOrEqual(0);
+      expect(index).toBeLessThan(routes.findIndex(r => r.path === '**'));
+      expect(routes[index].canActivate).toEqual([tenantGuard]);
+      expect(routes[index].loadComponent).toBeDefined();
+    });
+
+    it('should define the public "it was not me" route before the catch-all, with only tenantGuard (EUD-315)', () => {
+      const index = routes.findIndex(r => r.path === 'no-he-sido-yo');
+      expect(index).toBeGreaterThanOrEqual(0);
+      expect(index).toBeLessThan(routes.findIndex(r => r.path === '**'));
+      expect(routes[index].canActivate).toEqual([tenantGuard]);
+      expect(routes[index].loadComponent).toBeDefined();
     });
 
     it('should define wildcard route as catch-all', () => {

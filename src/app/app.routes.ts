@@ -67,6 +67,22 @@ export const routes: Routes = [
     loadChildren: () => import('./features/tabs/tabs.routes').then(m => m.default),
   },
   {
+    // EUD-315: onboarding address /t#<ticket>. Public: it decides itself between the
+    // access screen and the wallet once the ticket is redeemed. The ticket is in the
+    // fragment, which never reaches the server (P18).
+    path: 't',
+    canActivate: [tenantGuard],
+    loadComponent: () =>
+      import('./features/onboarding-ticket/onboarding-ticket.page').then(m => m.OnboardingTicketPage),
+  },
+  {
+    // EUD-315: "it was not me" link of the new-account email, /no-he-sido-yo#<token>.
+    // Public, never opens a session. The token is in the fragment (P18).
+    path: 'no-he-sido-yo',
+    canActivate: [tenantGuard],
+    loadComponent: () => import('./features/not-me/not-me.page').then(m => m.NotMePage),
+  },
+  {
     path: '**',
     canActivate: [tenantGuard, authLandingGuard],
     children: [],

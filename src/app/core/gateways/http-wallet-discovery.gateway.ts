@@ -3,7 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { timeout } from 'rxjs/operators';
 
-import { WalletConfigMetadataDto } from '../models/wallet-discovery.model';
+import { OnboardingMode, WalletConfigMetadataDto } from '../models/wallet-discovery.model';
 import { WalletDiscoveryGateway } from './wallet-discovery.gateway';
 import { UrlResolverService } from '../services/url-resolver.service';
 import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
@@ -26,6 +26,9 @@ export const WALLET_DISCOVERY_TIMEOUT_MS = 2000 as const;
  *  - Value must be a non-null plain object (not an array).
  *  - `wallet_mode` must be the string `'browser'` or `'server'`.
  *  - `key_manager` must be a string, null, or absent (EUDISTACK-413 contract).
+ *  - `onboarding_mode` and `signup_url` (EUD-315) are optional and never make the
+ *    payload invalid: they are read tolerantly by `readOnboardingMode` and
+ *    `readSignupUrl`, so a bad value there never costs the tenant its wallet mode.
  */
 export function isValidWalletConfigMetadataDto(value: unknown): value is WalletConfigMetadataDto {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
@@ -40,6 +43,44 @@ export function isValidWalletConfigMetadataDto(value: unknown): value is WalletC
       candidate['key_manager'] === null ||
       typeof candidate['key_manager'] === 'string')
   );
+}
+
+/**
+ * Reads the tenant's onboarding mode from a validated DTO (EUD-315, design §2.7).
+ *
+ * Absent (older service) → `'open'`, as before EUD-315. Any value other than
+ * `'open'` → `'restricted'`, the same rule the service applies to an unknown
+ * `onboarding.mode`: a configuration error never opens the registration.
+ */
+export function readOnboardingMode(dto: WalletConfigMetadataDto): OnboardingMode {
+  const raw: unknown = dto.onboarding_mode;
+  if (raw === undefined || raw === null || raw === 'open') {
+    return 'open';
+  }
+  return 'restricted';
+}
+
+/**
+ * Reads the tenant's onboarding address from a validated DTO (EUD-315).
+ *
+ * Only in `restricted` mode, and only an absolute `http(s)` URL: the Wallet App
+ * opens it from a button, so any other scheme (`javascript:`, `data:`…) or a
+ * malformed value is dropped and the screens show the notice without the button.
+ */
+export function readSignupUrl(dto: WalletConfigMetadataDto): string | null {
+  if (readOnboardingMode(dto) !== 'restricted') {
+    return null;
+  }
+  const raw: unknown = dto.signup_url;
+  if (typeof raw !== 'string' || raw === '') {
+    return null;
+  }
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

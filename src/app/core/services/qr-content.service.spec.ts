@@ -28,6 +28,16 @@ describe('QrContentService', () => {
     expect(service.parse(qr)).toEqual({ kind: 'credential-offer', uri: qr });
   });
 
+  it('keeps a standard openid-credential-offer:// offer by reference as-is (EUD-315, AC-11)', () => {
+    const qr = 'openid-credential-offer://?credential_offer_uri=https%3A%2F%2Fissuer.example%2Fcredential-offer%2F3f2a';
+
+    expect(service.parse(qr)).toEqual({ kind: 'credential-offer', uri: qr });
+  });
+
+  it('does not take an onboarding address for a credential offer (EUD-315)', () => {
+    expect(service.parse('https://sandbox.stg.eudistack.net/t#Zk3q9Xw2Lp7Rt4Vb8Nc1Ha')).toEqual({ kind: 'unsupported' });
+  });
+
   it('classifies an openid4vp deep link as an authorization request', () => {
     const qr = 'openid4vp://authorize?request_uri=https://verifier.com';
 
