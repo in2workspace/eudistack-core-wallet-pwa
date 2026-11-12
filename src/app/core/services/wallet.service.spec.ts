@@ -3,7 +3,7 @@ import {
   HttpClientTestingModule,
   HttpTestingController,
 } from '@angular/common/http/testing';
-import { WalletService } from './wallet.service';
+import { SyncSupersededError, WalletService } from './wallet.service';
 import { environment } from 'src/environments/environment';
 import {
   CredentialStatus, LifeCycleStatus,
@@ -351,6 +351,39 @@ describe('WalletService', () => {
       await new Promise(resolve => setTimeout(resolve));
 
       expect(credentialCache.lastSyncAt()).toBeInstanceOf(Date);
+    });
+
+    it('discards the answer of a synchronization invalidated while it was in flight', async () => {
+      // Arrange
+      createModule('server');
+      const errors: unknown[] = [];
+      service.syncCredentials().subscribe({ error: (e) => errors.push(e) });
+      const listRequest = httpTestingController.expectOne(environment.server_url + SERVER_PATH.CREDENTIALS);
+
+      // Act — the session ends, then the late answer arrives
+      service.invalidatePendingSyncs();
+      listRequest.flush([mockCredential]);
+      await new Promise(resolve => setTimeout(resolve));
+
+      // Assert
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toBeInstanceOf(SyncSupersededError);
+      expect(mockCredentialStorage.replaceAllCredentials).not.toHaveBeenCalled();
+      expect(credentialCache.lastSyncAt()).toBeNull();
+    });
+
+    it('does not invalidate a synchronization that starts after the invalidation', async () => {
+      // Arrange
+      createModule('server');
+      service.invalidatePendingSyncs();
+
+      // Act
+      service.syncCredentials().subscribe();
+      httpTestingController.expectOne(environment.server_url + SERVER_PATH.CREDENTIALS).flush([mockCredential]);
+      await new Promise(resolve => setTimeout(resolve));
+
+      // Assert
+      expect(mockCredentialStorage.replaceAllCredentials).toHaveBeenCalledWith([mockCredential]);
     });
 
     it('does not record a time when the service cannot be reached', async () => {

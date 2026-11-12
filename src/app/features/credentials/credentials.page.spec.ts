@@ -1,7 +1,7 @@
 import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { Router, ActivatedRoute } from '@angular/router';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { EMPTY, of, throwError } from 'rxjs';
 import { CredentialOfferExpiredError } from 'src/app/core/models/error/Oid4vciError';
 import { ModalController } from '@ionic/angular';
@@ -18,11 +18,11 @@ import { IssuerNotificationService } from 'src/app/core/services/issuer-notifica
 import { IssuerMetadataCacheService } from 'src/app/core/services/issuer-metadata-cache.service';
 import { ActivityService } from 'src/app/core/services/activity.service';
 import { HapticService } from 'src/app/shared/services/haptic.service';
+import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
 import { CredentialStatusCheckService } from 'src/app/core/services/credential-status-check.service';
 import { ServerSessionDataService } from 'src/app/core/services/server-session-data.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
-import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
 import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
 import { Oid4vciEngineService } from 'src/app/core/protocol/oid4vci/oid4vci.engine.service';
 import { StorageService } from 'src/app/shared/services/storage.service';
@@ -596,6 +596,44 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       expect(fixture.nativeElement.querySelectorAll('app-vc-view').length).toBe(0);
     });
 
+    it('renders one pill per filter and marks the ones in use', () => {
+      component.setFilter('issuer', 'Acme');
+
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelectorAll('app-filter-select').length).toBe(3);
+      expect(fixture.nativeElement.querySelectorAll('button.filter').length).toBe(3);
+      expect(fixture.nativeElement.querySelectorAll('.filter--active').length).toBe(1);
+      expect(fixture.nativeElement.querySelector('.filters__clear')).toBeTruthy();
+    });
+
+    it('shows no "clear" button while no filter is in use', () => {
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('.filters__clear')).toBeNull();
+    });
+
+    it('names the types after the display names the cards show', async () => {
+      const display = TestBed.inject(CredentialDisplayService) as unknown as { getDisplayName: jest.Mock };
+      display.getDisplayName.mockImplementation(async (cred: VerifiableCredential) =>
+        cred.id === 'a' ? 'Credencial de empleado' : 'Credencial de máquina');
+
+      await component['loadTypeNames']([employee, machine]);
+
+      expect(component.typeOptions()).toEqual(['Credencial de empleado', 'Credencial de máquina']);
+      component.setFilter('type', 'Credencial de máquina');
+      expect(component.filteredList()).toEqual([machine]);
+    });
+
+    it('falls back to the raw type when the display name cannot be resolved', async () => {
+      const display = TestBed.inject(CredentialDisplayService) as unknown as { getDisplayName: jest.Mock };
+      display.getDisplayName.mockRejectedValue(new Error('no metadata'));
+
+      await component['loadTypeNames']([employee, machine]);
+
+      expect(component.typeOptions()).toEqual(['Employee', 'Machine']);
+    });
+
     it('clearFilters brings back the full list', () => {
       component.setFilter('type', 'Machine');
 
@@ -603,6 +641,27 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
 
       expect(component.filteredList()).toEqual([employee, machine]);
       expect(component.filtersActive()).toBe(false);
+    });
+  });
+
+  describe('formatSyncTime', () => {
+    const at = new Date(2026, 10, 10, 15, 42);
+
+    it('uses the 24 hour format in Spanish', () => {
+      TestBed.inject(TranslateService).use('es');
+
+      expect(component.formatSyncTime(at)).toMatch(/15:42/);
+      expect(component.formatSyncTime(at)).not.toMatch(/[AP]M/i);
+    });
+
+    it('uses the 12 hour format in English', () => {
+      TestBed.inject(TranslateService).use('en');
+
+      expect(component.formatSyncTime(at)).toMatch(/3:42\s?PM/i);
+    });
+
+    it('returns nothing without a synchronization', () => {
+      expect(component.formatSyncTime(null)).toBe('');
     });
   });
 

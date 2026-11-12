@@ -1,0 +1,42 @@
+<button type="button" class="filter" [id]="triggerId" [class.filter--active]="active()"
+  aria-haspopup="dialog" [attr.aria-expanded]="open()">
+  <span class="filter__label">{{ label() | translate }}</span>
+  <span class="filter__value">
+    @if (selected(); as option) {
+      {{ option.translate ? (option.label | translate) : option.label }}
+    } @else if (active()) {
+      {{ value() }}
+    } @else {
+      {{ 'credentials.filters.all' | translate }}
+    }
+  </span>
+  <ion-icon name="chevron-down" class="filter__chevron" [class.filter__chevron--open]="open()" aria-hidden="true"></ion-icon>
+</button>
+
+<ion-popover class="filter-popover" [trigger]="triggerId" triggerAction="click" side="bottom" alignment="start"
+  size="auto" [showBackdrop]="false" (didPresent)="open.set(true)" (didDismiss)="open.set(false)">
+  <ng-template>
+    <ul class="filter-menu" [attr.aria-label]="label() | translate">
+      <li>
+        <button type="button" class="filter-menu__item" [class.filter-menu__item--selected]="!active()"
+          [attr.aria-pressed]="!active()" (click)="choose('')">
+          <span>{{ 'credentials.filters.all' | translate }}</span>
+          @if (!active()) {
+            <ion-icon name="checkmark" class="filter-menu__check" aria-hidden="true"></ion-icon>
+          }
+        </button>
+      </li>
+      @for (option of options(); track option.value) {
+        <li>
+          <button type="button" class="filter-menu__item" [class.filter-menu__item--selected]="option.value === value()"
+            [attr.aria-pressed]="option.value === value()" (click)="choose(option.value)">
+            <span>{{ option.translate ? (option.label | translate) : option.label }}</span>
+            @if (option.value === value()) {
+              <ion-icon name="checkmark" class="filter-menu__check" aria-hidden="true"></ion-icon>
+            }
+          </button>
+        </li>
+      }
+    </ul>
+  </ng-template>
+</ion-popover>

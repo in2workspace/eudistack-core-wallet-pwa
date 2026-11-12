@@ -48,6 +48,19 @@ describe('credential filters', () => {
     });
   });
 
+  describe('type labels', () => {
+    const labels: Record<string, string> = { '1': 'Credencial de empleado', '2': 'Credencial de empleado', '3': 'Credencial de máquina' };
+    const label = (cred: VerifiableCredential) => labels[cred.id] ?? '';
+
+    it('lists the labels given instead of the raw types, once each', () => {
+      expect(distinctTypes(all, label)).toEqual(['Credencial de empleado', 'Credencial de máquina']);
+    });
+
+    it('filters by the label given', () => {
+      expect(filterCredentials(all, { ...NO_FILTERS, type: 'Credencial de empleado' }, label)).toEqual([employeeAcme, employeeGlobex]);
+    });
+  });
+
   describe('credentialStatusOf', () => {
     it('reports a valid credential whose expiry date has passed as expired', () => {
       expect(credentialStatusOf(credential({ validUntil: '2020-01-01T00:00:00.000Z' }))).toBe('EXPIRED');

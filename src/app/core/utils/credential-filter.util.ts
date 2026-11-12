@@ -37,16 +37,23 @@ export function hasActiveFilters(filters: CredentialFilters): boolean {
 }
 
 /** The filters combine: an attestation must meet all of those in use. */
-export function filterCredentials(credentials: VerifiableCredential[], filters: CredentialFilters): VerifiableCredential[] {
+export function filterCredentials(
+  credentials: VerifiableCredential[],
+  filters: CredentialFilters,
+  typeLabel: (cred: VerifiableCredential) => string = credentialTypeLabel,
+): VerifiableCredential[] {
   return credentials.filter(cred =>
-    (filters.type === '' || credentialTypeLabel(cred) === filters.type)
+    (filters.type === '' || typeLabel(cred) === filters.type)
     && (filters.issuer === '' || credentialIssuerLabel(cred) === filters.issuer)
     && (filters.status === '' || credentialStatusOf(cred) === filters.status)
   );
 }
 
-export function distinctTypes(credentials: VerifiableCredential[]): string[] {
-  return distinctSorted(credentials.map(credentialTypeLabel));
+export function distinctTypes(
+  credentials: VerifiableCredential[],
+  typeLabel: (cred: VerifiableCredential) => string = credentialTypeLabel,
+): string[] {
+  return distinctSorted(credentials.map(typeLabel));
 }
 
 export function distinctIssuers(credentials: VerifiableCredential[]): string[] {

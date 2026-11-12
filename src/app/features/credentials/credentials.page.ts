@@ -1,10 +1,10 @@
-import { ChangeDetectorRef, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, computed, DestroyRef, effect, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule, ViewWillEnter } from '@ionic/angular';
 import { StorageService } from 'src/app/shared/services/storage.service';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { VcViewComponent } from '../../shared/components/vc-view/vc-view.component';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
@@ -27,13 +27,16 @@ import { ActivityService } from 'src/app/core/services/activity.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { HapticService } from 'src/app/shared/services/haptic.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
+import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
 import { CredentialStatusCheckService } from 'src/app/core/services/credential-status-check.service';
 import { ServerSessionDataService } from 'src/app/core/services/server-session-data.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 import {
-  CredentialFilters, distinctIssuers, distinctTypes, FILTERABLE_STATUSES, filterCredentials, hasActiveFilters, NO_FILTERS
+  CredentialFilters, credentialTypeLabel, distinctIssuers, distinctTypes, FILTERABLE_STATUSES, filterCredentials, hasActiveFilters,
+  NO_FILTERS
 } from 'src/app/core/utils/credential-filter.util';
 import { SupportLinkPipe } from 'src/app/shared/pipes/support-link.pipe';
+import { FilterOption, FilterSelectComponent } from 'src/app/shared/components/filter-select/filter-select.component';
 
 @Component({
     selector: 'app-credentials',
@@ -46,7 +49,8 @@ import { SupportLinkPipe } from 'src/app/shared/pipes/support-link.pipe';
         VcViewComponent,
         TranslateModule,
         SkeletonComponent,
-        SupportLinkPipe
+        SupportLinkPipe,
+        FilterSelectComponent
     ]
 })
 
@@ -78,6 +82,8 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   private readonly statusCheck = inject(CredentialStatusCheckService);
   private readonly serverSessionData = inject(ServerSessionDataService);
   private readonly discovery = inject(WalletDiscoveryService);
+  private readonly displayService = inject(CredentialDisplayService);
+  private readonly translate = inject(TranslateService);
   private readonly pwaInstallService = inject(PwaInstallService);
 
   public readonly canInstall$ = this.pwaInstallService.installable$;
@@ -92,11 +98,25 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   public readonly syncError = this.credentialCacheService.syncError;
 
   public readonly filters = signal<CredentialFilters>(NO_FILTERS);
-  public readonly filteredList = computed(() => filterCredentials(this.credList(), this.filters()));
-  public readonly typeOptions = computed(() => distinctTypes(this.credList()));
+  /** The names the cards show for each type (the issuer's display name), by credential id. */
+  private readonly typeNames = signal<ReadonlyMap<string, string>>(new Map());
+  private typeNamesRequest = 0;
+  private readonly typeLabelOf = (cred: VerifiableCredential): string =>
+    this.typeNames().get(cred.id) ?? credentialTypeLabel(cred);
+  public readonly filteredList = computed(() => filterCredentials(this.credList(), this.filters(), this.typeLabelOf));
+  public readonly typeOptions = computed(() => distinctTypes(this.credList(), this.typeLabelOf));
   public readonly issuerOptions = computed(() => distinctIssuers(this.credList()));
-  public readonly statusOptions = FILTERABLE_STATUSES;
+  public readonly typeFilterOptions = computed<FilterOption[]>(() => this.typeOptions().map(value => ({ value, label: value })));
+  public readonly issuerFilterOptions = computed<FilterOption[]>(() => this.issuerOptions().map(value => ({ value, label: value })));
+  public readonly statusFilterOptions: FilterOption[] = FILTERABLE_STATUSES.map(status => ({
+    value: status,
+    label: `vc-view.lifecycle-${status.toLowerCase()}`,
+    translate: true,
+  }));
   public readonly filtersActive = computed(() => hasActiveFilters(this.filters()));
+  private readonly typeNamesLoader = effect(() => {
+    void this.loadTypeNames(this.credList());
+  });
   /** True once ngOnInit has run; distinguishes first mount from later (cached-page) navigations. */
   private initialized = false;
 
@@ -256,8 +276,33 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
     await this.serverSessionData.refresh();
   }
 
-  public setFilter<K extends keyof CredentialFilters>(key: K, value: CredentialFilters[K] | null | undefined): void {
-    this.filters.update(current => ({ ...current, [key]: value ?? '' }));
+  /** Time of the last synchronization, in the 12 or 24 hour format of the language of the app. */
+  public formatSyncTime(date: Date | null): string {
+    return date
+      ? date.toLocaleTimeString(this.translate.currentLang || undefined, { hour: '2-digit', minute: '2-digit' })
+      : '';
+  }
+
+  private async loadTypeNames(credentials: VerifiableCredential[]): Promise<void> {
+    const request = ++this.typeNamesRequest;
+    const names = new Map<string, string>();
+    await Promise.all(credentials.map(async (cred) => {
+      try {
+        const name = await this.displayService.getDisplayName(cred);
+        if (name) {
+          names.set(cred.id, name);
+        }
+      } catch {
+        // Without the issuer metadata the card falls back to the raw type, and so does the filter.
+      }
+    }));
+    if (request === this.typeNamesRequest) {
+      this.typeNames.set(names);
+    }
+  }
+
+  public setFilter(key: keyof CredentialFilters, value: string | null | undefined): void {
+    this.filters.update(current => ({ ...current, [key]: value ?? '' }) as CredentialFilters);
   }
 
   public clearFilters(): void {

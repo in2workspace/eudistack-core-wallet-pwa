@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { map, of, tap, throwError, timer } from 'rxjs';
 import { ServerSessionDataService } from './server-session-data.service';
-import { WalletService } from './wallet.service';
+import { SyncSupersededError, WalletService } from './wallet.service';
 import { LocalCredentialStorageService } from './local-credential-storage.service';
 import { ActivityService } from './activity.service';
 import { CredentialStatusCheckService } from './credential-status-check.service';
@@ -13,16 +13,18 @@ describe('ServerSessionDataService', () => {
   let storage: { clearAllCredentials: jest.Mock };
   let cache: CredentialCacheService;
   let checkAll: jest.Mock;
+  let invalidatePendingSyncs: jest.Mock;
 
   beforeEach(() => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
     // WalletService records the successful synchronization; the real one is replaced here.
     syncCredentials = jest.fn().mockImplementation(() => of(undefined).pipe(tap(() => cache.markSyncSucceeded())));
     checkAll = jest.fn().mockResolvedValue(undefined);
+    invalidatePendingSyncs = jest.fn();
     storage = { clearAllCredentials: jest.fn().mockResolvedValue(undefined) };
     TestBed.configureTestingModule({
       providers: [
-        { provide: WalletService, useValue: { syncCredentials } },
+        { provide: WalletService, useValue: { syncCredentials, invalidatePendingSyncs } },
         { provide: LocalCredentialStorageService, useValue: storage },
         { provide: ActivityService, useValue: { syncFromServer: jest.fn().mockResolvedValue(undefined) } },
         { provide: CredentialStatusCheckService, useValue: { checkAll } },
@@ -73,6 +75,40 @@ describe('ServerSessionDataService', () => {
     expect(cache.lastSyncAt()).toBeNull();
     expect(cache.syncError()).toBeNull();
     expect(cache.uncheckedStatusIds().size).toBe(0);
+  });
+
+  describe('synchronizations of a session that is over', () => {
+    it('sessionEnded makes the synchronizations in flight discard their answer', async () => {
+      await service.sessionEnded();
+
+      expect(invalidatePendingSyncs).toHaveBeenCalledTimes(1);
+    });
+
+    it('sessionStarted discards the synchronizations of the previous session', async () => {
+      await service.sessionStarted();
+
+      expect(invalidatePendingSyncs).toHaveBeenCalledTimes(1);
+    });
+
+    it('a refresh that was superseded leaves the state of the new session untouched', async () => {
+      cache.setLoaded([{ id: 'kept' } as never]);
+      syncCredentials.mockReturnValue(throwError(() => new SyncSupersededError()));
+
+      await service.refresh();
+
+      expect(cache.syncError()).toBeNull();
+      expect(cache.credentials()).toHaveLength(1);
+      expect(checkAll).not.toHaveBeenCalled();
+    });
+
+    it('a session start that was superseded neither drops the copy nor flags an error', async () => {
+      syncCredentials.mockReturnValue(throwError(() => new SyncSupersededError()));
+
+      await service.sessionStarted();
+
+      expect(storage.clearAllCredentials).not.toHaveBeenCalled();
+      expect(cache.syncError()).toBeNull();
+    });
   });
 
   describe('sessionStarted', () => {

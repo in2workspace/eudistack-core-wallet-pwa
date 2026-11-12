@@ -4,7 +4,7 @@ import { CredentialCacheService } from 'src/app/shared/services/credential-cache
 import { ActivityService } from './activity.service';
 import { CredentialStatusCheckService } from './credential-status-check.service';
 import { LocalCredentialStorageService } from './local-credential-storage.service';
-import { WalletService } from './wallet.service';
+import { SyncSupersededError, WalletService } from './wallet.service';
 
 /**
  * Keeps the local copy of the attestations in step with the server session.
@@ -25,6 +25,7 @@ export class ServerSessionDataService {
 
   /** Replaces the local attestations with the session's. Never rejects. */
   async sessionStarted(): Promise<void> {
+    this.walletService.invalidatePendingSyncs();
     this.credentialCache.clearSyncState();
     this.credentialCache.setLoading();
     this.credentialCache.markSyncStarted();
@@ -32,6 +33,9 @@ export class ServerSessionDataService {
       await firstValueFrom(this.walletService.syncCredentials());
       void this.statusCheck.checkAll();
     } catch (err) {
+      if (err instanceof SyncSupersededError) {
+        return;
+      }
       console.error('[ServerSessionDataService] Credential sync failed', err);
       // The local copy may belong to an earlier session: never show it in this one.
       await this.dropLocalCredentials();
@@ -55,6 +59,9 @@ export class ServerSessionDataService {
       await firstValueFrom(this.walletService.syncCredentials());
       void this.statusCheck.checkAll();
     } catch (err) {
+      if (err instanceof SyncSupersededError) {
+        return;
+      }
       console.error('[ServerSessionDataService] Credential sync failed', err);
       this.credentialCache.markSyncFailed('refresh');
     }
@@ -62,6 +69,8 @@ export class ServerSessionDataService {
 
   /** Drops the local attestations of a session that has ended. Never rejects. */
   async sessionEnded(): Promise<void> {
+    // A synchronization still in flight would put the attestations of this session back in the store.
+    this.walletService.invalidatePendingSyncs();
     await this.dropLocalCredentials();
     this.credentialCache.clearSyncState();
   }

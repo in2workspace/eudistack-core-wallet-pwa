@@ -25,6 +25,14 @@ export const options = {
   redirect: 'follow',
 };
 
+/** A synchronization whose session ended, or was replaced by a new one, before its answer arrived. */
+export class SyncSupersededError extends Error {
+  constructor() {
+    super('The synchronization belongs to a session that is no longer current');
+    this.name = 'SyncSupersededError';
+  }
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -37,6 +45,7 @@ export class WalletService {
   private credentialCache = inject(CredentialCacheService);
 
   private inFlightSyncs = 0;
+  private syncGeneration = 0;
   /** Deleted while a synchronization was in flight, whose response may still carry them. */
   private readonly deletedDuringSync = new Set<string>();
 
@@ -107,16 +116,27 @@ export class WalletService {
     );
   }
 
+  /** Makes the synchronizations in flight discard their answer: they belong to a session that is over. */
+  public invalidatePendingSyncs(): void {
+    this.syncGeneration++;
+  }
+
   public syncCredentials(): Observable<void> {
     // Fetch from the server FIRST, then swap the local store atomically. We never
     // clear IndexedDB before we hold the new data, so a reader can't observe an
     // empty store mid-sync.
     return defer(() => {
       this.inFlightSyncs++;
+      const generation = this.syncGeneration;
       return this.getAllVCsFromServer().pipe(
-        // A deletion that finished while this request was in flight is not in the response of a
-        // server that already deleted it, but may be in the one of a request it overtook.
-        map((credentials) => credentials.filter((cred) => !this.deletedDuringSync.has(cred.id))),
+        map((credentials) => {
+          if (generation !== this.syncGeneration) {
+            throw new SyncSupersededError();
+          }
+          // A deletion that finished while this request was in flight is not in the response of a
+          // server that already deleted it, but may be in the one of a request it overtook.
+          return credentials.filter((cred) => !this.deletedDuringSync.has(cred.id));
+        }),
         switchMap((credentials) =>
           from(this.credentialStorage.replaceAllCredentials(credentials))
         ),
