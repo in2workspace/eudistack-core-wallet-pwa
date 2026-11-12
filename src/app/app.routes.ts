@@ -76,9 +76,9 @@ export const routes: Routes = [
       import('./features/onboarding-ticket/onboarding-ticket.page').then(m => m.OnboardingTicketPage),
   },
   {
-    // EUD-315: "it was not me" link of the new-account email, /no-he-sido-yo#<token>.
+    // EUD-315: "it was not me" link of the new-account email, /not-me#<token>.
     // Public, never opens a session. The token is in the fragment (P18).
-    path: 'no-he-sido-yo',
+    path: 'not-me',
     canActivate: [tenantGuard],
     loadComponent: () => import('./features/not-me/not-me.page').then(m => m.NotMePage),
   },

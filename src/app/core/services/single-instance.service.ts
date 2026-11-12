@@ -472,7 +472,7 @@ export class SingleInstanceService implements OnDestroy {
     return DEEP_LINK_PATH_PREFIXES.some((prefix) => appRelative.startsWith(prefix));
   }
 
-  /** `/t#…` or `/no-he-sido-yo#…` (exact path, any query or fragment). */
+  /** `/t#…` or `/not-me#…` (exact path, any query or fragment). */
   private static isFragmentLinkPath(appRelative: string): boolean {
     const path = appRelative.split(/[?#]/)[0];
     return (FRAGMENT_LINK_PATHS as readonly string[]).includes(path);

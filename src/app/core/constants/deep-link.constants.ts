@@ -5,8 +5,8 @@ export const DEEP_LINK_PATH_PREFIXES = ['/protocol/', '/tabs/vc-selector', '/tab
 
 /**
  * EUD-315 (task 46): app-relative paths whose value travels in the fragment, the onboarding ticket
- * (`/t#<ticket>`) and the "it was not me" token (`/no-he-sido-yo#<token>`). A second tab forwards them,
+ * (`/t#<ticket>`) and the "it was not me" token (`/not-me#<token>`). A second tab forwards them,
  * fragment included, to the leader tab, which opens them with or without a session: their pages need none.
  * Exact paths: `/t` must not match `/tabs/...`.
  */
-export const FRAGMENT_LINK_PATHS = ['/t', '/no-he-sido-yo'] as const;
+export const FRAGMENT_LINK_PATHS = ['/t', '/not-me'] as const;

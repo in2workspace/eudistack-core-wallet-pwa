@@ -947,20 +947,20 @@ describe('SingleInstanceService', () => {
       });
 
       it('opens the "it was not me" link with its token', async () => {
-        (service as any).handleMessage({ type: 'NAVIGATE', tabId: 'follower-tab', url: '/wallet/no-he-sido-yo#tok' });
+        (service as any).handleMessage({ type: 'NAVIGATE', tabId: 'follower-tab', url: '/wallet/not-me#tok' });
         await flushMicrotasks();
 
-        expect(navControllerMock.navigateRoot).toHaveBeenCalledWith('/no-he-sido-yo#tok');
+        expect(navControllerMock.navigateRoot).toHaveBeenCalledWith('/not-me#tok');
       });
 
       it('goes through the root first when it already shows that page, so the page reads the new fragment', async () => {
-        (routerMock as any).url = '/no-he-sido-yo';
+        (routerMock as any).url = '/not-me';
 
-        (service as any).handleMessage({ type: 'NAVIGATE', tabId: 'follower-tab', url: '/wallet/no-he-sido-yo#tok2' });
+        (service as any).handleMessage({ type: 'NAVIGATE', tabId: 'follower-tab', url: '/wallet/not-me#tok2' });
         await flushMicrotasks();
 
         expect(navControllerMock.navigateRoot).toHaveBeenNthCalledWith(1, '/', { skipLocationChange: true });
-        expect(navControllerMock.navigateRoot).toHaveBeenNthCalledWith(2, '/no-he-sido-yo#tok2');
+        expect(navControllerMock.navigateRoot).toHaveBeenNthCalledWith(2, '/not-me#tok2');
       });
 
       it('does not take /tabs/... for the ticket path', () => {
@@ -1004,15 +1004,15 @@ describe('SingleInstanceService', () => {
       });
 
       it('hands over the fragment the page already took out of the address before the election', async () => {
-        window.history.pushState({}, '', '/wallet/no-he-sido-yo#tok');
+        window.history.pushState({}, '', '/wallet/not-me#tok');
         const tab = TestBed.runInInjectionContext(() => new SingleInstanceService());
-        window.history.replaceState({}, '', '/wallet/no-he-sido-yo');
+        window.history.replaceState({}, '', '/wallet/not-me');
         installFakeLeader(sentToLeader, { ackOutcome: 'continued' });
 
         await tab.elect();
         await flushMicrotasks();
 
-        expect(sentToLeader).toContainEqual({ type: 'NAVIGATE', tabId: (tab as any).tabId, url: '/wallet/no-he-sido-yo#tok' });
+        expect(sentToLeader).toContainEqual({ type: 'NAVIGATE', tabId: (tab as any).tabId, url: '/wallet/not-me#tok' });
       });
 
       it('only says the wallet is open when the leader does not acknowledge the link', async () => {

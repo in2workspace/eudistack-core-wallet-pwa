@@ -9,8 +9,8 @@ import { ACCESS_ROUTE, RemoteAuthService } from 'src/app/core/services/auth.serv
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 import { DISAVOWAL_TOKEN_PATTERN, OnboardingTicketService } from 'src/app/core/services/onboarding-ticket.service';
 
-/** What replaces `/no-he-sido-yo#<token>` in the address bar: the token is a secret. */
-export const NOT_ME_TOKEN_FREE_PATH = '/no-he-sido-yo';
+/** What replaces `/not-me#<token>` in the address bar: the token is a secret. */
+export const NOT_ME_TOKEN_FREE_PATH = '/not-me';
 
 /**
  * Screens of "No he sido yo" (EUD-315, wireframes "No he sido yo", FR-29, FR-32):
@@ -21,7 +21,7 @@ export const NOT_ME_TOKEN_FREE_PATH = '/no-he-sido-yo';
 export type NotMeScreen = 'confirm' | 'done' | 'invalid';
 
 /**
- * Page the "it was not me" link of the new-account email opens (`/no-he-sido-yo#<token>`;
+ * Page the "it was not me" link of the new-account email opens (`/not-me#<token>`;
  * the token is in the fragment, which never reaches the server, P18).
  * It never starts a session nor asks for a passkey (AC-10): the only call is the
  * public disavowal, and only after the holder confirms (EC-10). With the Wallet App already
