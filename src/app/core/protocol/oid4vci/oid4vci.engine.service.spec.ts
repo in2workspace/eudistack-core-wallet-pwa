@@ -248,6 +248,44 @@ describe('performOid4vciFlow — holder-prefixed credentialId minting (EUDISTACK
     const { credentialId } = issueProofJwtSpy.mock.calls[0][0] as any;
     expect(credentialId).not.toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
   });
+
+  it('hands the public key of the holder key to the payload that stores the attestation (holder_public_jwk)', async () => {
+    // Arrange
+    const service = setupForFlowTest();
+    const publicKeyJwk: JsonWebKey = { kty: 'EC', crv: 'P-256', x: 'x1', y: 'y1' };
+    jest.spyOn(service as any, 'issueProofJwt').mockResolvedValue({
+      jwt: 'mocked.proof.jwt',
+      publicKeyJwk,
+      holderKeyId: 'holder-1',
+      thumbprint: 'thumb-1',
+    });
+    jest.spyOn(service as any, 'validateCredentialCnf').mockResolvedValue(undefined);
+
+    // Act
+    const payload: any = await service.performOid4vciFlow('openid-credential-offer://example');
+
+    // Assert
+    expect(payload.holder_public_jwk).toEqual(publicKeyJwk);
+    expect(payload.holderKeyId).toBe('holder-1');
+    expect(payload.holderKid).toBe('thumb-1');
+  });
+
+  it('sends no holder_public_jwk when no proof was generated (attestation without binding)', async () => {
+    // Arrange
+    const service = setupForFlowTest();
+    jest.spyOn(service as any, 'issueProofJwt').mockResolvedValue({
+      jwt: 'mocked.proof.jwt',
+      publicKeyJwk: null,
+      holderKeyId: 'holder-stub',
+      thumbprint: 'thumb-stub',
+    });
+
+    // Act
+    const payload: any = await service.performOid4vciFlow('openid-credential-offer://example');
+
+    // Assert
+    expect(payload.holder_public_jwk).toBeUndefined();
+  });
 });
 
 describe('Oid4vciEngineService — passkey prompt outcomes in the flow alert', () => {

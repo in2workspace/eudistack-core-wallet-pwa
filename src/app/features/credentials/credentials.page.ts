@@ -514,6 +514,16 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   }
 
   //todo review this (it is storing camera logs, but is used after API calls)
+  /** A 422 when saving means the service did not accept the key the credential is bound to. */
+  private translationKeyOf(errorResponse: ExtendedHttpErrorResponse | Error): string {
+    if (errorResponse instanceof InvalidQrError) {
+      return 'errors.invalid-qr';
+    }
+    return (errorResponse as ExtendedHttpErrorResponse)?.status === 422
+      ? 'errors.credential-key-not-accepted'
+      : 'errors.failed-qr-process';
+  }
+
   private handleContentExecutionError(
     errorResponse: ExtendedHttpErrorResponse | Error,
     notifyUser = true
@@ -529,11 +539,8 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
     console.error(errorResponse);
 
     if (notifyUser) {
-      const translationKey = errorResponse instanceof InvalidQrError
-        ? 'errors.invalid-qr'
-        : 'errors.failed-qr-process';
       this.toastServiceHandler
-        .showErrorAlertByTranslateLabel(translationKey)
+        .showErrorAlertByTranslateLabel(this.translationKeyOf(errorResponse))
         .pipe(take(1))
         .subscribe();
     }

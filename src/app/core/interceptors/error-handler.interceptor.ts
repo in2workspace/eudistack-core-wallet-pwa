@@ -101,9 +101,8 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           // `${origin}/business-wallet`, so the real path is prefixed
           // (`/business-wallet/api/v1/auth/...`), not a bare `/api/v1/auth/...`.
           pathname.includes('/api/v1/auth/') ||
-          // passkey+prf signing endpoints — never toast or expose body (NFR-S-536-03 defense-in-depth)
-          pathname.endsWith(SERVER_PATH.PASSKEY_PRF_SIGN_PREPARE) ||
-          pathname.endsWith(SERVER_PATH.PASSKEY_PRF_SIGN_SUBMIT) ||
+          // passkey custody salt endpoints — the key flow reports its own errors, and a 404 must not say why
+          pathname.includes(SERVER_PATH.PASSKEY_PRF_SALTS) ||
           // Background sync the user never triggered directly: activity history
           // (sync after login, list on Actividad, append after saving/deleting a
           // credential) and credential lifecycle status persistence. Callers already
