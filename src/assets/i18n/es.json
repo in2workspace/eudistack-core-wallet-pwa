@@ -792,8 +792,8 @@
     "invalid-ticket": {
       "back-to-wallet": "Volver a la wallet",
       "button": "Ir al acceso",
-      "title": "Este enlace ya no es válido",
-      "body": "Ha caducado o ya se ha usado. Pide uno nuevo a quien te lo dio."
+      "title": "Este enlace no es válido",
+      "body": "No se puede usar. Pide uno nuevo a quien te lo dio."
     },
     "no-wallet": {
       "title": "Este email no tiene wallet",

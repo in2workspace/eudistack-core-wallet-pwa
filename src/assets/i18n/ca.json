@@ -788,8 +788,8 @@
     "invalid-ticket": {
       "back-to-wallet": "Torna a la cartera",
       "button": "Anar a l'accés",
-      "title": "Aquest enllaç ja no és vàlid",
-      "body": "Ha caducat o ja s'ha fet servir. Demana'n un de nou a qui te'l va donar."
+      "title": "Aquest enllaç no és vàlid",
+      "body": "No es pot fer servir. Demana'n un de nou a qui te'l va donar."
     },
     "no-wallet": {
       "title": "Aquest correu no té wallet",

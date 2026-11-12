@@ -792,8 +792,8 @@
     "invalid-ticket": {
       "back-to-wallet": "Back to wallet",
       "button": "Go to sign-in",
-      "title": "This link is no longer valid",
-      "body": "It has expired or has already been used. Ask whoever gave it to you for a new one."
+      "title": "This link is not valid",
+      "body": "It cannot be used. Ask whoever gave it to you for a new one."
     },
     "no-wallet": {
       "title": "This email has no wallet",
