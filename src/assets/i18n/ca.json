@@ -635,6 +635,8 @@
     "title-already-open": "EUDI Wallet ja està obert",
     "subtitle-deep-link": "La credencial s'ha enviat a la {{type}} activa de EUDI Wallet. Pots tancar aquesta {{type}}.",
     "subtitle-already-open": "Ja tens EUDI Wallet obert en una altra {{type}}. Pots tancar aquesta.",
+    "title-continued": "Continua a EUDI Wallet",
+    "subtitle-continued": "Hem seguit a la {{type}} d’EUDI Wallet que ja tenies oberta. Ves-hi per continuar.",
     "title-offer-ready": "Credencial a punt per aprovar",
     "subtitle-offer-ready": "La credencial t'espera a la {{type}} de EUDI Wallet que ja tenies oberta. Ves-hi per aprovar-la.",
     "title-offer-pending-login": "Inicia la sessió per continuar",

@@ -25,6 +25,8 @@ const SINGLE_INSTANCE_I18N: Record<string, string> = {
   'single-instance.close-fallback-standalone': 'Cierra esta ventana manualmente',
   'single-instance.close-fallback-tab': 'Cierra esta pestaña con Ctrl+W (⌘+W en Mac)',
   'single-instance.close-button': 'Cerrar esta {{type}}',
+  'single-instance.title-continued': 'Continúa en EUDI Wallet',
+  'single-instance.subtitle-continued': 'Hemos seguido en la {{type}} de EUDI Wallet que ya tenías abierta. Ve a ella para continuar.',
 };
 
 function setStandaloneMedia(value: boolean): void {
@@ -72,7 +74,7 @@ class BroadcastChannelMock {
 type SentMessage = Record<string, unknown>;
 
 interface FakeLeaderOptions {
-  ackOutcome: 'navigated' | 'pending-login' | null;
+  ackOutcome: 'navigated' | 'pending-login' | 'continued' | null;
   leaderStandalone?: boolean;
   replyTo?: string;
 }
@@ -906,6 +908,126 @@ describe('SingleInstanceService', () => {
       authServiceMock.isLoggedIn.mockReturnValue(true);
       initialized$.next(true);
       expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs/credentials?credentialOfferUri=x');
+    });
+  });
+
+  describe('onboarding ticket and "it was not me" links (EUD-315 task 46, EC-17)', () => {
+    describe('leader', () => {
+      let received: SentMessage[];
+
+      beforeEach(() => {
+        (service as any).isLeader = true;
+        (service as any).channel = new BroadcastChannelMock('wallet-single-instance');
+        received = [];
+        const followerChannel = new BroadcastChannelMock('wallet-single-instance');
+        followerChannel.onmessage = (ev: MessageEvent) => received.push(ev.data as SentMessage);
+      });
+
+      it('opens the ticket link with its fragment even without a session, and acknowledges it as continued', async () => {
+        authServiceMock.isLoggedIn.mockReturnValue(false);
+
+        (service as any).handleMessage({ type: 'NAVIGATE', tabId: 'follower-tab', url: '/wallet/t#Zk3q9Xw2Lp7Rt4Vb8Nc1Ha' });
+        await flushMicrotasks();
+
+        expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/t#Zk3q9Xw2Lp7Rt4Vb8Nc1Ha');
+        expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBeNull();
+        expect(received).toEqual([{
+          type: 'NAVIGATE_ACK',
+          tabId: (service as any).tabId,
+          replyTo: 'follower-tab',
+          outcome: 'continued',
+          leaderStandalone: false,
+        }]);
+      });
+
+      it('opens the "it was not me" link with its token', async () => {
+        (service as any).handleMessage({ type: 'NAVIGATE', tabId: 'follower-tab', url: '/wallet/no-he-sido-yo#tok' });
+        await flushMicrotasks();
+
+        expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/no-he-sido-yo#tok');
+      });
+
+      it('goes through the root first when it already shows that page, so the page reads the new fragment', async () => {
+        (routerMock as any).url = '/no-he-sido-yo';
+
+        (service as any).handleMessage({ type: 'NAVIGATE', tabId: 'follower-tab', url: '/wallet/no-he-sido-yo#tok2' });
+        await flushMicrotasks();
+
+        expect(routerMock.navigateByUrl).toHaveBeenNthCalledWith(1, '/', { skipLocationChange: true });
+        expect(routerMock.navigateByUrl).toHaveBeenNthCalledWith(2, '/no-he-sido-yo#tok2');
+      });
+
+      it('does not take /tabs/... for the ticket path', () => {
+        authServiceMock.isLoggedIn.mockReturnValue(false);
+
+        (service as any).handleMessage({ type: 'NAVIGATE', tabId: 'follower-tab', url: '/wallet/tabs/credentials?x=1' });
+
+        expect(routerMock.navigateByUrl).not.toHaveBeenCalled();
+        expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBe('/tabs/credentials?x=1');
+      });
+    });
+
+    describe('duplicate tab', () => {
+      let sentToLeader: SentMessage[];
+
+      beforeEach(() => {
+        jest.useFakeTimers();
+        jest.spyOn(window, 'close').mockImplementation(() => undefined);
+        sentToLeader = [];
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+        window.history.replaceState({}, '', '/');
+      });
+
+      it('hands the ticket over with its fragment, takes it out of its address and says it carried on', async () => {
+        window.history.pushState({}, '', '/wallet/t#Zk3q9Xw2Lp7Rt4Vb8Nc1Ha');
+        installFakeLeader(sentToLeader, { ackOutcome: 'continued' });
+
+        const isLeader = await service.elect();
+        await flushMicrotasks();
+
+        expect(isLeader).toBe(false);
+        expect(sentToLeader).toContainEqual({
+          type: 'NAVIGATE', tabId: (service as any).tabId, url: '/wallet/t#Zk3q9Xw2Lp7Rt4Vb8Nc1Ha',
+        });
+        expect(window.location.hash).toBe('');
+        expect(document.body.innerHTML).toContain('Continúa en EUDI Wallet');
+        await expect(service.whenLeaderDecided()).resolves.toBe(false);
+      });
+
+      it('hands over the fragment the page already took out of the address before the election', async () => {
+        window.history.pushState({}, '', '/wallet/no-he-sido-yo#tok');
+        const tab = TestBed.runInInjectionContext(() => new SingleInstanceService());
+        window.history.replaceState({}, '', '/wallet/no-he-sido-yo');
+        installFakeLeader(sentToLeader, { ackOutcome: 'continued' });
+
+        await tab.elect();
+        await flushMicrotasks();
+
+        expect(sentToLeader).toContainEqual({ type: 'NAVIGATE', tabId: (tab as any).tabId, url: '/wallet/no-he-sido-yo#tok' });
+      });
+
+      it('only says the wallet is open when the leader does not acknowledge the link', async () => {
+        window.history.pushState({}, '', '/wallet/t#Zk3q9Xw2Lp7Rt4Vb8Nc1Ha');
+        installFakeLeader(sentToLeader, { ackOutcome: null });
+
+        await service.elect();
+        await flushMicrotasks();
+        jest.advanceTimersByTime(500);
+        await flushMicrotasks();
+
+        expect(document.body.innerHTML).toContain('EUDI Wallet ya está abierto');
+        expect(document.body.innerHTML).not.toContain('Credencial enviada');
+      });
+    });
+
+    it('resolves the leadership as true in the first tab', async () => {
+      const isLeader = await service.elect();
+
+      expect(isLeader).toBe(true);
+      await expect(service.whenLeaderDecided()).resolves.toBe(true);
     });
   });
 });

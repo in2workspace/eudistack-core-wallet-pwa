@@ -9,6 +9,7 @@ import { RemoteAuthService } from 'src/app/core/services/auth.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 import { WebAuthnBrowserService } from 'src/app/core/services/webauthn-browser.service';
 import { RegistrationTicketService } from 'src/app/core/services/registration-ticket.service';
+import { SingleInstanceService } from 'src/app/core/services/single-instance.service';
 import { OnboardingTicketRedemption, OnboardingTicketService } from 'src/app/core/services/onboarding-ticket.service';
 import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 
@@ -48,6 +49,7 @@ describe('OnboardingTicketPage (EUD-315)', () => {
     sessionDataReady: jest.Mock;
   };
   let ticketParam: string;
+  let leaderDecided: jest.Mock;
 
   const settle = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
   const text = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
@@ -64,6 +66,7 @@ describe('OnboardingTicketPage (EUD-315)', () => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
     sessionStorage.clear();
     ticketParam = TICKET;
+    leaderDecided = jest.fn().mockResolvedValue(true);
     router = { navigateByUrl: jest.fn().mockResolvedValue(true) };
     location = { replaceState: jest.fn() };
     supported = jest.fn().mockResolvedValue(true);
@@ -87,6 +90,7 @@ describe('OnboardingTicketPage (EUD-315)', () => {
         { provide: WebAuthnBrowserService, useValue: { isPasskeySupported: supported } },
         { provide: OnboardingTicketService, useValue: tickets },
         { provide: RemoteAuthService, useValue: auth },
+        { provide: SingleInstanceService, useValue: { whenLeaderDecided: leaderDecided } },
       ],
     }).compileComponents();
     registrationTicket = TestBed.inject(RegistrationTicketService);
@@ -114,6 +118,24 @@ describe('OnboardingTicketPage (EUD-315)', () => {
       await open();
 
       expect(router.navigateByUrl).toHaveBeenCalledWith('/auth/access', { replaceUrl: true });
+    });
+  });
+
+  describe('Wallet App already open in another tab (EC-17)', () => {
+    it('does not redeem in a duplicate tab, which hands the ticket over to the open one', async () => {
+      leaderDecided.mockResolvedValue(false);
+      await open();
+
+      expect(location.replaceState).toHaveBeenCalledWith(TICKET_FREE_PATH);
+      expect(tickets.redeem).not.toHaveBeenCalled();
+      expect(router.navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('redeems once the election makes this tab the leader', async () => {
+      await open();
+
+      expect(leaderDecided).toHaveBeenCalled();
+      expect(tickets.redeem).toHaveBeenCalledWith(TICKET);
     });
   });
 

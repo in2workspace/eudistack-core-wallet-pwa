@@ -3,9 +3,10 @@ import { Router } from '@angular/router';
 import { filter, take } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from './auth.service';
-import { DEEP_LINK_PATH_PREFIXES, PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
+import { DEEP_LINK_PATH_PREFIXES, FRAGMENT_LINK_PATHS, PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
 
-type DeepLinkOutcome = 'navigated' | 'pending-login';
+/** `continued`: the leader opened an onboarding ticket or "it was not me" link (task 46). */
+type DeepLinkOutcome = 'navigated' | 'pending-login' | 'continued';
 
 interface SingleInstanceMessage {
   type: 'NEW_TAB' | 'LEADER_ACK' | 'NAVIGATE' | 'NAVIGATE_ACK';
@@ -47,6 +48,10 @@ const DUPLICATE_TAB_COPY = {
     title: 'single-instance.title-already-open',
     subtitle: 'single-instance.subtitle-already-open',
   },
+  continued: {
+    title: 'single-instance.title-continued',
+    subtitle: 'single-instance.subtitle-continued',
+  },
 } as const;
 
 const DUPLICATE_TAB_HINT_KEYS = {
@@ -70,11 +75,30 @@ export class SingleInstanceService implements OnDestroy {
   private readonly tabId = crypto.randomUUID();
   private isLeader = false;
   private titleBeforeFlag: string | null = null;
+  /**
+   * Fragment of the address the tab was opened with, read when the app starts: the onboarding ticket and
+   * the "it was not me" pages take it out of the address bar as soon as they start (AC-04), possibly before
+   * the election. In memory only, and dropped once the election has used it.
+   */
+  private startFragment = window.location.hash;
+  private resolveLeadership!: (isLeader: boolean) => void;
+  private readonly leadership = new Promise<boolean>((resolve) => {
+    this.resolveLeadership = resolve;
+  });
+
+  /**
+   * Resolves once the election is decided: `true` in the leader tab, `false` in a duplicate one. A page that
+   * consumes something single-use (the onboarding ticket) waits for it, so a duplicate tab never does.
+   */
+  public whenLeaderDecided(): Promise<boolean> {
+    return this.leadership;
+  }
 
   /** Resolves `true` if this tab becomes the leader, `false` if one already exists. */
   public elect(): Promise<boolean> {
     if (!('BroadcastChannel' in window)) {
       // Unsupported browser — always act as leader.
+      this.resolveLeadership(true);
       return Promise.resolve(true);
     }
 
@@ -83,7 +107,22 @@ export class SingleInstanceService implements OnDestroy {
       this.handleMessage(ev.data);
     };
 
-    return 'locks' in navigator ? this.electWithLock() : this.electWithMessages();
+    const election = 'locks' in navigator ? this.electWithLock() : this.electWithMessages();
+    return election.then((isLeader) => {
+      this.resolveLeadership(isLeader);
+      return isLeader;
+    });
+  }
+
+  /**
+   * Path, query and fragment the tab was opened with. The fragment only matters for the onboarding ticket and
+   * "it was not me" links, and it only travels to the leader through the same-origin channel: it never reaches
+   * a server (EUD-315 P18).
+   */
+  private openedUrl(): string {
+    const fragment = window.location.hash || this.startFragment;
+    this.startFragment = '';
+    return window.location.pathname + window.location.search + fragment;
   }
 
   /**
@@ -96,7 +135,7 @@ export class SingleInstanceService implements OnDestroy {
    */
   private electWithLock(): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
-      const currentUrl = window.location.pathname + window.location.search;
+      const currentUrl = this.openedUrl();
       let decided = false;
 
       const becomeFollower = () => {
@@ -142,7 +181,7 @@ export class SingleInstanceService implements OnDestroy {
   /** Fallback without Web Locks: a leader that takes too long to answer ends up with a second leader. */
   private electWithMessages(): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
-      const currentUrl = window.location.pathname + window.location.search;
+      const currentUrl = this.openedUrl();
 
       this.postNewTab(currentUrl);
       const timeout = setTimeout(() => {
@@ -186,7 +225,13 @@ export class SingleInstanceService implements OnDestroy {
     // storage state while it waits for the leader's answer.
     this.authService.dispose();
 
-    const isDeepLink = SingleInstanceService.isDeepLinkPath(SingleInstanceService.stripBase(currentUrl));
+    const appRelative = SingleInstanceService.stripBase(currentUrl);
+    if (SingleInstanceService.isFragmentLinkPath(appRelative)) {
+      // AC-04: the ticket or token never stays in this tab's address bar nor history entry.
+      history.replaceState(history.state, '', window.location.pathname + window.location.search);
+    }
+    const isFragmentLink = SingleInstanceService.isFragmentLinkPath(appRelative);
+    const isDeepLink = SingleInstanceService.isDeepLinkPath(appRelative) || isFragmentLink;
     let ack: NavigateAck | null = null;
     if (isDeepLink) {
       ack = await this.requestNavigation(currentUrl);
@@ -194,7 +239,8 @@ export class SingleInstanceService implements OnDestroy {
       this.postNavigate(currentUrl);
     }
 
-    this.renderDuplicateTabMessage(isDeepLink, ack);
+    // A fragment link the leader did not acknowledge was not opened: say only that the wallet is open.
+    this.renderDuplicateTabMessage(isDeepLink && (ack !== null || !isFragmentLink), ack);
   }
 
   private requestNavigation(url: string): Promise<NavigateAck | null> {
@@ -291,7 +337,17 @@ export class SingleInstanceService implements OnDestroy {
         // <base href> directly from the DOM for reliability.
         const appRelative = SingleInstanceService.stripBase(msg.url ?? '');
 
-        if (SingleInstanceService.isDeepLinkPath(appRelative)) {
+        if (SingleInstanceService.isFragmentLinkPath(appRelative)) {
+          // EUD-315 (task 46): opened right away, with or without a session; the page decides (AC-09, EC-02).
+          void this.openFragmentLink(appRelative);
+          this.channel!.postMessage({
+            type: 'NAVIGATE_ACK',
+            tabId: this.tabId,
+            replyTo: msg.tabId,
+            outcome: 'continued',
+            leaderStandalone: SingleInstanceService.isStandalone(),
+          } satisfies SingleInstanceMessage);
+        } else if (SingleInstanceService.isDeepLinkPath(appRelative)) {
           this.whenAuthInitialized(() => {
             const outcome = this.applyDeepLink(appRelative);
             this.flagPendingOffer();
@@ -395,8 +451,26 @@ export class SingleInstanceService implements OnDestroy {
     this.channel?.close();
   }
 
+  /**
+   * The ticket and "it was not me" pages read their value when they start: if the leader already shows that
+   * page, it goes through the root first so that the page starts again with the new fragment.
+   */
+  private async openFragmentLink(appRelative: string): Promise<void> {
+    const pathOf = (url: string) => url.split(/[?#]/)[0];
+    if (pathOf(this.router.url ?? '') === pathOf(appRelative)) {
+      await this.router.navigateByUrl('/', { skipLocationChange: true });
+    }
+    await this.router.navigateByUrl(appRelative);
+  }
+
   private static isDeepLinkPath(appRelative: string): boolean {
     return DEEP_LINK_PATH_PREFIXES.some((prefix) => appRelative.startsWith(prefix));
+  }
+
+  /** `/t#…` or `/no-he-sido-yo#…` (exact path, any query or fragment). */
+  private static isFragmentLinkPath(appRelative: string): boolean {
+    const path = appRelative.split(/[?#]/)[0];
+    return FRAGMENT_LINK_PATHS.some((linkPath) => path === linkPath);
   }
 
   // iOS Safari PWAs expose navigator.standalone instead of display-mode:standalone.

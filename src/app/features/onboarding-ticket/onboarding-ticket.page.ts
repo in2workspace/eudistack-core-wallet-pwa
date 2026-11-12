@@ -8,6 +8,7 @@ import { filter, firstValueFrom, take } from 'rxjs';
 import { ACCESS_ROUTE, RemoteAuthService } from 'src/app/core/services/auth.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 import { WebAuthnBrowserService } from 'src/app/core/services/webauthn-browser.service';
+import { SingleInstanceService } from 'src/app/core/services/single-instance.service';
 import { RegistrationTicketService } from 'src/app/core/services/registration-ticket.service';
 import {
   ONBOARDING_TICKET_PATTERN,
@@ -60,6 +61,7 @@ export class OnboardingTicketPage implements OnInit {
   private readonly webAuthnBrowser = inject(WebAuthnBrowserService);
   private readonly onboardingTickets = inject(OnboardingTicketService);
   private readonly registrationTicket = inject(RegistrationTicketService);
+  private readonly singleInstance = inject(SingleInstanceService);
 
   /** In memory only, for a retry after a temporary failure: it is no longer in the URL. */
   private ticket = '';
@@ -82,6 +84,11 @@ export class OnboardingTicketPage implements OnInit {
   }
 
   private async start(): Promise<void> {
+    // EC-17 (task 46): with the Wallet App already open in another tab, that tab redeems the ticket,
+    // which this one hands over; a duplicate tab never consumes it.
+    if (!(await this.singleInstance.whenLeaderDecided())) {
+      return;
+    }
     // Onboarding tickets belong to the Wallet Unit Service (server mode).
     if (this.discovery.mode() !== 'server') {
       await this.router.navigateByUrl('/', { replaceUrl: true });
