@@ -2,6 +2,7 @@ import { BehaviorSubject } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
+import { NavController } from '@ionic/angular';
 import { SingleInstanceService } from './single-instance.service';
 import { AuthService } from './auth.service';
 import { PENDING_DEEP_LINK_KEY } from '../constants/deep-link.constants';
@@ -147,6 +148,7 @@ function setNavigatorLocks(value: unknown): void {
 describe('SingleInstanceService', () => {
   let service: SingleInstanceService;
   let routerMock: jest.Mocked<Pick<Router, 'navigateByUrl'>>;
+  let navControllerMock: { navigateRoot: jest.Mock };
   let authServiceMock: jest.Mocked<Pick<AuthService, 'isLoggedIn' | 'dispose'>>;
   let initialized$: BehaviorSubject<boolean>;
   let translateServiceMock: jest.Mocked<Pick<TranslateService, 'instant'>>;
@@ -162,6 +164,7 @@ describe('SingleInstanceService', () => {
     sessionStorage.clear();
 
     routerMock = { navigateByUrl: jest.fn() } as unknown as jest.Mocked<Pick<Router, 'navigateByUrl'>>;
+    navControllerMock = { navigateRoot: jest.fn().mockResolvedValue(true) };
     initialized$ = new BehaviorSubject(true);
     authServiceMock = {
       isLoggedIn: jest.fn().mockReturnValue(true),
@@ -190,6 +193,7 @@ describe('SingleInstanceService', () => {
       providers: [
         SingleInstanceService,
         { provide: Router, useValue: routerMock },
+        { provide: NavController, useValue: navControllerMock },
         { provide: AuthService, useValue: authServiceMock },
         { provide: TranslateService, useValue: translateServiceMock },
       ],
@@ -929,7 +933,9 @@ describe('SingleInstanceService', () => {
         (service as any).handleMessage({ type: 'NAVIGATE', tabId: 'follower-tab', url: '/wallet/t#Zk3q9Xw2Lp7Rt4Vb8Nc1Ha' });
         await flushMicrotasks();
 
-        expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/t#Zk3q9Xw2Lp7Rt4Vb8Nc1Ha');
+        // Root navigation: the page stack starts again as in a new tab, so the tabs are never left hidden.
+        expect(navControllerMock.navigateRoot).toHaveBeenCalledWith('/t#Zk3q9Xw2Lp7Rt4Vb8Nc1Ha');
+        expect(routerMock.navigateByUrl).not.toHaveBeenCalled();
         expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBeNull();
         expect(received).toEqual([{
           type: 'NAVIGATE_ACK',
@@ -944,7 +950,7 @@ describe('SingleInstanceService', () => {
         (service as any).handleMessage({ type: 'NAVIGATE', tabId: 'follower-tab', url: '/wallet/no-he-sido-yo#tok' });
         await flushMicrotasks();
 
-        expect(routerMock.navigateByUrl).toHaveBeenCalledWith('/no-he-sido-yo#tok');
+        expect(navControllerMock.navigateRoot).toHaveBeenCalledWith('/no-he-sido-yo#tok');
       });
 
       it('goes through the root first when it already shows that page, so the page reads the new fragment', async () => {
@@ -953,8 +959,8 @@ describe('SingleInstanceService', () => {
         (service as any).handleMessage({ type: 'NAVIGATE', tabId: 'follower-tab', url: '/wallet/no-he-sido-yo#tok2' });
         await flushMicrotasks();
 
-        expect(routerMock.navigateByUrl).toHaveBeenNthCalledWith(1, '/', { skipLocationChange: true });
-        expect(routerMock.navigateByUrl).toHaveBeenNthCalledWith(2, '/no-he-sido-yo#tok2');
+        expect(navControllerMock.navigateRoot).toHaveBeenNthCalledWith(1, '/', { skipLocationChange: true });
+        expect(navControllerMock.navigateRoot).toHaveBeenNthCalledWith(2, '/no-he-sido-yo#tok2');
       });
 
       it('does not take /tabs/... for the ticket path', () => {

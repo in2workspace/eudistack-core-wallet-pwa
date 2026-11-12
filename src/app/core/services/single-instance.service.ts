@@ -1,5 +1,6 @@
 import { Injectable, OnDestroy, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { NavController } from '@ionic/angular';
 import { filter, take } from 'rxjs/operators';
 import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from './auth.service';
@@ -69,6 +70,7 @@ const DUPLICATE_TAB_HINT_KEYS = {
 export class SingleInstanceService implements OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly navController = inject(NavController);
   private readonly translate = inject(TranslateService);
 
   private channel: BroadcastChannel | null = null;
@@ -452,15 +454,18 @@ export class SingleInstanceService implements OnDestroy {
   }
 
   /**
+   * Opens the link as a root navigation, which empties Ionic's page stack: the leader then goes on exactly as a
+   * new tab opened on the link. A plain navigation keeps the pages it already had (e.g. the tabs), and the
+   * ticket flow coming back to them later is taken for a back navigation that can leave the tabs hidden.
    * The ticket and "it was not me" pages read their value when they start: if the leader already shows that
    * page, it goes through the root first so that the page starts again with the new fragment.
    */
   private async openFragmentLink(appRelative: string): Promise<void> {
     const pathOf = (url: string) => url.split(/[?#]/)[0];
     if (pathOf(this.router.url ?? '') === pathOf(appRelative)) {
-      await this.router.navigateByUrl('/', { skipLocationChange: true });
+      await this.navController.navigateRoot('/', { skipLocationChange: true });
     }
-    await this.router.navigateByUrl(appRelative);
+    await this.navController.navigateRoot(appRelative);
   }
 
   private static isDeepLinkPath(appRelative: string): boolean {
