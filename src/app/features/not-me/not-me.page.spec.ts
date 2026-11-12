@@ -19,6 +19,7 @@ describe('NotMePage (EUD-315)', () => {
   let mode: jest.Mock;
   let disavow: jest.Mock;
   let tokenParam: string;
+  let auth: { isLoggedIn: jest.Mock; refreshAccessToken: jest.Mock };
 
   const text = () => (fixture.nativeElement as HTMLElement).textContent ?? '';
 
@@ -35,6 +36,7 @@ describe('NotMePage (EUD-315)', () => {
     location = { replaceState: jest.fn() };
     mode = jest.fn().mockReturnValue('server');
     disavow = jest.fn().mockReturnValue(of(undefined));
+    auth = { isLoggedIn: jest.fn().mockReturnValue(false), refreshAccessToken: jest.fn() };
 
     await TestBed.configureTestingModule({
       imports: [NotMePage, TranslateModule.forRoot()],
@@ -44,9 +46,10 @@ describe('NotMePage (EUD-315)', () => {
         { provide: ActivatedRoute, useFactory: () => ({ snapshot: { fragment: tokenParam } }) },
         { provide: WalletDiscoveryService, useValue: { mode } },
         { provide: OnboardingTicketService, useValue: { disavow } },
-        // Any use of a session would fail loudly: the page must never touch one (AC-10).
+        // The page never starts a session nor asks for a passkey (AC-10): it may only check, after
+        // the disavowal, whether the session of its tab survived (EC-17). Anything else would throw.
         { provide: AuthService, useFactory: () => { throw new Error('AuthService must not be used'); } },
-        { provide: RemoteAuthService, useFactory: () => { throw new Error('RemoteAuthService must not be used'); } },
+        { provide: RemoteAuthService, useFactory: () => auth },
       ],
     }).compileComponents();
   });
@@ -75,6 +78,50 @@ describe('NotMePage (EUD-315)', () => {
 
     page.goToAccess();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/auth/access', { replaceUrl: true });
+  });
+
+  describe('tab with a session (EC-17)', () => {
+    beforeEach(() => auth.isLoggedIn.mockReturnValue(true));
+
+    it('forgets a session of the disavowed account: its renewal is rejected', async () => {
+      auth.refreshAccessToken.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 401 })));
+      open();
+
+      await page.confirm();
+
+      expect(auth.refreshAccessToken).toHaveBeenCalledWith({ onAuthFailure: 'clear-only' });
+      expect(page.screen()).toBe('done');
+      expect(router.navigateByUrl).not.toHaveBeenCalled();
+    });
+
+    it('keeps a session of another account: its renewal is accepted', async () => {
+      auth.refreshAccessToken.mockReturnValue(of({ accessToken: 'a', expiresIn: 300 }));
+      open();
+
+      await page.confirm();
+
+      expect(auth.refreshAccessToken).toHaveBeenCalledTimes(1);
+      expect(page.screen()).toBe('done');
+    });
+
+    it('does not check any session before the holder confirms, nor when the disavowal fails', async () => {
+      disavow.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+      open();
+      expect(auth.refreshAccessToken).not.toHaveBeenCalled();
+
+      await page.confirm();
+
+      expect(auth.refreshAccessToken).not.toHaveBeenCalled();
+    });
+  });
+
+  it('checks no session when the tab has none', async () => {
+    open();
+
+    await page.confirm();
+
+    expect(auth.refreshAccessToken).not.toHaveBeenCalled();
+    expect(page.screen()).toBe('done');
   });
 
   it('says the link is no longer valid on 401 invalid_token (AC-10)', async () => {

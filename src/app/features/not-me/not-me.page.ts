@@ -1,11 +1,11 @@
-import { Component, ElementRef, OnInit, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, Injector, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Location } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IonicModule } from '@ionic/angular';
 import { TranslateModule } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
-import { ACCESS_ROUTE } from 'src/app/core/services/auth.service';
+import { ACCESS_ROUTE, RemoteAuthService } from 'src/app/core/services/auth.service';
 import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
 import { DISAVOWAL_TOKEN_PATTERN, OnboardingTicketService } from 'src/app/core/services/onboarding-ticket.service';
 
@@ -24,7 +24,9 @@ export type NotMeScreen = 'confirm' | 'done' | 'invalid';
  * Page the "it was not me" link of the new-account email opens (`/no-he-sido-yo#<token>`;
  * the token is in the fragment, which never reaches the server, P18).
  * It never starts a session nor asks for a passkey (AC-10): the only call is the
- * public disavowal, and only after the holder confirms (EC-10).
+ * public disavowal, and only after the holder confirms (EC-10). With the Wallet App already
+ * open, the link opens in the tab that may have a session (EC-17): after the disavowal, a session
+ * of the disavowed account is forgotten here too.
  */
 @Component({
   selector: 'app-not-me',
@@ -45,6 +47,7 @@ export class NotMePage implements OnInit {
   private readonly location = inject(Location);
   private readonly discovery = inject(WalletDiscoveryService);
   private readonly onboardingTickets = inject(OnboardingTicketService);
+  private readonly injector = inject(Injector);
 
   /** In memory only once read from the URL. */
   private token = '';
@@ -71,6 +74,7 @@ export class NotMePage implements OnInit {
     try {
       await firstValueFrom(this.onboardingTickets.disavow(this.token));
       this.token = '';
+      await this.forgetDisavowedSession();
       this.goTo('done');
     } catch (err: unknown) {
       this.handleError(err);
@@ -87,6 +91,23 @@ export class NotMePage implements OnInit {
 
   public goToAccess(): void {
     void this.router.navigateByUrl(ACCESS_ROUTE, { replaceUrl: true });
+  }
+
+  /**
+   * EC-17: the service has just ended every session of the disavowed account. If this tab has a
+   * session, one renewal tells whether it was one of them: rejected, it is forgotten here without
+   * leaving the page; accepted, it belongs to another account and stays. A temporary failure keeps it.
+   */
+  private async forgetDisavowedSession(): Promise<void> {
+    const auth = this.injector.get(RemoteAuthService);
+    if (!auth.isLoggedIn()) {
+      return;
+    }
+    try {
+      await firstValueFrom(auth.refreshAccessToken({ onAuthFailure: 'clear-only' }));
+    } catch {
+      // Rejected: the session is already forgotten. Temporary: it stays, as on any failed renewal.
+    }
   }
 
   private handleError(err: unknown): void {
