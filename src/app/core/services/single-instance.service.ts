@@ -475,7 +475,7 @@ export class SingleInstanceService implements OnDestroy {
   /** `/t#…` or `/no-he-sido-yo#…` (exact path, any query or fragment). */
   private static isFragmentLinkPath(appRelative: string): boolean {
     const path = appRelative.split(/[?#]/)[0];
-    return FRAGMENT_LINK_PATHS.some((linkPath) => path === linkPath);
+    return (FRAGMENT_LINK_PATHS as readonly string[]).includes(path);
   }
 
   // iOS Safari PWAs expose navigator.standalone instead of display-mode:standalone.
