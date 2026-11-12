@@ -7,6 +7,12 @@
             <ion-spinner name="crescent" aria-hidden="true"></ion-spinner>
             <p class="init-status">{{ 'wallet-access.ticket.redeeming' | translate }}</p>
           </output>
+        } @else if (state() === 'invalid') {
+          <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.invalid-ticket.title' | translate }}</h1>
+          <p class="auth-subtitle">{{ 'wallet-access.invalid-ticket.body' | translate }}</p>
+          <button type="button" class="auth-button" (click)="goToWallet()">
+            {{ 'wallet-access.invalid-ticket.back-to-wallet' | translate }}
+          </button>
         } @else {
           <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.ticket.failed-title' | translate }}</h1>
           <div class="error-box" role="alert">

@@ -790,6 +790,7 @@
       "failed-title": "No hemos podido comprobar tu enlace"
     },
     "invalid-ticket": {
+      "back-to-wallet": "Volver a la wallet",
       "button": "Ir al acceso",
       "title": "Este enlace ya no es válido",
       "body": "Ha caducado o ya se ha usado. Pide uno nuevo a quien te lo dio."

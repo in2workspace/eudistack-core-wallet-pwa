@@ -786,6 +786,7 @@
       "failed-title": "No hem pogut comprovar el teu enllaç"
     },
     "invalid-ticket": {
+      "back-to-wallet": "Torna a la cartera",
       "button": "Anar a l'accés",
       "title": "Aquest enllaç ja no és vàlid",
       "body": "Ha caducat o ja s'ha fet servir. Demana'n un de nou a qui te'l va donar."

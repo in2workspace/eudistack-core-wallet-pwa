@@ -47,8 +47,11 @@ export const TICKET_FREE_PATH = '/t';
 })
 // eslint-disable-next-line @angular-eslint/component-class-suffix
 export class OnboardingTicketPage implements OnInit {
-  /** `redeeming` shows the wait notice; `failed` a temporary failure with a retry. */
-  public readonly state = signal<'redeeming' | 'failed'>('redeeming');
+  /**
+   * `redeeming` shows the wait notice; `failed` a temporary failure with a retry; `invalid` the
+   * Ticket no válido screen in a tab with a session, which cannot reach the access screen (AC-06).
+   */
+  public readonly state = signal<'redeeming' | 'failed' | 'invalid'>('redeeming');
   public readonly errorKey = signal('');
 
   @ViewChild('heading') private readonly heading?: ElementRef<HTMLElement>;
@@ -79,6 +82,10 @@ export class OnboardingTicketPage implements OnInit {
     void this.redeem();
   }
 
+  public goToWallet(): void {
+    void this.router.navigateByUrl(WALLET_HOME_ROUTE, { replaceUrl: true });
+  }
+
   public goToAccess(): void {
     void this.router.navigateByUrl(ACCESS_ROUTE, { replaceUrl: true });
   }
@@ -102,7 +109,7 @@ export class OnboardingTicketPage implements OnInit {
     }
     if (!ONBOARDING_TICKET_PATTERN.test(this.ticket)) {
       // The service would answer 400: same screen as an unknown ticket (FR-30).
-      await this.goToAccessWith('invalid-ticket');
+      await this.showInvalidTicket();
       return;
     }
     await this.redeem();
@@ -172,7 +179,7 @@ export class OnboardingTicketPage implements OnInit {
     const status = err instanceof HttpErrorResponse ? err.status : undefined;
     if (type === AUTH_PROBLEM_TYPE.INVALID_TICKET || status === 401 || status === 400) {
       this.ticket = '';
-      await this.goToAccessWith('invalid-ticket');
+      await this.showInvalidTicket();
       return;
     }
     if (status === 429) {
@@ -181,6 +188,21 @@ export class OnboardingTicketPage implements OnInit {
     }
     console.error('[OnboardingTicketPage] Redemption failed:', err);
     this.fail(status === 0 ? 'errors.network-error' : 'wallet-access.errors.generic');
+  }
+
+  /**
+   * AC-06, AC-12: Ticket no válido. The access screen shows it, but a tab with a session never gets
+   * there (its guard sends it to the wallet), so that tab shows it here, with a way back to the wallet.
+   */
+  private async showInvalidTicket(): Promise<void> {
+    const auth = this.injector.get(RemoteAuthService);
+    await firstValueFrom(auth.isInitialized$().pipe(filter(Boolean), take(1)));
+    if (!auth.isLoggedIn()) {
+      await this.goToAccessWith('invalid-ticket');
+      return;
+    }
+    this.state.set('invalid');
+    setTimeout(() => this.heading?.nativeElement.focus());
   }
 
   private fail(errorKey: string): void {

@@ -244,6 +244,32 @@ describe('OnboardingTicketPage (EUD-315)', () => {
       expect(tickets.redeem).not.toHaveBeenCalled();
       expect(tickets.setAccessEntry).toHaveBeenCalledWith('invalid-ticket');
     });
+
+    describe('in a tab with a session, which never reaches the access screen', () => {
+      beforeEach(() => auth.isLoggedIn.mockReturnValue(true));
+
+      it('shows Ticket no válido here, with a way back to the wallet', async () => {
+        tickets.redeem.mockReturnValue(throwError(() => problem(401, 'invalid_ticket')));
+        await open();
+
+        expect(page.state()).toBe('invalid');
+        expect(text()).toContain('wallet-access.invalid-ticket.title');
+        expect(text()).toContain('wallet-access.invalid-ticket.back-to-wallet');
+        expect(tickets.setAccessEntry).not.toHaveBeenCalled();
+        expect(router.navigateByUrl).not.toHaveBeenCalled();
+
+        page.goToWallet();
+        expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs/credentials', { replaceUrl: true });
+      });
+
+      it('shows it also for a malformed ticket, without calling the service', async () => {
+        ticketParam = 'not-a-ticket';
+        await open();
+
+        expect(tickets.redeem).not.toHaveBeenCalled();
+        expect(page.state()).toBe('invalid');
+      });
+    });
   });
 
   describe('temporary failures', () => {
