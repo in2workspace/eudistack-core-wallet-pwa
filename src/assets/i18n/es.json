@@ -793,7 +793,7 @@
       "back-to-wallet": "Volver a la wallet",
       "button": "Ir al acceso",
       "title": "Este enlace no es válido",
-      "body": "No se puede usar. Pide uno nuevo a quien te lo dio."
+      "body": "Este enlace no es válido o ya no se puede usar. Pide uno nuevo a quien te lo dio."
     },
     "no-wallet": {
       "title": "Este email no tiene wallet",

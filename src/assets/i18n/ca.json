@@ -789,7 +789,7 @@
       "back-to-wallet": "Torna a la cartera",
       "button": "Anar a l'accés",
       "title": "Aquest enllaç no és vàlid",
-      "body": "No es pot fer servir. Demana'n un de nou a qui te'l va donar."
+      "body": "Aquest enllaç no és vàlid o ja no es pot fer servir. Demana'n un de nou a qui te'l va donar."
     },
     "no-wallet": {
       "title": "Aquest correu no té wallet",
