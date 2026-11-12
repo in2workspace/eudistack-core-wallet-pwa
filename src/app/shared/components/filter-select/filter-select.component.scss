@@ -1,0 +1,140 @@
+:host {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+// The pill is a real button: it cannot be selected as text, so tapping it always opens the menu.
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px 0 14px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    border-color: var(--border-strong);
+  }
+
+  &:focus-visible {
+    border-color: var(--ui-focus-ring);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(var(--ui-focus-ring-rgb), 0.25);
+  }
+}
+
+.filter--active {
+  border-color: var(--action-color);
+  background: rgba(var(--action-color-rgb), 0.08);
+
+  .filter__label,
+  .filter__value {
+    color: var(--action-color);
+  }
+
+  .filter__value {
+    font-weight: 600;
+  }
+}
+
+.filter__label {
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.filter__value {
+  max-width: 180px;
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter__chevron {
+  flex-shrink: 0;
+  font-size: 16px;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.filter__chevron--open {
+  transform: rotate(180deg);
+}
+
+ion-popover.filter-popover {
+  --min-width: 220px;
+  --max-width: min(360px, calc(100vw - 32px));
+  --max-height: min(60vh, 360px);
+  --background: var(--surface-card);
+  --border-radius: 16px;
+  --box-shadow: var(--shadow-lg);
+  --offset-y: 8px;
+}
+
+.filter-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+}
+
+.filter-menu__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  span {
+    overflow-wrap: anywhere;
+  }
+
+  &:hover {
+    background: var(--action-secondary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ui-focus-ring);
+    outline-offset: -2px;
+  }
+}
+
+.filter-menu__item--selected {
+  background: rgba(var(--action-color-rgb), 0.08);
+  color: var(--action-color);
+  font-weight: 600;
+}
+
+.filter-menu__check {
+  flex-shrink: 0;
+  font-size: 18px;
+}

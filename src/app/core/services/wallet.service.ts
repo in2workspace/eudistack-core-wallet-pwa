@@ -2,7 +2,7 @@ import { CONTENT_TYPE } from './../constants/content-type.constants';
 
 import { HttpClient, HttpHeaders, HttpParams, HttpResponse} from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import {catchError, from, map, Observable, of, switchMap, tap} from 'rxjs';
+import {catchError, defer, finalize, from, map, Observable, of, switchMap, tap} from 'rxjs';
 import { LifeCycleStatus, VerifiableCredential } from '../models/verifiable-credential';
 import { UrlResolverService } from './url-resolver.service';
 import { SERVER_PATH } from '../constants/api.constants';
@@ -25,6 +25,14 @@ export const options = {
   redirect: 'follow',
 };
 
+/** A synchronization whose session ended, or was replaced by a new one, before its answer arrived. */
+export class SyncSupersededError extends Error {
+  constructor() {
+    super('The synchronization belongs to a session that is no longer current');
+    this.name = 'SyncSupersededError';
+  }
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -35,6 +43,11 @@ export class WalletService {
   private discovery = inject(WalletDiscoveryService);
   private urlResolver = inject(UrlResolverService);
   private credentialCache = inject(CredentialCacheService);
+
+  private inFlightSyncs = 0;
+  private syncGeneration = 0;
+  /** Deleted while a synchronization was in flight, whose response may still carry them. */
+  private readonly deletedDuringSync = new Set<string>();
 
   /** Returns true when the wallet operates in browser (EUDIW) mode (AC-009.2c, AC-009.3c). */
   private isBrowserMode(): boolean {
@@ -103,17 +116,41 @@ export class WalletService {
     );
   }
 
+  /** Makes the synchronizations in flight discard their answer: they belong to a session that is over. */
+  public invalidatePendingSyncs(): void {
+    this.syncGeneration++;
+  }
+
   public syncCredentials(): Observable<void> {
     // Fetch from the server FIRST, then swap the local store atomically. We never
     // clear IndexedDB before we hold the new data, so a reader can't observe an
     // empty store mid-sync.
-    return this.getAllVCsFromServer().pipe(
-      switchMap((credentials) =>
-        from(this.credentialStorage.replaceAllCredentials(credentials))
-      ),
-      switchMap(() => this.refreshCredentials()),
-      map(() => void 0)
-    );
+    return defer(() => {
+      this.inFlightSyncs++;
+      const generation = this.syncGeneration;
+      return this.getAllVCsFromServer().pipe(
+        map((credentials) => {
+          if (generation !== this.syncGeneration) {
+            throw new SyncSupersededError();
+          }
+          // A deletion that finished while this request was in flight is not in the response of a
+          // server that already deleted it, but may be in the one of a request it overtook.
+          return credentials.filter((cred) => !this.deletedDuringSync.has(cred.id));
+        }),
+        switchMap((credentials) =>
+          from(this.credentialStorage.replaceAllCredentials(credentials))
+        ),
+        switchMap(() => this.refreshCredentials()),
+        tap(() => this.credentialCache.markSyncSucceeded()),
+        map(() => void 0),
+        finalize(() => {
+          this.inFlightSyncs--;
+          if (this.inFlightSyncs === 0) {
+            this.deletedDuringSync.clear();
+          }
+        })
+      );
+    });
   }
 
   /**
@@ -150,7 +187,12 @@ export class WalletService {
     ).pipe(
       switchMap(() =>
         from(this.credentialStorage.deleteCredential(credentialId))
-      )
+      ),
+      tap(() => {
+        if (this.inFlightSyncs > 0) {
+          this.deletedDuringSync.add(credentialId);
+        }
+      })
     );
   }
 

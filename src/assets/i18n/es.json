@@ -38,6 +38,23 @@
     "nocred-scan": "Escanear código QR",
     "show-data": "Mostrar datos",
     "hide-data": "Ocultar datos",
+    "sync": {
+      "updating": "Actualizando…",
+      "updated-at": "Actualizado a las {{time}}",
+      "button": "Sincronizar",
+      "retry": "Reintentar",
+      "stale": "No hemos podido actualizar tus atestaciones. Puede que no estén al día.",
+      "load-error": "No hemos podido cargar tus atestaciones. Si el problema persiste, póngase en contacto con {{supportLink}}."
+    },
+    "filters": {
+      "title": "Filtros",
+      "type": "Tipo",
+      "issuer": "Emisor",
+      "status": "Estado",
+      "all": "Todos",
+      "clear": "Quitar filtros",
+      "no-results": "Ninguna atestación cumple los filtros."
+    },
     "how-it-works": {
       "title": "¿Cómo funciona?",
       "step-scan": "Escanea un código QR",
@@ -322,7 +339,8 @@
     "lifecycle-valid": "Válida",
     "lifecycle-issued": "Sin firmar",
     "lifecycle-revoked": "Revocada",
-    "lifecycle-expired": "Caducada"
+    "lifecycle-expired": "Caducada",
+    "status-unchecked": "No se ha podido comprobar el estado. Último estado conocido: {{status}}."
   },
   "scanner": {
     "title": "Escanea tu código QR",
@@ -486,6 +504,7 @@
     "qr-expired": "La sesión QR ha expirado. Por favor, renueve la oferta de credencial.",
     "unsigned": "La credencial firmada aún no está disponible.",
     "loading-VCs": "Ha habido un error al cargar las credenciales. Vuélvalo a intentar más tarde. Si el problema persiste, póngase en contacto con {{supportLink}}.",
+    "delete-credential": "No hemos podido eliminar la atestación. Inténtalo de nuevo.",
     "Errunsigned": "No se pudo obtener la credencial",
     "no-connection": "Se perdió la conexión. Compruebe su conexión a internet e inténtelo de nuevo.",
     "navigation": "Error inesperado al intentar acceder a la página. Si el problema persiste, póngase en contacto con {{supportLink}}",

@@ -147,6 +147,20 @@ describe('AccessPage (EUD-8)', () => {
       expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs/credentials');
     });
 
+    it('opens the list only after the session attestations are loaded, with no protocol link too', async () => {
+      let finishLoading!: () => void;
+      auth.sessionDataReady.mockReturnValue(new Promise<void>(resolve => { finishLoading = resolve; }));
+
+      const signingIn = page.signInWithPasskey();
+      await new Promise(resolve => setTimeout(resolve));
+      expect(router.navigateByUrl).not.toHaveBeenCalled();
+
+      finishLoading();
+      await signingIn;
+
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs/credentials');
+    });
+
     it('resumes a pending protocol link once the session attestations are loaded', async () => {
       sessionStorage.setItem(PENDING_DEEP_LINK_KEY, '/tabs/credentials?authorizationRequest=x');
 

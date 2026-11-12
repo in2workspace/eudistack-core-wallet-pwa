@@ -14,6 +14,7 @@ import {
 } from '@angular/core';
 import { QRCodeComponent } from 'angularx-qrcode';
 import { WalletService } from 'src/app/core/services/wallet.service';
+import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
 import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { EmployeeCredentialSubject, ExtendedCredentialType, LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
@@ -77,6 +78,7 @@ export class VcViewComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly verificationService = inject(CredentialVerificationService);
   private readonly router = inject(Router);
+  private readonly credentialCache = inject(CredentialCacheService);
   
   public credentialInput$ = input.required<VerifiableCredential>();
   public detailViewSections$ = signal<DisplaySection[]>([]);
@@ -111,6 +113,15 @@ export class VcViewComponent implements OnDestroy {
     const days = expiry.diff(dayjs(), 'day');
     return days >= 0 ? days : null;
   });
+
+  /** The status list of the issuer did not answer, so the status shown is the last known one. */
+  public readonly statusUnchecked = computed(
+    () => this.credentialCache.uncheckedStatusIds().has(this.credentialInput$().id)
+  );
+
+  public readonly lastKnownStatusLabel = computed(
+    () => LIFECYCLE_LABELS[this.credentialInput$().lifeCycleStatus]
+  );
 
   public readonly statusBadge = computed<{ label: string; tone: CardStatusTone }>(() => {
     const cred = this.credentialInput$();
@@ -349,6 +360,7 @@ export class VcViewComponent implements OnDestroy {
         }
       } else if (hasError) {
         this.verifyOverall = 'unknown';
+        this.credentialCache.markStatusUnchecked(credential.id);
         // A check could not be completed (e.g. status list unreachable) — never
         // reported as valid nor as a confirmed failure (fail-closed on uncertainty).
         // Delivered as a top notification, consistent with the rest of the app's
@@ -357,6 +369,9 @@ export class VcViewComponent implements OnDestroy {
         this.toastService.showInfoToastByTranslateLabel('verification.result-unknown', 5000, 'warning');
       } else {
         this.verifyOverall = 'valid';
+      }
+      if (!hasError) {
+        this.credentialCache.clearStatusUnchecked(credential.id);
       }
     } catch {
       // TODO: Review behavior in case of error

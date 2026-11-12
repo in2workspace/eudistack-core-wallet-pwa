@@ -1,10 +1,10 @@
-import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, computed, DestroyRef, effect, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule, ViewWillEnter } from '@ionic/angular';
 import { StorageService } from 'src/app/shared/services/storage.service';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { VcViewComponent } from '../../shared/components/vc-view/vc-view.component';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { CameraLogsService } from 'src/app/shared/services/camera-logs.service';
@@ -27,9 +27,16 @@ import { ActivityService } from 'src/app/core/services/activity.service';
 import { UserPreferencesService } from 'src/app/shared/services/user-preferences.service';
 import { HapticService } from 'src/app/shared/services/haptic.service';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
-import { CredentialVerificationService } from 'src/app/core/services/credential-verification.service';
+import { CredentialDisplayService } from 'src/app/core/services/credential-display.service';
+import { CredentialStatusCheckService } from 'src/app/core/services/credential-status-check.service';
+import { ServerSessionDataService } from 'src/app/core/services/server-session-data.service';
+import { WalletDiscoveryService } from 'src/app/core/services/wallet-discovery.service';
+import {
+  CredentialFilters, credentialTypeLabel, distinctIssuers, distinctTypes, FILTERABLE_STATUSES, filterCredentials, hasActiveFilters,
+  NO_FILTERS
+} from 'src/app/core/utils/credential-filter.util';
 import { SupportLinkPipe } from 'src/app/shared/pipes/support-link.pipe';
-import dayjs from 'dayjs';
+import { FilterOption, FilterSelectComponent } from 'src/app/shared/components/filter-select/filter-select.component';
 
 @Component({
     selector: 'app-credentials',
@@ -42,7 +49,8 @@ import dayjs from 'dayjs';
         VcViewComponent,
         TranslateModule,
         SkeletonComponent,
-        SupportLinkPipe
+        SupportLinkPipe,
+        FilterSelectComponent
     ]
 })
 
@@ -71,17 +79,44 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   private readonly walletService = inject(WalletService);
   private readonly activityService = inject(ActivityService);
   private readonly hapticService = inject(HapticService);
-  private readonly verificationService = inject(CredentialVerificationService);
+  private readonly statusCheck = inject(CredentialStatusCheckService);
+  private readonly serverSessionData = inject(ServerSessionDataService);
+  private readonly discovery = inject(WalletDiscoveryService);
+  private readonly displayService = inject(CredentialDisplayService);
+  private readonly translate = inject(TranslateService);
   private readonly pwaInstallService = inject(PwaInstallService);
 
   public readonly canInstall$ = this.pwaInstallService.installable$;
 
   private authorizationRequest = '';
-  private readonly revokedCredentialIds = new Set<string>();
 
   /** Reactive credential list + load status, owned by CredentialCacheService. */
   public readonly credList = this.credentialCacheService.credentials;
   public readonly loadStatus = this.credentialCacheService.status;
+  public readonly lastSyncAt = this.credentialCacheService.lastSyncAt;
+  public readonly syncing = this.credentialCacheService.syncing;
+  public readonly syncError = this.credentialCacheService.syncError;
+
+  public readonly filters = signal<CredentialFilters>(NO_FILTERS);
+  /** The names the cards show for each type (the issuer's display name), by credential id. */
+  private readonly typeNames = signal<ReadonlyMap<string, string>>(new Map());
+  private typeNamesRequest = 0;
+  private readonly typeLabelOf = (cred: VerifiableCredential): string =>
+    this.typeNames().get(cred.id) ?? credentialTypeLabel(cred);
+  public readonly filteredList = computed(() => filterCredentials(this.credList(), this.filters(), this.typeLabelOf));
+  public readonly typeOptions = computed(() => distinctTypes(this.credList(), this.typeLabelOf));
+  public readonly issuerOptions = computed(() => distinctIssuers(this.credList()));
+  public readonly typeFilterOptions = computed<FilterOption[]>(() => this.typeOptions().map(value => ({ value, label: value })));
+  public readonly issuerFilterOptions = computed<FilterOption[]>(() => this.issuerOptions().map(value => ({ value, label: value })));
+  public readonly statusFilterOptions: FilterOption[] = FILTERABLE_STATUSES.map(status => ({
+    value: status,
+    label: `vc-view.lifecycle-${status.toLowerCase()}`,
+    translate: true,
+  }));
+  public readonly filtersActive = computed(() => hasActiveFilters(this.filters()));
+  private readonly typeNamesLoader = effect(() => {
+    void this.loadTypeNames(this.credList());
+  });
   /** True once ngOnInit has run; distinguishes first mount from later (cached-page) navigations. */
   private initialized = false;
 
@@ -131,7 +166,10 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
     // credential load (verifiablePresentationFlow gates on refreshCredentials) and
     // then navigates away. Refreshing here too would be a redundant, overlapping
     // IndexedDB read and could flicker the skeleton on an empty wallet.
-    if (!this.authorizationRequest && !this.credentialOfferUri) {
+    // While the session's attestations are loading, or when they could not be loaded, the local copy is
+    // empty or belongs to nobody: reading it would hide the loading and the error states.
+    const sessionDataPending = this.syncing() || this.syncError() === 'initial';
+    if (!this.authorizationRequest && !this.credentialOfferUri && !sessionDataPending) {
       this.refreshForDisplay();
     }
     this.cdr.detectChanges();
@@ -174,15 +212,9 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
     this.walletService.refreshCredentials()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
-        this.reapplyKnownRevocations();
-        this.checkCredentialStatuses();
+        this.statusCheck.reapplyKnownRevocations();
+        void this.statusCheck.checkAll();
       });
-  }
-
-  private reapplyKnownRevocations(): void {
-    for (const id of this.revokedCredentialIds) {
-      this.credentialCacheService.patchStatus(id, 'REVOKED');
-    }
   }
 
   public ionViewDidEnter(): void {
@@ -200,7 +232,7 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   public onCredentialStatusChanged(event: { id: string; status: LifeCycleStatus }): void {
     this.credentialCacheService.patchStatus(event.id, event.status);
     if (event.status === 'REVOKED') {
-      this.revokedCredentialIds.add(event.id);
+      this.statusCheck.rememberRevocation(event.id);
     }
   }
 
@@ -215,6 +247,12 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
         this.toastServiceHandler.showToast('vc-view.delete-success');
       }),
       switchMap(() => this.walletService.refreshCredentials()),
+      catchError((err: unknown) => {
+        // The service did not delete it, so it stays in the local copy as well.
+        console.error('Failed to delete the credential', err);
+        this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.delete-credential').pipe(take(1)).subscribe();
+        return EMPTY;
+      }),
       finalize(() => this.loader.removeLoadingProcess()),
       takeUntilDestroyed(this.destroyRef)
     )
@@ -223,17 +261,53 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
 
 
   public handleRefresh(event: { target: { complete: () => void } }): void {
-    this.walletService.refreshCredentials()
-      .pipe(
-        finalize(() => event.target.complete()),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(() => {
-        this.reapplyKnownRevocations();
-        this.checkCredentialStatuses();
-      });
+    void this.syncNow().finally(() => event.target.complete());
   }
 
+  /**
+   * Synchronizes with the Wallet Unit Service and checks the status again. The list stays usable meanwhile.
+   * Without a server (browser mode) there is nothing to synchronize, so it only reloads the local copy.
+   */
+  public async syncNow(): Promise<void> {
+    if (this.discovery.mode() !== 'server') {
+      this.refreshForDisplay();
+      return;
+    }
+    await this.serverSessionData.refresh();
+  }
+
+  /** Time of the last synchronization, in the 12 or 24 hour format of the language of the app. */
+  public formatSyncTime(date: Date | null): string {
+    return date
+      ? date.toLocaleTimeString(this.translate.currentLang || undefined, { hour: '2-digit', minute: '2-digit' })
+      : '';
+  }
+
+  private async loadTypeNames(credentials: VerifiableCredential[]): Promise<void> {
+    const request = ++this.typeNamesRequest;
+    const names = new Map<string, string>();
+    await Promise.all(credentials.map(async (cred) => {
+      try {
+        const name = await this.displayService.getDisplayName(cred);
+        if (name) {
+          names.set(cred.id, name);
+        }
+      } catch {
+        // Without the issuer metadata the card falls back to the raw type, and so does the filter.
+      }
+    }));
+    if (request === this.typeNamesRequest) {
+      this.typeNames.set(names);
+    }
+  }
+
+  public setFilter(key: keyof CredentialFilters, value: string | null | undefined): void {
+    this.filters.update(current => ({ ...current, [key]: value ?? '' }) as CredentialFilters);
+  }
+
+  public clearFilters(): void {
+    this.filters.set(NO_FILTERS);
+  }
 
   private sameDeviceVcActivationFlow(credentialOfferUri: string): void {
     console.info('Requesting Credential Offer via same-device flow.')
@@ -434,43 +508,6 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
           this.loader.removeLoadingProcess();
         })
       )
-  }
-
-  private async checkCredentialStatuses(): Promise<void> {
-    const credentials = this.credentialCacheService.snapshot().credentials;
-
-    // Check expiration for VALID credentials
-    for (const cred of credentials) {
-      if (cred.lifeCycleStatus === 'VALID' && cred.validUntil) {
-        const expiry = dayjs(cred.validUntil);
-        if (expiry.isValid() && expiry.isBefore(dayjs())) {
-          this.credentialCacheService.patchStatus(cred.id, 'EXPIRED');
-          this.walletService.updateCredentialStatus(cred.id, 'EXPIRED').subscribe({ error: (e) => console.error('Failed to persist credential status', e) });
-        }
-      }
-    }
-
-    // Check revocation via status list for remaining VALID credentials
-    const candidates = this.credentialCacheService.snapshot().credentials
-      .filter(c => c.lifeCycleStatus === 'VALID' && c.credentialStatus?.statusListCredential);
-    if (candidates.length > 0) {
-      const checks = await Promise.allSettled(
-        candidates.map(async (cred) => {
-          const result = await this.verificationService.isRevoked(cred);
-          return { cred, result };
-        })
-      );
-
-      // 'unknown' (status list unreachable) intentionally leaves the credential's
-      // cached status untouched — never treated as a confirmed non-revoked result.
-      for (const settled of checks) {
-        if (settled.status === 'fulfilled' && settled.value.result === 'revoked') {
-          this.revokedCredentialIds.add(settled.value.cred.id);
-          this.credentialCacheService.patchStatus(settled.value.cred.id, 'REVOKED');
-          this.walletService.updateCredentialStatus(settled.value.cred.id, 'REVOKED').subscribe({ error: (e) => console.error('Failed to persist credential status', e) });
-        }
-      }
-    }
   }
 
   private requestPendingSignatures(): void {
