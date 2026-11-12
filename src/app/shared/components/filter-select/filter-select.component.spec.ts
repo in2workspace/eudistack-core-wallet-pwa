@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { IonPopover } from '@ionic/angular';
 import { TranslateModule } from '@ngx-translate/core';
 import { FilterOption, FilterSelectComponent } from './filter-select.component';
 
@@ -21,6 +22,8 @@ describe('FilterSelectComponent', () => {
   const pill = (): HTMLButtonElement => fixture.nativeElement.querySelector('button.filter');
 
   beforeEach(async () => {
+    // The real popover element does not exist in Jest, so its proxy has nothing to dismiss.
+    jest.spyOn(IonPopover.prototype, 'dismiss').mockResolvedValue(true);
     await TestBed.configureTestingModule({
       imports: [FilterSelectComponent, TranslateModule.forRoot()],
     }).compileComponents();
@@ -75,6 +78,10 @@ describe('FilterSelectComponent', () => {
     expect(pill().id).not.toBe(other.nativeElement.querySelector('button.filter').id);
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('choose emits the picked value', () => {
     render();
     const emitted: string[] = [];
@@ -84,5 +91,13 @@ describe('FilterSelectComponent', () => {
     component.choose('');
 
     expect(emitted).toEqual(['Employee', '']);
+  });
+
+  it('choose closes the menu', () => {
+    render();
+
+    component.choose('Employee');
+
+    expect(IonPopover.prototype.dismiss).toHaveBeenCalledTimes(1);
   });
 });
