@@ -127,7 +127,7 @@ export class WalletService {
 
   /** Resolves once the local writes of the synchronizations that already started have finished. */
   public async whenSyncWritesSettled(): Promise<void> {
-    await Promise.allSettled([...this.pendingWrites]);
+    await Promise.allSettled(this.pendingWrites);
   }
 
   private trackWrite(write: Promise<void>): Promise<void> {
