@@ -65,10 +65,11 @@ export class CredentialStatusCheckService {
   }
 
   private async runUntilNoneIsPending(generation: number): Promise<void> {
-    do {
-      this.rerunRequested = false;
-      await this.runChecks(generation);
-    } while (this.rerunRequested && generation === this.generation);
+    this.rerunRequested = false;
+    await this.runChecks(generation);
+    if (this.rerunRequested && generation === this.generation) {
+      return this.runUntilNoneIsPending(generation);
+    }
   }
 
   private async runChecks(generation: number): Promise<void> {
