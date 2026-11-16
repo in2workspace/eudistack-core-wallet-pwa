@@ -15,6 +15,7 @@ import {
 import { QRCodeComponent } from 'angularx-qrcode';
 import { WalletService } from 'src/app/core/services/wallet.service';
 import { CredentialCacheService } from 'src/app/shared/services/credential-cache.service';
+import { hasExpired } from 'src/app/core/utils/credential-expiry.util';
 import { CommonModule } from '@angular/common';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { EmployeeCredentialSubject, ExtendedCredentialType, LifeCycleStatus, VerifiableCredential } from 'src/app/core/models/verifiable-credential';
@@ -98,9 +99,9 @@ export class VcViewComponent implements OnDestroy {
     const cred = this.credentialInput$();
     if (!cred.validUntil) return 'valid';
     const now = dayjs();
+    if (hasExpired(cred.validUntil, now)) return 'expired';
     const expiry = dayjs(cred.validUntil);
     if (!expiry.isValid()) return 'valid';
-    if (expiry.isBefore(now)) return 'expired';
     if (expiry.diff(now, 'day') <= EXPIRY_WARNING_DAYS) return 'expiring-soon';
     return 'valid';
   });

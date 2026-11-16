@@ -250,7 +250,9 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
       catchError((err: unknown) => {
         // The service did not delete it, so it stays in the local copy as well.
         console.error('Failed to delete the credential', err);
-        this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.delete-credential').pipe(take(1)).subscribe();
+        this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.delete-credential')
+          .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+          .subscribe();
         return EMPTY;
       }),
       finalize(() => this.loader.removeLoadingProcess()),
@@ -301,8 +303,14 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
     }
   }
 
-  public setFilter(key: keyof CredentialFilters, value: string | null | undefined): void {
-    this.filters.update(current => ({ ...current, [key]: value ?? '' }) as CredentialFilters);
+  public setFilter(key: 'type' | 'issuer', value: string | null | undefined): void {
+    this.filters.update(current => ({ ...current, [key]: value ?? '' }));
+  }
+
+  /** Only the statuses of the product are accepted; anything else means no status filter. */
+  public setStatusFilter(value: string | null | undefined): void {
+    const status = FILTERABLE_STATUSES.find(candidate => candidate === value) ?? '';
+    this.filters.update(current => ({ ...current, status }));
   }
 
   public clearFilters(): void {

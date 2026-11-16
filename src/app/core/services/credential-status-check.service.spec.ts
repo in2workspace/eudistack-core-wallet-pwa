@@ -171,18 +171,52 @@ describe('CredentialStatusCheckService', () => {
   });
 
   describe('concurrent checks', () => {
-    it('shares the check in progress and allows a new one afterwards', async () => {
+    it('a call during a check joins it and adds one more pass; several calls add only one', async () => {
       // Arrange
       cache.setLoaded([credential({ credentialStatus: withStatusList })]);
 
       // Act
       const first = service.checkAll();
       const second = service.checkAll();
-      await Promise.all([first, second]);
+      const third = service.checkAll();
+      await Promise.all([first, second, third]);
+
+      // Assert
+      expect(second).toBe(first);
+      expect(isRevoked).toHaveBeenCalledTimes(2);
+    });
+
+    it('a check requested after the previous one ended starts a new one', async () => {
+      // Arrange
+      cache.setLoaded([credential({ credentialStatus: withStatusList })]);
+
+      // Act
+      await service.checkAll();
       await service.checkAll();
 
       // Assert
       expect(isRevoked).toHaveBeenCalledTimes(2);
+    });
+
+    it('the extra pass checks the copy that arrived while the first one ran', async () => {
+      // Arrange
+      cache.setLoaded([credential({ id: 'a', credentialStatus: withStatusList })]);
+      let finishFirst!: (value: string) => void;
+      isRevoked.mockReturnValueOnce(new Promise<string>(resolve => { finishFirst = resolve; }));
+      const run = service.checkAll();
+
+      // Act — a new synchronization replaces the copy, and asks for a check, while the first one waits
+      cache.setLoaded([
+        credential({ id: 'a', credentialStatus: withStatusList }),
+        credential({ id: 'b', credentialStatus: withStatusList }),
+      ]);
+      void service.checkAll();
+      isRevoked.mockResolvedValue('revoked');
+      finishFirst('not-revoked');
+      await run;
+
+      // Assert
+      expect(statusOf('b')).toBe('REVOKED');
     });
   });
 

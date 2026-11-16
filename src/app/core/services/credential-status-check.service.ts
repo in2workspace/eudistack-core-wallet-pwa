@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import dayjs from 'dayjs';
 import { CredentialCacheService } from '../../shared/services/credential-cache.service';
 import { LifeCycleStatus, VerifiableCredential } from '../models/verifiable-credential';
+import { hasExpired } from '../utils/credential-expiry.util';
 import { CredentialVerificationService } from './credential-verification.service';
 import { WalletService } from './wallet.service';
 
@@ -21,18 +21,25 @@ export class CredentialStatusCheckService {
   private readonly revokedCredentialIds = new Set<string>();
   private inFlight: Promise<void> | null = null;
   private generation = 0;
+  private rerunRequested = false;
 
-  /** Checks every valid attestation. Never rejects; concurrent calls share the check in progress. */
+  /**
+   * Checks every valid attestation. Never rejects. A call made while a check runs joins it, and asks for one
+   * more pass when it ends, so a copy that changed in the meantime (a new synchronization) is checked too.
+   */
   checkAll(): Promise<void> {
-    if (!this.inFlight) {
-      const run = this.runChecks(this.generation).finally(() => {
-        if (this.inFlight === run) {
-          this.inFlight = null;
-        }
-      });
-      this.inFlight = run;
+    if (this.inFlight) {
+      this.rerunRequested = true;
+      return this.inFlight;
     }
-    return this.inFlight;
+    const generation = this.generation;
+    const run = this.runUntilNoneIsPending(generation).finally(() => {
+      if (this.inFlight === run) {
+        this.inFlight = null;
+      }
+    });
+    this.inFlight = run;
+    return run;
   }
 
   /**
@@ -42,6 +49,7 @@ export class CredentialStatusCheckService {
   reset(): void {
     this.generation++;
     this.revokedCredentialIds.clear();
+    this.rerunRequested = false;
     this.inFlight = null;
   }
 
@@ -56,6 +64,13 @@ export class CredentialStatusCheckService {
     }
   }
 
+  private async runUntilNoneIsPending(generation: number): Promise<void> {
+    do {
+      this.rerunRequested = false;
+      await this.runChecks(generation);
+    } while (this.rerunRequested && generation === this.generation);
+  }
+
   private async runChecks(generation: number): Promise<void> {
     this.checkExpiry();
     await this.checkRevocation(generation);
@@ -63,11 +78,8 @@ export class CredentialStatusCheckService {
 
   private checkExpiry(): void {
     for (const cred of this.credentialCache.snapshot().credentials) {
-      if (cred.lifeCycleStatus === 'VALID' && cred.validUntil) {
-        const expiry = dayjs(cred.validUntil);
-        if (expiry.isValid() && expiry.isBefore(dayjs())) {
-          this.changeStatus(cred.id, 'EXPIRED');
-        }
+      if (cred.lifeCycleStatus === 'VALID' && hasExpired(cred.validUntil)) {
+        this.changeStatus(cred.id, 'EXPIRED');
       }
     }
   }

@@ -578,7 +578,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
 
     it('combines the filters', () => {
       component.setFilter('type', 'Employee');
-      component.setFilter('status', 'REVOKED');
+      component.setStatusFilter('REVOKED');
 
       expect(component.filteredList()).toEqual([]);
       expect(component.filtersActive()).toBe(true);
@@ -586,7 +586,7 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
 
     it('shows "no results" with a way to clear the filters when none matches', () => {
       component.setFilter('issuer', 'Acme');
-      component.setFilter('status', 'REVOKED');
+      component.setStatusFilter('REVOKED');
 
       fixture.detectChanges();
 
@@ -631,6 +631,22 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       await component['loadTypeNames']([employee, machine]);
 
       expect(component.typeOptions()).toEqual(['Employee', 'Machine']);
+    });
+
+    it('setStatusFilter accepts only the statuses of the product', () => {
+      component.setStatusFilter('REVOKED');
+      expect(component.filters().status).toBe('REVOKED');
+
+      component.setStatusFilter('REVOKD');
+      expect(component.filters().status).toBe('');
+    });
+
+    it('setStatusFilter with nothing removes the status filter', () => {
+      component.setStatusFilter('EXPIRED');
+
+      component.setStatusFilter(null);
+
+      expect(component.filters().status).toBe('');
     });
 
     it('clearFilters brings back the full list', () => {

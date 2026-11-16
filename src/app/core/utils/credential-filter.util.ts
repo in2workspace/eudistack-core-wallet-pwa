@@ -1,5 +1,5 @@
-import dayjs from 'dayjs';
 import { VerifiableCredential } from '../models/verifiable-credential';
+import { hasExpired } from './credential-expiry.util';
 
 /** The statuses a user can filter by; an unsigned (`ISSUED`) attestation has none. */
 export type FilterableStatus = 'VALID' | 'REVOKED' | 'EXPIRED';
@@ -28,8 +28,7 @@ export function credentialStatusOf(cred: VerifiableCredential): FilterableStatus
   if (cred.lifeCycleStatus === 'REVOKED') return 'REVOKED';
   if (cred.lifeCycleStatus === 'EXPIRED') return 'EXPIRED';
   if (cred.lifeCycleStatus !== 'VALID') return null;
-  const expiry = cred.validUntil ? dayjs(cred.validUntil) : null;
-  return expiry?.isValid() && expiry.isBefore(dayjs()) ? 'EXPIRED' : 'VALID';
+  return hasExpired(cred.validUntil) ? 'EXPIRED' : 'VALID';
 }
 
 export function hasActiveFilters(filters: CredentialFilters): boolean {
