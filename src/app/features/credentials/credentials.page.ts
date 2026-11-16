@@ -260,8 +260,8 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   }
 
 
-  public handleRefresh(event: { target: { complete: () => void } }): void {
-    void this.syncNow().finally(() => event.target.complete());
+  public handleRefresh(event: { target: { complete: () => void } }): Promise<void> {
+    return this.syncNow().finally(() => event.target.complete());
   }
 
   /**

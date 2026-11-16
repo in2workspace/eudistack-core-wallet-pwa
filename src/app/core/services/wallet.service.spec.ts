@@ -481,27 +481,26 @@ describe('WalletService', () => {
       expect(credentialCache.lastSyncAt()).toBeNull();
     }));
 
-    it('whenSyncWritesSettled waits for the write in progress', fakeAsync(() => {
-      // Arrange
+    it('whenSyncWritesSettled waits for the write in progress', async () => {
+      // Arrange — an async method uses native promises, which fakeAsync does not control
       createModule('server');
       let finishWrite!: () => void;
       mockCredentialStorage.replaceAllCredentials.mockReturnValue(new Promise<void>(resolve => { finishWrite = resolve; }));
       service.syncCredentials().subscribe();
       httpTestingController.expectOne(environment.server_url + SERVER_PATH.CREDENTIALS).flush([mockCredential]);
-      tick();
       let settled = false;
 
       // Act
-      void service.whenSyncWritesSettled().then(() => { settled = true; });
-      tick();
+      const waiting = service.whenSyncWritesSettled().then(() => { settled = true; });
+      await Promise.resolve();
       const settledWhileWriting = settled;
       finishWrite();
-      tick();
+      await waiting;
 
       // Assert
       expect(settledWhileWriting).toBe(false);
       expect(settled).toBe(true);
-    }));
+    });
   });
 
   describe('refreshCredentials', () => {

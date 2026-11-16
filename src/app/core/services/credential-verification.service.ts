@@ -26,6 +26,7 @@ export const STATUS_LIST_TIMEOUT_MS = 10_000;
 @Injectable({ providedIn: 'root' })
 export class CredentialVerificationService {
   private readonly http = inject(HttpClient);
+  private readonly statusListTimeoutMs = STATUS_LIST_TIMEOUT_MS;
 
   /** Returns the ordered list of check keys to run */
   getCheckKeys(): string[] {
@@ -53,7 +54,7 @@ export class CredentialVerificationService {
     }
     try {
       const jwt = await firstValueFrom(
-        this.http.get(status.statusListCredential, { responseType: 'text' }).pipe(timeout(STATUS_LIST_TIMEOUT_MS))
+        this.http.get(status.statusListCredential, { responseType: 'text' }).pipe(timeout(this.statusListTimeoutMs))
       );
       const revoked = this.checkBitInStatusList(jwt, status.statusListIndex);
       if (revoked === null) {

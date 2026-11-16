@@ -472,19 +472,18 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
   });
 
   describe('on-demand synchronization', () => {
-    it('handleRefresh synchronizes with the service and completes the refresher', fakeAsync(() => {
+    it('handleRefresh synchronizes with the service and completes the refresher', async () => {
       // Arrange
       const complete = jest.fn();
 
       // Act
-      component.handleRefresh({ target: { complete } });
-      tick();
+      await component.handleRefresh({ target: { complete } });
 
       // Assert
       expect(mockSessionData.refresh).toHaveBeenCalledTimes(1);
       expect(mockWalletService.refreshCredentials).not.toHaveBeenCalled();
       expect(complete).toHaveBeenCalledTimes(1);
-    }));
+    });
 
     it('syncNow only reloads the local copy in browser mode', async () => {
       // Arrange
