@@ -43,12 +43,12 @@
     "vc-saved": "Credential saved"
   },
   "credentials": {
-    "title": "Credentials",
+    "title": "My attestations",
     "add": "Add",
     "nocred": "You have no saved credentials.\nAdd one to start using the Wallet.",
-    "nocred-title": "No credentials yet",
-    "nocred-subtitle": "Your verified credentials will appear here once they are added to your wallet.",
-    "nocred-scan": "Scan QR code",
+    "nocred-title": "You have no attestations yet.",
+    "nocred-subtitle": "Your verified attestations will appear here once they are added to your wallet.",
+    "nocred-scan": "Scan a code",
     "show-data": "Show data",
     "hide-data": "Hide data",
     "sync": {

@@ -186,6 +186,54 @@ describe('CredentialStatusCheckService', () => {
     });
   });
 
+  describe('reset', () => {
+    it('forgets the revocations remembered by the previous session', () => {
+      // Arrange
+      cache.setLoaded([credential({ id: 'vc-1' })]);
+      service.rememberRevocation('vc-1');
+
+      // Act
+      service.reset();
+      service.reapplyKnownRevocations();
+
+      // Assert
+      expect(statusOf('vc-1')).toBe('VALID');
+    });
+
+    it('discards the result of a check that was in progress', async () => {
+      // Arrange
+      cache.setLoaded([credential({ credentialStatus: withStatusList })]);
+      let finish!: (value: string) => void;
+      isRevoked.mockReturnValue(new Promise<string>(resolve => { finish = resolve; }));
+      const run = service.checkAll();
+
+      // Act — the session ends, then the late answer arrives
+      service.reset();
+      finish('revoked');
+      await run;
+
+      // Assert
+      expect(statusOf('vc-1')).toBe('VALID');
+      expect(updateCredentialStatus).not.toHaveBeenCalled();
+    });
+
+    it('lets a new check start even if the previous one never finishes', async () => {
+      // Arrange
+      cache.setLoaded([credential({ credentialStatus: withStatusList })]);
+      isRevoked.mockReturnValueOnce(new Promise<string>(() => undefined));
+      void service.checkAll();
+
+      // Act
+      service.reset();
+      isRevoked.mockResolvedValue('revoked');
+      await service.checkAll();
+
+      // Assert
+      expect(isRevoked).toHaveBeenCalledTimes(2);
+      expect(statusOf('vc-1')).toBe('REVOKED');
+    });
+  });
+
   describe('known revocations', () => {
     it('re-applies a remembered revocation after the copy is reloaded', () => {
       // Arrange

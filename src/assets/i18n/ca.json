@@ -30,12 +30,12 @@
     "vc-saved": "Credencial emmagatzemada"
   },
   "credentials": {
-    "title": "Credencials",
+    "title": "Les meves atestacions",
     "add": "Afegeix",
     "nocred": "No tens cap credencial carregada",
-    "nocred-title": "Sense credencials",
-    "nocred-subtitle": "Les teves credencials verificades apareixeran aquí quan s'afegeixin a la teva cartera.",
-    "nocred-scan": "Escaneja el codi QR",
+    "nocred-title": "Encara no tens atestacions.",
+    "nocred-subtitle": "Les teves atestacions verificades apareixeran aquí quan s'afegeixin a la teva cartera.",
+    "nocred-scan": "Escaneja un codi",
     "show-data": "Mostrar dades",
     "hide-data": "Ocultar dades",
     "sync": {

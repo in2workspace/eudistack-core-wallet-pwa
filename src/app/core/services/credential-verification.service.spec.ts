@@ -1,7 +1,7 @@
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import * as pako from 'pako';
-import { CredentialVerificationService } from './credential-verification.service';
+import { CredentialVerificationService, STATUS_LIST_TIMEOUT_MS } from './credential-verification.service';
 import { VerifiableCredential } from '../models/verifiable-credential';
 
 describe('CredentialVerificationService', () => {
@@ -98,6 +98,20 @@ describe('CredentialVerificationService', () => {
       // Assert
       expect(result).toBe('revoked');
     });
+
+    it('should return "unknown" when the status list does not answer in time', fakeAsync(() => {
+      // Arrange
+      const credential = buildCredential({ lifeCycleStatus: 'VALID' });
+      let result: unknown;
+      service.isRevoked(credential).then(value => { result = value; });
+      httpTestingController.expectOne(STATUS_LIST_URL);
+
+      // Act
+      tick(STATUS_LIST_TIMEOUT_MS);
+
+      // Assert — a status list that never answers must not hold the check for ever, nor read as "not revoked"
+      expect(result).toBe('unknown');
+    }));
 
     it('should return "unknown", never "not-revoked", when the status list request fails', async () => {
       // Arrange

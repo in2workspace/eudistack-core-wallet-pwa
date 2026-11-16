@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import * as pako from 'pako';
 import dayjs from 'dayjs';
 import { VerifiableCredential } from '../models/verifiable-credential';
@@ -19,6 +19,9 @@ export interface VerificationCheck {
  * never inferred as 'not-revoked'.
  */
 export type RevocationCheckResult = 'revoked' | 'not-revoked' | 'unknown';
+
+/** A status list that takes longer than this is treated as not answering. */
+export const STATUS_LIST_TIMEOUT_MS = 10_000;
 
 @Injectable({ providedIn: 'root' })
 export class CredentialVerificationService {
@@ -50,7 +53,7 @@ export class CredentialVerificationService {
     }
     try {
       const jwt = await firstValueFrom(
-        this.http.get(status.statusListCredential, { responseType: 'text' })
+        this.http.get(status.statusListCredential, { responseType: 'text' }).pipe(timeout(STATUS_LIST_TIMEOUT_MS))
       );
       const revoked = this.checkBitInStatusList(jwt, status.statusListIndex);
       if (revoked === null) {

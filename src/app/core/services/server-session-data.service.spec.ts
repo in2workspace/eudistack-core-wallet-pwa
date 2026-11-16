@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { map, of, tap, throwError, timer } from 'rxjs';
+import { map, of, tap, throwError, timer, TimeoutError } from 'rxjs';
 import { ServerSessionDataService } from './server-session-data.service';
 import { SyncSupersededError, WalletService } from './wallet.service';
 import { LocalCredentialStorageService } from './local-credential-storage.service';
@@ -14,6 +14,8 @@ describe('ServerSessionDataService', () => {
   let cache: CredentialCacheService;
   let checkAll: jest.Mock;
   let invalidatePendingSyncs: jest.Mock;
+  let whenSyncWritesSettled: jest.Mock;
+  let reset: jest.Mock;
 
   beforeEach(() => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -21,13 +23,15 @@ describe('ServerSessionDataService', () => {
     syncCredentials = jest.fn().mockImplementation(() => of(undefined).pipe(tap(() => cache.markSyncSucceeded())));
     checkAll = jest.fn().mockResolvedValue(undefined);
     invalidatePendingSyncs = jest.fn();
+    whenSyncWritesSettled = jest.fn().mockResolvedValue(undefined);
+    reset = jest.fn();
     storage = { clearAllCredentials: jest.fn().mockResolvedValue(undefined) };
     TestBed.configureTestingModule({
       providers: [
-        { provide: WalletService, useValue: { syncCredentials, invalidatePendingSyncs } },
+        { provide: WalletService, useValue: { syncCredentials, invalidatePendingSyncs, whenSyncWritesSettled } },
         { provide: LocalCredentialStorageService, useValue: storage },
         { provide: ActivityService, useValue: { syncFromServer: jest.fn().mockResolvedValue(undefined) } },
-        { provide: CredentialStatusCheckService, useValue: { checkAll } },
+        { provide: CredentialStatusCheckService, useValue: { checkAll, reset } },
       ],
     });
     service = TestBed.inject(ServerSessionDataService);
@@ -108,6 +112,86 @@ describe('ServerSessionDataService', () => {
 
       expect(storage.clearAllCredentials).not.toHaveBeenCalled();
       expect(cache.syncError()).toBeNull();
+    });
+  });
+
+  describe('what belongs to the previous session', () => {
+    it('sessionStarted forgets the revocations and the check of the previous session', async () => {
+      await service.sessionStarted();
+
+      expect(reset).toHaveBeenCalledTimes(1);
+    });
+
+    it('sessionEnded forgets the revocations and the check of the session', async () => {
+      await service.sessionEnded();
+
+      expect(reset).toHaveBeenCalledTimes(1);
+    });
+
+    it('sessionEnded clears the store only after the write in progress has finished', async () => {
+      // Arrange
+      let finishWrite!: () => void;
+      whenSyncWritesSettled.mockReturnValue(new Promise<void>(resolve => { finishWrite = resolve; }));
+
+      // Act
+      const ended = service.sessionEnded();
+      await Promise.resolve();
+      const clearedWhileWriting = storage.clearAllCredentials.mock.calls.length;
+      finishWrite();
+      await ended;
+
+      // Assert
+      expect(clearedWhileWriting).toBe(0);
+      expect(storage.clearAllCredentials).toHaveBeenCalledTimes(1);
+    });
+
+    it('sessionStarted settles with an error state, instead of waiting for ever, when the service times out', async () => {
+      syncCredentials.mockReturnValue(throwError(() => new TimeoutError()));
+
+      await service.sessionStarted();
+
+      expect(cache.syncError()).toBe('initial');
+      expect(cache.syncing()).toBe(false);
+    });
+  });
+
+  describe('concurrent refreshes', () => {
+    it('two refreshes at once share one synchronization', async () => {
+      // Arrange
+      syncCredentials.mockImplementation(() =>
+        timer(0).pipe(map(() => undefined), tap(() => cache.markSyncSucceeded())));
+
+      // Act
+      const first = service.refresh();
+      const second = service.refresh();
+      await Promise.all([first, second]);
+
+      // Assert
+      expect(first).toBe(second);
+      expect(syncCredentials).toHaveBeenCalledTimes(1);
+      expect(checkAll).toHaveBeenCalledTimes(1);
+    });
+
+    it('a refresh after the previous one has finished synchronizes again', async () => {
+      await service.refresh();
+      await service.refresh();
+
+      expect(syncCredentials).toHaveBeenCalledTimes(2);
+    });
+
+    it('a session start drops the refresh in flight instead of joining it', async () => {
+      // Arrange
+      syncCredentials.mockImplementation(() =>
+        timer(0).pipe(map(() => undefined), tap(() => cache.markSyncSucceeded())));
+      const stale = service.refresh();
+
+      // Act
+      await service.sessionStarted();
+      const fresh = service.refresh();
+      await Promise.all([stale, fresh]);
+
+      // Assert
+      expect(fresh).not.toBe(stale);
     });
   });
 

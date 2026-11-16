@@ -23,9 +23,11 @@ export class ServerSessionDataService {
   private readonly activityService = inject(ActivityService);
   private readonly statusCheck = inject(CredentialStatusCheckService);
 
+  private refreshInFlight: Promise<void> | null = null;
+
   /** Replaces the local attestations with the session's. Never rejects. */
   async sessionStarted(): Promise<void> {
-    this.walletService.invalidatePendingSyncs();
+    this.forgetPreviousSession();
     this.credentialCache.clearSyncState();
     this.credentialCache.setLoading();
     this.credentialCache.markSyncStarted();
@@ -50,10 +52,23 @@ export class ServerSessionDataService {
    * failure keeps it with a notice. If the session never got its attestations, it starts over as a new session.
    * Never rejects.
    */
-  async refresh(): Promise<void> {
+  refresh(): Promise<void> {
     if (this.credentialCache.syncError() === 'initial') {
       return this.sessionStarted();
     }
+    // Pulling the list while a synchronization runs joins it instead of racing it.
+    if (!this.refreshInFlight) {
+      const run = this.runRefresh().finally(() => {
+        if (this.refreshInFlight === run) {
+          this.refreshInFlight = null;
+        }
+      });
+      this.refreshInFlight = run;
+    }
+    return this.refreshInFlight;
+  }
+
+  private async runRefresh(): Promise<void> {
     this.credentialCache.markSyncStarted();
     try {
       await firstValueFrom(this.walletService.syncCredentials());
@@ -69,10 +84,18 @@ export class ServerSessionDataService {
 
   /** Drops the local attestations of a session that has ended. Never rejects. */
   async sessionEnded(): Promise<void> {
-    // A synchronization still in flight would put the attestations of this session back in the store.
-    this.walletService.invalidatePendingSyncs();
+    // A synchronization still in flight would put the attestations of this session back in the store: its
+    // answer is discarded, and the store is cleared only after the write it already started has finished.
+    this.forgetPreviousSession();
+    await this.walletService.whenSyncWritesSettled();
     await this.dropLocalCredentials();
     this.credentialCache.clearSyncState();
+  }
+
+  private forgetPreviousSession(): void {
+    this.walletService.invalidatePendingSyncs();
+    this.statusCheck.reset();
+    this.refreshInFlight = null;
   }
 
   private async dropLocalCredentials(): Promise<void> {

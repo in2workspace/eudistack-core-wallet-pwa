@@ -2,7 +2,7 @@ import { CONTENT_TYPE } from './../constants/content-type.constants';
 
 import { HttpClient, HttpHeaders, HttpParams, HttpResponse} from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import {catchError, defer, finalize, from, map, Observable, of, switchMap, tap} from 'rxjs';
+import {catchError, defer, finalize, from, map, Observable, of, switchMap, tap, timeout} from 'rxjs';
 import { LifeCycleStatus, VerifiableCredential } from '../models/verifiable-credential';
 import { UrlResolverService } from './url-resolver.service';
 import { SERVER_PATH } from '../constants/api.constants';
@@ -25,6 +25,9 @@ export const options = {
   redirect: 'follow',
 };
 
+/** A synchronization that takes longer than this fails, so the user is never left waiting for the service. */
+export const SYNC_TIMEOUT_MS = 15_000;
+
 /** A synchronization whose session ended, or was replaced by a new one, before its answer arrived. */
 export class SyncSupersededError extends Error {
   constructor() {
@@ -46,6 +49,7 @@ export class WalletService {
 
   private inFlightSyncs = 0;
   private syncGeneration = 0;
+  private readonly pendingWrites = new Set<Promise<void>>();
   /** Deleted while a synchronization was in flight, whose response may still carry them. */
   private readonly deletedDuringSync = new Set<string>();
 
@@ -121,6 +125,18 @@ export class WalletService {
     this.syncGeneration++;
   }
 
+  /** Resolves once the local writes of the synchronizations that already started have finished. */
+  public async whenSyncWritesSettled(): Promise<void> {
+    await Promise.allSettled([...this.pendingWrites]);
+  }
+
+  private trackWrite(write: Promise<void>): Promise<void> {
+    this.pendingWrites.add(write);
+    const done = () => this.pendingWrites.delete(write);
+    write.then(done, done);
+    return write;
+  }
+
   public syncCredentials(): Observable<void> {
     // Fetch from the server FIRST, then swap the local store atomically. We never
     // clear IndexedDB before we hold the new data, so a reader can't observe an
@@ -129,6 +145,7 @@ export class WalletService {
       this.inFlightSyncs++;
       const generation = this.syncGeneration;
       return this.getAllVCsFromServer().pipe(
+        timeout(SYNC_TIMEOUT_MS),
         map((credentials) => {
           if (generation !== this.syncGeneration) {
             throw new SyncSupersededError();
@@ -138,8 +155,15 @@ export class WalletService {
           return credentials.filter((cred) => !this.deletedDuringSync.has(cred.id));
         }),
         switchMap((credentials) =>
-          from(this.credentialStorage.replaceAllCredentials(credentials))
+          from(this.trackWrite(this.credentialStorage.replaceAllCredentials(credentials)))
         ),
+        // The session may have ended while the copy was being written: do not load it into the cache.
+        // Whoever ended it waits for the write (whenSyncWritesSettled) and clears the store afterwards.
+        map(() => {
+          if (generation !== this.syncGeneration) {
+            throw new SyncSupersededError();
+          }
+        }),
         switchMap(() => this.refreshCredentials()),
         tap(() => this.credentialCache.markSyncSucceeded()),
         map(() => void 0),

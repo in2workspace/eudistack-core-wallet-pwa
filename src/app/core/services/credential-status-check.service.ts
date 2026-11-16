@@ -20,11 +20,29 @@ export class CredentialStatusCheckService {
 
   private readonly revokedCredentialIds = new Set<string>();
   private inFlight: Promise<void> | null = null;
+  private generation = 0;
 
   /** Checks every valid attestation. Never rejects; concurrent calls share the check in progress. */
   checkAll(): Promise<void> {
-    this.inFlight ??= this.runChecks().finally(() => { this.inFlight = null; });
+    if (!this.inFlight) {
+      const run = this.runChecks(this.generation).finally(() => {
+        if (this.inFlight === run) {
+          this.inFlight = null;
+        }
+      });
+      this.inFlight = run;
+    }
     return this.inFlight;
+  }
+
+  /**
+   * Forgets what belongs to a session that starts or ends: the revocations remembered and the check in
+   * progress, whose result is discarded when it arrives.
+   */
+  reset(): void {
+    this.generation++;
+    this.revokedCredentialIds.clear();
+    this.inFlight = null;
   }
 
   /** Keeps a revocation known in this session, in case reloading the copy brings back the old status. */
@@ -38,9 +56,9 @@ export class CredentialStatusCheckService {
     }
   }
 
-  private async runChecks(): Promise<void> {
+  private async runChecks(generation: number): Promise<void> {
     this.checkExpiry();
-    await this.checkRevocation();
+    await this.checkRevocation(generation);
   }
 
   private checkExpiry(): void {
@@ -54,7 +72,7 @@ export class CredentialStatusCheckService {
     }
   }
 
-  private async checkRevocation(): Promise<void> {
+  private async checkRevocation(generation: number): Promise<void> {
     const candidates = this.credentialCache.snapshot().credentials
       .filter(cred => cred.lifeCycleStatus === 'VALID' && cred.credentialStatus?.statusListCredential);
 
@@ -62,6 +80,9 @@ export class CredentialStatusCheckService {
       candidates.map(async (cred) => ({ cred, result: await this.verificationService.isRevoked(cred) }))
     );
 
+    if (generation !== this.generation) {
+      return;
+    }
     for (const check of checks) {
       if (check.status === 'fulfilled') {
         this.applyRevocationResult(check.value.cred, check.value.result);

@@ -30,12 +30,12 @@
     "vc-saved": "Credencial guardada"
   },
   "credentials": {
-    "title": "Credenciales",
+    "title": "Mis atestaciones",
     "add": "Añade",
     "nocred": "No tienes ninguna credencial cargada",
-    "nocred-title": "Sin credenciales",
-    "nocred-subtitle": "Tus credenciales verificadas aparecerán aquí en cuanto se añadan a tu cartera.",
-    "nocred-scan": "Escanear código QR",
+    "nocred-title": "Aún no tienes atestaciones.",
+    "nocred-subtitle": "Tus atestaciones verificadas aparecerán aquí en cuanto se añadan a tu cartera.",
+    "nocred-scan": "Escanear un código",
     "show-data": "Mostrar datos",
     "hide-data": "Ocultar datos",
     "sync": {
