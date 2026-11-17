@@ -48,6 +48,24 @@ describe('RemoteAuthService (EUD-8)', () => {
       expect(await firstValueFrom(service.getName$())).toBe('ana@example.com');
     });
 
+    it('does not settle the resume until the attestations of the session are loaded', async () => {
+      // Arrange
+      let finishLoading!: () => void;
+      harness.sessionData.sessionStarted.mockReturnValue(new Promise<void>(resolve => { finishLoading = resolve; }));
+      let settled = false;
+      const resumed = service.resumeSession().then(value => { settled = true; return value; });
+
+      // Act
+      await answerStartupRefresh(harness, session());
+      await Promise.resolve();
+      const settledWhileLoading = settled;
+      finishLoading();
+
+      // Assert
+      expect(settledWhileLoading).toBe(false);
+      expect(await resumed).toBe(true);
+    });
+
     it('marks the service initialized only once the attempt has settled', async () => {
       const initialized: boolean[] = [];
       service.isInitialized$().subscribe(value => initialized.push(value));
