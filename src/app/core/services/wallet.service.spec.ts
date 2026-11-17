@@ -1,9 +1,9 @@
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import {
   HttpClientTestingModule,
   HttpTestingController,
 } from '@angular/common/http/testing';
-import { WalletService } from './wallet.service';
+import { SYNC_TIMEOUT_MS, SyncSupersededError, WalletService } from './wallet.service';
 import { environment } from 'src/environments/environment';
 import {
   CredentialStatus, LifeCycleStatus,
@@ -339,6 +339,169 @@ describe('WalletService', () => {
   // ---------------------------------------------------------------------------
   // refreshCredentials: reactive store transitions
   // ---------------------------------------------------------------------------
+
+  describe('syncCredentials — synchronization state', () => {
+    const other = { ...mockCredential, id: 'other-credential-id' } as VerifiableCredential;
+
+    it('records the time of a successful synchronization', fakeAsync(() => {
+      createModule('server');
+
+      service.syncCredentials().subscribe();
+      httpTestingController.expectOne(environment.server_url + SERVER_PATH.CREDENTIALS).flush([mockCredential]);
+      tick();
+
+      expect(credentialCache.lastSyncAt()).toBeInstanceOf(Date);
+    }));
+
+    it('discards the answer of a synchronization invalidated while it was in flight', fakeAsync(() => {
+      // Arrange
+      createModule('server');
+      const errors: unknown[] = [];
+      service.syncCredentials().subscribe({ error: (e) => errors.push(e) });
+      const listRequest = httpTestingController.expectOne(environment.server_url + SERVER_PATH.CREDENTIALS);
+
+      // Act — the session ends, then the late answer arrives
+      service.invalidatePendingSyncs();
+      listRequest.flush([mockCredential]);
+      tick();
+
+      // Assert
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toBeInstanceOf(SyncSupersededError);
+      expect(mockCredentialStorage.replaceAllCredentials).not.toHaveBeenCalled();
+      expect(credentialCache.lastSyncAt()).toBeNull();
+    }));
+
+    it('does not invalidate a synchronization that starts after the invalidation', fakeAsync(() => {
+      // Arrange
+      createModule('server');
+      service.invalidatePendingSyncs();
+
+      // Act
+      service.syncCredentials().subscribe();
+      httpTestingController.expectOne(environment.server_url + SERVER_PATH.CREDENTIALS).flush([mockCredential]);
+      tick();
+
+      // Assert
+      expect(mockCredentialStorage.replaceAllCredentials).toHaveBeenCalledWith([mockCredential]);
+    }));
+
+    it('does not record a time when the service cannot be reached', fakeAsync(() => {
+      createModule('server');
+
+      service.syncCredentials().subscribe({ error: () => undefined });
+      httpTestingController.expectOne(environment.server_url + SERVER_PATH.CREDENTIALS)
+        .flush('down', { status: 503, statusText: 'Service Unavailable' });
+      tick();
+
+      expect(credentialCache.lastSyncAt()).toBeNull();
+    }));
+
+    it('does not bring back a credential deleted while the synchronization was in flight', fakeAsync(() => {
+      // Arrange
+      createModule('server');
+      service.syncCredentials().subscribe();
+      const listRequest = httpTestingController.expectOne(environment.server_url + SERVER_PATH.CREDENTIALS);
+
+      // Act — the user deletes a credential, then the (older) list arrives still carrying it
+      service.deleteVC(mockCredential.id).subscribe();
+      httpTestingController.expectOne(r => r.method === 'DELETE').flush(null);
+      tick();
+      listRequest.flush([mockCredential, other]);
+      tick();
+
+      // Assert
+      expect(mockCredentialStorage.replaceAllCredentials).toHaveBeenCalledWith([other]);
+    }));
+
+    it('keeps a credential deleted before the synchronization started out of the way of later ones', fakeAsync(() => {
+      // Arrange
+      createModule('server');
+      service.deleteVC(mockCredential.id).subscribe();
+      httpTestingController.expectOne(r => r.method === 'DELETE').flush(null);
+      tick();
+
+      // Act — a new synchronization is not filtered: the service is the source of truth
+      service.syncCredentials().subscribe();
+      httpTestingController.expectOne(environment.server_url + SERVER_PATH.CREDENTIALS).flush([mockCredential]);
+      tick();
+
+      // Assert
+      expect(mockCredentialStorage.replaceAllCredentials).toHaveBeenCalledWith([mockCredential]);
+    }));
+
+    it('keeps the credential in the local store when the service cannot delete it', fakeAsync(() => {
+      // Arrange
+      createModule('server');
+
+      // Act
+      service.deleteVC(mockCredential.id).subscribe({ error: () => undefined });
+      httpTestingController.expectOne(r => r.method === 'DELETE')
+        .flush('down', { status: 503, statusText: 'Service Unavailable' });
+      tick();
+
+      // Assert
+      expect(mockCredentialStorage.deleteCredential).not.toHaveBeenCalled();
+    }));
+
+    it('fails with a timeout when the service does not answer', fakeAsync(() => {
+      // Arrange
+      createModule('server');
+      const errors: unknown[] = [];
+      service.syncCredentials().subscribe({ error: (e) => errors.push(e) });
+      httpTestingController.expectOne(environment.server_url + SERVER_PATH.CREDENTIALS);
+
+      // Act
+      tick(SYNC_TIMEOUT_MS);
+
+      // Assert
+      expect(errors).toHaveLength(1);
+      expect(errors[0]).toMatchObject({ name: 'TimeoutError' });
+      expect(mockCredentialStorage.replaceAllCredentials).not.toHaveBeenCalled();
+    }));
+
+    it('discards the answer of a synchronization invalidated while its copy was being written', fakeAsync(() => {
+      // Arrange
+      createModule('server');
+      let finishWrite!: () => void;
+      mockCredentialStorage.replaceAllCredentials.mockReturnValue(new Promise<void>(resolve => { finishWrite = resolve; }));
+      const errors: unknown[] = [];
+      service.syncCredentials().subscribe({ error: (e) => errors.push(e) });
+      httpTestingController.expectOne(environment.server_url + SERVER_PATH.CREDENTIALS).flush([mockCredential]);
+      tick();
+
+      // Act — the session ends while the write is still running
+      service.invalidatePendingSyncs();
+      finishWrite();
+      tick();
+
+      // Assert — the copy is not loaded into the cache; whoever ended the session clears the store afterwards
+      expect(errors[0]).toBeInstanceOf(SyncSupersededError);
+      expect(mockCredentialStorage.getAllCredentials).not.toHaveBeenCalled();
+      expect(credentialCache.lastSyncAt()).toBeNull();
+    }));
+
+    it('whenSyncWritesSettled waits for the write in progress', async () => {
+      // Arrange — an async method uses native promises, which fakeAsync does not control
+      createModule('server');
+      let finishWrite!: () => void;
+      mockCredentialStorage.replaceAllCredentials.mockReturnValue(new Promise<void>(resolve => { finishWrite = resolve; }));
+      service.syncCredentials().subscribe();
+      httpTestingController.expectOne(environment.server_url + SERVER_PATH.CREDENTIALS).flush([mockCredential]);
+      let settled = false;
+
+      // Act
+      const waiting = service.whenSyncWritesSettled().then(() => { settled = true; });
+      await Promise.resolve();
+      const settledWhileWriting = settled;
+      finishWrite();
+      await waiting;
+
+      // Assert
+      expect(settledWhileWriting).toBe(false);
+      expect(settled).toBe(true);
+    });
+  });
 
   describe('refreshCredentials', () => {
     it('should load from local storage and set the store to loaded', (done) => {

@@ -12,7 +12,6 @@ import { WebAuthnBrowserService } from 'src/app/core/services/webauthn-browser.s
 import { SupportChannelService } from 'src/app/core/services/support-channel.service';
 import { PasskeyError } from 'src/app/core/models/error/PasskeyError';
 import { AUTH_PROBLEM_TYPE, authProblemType, WalletAuthError } from 'src/app/core/models/error/WalletAuthError';
-import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 import { takePendingDeepLink } from 'src/app/shared/helpers/pending-deep-link';
 import { PwaInstallService } from 'src/app/shared/services/pwa-install.service';
 import { IosInstallService } from 'src/app/shared/services/ios-install.service';
@@ -699,14 +698,11 @@ export class AccessPage implements OnDestroy {
   }
 
   /**
-   * Opens the wallet. A pending protocol link (presentation request, credential
-   * offer) waits for the session's attestations to be in the local store, so the
-   * flow never reads an empty or stale list.
+   * Opens the wallet once the session's attestations are in the local store, so the list never shows an
+   * empty or stale copy and a pending protocol link (presentation request, credential offer) never reads one.
    */
   private async enterWallet(): Promise<void> {
-    if (isProtocolDeepLink(sessionStorage.getItem(PENDING_DEEP_LINK_KEY))) {
-      await this.authService.sessionDataReady();
-    }
+    await this.authService.sessionDataReady();
     await this.router.navigateByUrl(takePendingDeepLink() || '/tabs/credentials');
   }
 }
@@ -714,17 +710,6 @@ export class AccessPage implements OnDestroy {
 function retryAfterSeconds(err: HttpErrorResponse): number {
   const seconds = Number(err.headers?.get('Retry-After'));
   return Number.isFinite(seconds) && seconds > 0 ? seconds : RESEND_COOLDOWN_SECONDS;
-}
-
-function isProtocolDeepLink(url: string | null): boolean {
-  if (!url) return false;
-  return url.startsWith('/protocol/')
-    || url.startsWith('/wallet/protocol/')
-    || url.startsWith('/tabs/vc-selector')
-    || url.startsWith('/wallet/tabs/vc-selector')
-    || url.includes('authorizationRequest')
-    || url.includes('credentialOfferUri')
-    || url.includes('credential_offer_uri');
 }
 
 /** Default name of the new passkey; the user can change it and the service sets one if empty. */

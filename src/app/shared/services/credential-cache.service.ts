@@ -9,6 +9,12 @@ const SCOPE_TO_TYPE: Record<string, string> = {
 
 export type CredentialLoadStatus = 'idle' | 'loading' | 'loaded' | 'error';
 
+/**
+ * Why the last synchronization failed: 'initial' when the session opened without its attestations
+ * (nothing can be shown), 'refresh' when a later one failed (the session's copy is still shown).
+ */
+export type SyncError = 'initial' | 'refresh';
+
 export interface CredentialState {
   status: CredentialLoadStatus;
   credentials: VerifiableCredential[];
@@ -33,9 +39,56 @@ export class CredentialCacheService {
   readonly credentials: Signal<VerifiableCredential[]> = computed(() => [...this._state().credentials]);
   readonly status: Signal<CredentialLoadStatus> = computed(() => this._state().status);
 
+  private readonly _lastSyncAt = signal<Date | null>(null);
+  private readonly _syncing = signal(false);
+  private readonly _syncError = signal<SyncError | null>(null);
+  private readonly _uncheckedStatusIds = signal<ReadonlySet<string>>(new Set());
+
+  /** When the last successful synchronization with the Wallet Unit Service finished. */
+  readonly lastSyncAt: Signal<Date | null> = this._lastSyncAt.asReadonly();
+  readonly syncing: Signal<boolean> = this._syncing.asReadonly();
+  readonly syncError: Signal<SyncError | null> = this._syncError.asReadonly();
+  /** Attestations whose status list did not answer, so they keep their last known status. */
+  readonly uncheckedStatusIds: Signal<ReadonlySet<string>> = this._uncheckedStatusIds.asReadonly();
+
   /** Synchronous snapshot of the current state (for imperative reads, e.g. VP filtering). */
   snapshot(): CredentialState {
     return this._state();
+  }
+
+  markSyncStarted(): void {
+    this._syncing.set(true);
+  }
+
+  markSyncSucceeded(at: Date = new Date()): void {
+    this._syncing.set(false);
+    this._syncError.set(null);
+    this._lastSyncAt.set(at);
+  }
+
+  markSyncFailed(error: SyncError): void {
+    this._syncing.set(false);
+    this._syncError.set(error);
+  }
+
+  /** Forgets everything about the synchronization of a session that has ended or is starting. */
+  clearSyncState(): void {
+    this._syncing.set(false);
+    this._syncError.set(null);
+    this._lastSyncAt.set(null);
+    this._uncheckedStatusIds.set(new Set());
+  }
+
+  markStatusUnchecked(id: string): void {
+    this._uncheckedStatusIds.update(ids => new Set(ids).add(id));
+  }
+
+  clearStatusUnchecked(id: string): void {
+    this._uncheckedStatusIds.update(ids => {
+      const next = new Set(ids);
+      next.delete(id);
+      return next;
+    });
   }
 
   setLoading(): void {

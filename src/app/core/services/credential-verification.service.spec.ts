@@ -99,6 +99,20 @@ describe('CredentialVerificationService', () => {
       expect(result).toBe('revoked');
     });
 
+    it('should return "unknown" when the status list does not answer in time', async () => {
+      // Arrange — a short timeout, so the test does not wait the real 10 seconds
+      (service as unknown as { statusListTimeoutMs: number }).statusListTimeoutMs = 20;
+      const credential = buildCredential({ lifeCycleStatus: 'VALID' });
+
+      // Act
+      const resultPromise = service.isRevoked(credential);
+      httpTestingController.expectOne(STATUS_LIST_URL);
+      const result = await resultPromise;
+
+      // Assert — a status list that never answers must not hold the check for ever, nor read as "not revoked"
+      expect(result).toBe('unknown');
+    });
+
     it('should return "unknown", never "not-revoked", when the status list request fails', async () => {
       // Arrange
       const credential = buildCredential({ lifeCycleStatus: 'VALID' });

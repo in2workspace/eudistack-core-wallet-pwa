@@ -79,6 +79,63 @@ describe('CredentialCacheService', () => {
     });
   });
 
+  describe('synchronization state', () => {
+    it('starts without synchronization', () => {
+      expect(service.lastSyncAt()).toBeNull();
+      expect(service.syncing()).toBe(false);
+      expect(service.syncError()).toBeNull();
+    });
+
+    it('markSyncStarted flags the synchronization in progress', () => {
+      service.markSyncStarted();
+
+      expect(service.syncing()).toBe(true);
+    });
+
+    it('markSyncSucceeded records the time and clears any error', () => {
+      const at = new Date('2026-11-10T10:42:00Z');
+      service.markSyncStarted();
+      service.markSyncFailed('refresh');
+
+      service.markSyncSucceeded(at);
+
+      expect(service.lastSyncAt()).toEqual(at);
+      expect(service.syncing()).toBe(false);
+      expect(service.syncError()).toBeNull();
+    });
+
+    it('markSyncFailed keeps the time of the last successful synchronization', () => {
+      const at = new Date('2026-11-10T10:42:00Z');
+      service.markSyncSucceeded(at);
+
+      service.markSyncFailed('refresh');
+
+      expect(service.syncError()).toBe('refresh');
+      expect(service.syncing()).toBe(false);
+      expect(service.lastSyncAt()).toEqual(at);
+    });
+
+    it('clearSyncState forgets the time, the error and the unchecked statuses', () => {
+      service.markSyncSucceeded();
+      service.markSyncFailed('initial');
+      service.markStatusUnchecked('cred-1');
+
+      service.clearSyncState();
+
+      expect(service.lastSyncAt()).toBeNull();
+      expect(service.syncError()).toBeNull();
+      expect(service.uncheckedStatusIds().size).toBe(0);
+    });
+
+    it('tracks the attestations whose status could not be checked', () => {
+      service.markStatusUnchecked('cred-1');
+      service.markStatusUnchecked('cred-2');
+      service.clearStatusUnchecked('cred-1');
+
+      expect([...service.uncheckedStatusIds()]).toEqual(['cred-2']);
+    });
+  });
+
   describe('matchers', () => {
     it('findCredentialsByScope matches VALID credentials of the mapped type', () => {
       const employee = makeCredential({ id: 'e', type: ['VerifiableCredential', 'learcredential.employee.w3c.4'] });
