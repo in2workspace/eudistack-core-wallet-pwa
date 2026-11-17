@@ -1,0 +1,12 @@
+// Layout and controls come from the shared auth styles (../auth/login/login.page.scss).
+
+// The heading takes the focus programmatically when the failure shows (screen
+// readers announce it). It is not interactive, so it shows no focus ring.
+.auth-title:focus,
+.auth-title:focus-visible {
+  outline: none;
+}
+
+.error-box {
+  margin-bottom: 8px;
+}

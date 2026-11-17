@@ -149,6 +149,66 @@ describe('authInterceptor', () => {
     });
   });
 
+  describe('onboarding tickets (EUD-315)', () => {
+    const REDEEM = `${AUTH}/onboarding-tickets/redeem`;
+    const DISAVOWALS = `${AUTH}/onboarding-tickets/disavowals`;
+
+    it('redeems with the session token when a session is open (AC-09)', () => {
+      auth.token = 'session-token';
+      http.post(REDEEM, {}).subscribe();
+
+      const request = httpMock.expectOne(REDEEM).request;
+      expect(request.headers.get('Authorization')).toBe('Bearer session-token');
+      expect(request.withCredentials).toBe(false);
+    });
+
+    it('redeems with no credential and no registration ticket when signed out', () => {
+      auth.loggedIn = false;
+      auth.token = '';
+      ticket.set('rt_1', 300);
+      http.post(REDEEM, {}).subscribe();
+
+      expect(httpMock.expectOne(REDEEM).request.headers.has('Authorization')).toBe(false);
+    });
+
+    it('waits for the renewal of a lapsed token before redeeming', () => {
+      const renewed = new Subject<void>();
+      auth.ready = () => renewed.asObservable();
+      http.post(REDEEM, {}).subscribe();
+      httpMock.expectNone(REDEEM);
+
+      auth.token = 'fresh-token';
+      renewed.next();
+      renewed.complete();
+
+      expect(httpMock.expectOne(REDEEM).request.headers.get('Authorization')).toBe('Bearer fresh-token');
+    });
+
+    it('neither renews nor retries nor ends the session on a 401 invalid_ticket', () => {
+      auth.token = 'session-token';
+      const refresh = jest.fn(() => of({} as AccessTokenResponse));
+      auth.refresh = refresh;
+      let failed: HttpErrorResponse | undefined;
+      http.post(REDEEM, {}).subscribe({ error: err => failed = err });
+      httpMock.expectOne(REDEEM).flush({ type: 'invalid_ticket' }, UNAUTHORIZED);
+
+      expect(failed?.status).toBe(401);
+      expect(refresh).not.toHaveBeenCalled();
+      expect(auth.forceLogoutCalls).toHaveLength(0);
+      expect(auth.activity).toBe(0);
+    });
+
+    it('sends the disavowal with no credential (AC-10)', () => {
+      auth.token = 'session-token';
+      ticket.set('rt_1', 300);
+      http.post(DISAVOWALS, {}).subscribe();
+
+      const request = httpMock.expectOne(DISAVOWALS).request;
+      expect(request.headers.has('Authorization')).toBe(false);
+      expect(request.withCredentials).toBe(false);
+    });
+  });
+
   describe('cookie endpoints', () => {
     it('renews with the cookie and X-Wallet-Request, never a token', () => {
       auth.token = 'session-token';

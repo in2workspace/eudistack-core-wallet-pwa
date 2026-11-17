@@ -113,6 +113,40 @@ describe('WalletDiscoveryService > resolve > returns mode from gateway response'
   });
 });
 
+describe('WalletDiscoveryService > resolve > onboarding mode (EUD-315)', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  it('is open with no signup URL when the metadata does not carry it', async () => {
+    configureTestBed(makeSuccessGateway(SERVER_DTO));
+    const snapshot = await TestBed.inject(WalletDiscoveryService).resolve();
+
+    expect(snapshot.onboardingMode).toBe('open');
+    expect(snapshot.signupUrl).toBeNull();
+  });
+
+  it('carries restricted mode and its signup URL (AC-18)', async () => {
+    configureTestBed(makeSuccessGateway({
+      ...SERVER_DTO,
+      onboarding_mode: 'restricted',
+      signup_url: 'https://portal.example.org/',
+    }));
+    const snapshot = await TestBed.inject(WalletDiscoveryService).resolve();
+
+    expect(snapshot.onboardingMode).toBe('restricted');
+    expect(snapshot.signupUrl).toBe('https://portal.example.org/');
+  });
+
+  it('falls back to open with no signup URL when the metadata is unavailable', async () => {
+    configureTestBed(makeErrorGateway(new HttpErrorResponse({ status: 503 })));
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const snapshot = await TestBed.inject(WalletDiscoveryService).resolve();
+
+    expect(snapshot.source).toBe('fallback');
+    expect(snapshot.onboardingMode).toBe('open');
+    expect(snapshot.signupUrl).toBeNull();
+  });
+});
+
 // ---------------------------------------------------------------------------
 // T-2 — fallback on network error (status === 0)
 // AC-009.4a

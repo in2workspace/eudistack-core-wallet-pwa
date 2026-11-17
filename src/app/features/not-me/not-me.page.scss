@@ -1,0 +1,24 @@
+// Layout and controls come from the shared auth styles (../auth/login/login.page.scss).
+
+// The heading takes the focus programmatically on every screen change (screen
+// readers announce it). It is not interactive, so it shows no focus ring.
+.auth-title:focus,
+.auth-title:focus-visible {
+  outline: none;
+}
+
+.error-box {
+  margin-bottom: 8px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

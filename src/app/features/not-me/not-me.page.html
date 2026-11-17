@@ -1,0 +1,43 @@
+<ion-content [fullscreen]="true" class="auth-bg">
+  <div class="auth-page">
+    <div class="auth-wrapper">
+      <main class="auth-content" [attr.aria-busy]="busy()">
+        @switch (screen()) {
+          @case ('confirm') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.not-me.title' | translate }}</h1>
+            <p class="auth-subtitle">{{ 'wallet-access.not-me.body' | translate }}</p>
+            @if (errorKey()) {
+              <div class="error-box" role="alert">
+                <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+                <span>{{ errorKey() | translate }}</span>
+              </div>
+            }
+            <button type="button" class="auth-button" [disabled]="busy()" (click)="confirm()">
+              @if (busy()) {
+                <ion-spinner name="crescent" class="btn-spinner" aria-hidden="true"></ion-spinner>
+                <span class="sr-only">{{ 'wallet-access.not-me.confirm' | translate }}</span>
+              } @else {
+                {{ 'wallet-access.not-me.confirm' | translate }}
+              }
+            </button>
+            <button type="button" class="auth-link-button" [disabled]="busy()" (click)="cancel()">
+              {{ 'wallet-access.not-me.cancel' | translate }}
+            </button>
+          }
+          @case ('done') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.not-me.done' | translate }}</h1>
+            <button type="button" class="auth-button" (click)="goToAccess()">
+              {{ 'wallet-access.invalid-ticket.button' | translate }}
+            </button>
+          }
+          @case ('invalid') {
+            <h1 #heading class="auth-title" tabindex="-1">{{ 'wallet-access.not-me.invalid' | translate }}</h1>
+            <button type="button" class="auth-button" (click)="goToAccess()">
+              {{ 'wallet-access.invalid-ticket.button' | translate }}
+            </button>
+          }
+        }
+      </main>
+    </div>
+  </div>
+</ion-content>
