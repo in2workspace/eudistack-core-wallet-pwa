@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.21.0] - 2026-11-18
+
 ### Added
 
 - **Onboarding with a ticket (EUD-315)**: a system authorised by the tenant can hand a user an onboarding address `<wallet URL>/t#<ticket>` (the routes `/t` and `/not-me` under the base path where the Wallet App is served, `/wallet/` on the tenant hosts) (usually as a QR). The ticket and the "it was not me" token go in the fragment, which never reaches the server, and the wallet sends no `Referer` (`<meta name="referrer" content="no-referrer">`).
