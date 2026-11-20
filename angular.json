@@ -38,7 +38,7 @@
               "src/manifest.webmanifest"
             ],
             "styles": ["src/theme/variables.scss", "src/global.scss"],
-            "scripts": [],
+            "scripts": ["src/pwa-install-capture.js"],
             "stylePreprocessorOptions": {
               "includePaths": ["src/theme"]
             }
@@ -64,6 +64,15 @@
                 }
               ],
               "outputHashing": "all",
+              "subresourceIntegrity": true,
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                },
+                "fonts": true
+              },
               "serviceWorker": "src/ngsw-config.json"
             },
             "development": {

@@ -41,7 +41,7 @@ export class PwaInstallService {
   readonly installDecision$: Observable<boolean>;
 
   constructor() {
-    // Pick up prompt captured by the inline script in index.html before Angular bootstrapped.
+    // Pick up prompt captured by src/pwa-install-capture.js (global script) before Angular bootstrapped.
     const earlyPrompt = (window as any).__pwaInstallPrompt as BeforeInstallPromptEvent | null;
     if (earlyPrompt) {
       this.deferredPrompt = earlyPrompt;
