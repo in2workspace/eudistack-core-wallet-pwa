@@ -1,0 +1,13 @@
+<div class="alert-dialog" [class]="'alert-dialog--' + variant()" role="alert">
+  <div class="alert-dialog__message">
+    @if (variant() === 'success') {
+      <ion-icon name="checkmark-circle" aria-hidden="true"></ion-icon>
+    }
+    <span><app-support-message [message]="message()" /></span>
+  </div>
+  @if (closeLabel()) {
+    <div class="alert-dialog__buttons">
+      <button type="button" class="alert-dialog__button" (click)="close()">{{ closeLabel() }}</button>
+    </div>
+  }
+</div>

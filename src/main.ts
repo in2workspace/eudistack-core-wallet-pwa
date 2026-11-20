@@ -83,7 +83,8 @@ bootstrapApplication(AppComponent, {
   providers: [
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
     importProvidersFrom(
-      IonicModule.forRoot({ innerHTMLTemplatesEnabled: true, useSetInputAPI: true })
+      // innerHTMLTemplatesEnabled off (EUD-332, SEC-26): Ionic overlays show their message as text.
+      IonicModule.forRoot({ innerHTMLTemplatesEnabled: false, useSetInputAPI: true })
     ),
     provideHttpClient(withInterceptorsFromDi(), withInterceptors([authInterceptor])),
     { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true },

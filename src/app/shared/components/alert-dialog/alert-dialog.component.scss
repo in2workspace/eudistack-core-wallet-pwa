@@ -1,0 +1,64 @@
+// Same look as the ion-alert notices it replaces (customAlert.scss: custom-alert-error,
+// custom-alert-ok-info, custom-alert-ok).
+:host {
+  display: block;
+}
+
+.alert-dialog {
+  border-radius: var(--radius-md);
+  padding: 20px 24px 8px;
+  text-align: justify;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.alert-dialog__message {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 12px;
+  overflow-wrap: anywhere;
+
+  ion-icon {
+    flex: 0 0 auto;
+    font-size: 38px;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: underline;
+  }
+}
+
+.alert-dialog__buttons {
+  display: flex;
+  justify-content: center;
+}
+
+.alert-dialog__button {
+  min-height: 36px;
+  padding: 10px 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.alert-dialog--error {
+  background-color: var(--custom-alert-error-bg);
+  border: var(--custom-alert-error-border);
+  color: var(--custom-alert-error-text);
+}
+
+.alert-dialog--info {
+  background-color: var(--custom-alert-ok-info-bg);
+  color: var(--status-info);
+}
+
+.alert-dialog--success {
+  background-color: var(--custom-alert-ok-bg);
+  color: var(--custom-alert-ok-text);
+}

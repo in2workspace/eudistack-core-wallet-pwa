@@ -1,21 +1,14 @@
 import { Injectable, SecurityContext, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { Observable, from, switchMap, take } from 'rxjs';
-import { AlertController } from '@ionic/angular';
+import { ModalController } from '@ionic/angular';
 import { DomSanitizer } from '@angular/platform-browser';
 import { SupportChannelService } from 'src/app/core/services/support-channel.service';
+import { AlertDialogComponent, AlertDialogVariant } from '../components/alert-dialog/alert-dialog.component';
+import { SUPPORT_LINK_PLACEHOLDER } from '../components/support-message/support-message.component';
 
-/**
- * Token a translated message can contain to ask for the support link to be
- * inlined. Swapped for a real anchor tag *after* escaping (see
- * `renderSupportMessage`), so the anchor itself — built in code, not
- * translator content — is the only markup that ever reaches the DOM.
- * Translator-authored prose stays escaped, preserving the EUD-142 (F2) XSS
- * hardening.
- */
-const SUPPORT_LINK_PLACEHOLDER = '{{supportLink}}';
-
-type AlertCssClass = 'custom-alert-error' | 'custom-alert-ok-info';
+/** The notices are an ion-modal with this class (size and backdrop in customAlert.scss). */
+const ALERT_MODAL_CSS_CLASS = 'app-alert-modal';
 
 const ERROR_TRANSLATION_MAP: Record<string, string> = {
   'The received QR content cannot be processed': 'errors.invalid-qr',
@@ -39,7 +32,7 @@ const ERROR_TRANSLATION_MAP: Record<string, string> = {
 })
 export class ToastServiceHandler {
   private readonly translate = inject(TranslateService);
-  private readonly alertController = inject(AlertController);
+  private readonly modalController = inject(ModalController);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly supportChannel = inject(SupportChannelService);
 
@@ -59,22 +52,22 @@ export class ToastServiceHandler {
   }
 
   public showErrorAlertByTranslateLabel(message: string): Observable<void> {
-    return this.showAlertByTranslateLabel(message, 'custom-alert-error');
+    return this.showAlertByTranslateLabel(message, 'error');
   }
 
   /** Blocking alert with informative styling, for expected events that are not failures. */
   public showInfoAlertByTranslateLabel(message: string): Observable<void> {
-    return this.showAlertByTranslateLabel(message, 'custom-alert-ok-info');
+    return this.showAlertByTranslateLabel(message, 'info');
   }
 
-  private showAlertByTranslateLabel(message: string, cssClass: AlertCssClass): Observable<void> {
+  private showAlertByTranslateLabel(message: string, variant: AlertDialogVariant): Observable<void> {
     return this.translate.get(message).pipe(
       take(1),
       // switchMap + from(promise), not map(async ...): map would emit the
       // pending Promise itself and complete immediately, so subscribers
       // reacting on completion (e.g. resuming the QR scanner) would fire
       // before the alert was even shown, instead of after it's dismissed.
-      switchMap((translatedMessage) => from(this.presentAlert(translatedMessage, cssClass))),
+      switchMap((translatedMessage) => from(this.presentAlert(translatedMessage, variant))),
     );
   }
 
@@ -102,10 +95,12 @@ export class ToastServiceHandler {
       const el = document.createElement('div');
       el.className = 'credential-toast';
       el.dataset['variant'] = variant;
-      el.innerHTML = `
-        <ion-icon name="${icon}"></ion-icon>
-        <span>${this.sanitizeHtml(translatedMessage)}</span>
-      `;
+      // Built with DOM nodes and textContent, never innerHTML (EUD-332): the message is text.
+      const iconEl = document.createElement('ion-icon');
+      iconEl.setAttribute('name', icon);
+      const textEl = document.createElement('span');
+      textEl.textContent = String(translatedMessage ?? '');
+      el.append(iconEl, textEl);
 
       document.body.appendChild(el);
 
@@ -150,21 +145,19 @@ export class ToastServiceHandler {
     return this.sanitizer.sanitize(SecurityContext.HTML, String(value ?? '')) ?? '';
   }
 
-  private async presentAlert(translatedMessage: string, cssClass: AlertCssClass): Promise<void> {
-    const alert = await this.alertController.create({
-      message: `
-        <div style="display: flex; align-items: center; gap: 50px;">
-          <span>${this.renderSupportMessage(translatedMessage)}</span>
-        </div>
-      `,
-      buttons: [
-        {
-          text: this.translate.instant('vc-selector.close'),
-          role: 'ok',
-          cssClass: 'centered-button',
-        },
-      ],
-      cssClass,
+  /**
+   * The message is passed as text to AlertDialogComponent, which renders the
+   * support link from SUPPORT_LINK_PLACEHOLDER itself: no HTML is built here.
+   */
+  private async presentAlert(translatedMessage: string, variant: AlertDialogVariant): Promise<void> {
+    const alert = await this.modalController.create({
+      component: AlertDialogComponent,
+      componentProps: {
+        message: String(translatedMessage ?? ''),
+        variant,
+        closeLabel: this.translate.instant('vc-selector.close'),
+      },
+      cssClass: ALERT_MODAL_CSS_CLASS,
     });
 
     await alert.present();
@@ -172,14 +165,13 @@ export class ToastServiceHandler {
   }
 
   public showToast(messageKey: string, duration: number = 2000): void {
-    this.alertController.create({
-      message: `
-        <div style="display: flex; align-items: center; gap: 50px;">
-          <ion-icon name="checkmark-circle"></ion-icon>
-          <span>${this.sanitizeHtml(this.translate.instant(messageKey))}</span>
-        </div>
-      `,
-      cssClass: 'custom-alert-ok',
+    this.modalController.create({
+      component: AlertDialogComponent,
+      componentProps: {
+        message: String(this.translate.instant(messageKey) ?? ''),
+        variant: 'success',
+      },
+      cssClass: ALERT_MODAL_CSS_CLASS,
     })
       .then(alert => alert.present().then(() => {
         setTimeout(() => {
