@@ -1,11 +1,11 @@
 import { flush, flushMicrotasks, TestBed } from '@angular/core/testing';
 import { ToastServiceHandler } from './toast.service';
-import { AlertController, IonicModule } from '@ionic/angular';
+import { AlertDialogComponent } from '../components/alert-dialog/alert-dialog.component';
+import { ModalController } from '@ionic/angular';
 import { TranslateService, TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { TranslateFakeLoader } from '@ngx-translate/core';
 import { fakeAsync, tick } from '@angular/core/testing';
 import { of } from 'rxjs';
-import { DomSanitizer } from '@angular/platform-browser';
 import { SupportChannelService } from 'src/app/core/services/support-channel.service';
 import { SUPPORT_EMAIL, ISSUE_TRACKER_URL, SUPPORT_URL } from 'src/app/core/constants/support.constants';
 const TIME_IN_MS = 5000;
@@ -16,7 +16,7 @@ describe('ToastServiceHandler', () => {
   let service: ToastServiceHandler;
   let translateService: {get:jest.Mock, instant:jest.Mock};
   let translateSpy: jest.SpyInstance;
-  let alertCtrl: {create:jest.Mock};
+  let modalCtrl: {create:jest.Mock};
   let alert: {present:jest.Mock, dismiss:jest.Mock}
   let supportChannelService: {channels: jest.Mock};
 
@@ -26,7 +26,7 @@ describe('ToastServiceHandler', () => {
       instant: jest.fn().mockImplementation((str: string) => str), // Add this mo
     };
 
-    alertCtrl = {
+    modalCtrl = {
       create: jest.fn().mockResolvedValue({
         present: jest.fn().mockResolvedValue(undefined),
         dismiss: jest.fn().mockResolvedValue(undefined),
@@ -51,7 +51,7 @@ describe('ToastServiceHandler', () => {
       ],
       providers: [
         { provide: TranslateService, useValue:translateService },
-        { provide: AlertController, useValue: alertCtrl },
+        { provide: ModalController, useValue: modalCtrl },
         { provide: SupportChannelService, useValue: supportChannelService },
         ToastServiceHandler
       ],
@@ -72,7 +72,7 @@ describe('ToastServiceHandler', () => {
   it('waits for the alert to be presented and dismissed before the observable emits (regression: map(async ...) used to emit the pending Promise itself and complete immediately)', async () => {
     const order: string[] = [];
 
-    alertCtrl.create.mockResolvedValueOnce({
+    modalCtrl.create.mockResolvedValueOnce({
       present: jest.fn().mockImplementation(async () => { order.push('present'); }),
       dismiss: jest.fn(),
       onDidDismiss: jest.fn().mockImplementation(async () => { order.push('dismiss'); }),
@@ -86,14 +86,14 @@ describe('ToastServiceHandler', () => {
     expect(order).toEqual(['present', 'dismiss', 'next']);
   });
 
-  it('showInfoAlertByTranslateLabel_anyMessage_presentsAnAlertWithTheInformativeStyle', async () => {
+  it('showInfoAlertByTranslateLabel_anyMessage_presentsANoticeWithTheInformativeStyle', async () => {
     // Arrange
     // Act
     service.showInfoAlertByTranslateLabel('errors.session-expired').subscribe();
     for (let i = 0; i < 10; i++) { await Promise.resolve(); }
 
     // Assert
-    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining({ cssClass: 'custom-alert-ok-info' }));
+    expect(modalCtrl.create).toHaveBeenCalledWith(expect.objectContaining({ cssClass: 'app-alert-modal', componentProps: expect.objectContaining({ variant: 'info' }) }));
   });
 
   it('showErrorAlertByTranslateLabel_anyMessage_keepsTheErrorStyle', async () => {
@@ -103,7 +103,7 @@ describe('ToastServiceHandler', () => {
     for (let i = 0; i < 10; i++) { await Promise.resolve(); }
 
     // Assert
-    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining({ cssClass: 'custom-alert-error' }));
+    expect(modalCtrl.create).toHaveBeenCalledWith(expect.objectContaining({ cssClass: 'app-alert-modal', componentProps: expect.objectContaining({ variant: 'error' }) }));
   });
 
   it('uses the caller-provided fallback key when the message matches no known backend message', fakeAsync(() => {
@@ -190,7 +190,7 @@ describe('ToastServiceHandler', () => {
   }));
 
   it('should create alert for an error message 1', async () => {
-    const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+    const toastCtrlSpy = jest.spyOn(modalCtrl, 'create');
     const errorMessage = "The received QR content cannot be processed";
 
     service.showErrorAlert(errorMessage).subscribe(()=>{});
@@ -199,7 +199,7 @@ describe('ToastServiceHandler', () => {
     expect(toastCtrlSpy).toHaveBeenCalled();
     expect(toastCtrlSpy).toHaveBeenCalledWith(expect.objectContaining(
       {
-        message: expect.stringContaining("errors.invalid-qr"),
+        componentProps: expect.objectContaining({ message: expect.stringContaining("errors.invalid-qr") }),
       }
     ));
     const toast = await toastCtrlSpy.mock.results[0].value;
@@ -213,15 +213,15 @@ describe('ToastServiceHandler', () => {
 
   it('should create alert for an error message 2', async () => {
     const errorMessage = "Error while fetching credentialOffer from the issuer";
-    const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+    const toastCtrlSpy = jest.spyOn(modalCtrl, 'create');
 
     service.showErrorAlert(errorMessage).subscribe(()=>{});
 
     expect(translateSpy).toHaveBeenCalledWith('errors.expired-credentialOffer');
-    expect(alertCtrl.create).toHaveBeenCalled();
-    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
+    expect(modalCtrl.create).toHaveBeenCalled();
+    expect(modalCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
       {
-        message: expect.stringContaining("errors.expired-credentialOffer"),
+        componentProps: expect.objectContaining({ message: expect.stringContaining("errors.expired-credentialOffer") }),
       }
     ));
     const toast = await toastCtrlSpy.mock.results[0].value;
@@ -234,15 +234,15 @@ describe('ToastServiceHandler', () => {
 
   it('should create alert for an error message 3', async () => {
     const errorMessage = "Error while deserializing CredentialOffer";
-    const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+    const toastCtrlSpy = jest.spyOn(modalCtrl, 'create');
 
     service.showErrorAlert(errorMessage).subscribe(()=>{});
 
     expect(translateSpy).toHaveBeenCalledWith('errors.invalid-credentialOffer');
-    expect(alertCtrl.create).toHaveBeenCalled();
-    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
+    expect(modalCtrl.create).toHaveBeenCalled();
+    expect(modalCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
       {
-        message: expect.stringContaining("errors.invalid-credentialOffer"),
+        componentProps: expect.objectContaining({ message: expect.stringContaining("errors.invalid-credentialOffer") }),
       }
     ));
 
@@ -256,15 +256,15 @@ describe('ToastServiceHandler', () => {
 
   it('should create alert for an error message 4', async () => {
     const errorMessage = "Error while processing Credential Issuer Metadata from the Issuer";
-    const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+    const toastCtrlSpy = jest.spyOn(modalCtrl, 'create');
 
     service.showErrorAlert(errorMessage).subscribe(()=>{});
 
     expect(translateSpy).toHaveBeenCalledWith('errors.invalid-issuerMetadata');
-    expect(alertCtrl.create).toHaveBeenCalled();
-    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
+    expect(modalCtrl.create).toHaveBeenCalled();
+    expect(modalCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
       {
-        message: expect.stringContaining("errors.invalid-issuerMetadata"),
+        componentProps: expect.objectContaining({ message: expect.stringContaining("errors.invalid-issuerMetadata") }),
       }
     ));
 
@@ -278,15 +278,15 @@ describe('ToastServiceHandler', () => {
 
   it('should create alert for an error message 5', async () => {
     const errorMessage = "Error while fetching  Credential from Issuer";
-    const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+    const toastCtrlSpy = jest.spyOn(modalCtrl, 'create');
 
     service.showErrorAlert(errorMessage).subscribe(()=>{});
 
     expect(translateSpy).toHaveBeenCalledWith('errors.cannot-get-VC');
-    expect(alertCtrl.create).toHaveBeenCalled();
-    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
+    expect(modalCtrl.create).toHaveBeenCalled();
+    expect(modalCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
       {
-        message: expect.stringContaining("errors.cannot-get-VC"),
+        componentProps: expect.objectContaining({ message: expect.stringContaining("errors.cannot-get-VC") }),
       }
     ));
 
@@ -300,15 +300,15 @@ describe('ToastServiceHandler', () => {
 
   it('should create alert for an error message 6', async () => {
     const errorMessage = "Error processing Verifiable Credential";
-    const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+    const toastCtrlSpy = jest.spyOn(modalCtrl, 'create');
 
     service.showErrorAlert(errorMessage).subscribe(()=>{});
 
     expect(translateSpy).toHaveBeenCalledWith('errors.cannot-save-VC');
-    expect(alertCtrl.create).toHaveBeenCalled();
-    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
+    expect(modalCtrl.create).toHaveBeenCalled();
+    expect(modalCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
       {
-        message: expect.stringContaining("errors.cannot-save-VC"),
+        componentProps: expect.objectContaining({ message: expect.stringContaining("errors.cannot-save-VC") }),
       }
     ));
     const toast = await toastCtrlSpy.mock.results[0].value;
@@ -321,15 +321,15 @@ describe('ToastServiceHandler', () => {
 
   it('should create alert for an error message 7', async () => {
     const errorMessage = "Incorrect PIN";
-    const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+    const toastCtrlSpy = jest.spyOn(modalCtrl, 'create');
 
     service.showErrorAlert(errorMessage).subscribe(()=>{});
 
     expect(translateSpy).toHaveBeenCalledWith('errors.incorrect-pin');
-    expect(alertCtrl.create).toHaveBeenCalled();
-    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
+    expect(modalCtrl.create).toHaveBeenCalled();
+    expect(modalCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
       {
-        message: expect.stringContaining("errors.incorrect-pin"),
+        componentProps: expect.objectContaining({ message: expect.stringContaining("errors.incorrect-pin") }),
       }
     ));
 
@@ -343,15 +343,15 @@ describe('ToastServiceHandler', () => {
 
   it('should create alert for an error message 8', async () => {
     const errorMessage = "Unsigned";
-    const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+    const toastCtrlSpy = jest.spyOn(modalCtrl, 'create');
 
     service.showErrorAlert(errorMessage).subscribe(()=>{});
 
     expect(translateSpy).toHaveBeenCalledWith('errors.unsigned');
-    expect(alertCtrl.create).toHaveBeenCalled();
-    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
+    expect(modalCtrl.create).toHaveBeenCalled();
+    expect(modalCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
       {
-        message: expect.stringContaining("errors.unsigned"),
+        componentProps: expect.objectContaining({ message: expect.stringContaining("errors.unsigned") }),
       }
     ));
 
@@ -365,15 +365,15 @@ describe('ToastServiceHandler', () => {
 
   it('should create alert for an error message 9', async () => {
     const errorMessage = "ErrorUnsigned";
-    const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+    const toastCtrlSpy = jest.spyOn(modalCtrl, 'create');
 
     service.showErrorAlert(errorMessage).subscribe(()=>{});
 
     expect(translateSpy).toHaveBeenCalledWith('errors.Errunsigned');
-    expect(alertCtrl.create).toHaveBeenCalled();
-    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
+    expect(modalCtrl.create).toHaveBeenCalled();
+    expect(modalCtrl.create).toHaveBeenCalledWith(expect.objectContaining(
       {
-        message: expect.stringContaining("errors.Errunsigned"),
+        componentProps: expect.objectContaining({ message: expect.stringContaining("errors.Errunsigned") }),
       }
     ));
 
@@ -385,159 +385,65 @@ describe('ToastServiceHandler', () => {
     }, TIME_IN_MS);
   });
 
-  describe('HTML sanitization of translated text (security-auditor full-mode review, EUD-142 F2)', () => {
-    const messageOf = (spy: jest.SpyInstance) => (spy.mock.calls[0][0] as { message: string }).message;
+  describe('messages as text (EUD-332: no HTML built, innerHTMLTemplatesEnabled off)', () => {
+    const propsOf = (spy: jest.SpyInstance) =>
+      (spy.mock.calls[0][0] as { componentProps: { message: string; variant: string; closeLabel?: string } }).componentProps;
 
-    it('showErrorAlertByTranslateLabel strips event handlers from the translated message', fakeAsync(() => {
+    it('passes the translated message verbatim, as text, to the notice component', fakeAsync(() => {
       translateService.get.mockImplementationOnce(() => of('<img src=x onerror=alert(1)>'));
-      const spy = jest.spyOn(alertCtrl, 'create');
+      const spy = jest.spyOn(modalCtrl, 'create');
 
       service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
       tick();
 
-      expect(messageOf(spy)).not.toContain('onerror');
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({ component: AlertDialogComponent }));
+      expect(propsOf(spy).message).toBe('<img src=x onerror=alert(1)>');
     }));
 
-    it('showErrorAlertByTranslateLabel drops script tags from the translated message', fakeAsync(() => {
-      translateService.get.mockImplementationOnce(() => of('<script>alert(1)</script>ok'));
-      const spy = jest.spyOn(alertCtrl, 'create');
+    it('leaves the support link placeholder for the notice component to render', fakeAsync(() => {
+      translateService.get.mockImplementationOnce(() => of('Something went wrong. Contact {{supportLink}}.'));
+      const spy = jest.spyOn(modalCtrl, 'create');
 
       service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
       tick();
 
-      expect(messageOf(spy)).not.toContain('<script');
-      expect(messageOf(spy)).toContain('ok');
+      expect(propsOf(spy).message).toBe('Something went wrong. Contact {{supportLink}}.');
+      expect(propsOf(spy).closeLabel).toBe('vc-selector.close');
     }));
 
-    it('showErrorAlertByTranslateLabel neutralises javascript: hrefs', fakeAsync(() => {
-      translateService.get.mockImplementationOnce(() => of("<a href='javascript:alert(1)'>x</a>"));
-      const spy = jest.spyOn(alertCtrl, 'create');
-
-      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
-      tick();
-
-      expect(messageOf(spy)).toContain('unsafe:javascript:alert(1)');
-    }));
-
-    it('keeps the support link authored in the translation catalogue', fakeAsync(() => {
-      translateService.get.mockImplementationOnce(() =>
-        of("Algo ha salido mal. Contacta con el <a href='https://support.example/' target='_blank' rel='noopener noreferrer'>equipo de soporte</a>."));
-      const spy = jest.spyOn(alertCtrl, 'create');
-
-      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
-      tick();
-
-      const message = messageOf(spy);
-      expect(message).toContain('href="https://support.example/"');
-      expect(message).toContain('target="_blank"');
-      expect(message).toContain('>equipo de soporte</a>');
-      expect(message).not.toContain('&lt;a');
-    }));
-
-    it('renders an empty message instead of crashing when the translation is missing', fakeAsync(() => {
+    it('passes an empty message instead of crashing when the translation is missing', fakeAsync(() => {
       translateService.get.mockImplementationOnce(() => of(undefined));
-      const spy = jest.spyOn(alertCtrl, 'create');
+      const spy = jest.spyOn(modalCtrl, 'create');
 
       service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
       tick();
 
-      expect(messageOf(spy)).toContain('<span></span>');
+      expect(propsOf(spy).message).toBe('');
     }));
 
-    it('falls back to an empty message when the sanitizer rejects the content outright', fakeAsync(() => {
-      jest.spyOn(TestBed.inject(DomSanitizer), 'sanitize').mockReturnValue(null);
-      const spy = jest.spyOn(alertCtrl, 'create');
-
-      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
-      tick();
-
-      expect(messageOf(spy)).toContain('<span></span>');
-    }));
-
-    it('showToast drops script tags from the translated message', fakeAsync(() => {
+    it('showToast passes the translated message as text, with the success style and no button', fakeAsync(() => {
       translateService.instant.mockReturnValueOnce('<script>alert(1)</script>');
-      const spy = jest.spyOn(alertCtrl, 'create');
+      const spy = jest.spyOn(modalCtrl, 'create');
 
       service.showToast('toast.success');
       tick();
 
-      expect(messageOf(spy)).not.toContain('<script');
-    }));
-  });
-
-  describe('support link placeholder (errors.default, pin-expired, etc.)', () => {
-    it('replaces {{supportLink}} with a code-built anchor pointing at the default support URL', fakeAsync(() => {
-      translateService.get.mockImplementationOnce(() => of('Something went wrong. Contact {{supportLink}}.'));
-      translateService.instant.mockImplementation((key: string) =>
-        key === 'errors.support-team-label' ? 'the support team' : key
-      );
-      const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
-
-      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
-      tick();
-
-      const [call] = toastCtrlSpy.mock.calls;
-      const message = (call[0] as { message: string }).message;
-      expect(message).toContain(
-        `<a href="${SUPPORT_URL}" target="_blank" rel="noopener noreferrer">the support team</a>`
-      );
-      expect(message).not.toContain('{{supportLink}}');
+      expect(propsOf(spy)).toEqual({ message: '<script>alert(1)</script>', variant: 'success' });
     }));
 
-    it('points the support link at the tenant-resolved support URL when the theme overrides it', fakeAsync(() => {
-      supportChannelService.channels.mockReturnValue({
-        email: SUPPORT_EMAIL,
-        helpCenterUrl: null,
-        issueTrackerUrl: ISSUE_TRACKER_URL,
-        supportUrl: 'https://ticketing.customer.example/',
-      });
-      translateService.get.mockImplementationOnce(() => of('Something went wrong. Contact {{supportLink}}.'));
-      translateService.instant.mockImplementation((key: string) =>
-        key === 'errors.support-team-label' ? 'the support team' : key
-      );
-      const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
+    it('showInfoToastByTranslateLabel shows markup in the message as text', fakeAsync(() => {
+      translateService.get.mockImplementationOnce(() => of('<img src=x onerror=alert(1)>'));
+      const appendSpy = jest.spyOn(document.body, 'appendChild');
 
-      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
+      service.showInfoToastByTranslateLabel('toast.info', 1000, 'info');
       tick();
 
-      const [call] = toastCtrlSpy.mock.calls;
-      const message = (call[0] as { message: string }).message;
-      expect(message).toContain(
-        '<a href="https://ticketing.customer.example/" target="_blank" rel="noopener noreferrer">the support team</a>'
-      );
-    }));
+      const el = appendSpy.mock.calls[appendSpy.mock.calls.length - 1][0] as HTMLElement;
+      expect(el.querySelector('img')).toBeNull();
+      expect(el.querySelector('span')?.textContent).toBe('<img src=x onerror=alert(1)>');
 
-    it('sanitizes dangerous markup surrounding the placeholder while still inserting the support link', fakeAsync(() => {
-      translateService.get.mockImplementationOnce(() =>
-        of('<script>alert(1)</script>Something went wrong. Contact {{supportLink}}.'));
-      translateService.instant.mockImplementation((key: string) =>
-        key === 'errors.support-team-label' ? 'the support team' : key
-      );
-      const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
-
-      service.showErrorAlertByTranslateLabel('errors.default').subscribe(() => {});
-      tick();
-
-      const [call] = toastCtrlSpy.mock.calls;
-      const message = (call[0] as { message: string }).message;
-      expect(message).not.toContain('<script');
-      expect(message).toContain(
-        `<a href="${SUPPORT_URL}" target="_blank" rel="noopener noreferrer">the support team</a>`
-      );
-      expect(message).not.toContain('{{supportLink}}');
-    }));
-
-    it('leaves messages without the placeholder untouched (no stray link)', fakeAsync(() => {
-      translateService.get.mockImplementationOnce(() => of('Plain message, no link needed.'));
-      const toastCtrlSpy = jest.spyOn(alertCtrl, 'create');
-
-      service.showErrorAlertByTranslateLabel('errors.qr-expired').subscribe(() => {});
-      tick();
-
-      const [call] = toastCtrlSpy.mock.calls;
-      const message = (call[0] as { message: string }).message;
-      expect(message).toContain('Plain message, no link needed.');
-      expect(message).not.toContain('<a href');
+      tick(1000);
+      el.dispatchEvent(new Event('animationend'));
     }));
   });
 
@@ -553,15 +459,15 @@ describe('ToastServiceHandler', () => {
       dismiss: dismissMock,
     };
 
-    alertCtrl.create.mockResolvedValueOnce(alertMock as any);
+    modalCtrl.create.mockResolvedValueOnce(alertMock as any);
 
     service.showToast(messageKey, duration);
 
     tick();
 
-    expect(alertCtrl.create).toHaveBeenCalledWith(expect.objectContaining({
-      message: expect.stringContaining(messageKey),
-      cssClass: 'custom-alert-ok',
+    expect(modalCtrl.create).toHaveBeenCalledWith(expect.objectContaining({
+      componentProps: expect.objectContaining({ message: expect.stringContaining(messageKey) }),
+      cssClass: 'app-alert-modal',
     }));
 
     expect(presentMock).toHaveBeenCalled();
@@ -573,7 +479,7 @@ describe('ToastServiceHandler', () => {
   it('should log instead of leaving an unhandled rejection when the success toast cannot be created', fakeAsync(() => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     const failure = new Error('overlay unavailable');
-    alertCtrl.create.mockRejectedValueOnce(failure);
+    modalCtrl.create.mockRejectedValueOnce(failure);
 
     service.showToast('toast.success');
     tick();

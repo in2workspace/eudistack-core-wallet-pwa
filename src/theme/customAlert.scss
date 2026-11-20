@@ -332,3 +332,23 @@ ion-modal.activity-detail-modal {
   from { opacity: 1; transform: translateX(-50%) translateY(0); }
   to   { opacity: 0; transform: translateX(-50%) translateY(-100%); }
 }
+
+// Notices of ToastServiceHandler (AlertDialogComponent in an ion-modal, EUD-332):
+// a centred box sized by its content, like the ion-alert it replaces. Ionic gives the
+// component host the .ion-page class (absolute, full size), reset here so the height
+// follows the content.
+ion-modal.app-alert-modal {
+  --width: min(300px, calc(100% - 32px));
+  --height: auto;
+  --max-height: 90%;
+  --border-radius: var(--radius-md);
+  --background: transparent;
+  --box-shadow: none;
+
+  .ion-page {
+    position: relative;
+    display: block;
+    contain: content;
+    overflow: auto;
+  }
+}

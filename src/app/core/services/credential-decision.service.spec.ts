@@ -106,6 +106,17 @@ describe('CredentialDecisionService', () => {
       tick(3000 + 500);
     }));
 
+    it('shows markup in the message as text, never as HTML (EUD-332)', fakeAsync(() => {
+      translateSpy.instant.mockReturnValue('<img src=x onerror="window.__pwned = true">');
+      service.showTempMessage('error.key', 'error');
+
+      const toast = document.querySelector('.credential-toast') as HTMLElement;
+      expect(toast.querySelector('img')).toBeNull();
+      expect(toast.querySelector('span')?.textContent).toBe('<img src=x onerror="window.__pwned = true">');
+
+      tick(3000 + 500);
+    }));
+
     it('showTempMessage defaults to success variant', fakeAsync(() => {
         service.showTempMessage('test.key');
         const toast = document.querySelector('.credential-toast');
@@ -113,9 +124,15 @@ describe('CredentialDecisionService', () => {
         tick(3500);
     }));
 
-    it('escapeHtml handles null/undefined', () => {
-        expect((service as any).escapeHtml(null)).toBe('');
-        expect((service as any).escapeHtml(undefined)).toBe('');
-    });
+    it('shows an empty message when the translation is null or undefined', fakeAsync(() => {
+        for (const missing of [null, undefined]) {
+          document.body.innerHTML = '';
+          translateSpy.instant.mockReturnValue(missing);
+          service.showTempMessage('missing.key');
+
+          expect(document.querySelector('.credential-toast span')?.textContent).toBe('');
+          tick(3000 + 500);
+        }
+    }));
   });
 });

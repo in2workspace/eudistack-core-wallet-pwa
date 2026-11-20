@@ -587,6 +587,20 @@ describe('SingleInstanceService', () => {
       expect(document.body.innerHTML).toContain('EUDI Wallet ya está abierto');
     });
 
+    it('shows the translated texts of the duplicate-tab screen as text, never as HTML (EUD-332)', async () => {
+      const markup = '<img src=x onerror="window.__pwned = true">';
+      translateServiceMock.instant.mockReturnValue(markup);
+      locks.held = true;
+      installFakeLeader(sentToLeader, { ackOutcome: null });
+
+      void service.elect();
+      await flushMicrotasks();
+
+      expect(document.body.querySelector('img')).toBeNull();
+      expect(document.body.querySelector('h2')?.textContent).toBe(markup);
+      expect(document.getElementById('__wallet_close_btn')?.textContent).toBe(markup);
+    });
+
     it('stays a follower when the leader is too busy to answer: the two-tabs bug (ER08)', async () => {
       locks.held = true;
 

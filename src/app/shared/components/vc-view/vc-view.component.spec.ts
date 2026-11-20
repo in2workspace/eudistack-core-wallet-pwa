@@ -1,4 +1,5 @@
 /// <reference types="node" />
+import { ModalController } from '@ionic/angular';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
@@ -72,6 +73,8 @@ describe('VcViewComponent', () => {
         { provide: CredentialDisplayService, useClass: CredentialDisplayServiceMock },
         { provide: CredentialVerificationService, useClass: CredentialVerificationServiceMock },
         { provide: ActivatedRoute, useClass: ActivatedRouteMock },
+        // ToastServiceHandler (root) presents its notices with ModalController
+        { provide: ModalController, useValue: { create: jest.fn() } },
       ],
     }).compileComponents();
 
