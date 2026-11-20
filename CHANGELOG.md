@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `SupportLinkPipe`, `ToastServiceHandler.renderSupportMessage`, `HighlightPlaceholderPipe` and the unused `messageHtml` translation key.
+- The `ion-alert` rules of `customAlert.scss` for the former notices (`custom-alert-error`, `custom-alert-ok`, `custom-alert-ok-info`, `custom-alert-credential`, PIN counter, `alert-button.danger`), no longer used.
 
 ### Tests
 
