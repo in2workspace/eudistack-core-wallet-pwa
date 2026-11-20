@@ -416,26 +416,48 @@ export class SingleInstanceService implements OnDestroy {
       isStandalone ? 'single-instance.close-fallback-standalone' : 'single-instance.close-fallback-tab'
     );
 
-    document.body.innerHTML = `
-      <div style="
-        display:flex;flex-direction:column;align-items:center;justify-content:center;
-        height:100vh;font-family:sans-serif;gap:16px;color:#001E8C;text-align:center;
-        padding:24px;box-sizing:border-box;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
-        </svg>
-        <h2 style="margin:0;font-size:1.25rem;">${title}</h2>
-        <p style="margin:0;font-size:.9rem;color:#555;max-width:320px;line-height:1.5;">
-          ${subtitle}
-        </p>
-        <p style="margin:0;font-size:.8rem;color:#aaa;max-width:320px;">${hint}</p>
-        <button id="__wallet_close_btn" style="
-          margin-top:8px;padding:10px 24px;border:none;border-radius:8px;
-          background:#001E8C;color:#fff;font-size:.9rem;cursor:pointer;">
-          ${this.translate.instant('single-instance.close-button', params)}
-        </button>
-      </div>`;
+    // Built with DOM nodes and textContent, never innerHTML (EUD-332): the texts are text. The styles go
+    // through the CSSOM (style.cssText), which the CSP does not restrict.
+    const box = document.createElement('div');
+    box.style.cssText =
+      'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+      'height:100vh;font-family:sans-serif;gap:16px;color:#001E8C;text-align:center;' +
+      'padding:24px;box-sizing:border-box;';
+
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const icon = document.createElementNS(svgNs, 'svg');
+    Object.entries({
+      width: '64', height: '64', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
+      'stroke-width': '1.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+    }).forEach(([name, value]) => icon.setAttribute(name, value));
+    const screen = document.createElementNS(svgNs, 'rect');
+    Object.entries({ x: '2', y: '3', width: '20', height: '14', rx: '2' })
+      .forEach(([name, value]) => screen.setAttribute(name, value));
+    const stand = document.createElementNS(svgNs, 'path');
+    stand.setAttribute('d', 'M8 21h8M12 17v4');
+    icon.append(screen, stand);
+
+    const heading = document.createElement('h2');
+    heading.style.cssText = 'margin:0;font-size:1.25rem;';
+    heading.textContent = title;
+
+    const subtitleEl = document.createElement('p');
+    subtitleEl.style.cssText = 'margin:0;font-size:.9rem;color:#555;max-width:320px;line-height:1.5;';
+    subtitleEl.textContent = subtitle;
+
+    const hintEl = document.createElement('p');
+    hintEl.style.cssText = 'margin:0;font-size:.8rem;color:#aaa;max-width:320px;';
+    hintEl.textContent = hint;
+
+    const button = document.createElement('button');
+    button.id = '__wallet_close_btn';
+    button.style.cssText =
+      'margin-top:8px;padding:10px 24px;border:none;border-radius:8px;' +
+      'background:#001E8C;color:#fff;font-size:.9rem;cursor:pointer;';
+    button.textContent = this.translate.instant('single-instance.close-button', params);
+
+    box.append(icon, heading, subtitleEl, hintEl, button);
+    document.body.replaceChildren(box);
 
     const closeBtn = document.getElementById('__wallet_close_btn') as HTMLButtonElement;
     closeBtn.addEventListener('click', () => {

@@ -71,6 +71,7 @@
                       {{ "about.legal-document.fallback-language-notice" | translate }}
                     </output>
                   }
+                  <!-- Only [innerHTML] left in the wallet (EUD-332, SAD §5.5.1 exception to SEC-26): own legal HTML from assets/legal, sanitized by Angular; never attestation or issuer data. -->
                   <div class="about-legal-content" [innerHTML]="legalDocument()?.html"></div>
                 }
                 @case ('error') {
