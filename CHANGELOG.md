@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.22.0] - 2026-11-20
+
 ### Security
 
 - **Browser security for the Wallet App (EUD-332)**: the app is ready for the strict Content-Security-Policy of SAD §5.5.1 (`script-src 'self'`, no inline script nor inline event handler, foreign content only as text).
@@ -28,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Tests
 
 - Unit tests for the install capture script, `AlertDialogComponent`, `SupportMessageComponent` and `SplitPlaceholderPipe`, and for markup shown as text (`<img src=x onerror=…>`) in every former HTML sink.
+
+## [3.21.0] - 2026-11-17
 
 ### Added
 
