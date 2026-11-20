@@ -35,7 +35,7 @@ import {
   CredentialFilters, credentialTypeLabel, distinctIssuers, distinctTypes, FILTERABLE_STATUSES, filterCredentials, hasActiveFilters,
   NO_FILTERS
 } from 'src/app/core/utils/credential-filter.util';
-import { SupportLinkPipe } from 'src/app/shared/pipes/support-link.pipe';
+import { SupportMessageComponent } from 'src/app/shared/components/support-message/support-message.component';
 import { FilterOption, FilterSelectComponent } from 'src/app/shared/components/filter-select/filter-select.component';
 
 @Component({
@@ -49,7 +49,7 @@ import { FilterOption, FilterSelectComponent } from 'src/app/shared/components/f
         VcViewComponent,
         TranslateModule,
         SkeletonComponent,
-        SupportLinkPipe,
+        SupportMessageComponent,
         FilterSelectComponent
     ]
 })

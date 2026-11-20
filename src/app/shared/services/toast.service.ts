@@ -1,11 +1,8 @@
-import { Injectable, SecurityContext, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { Observable, from, switchMap, take } from 'rxjs';
 import { ModalController } from '@ionic/angular';
-import { DomSanitizer } from '@angular/platform-browser';
-import { SupportChannelService } from 'src/app/core/services/support-channel.service';
 import { AlertDialogComponent, AlertDialogVariant } from '../components/alert-dialog/alert-dialog.component';
-import { SUPPORT_LINK_PLACEHOLDER } from '../components/support-message/support-message.component';
 
 /** The notices are an ion-modal with this class (size and backdrop in customAlert.scss). */
 const ALERT_MODAL_CSS_CLASS = 'app-alert-modal';
@@ -33,8 +30,6 @@ const ERROR_TRANSLATION_MAP: Record<string, string> = {
 export class ToastServiceHandler {
   private readonly translate = inject(TranslateService);
   private readonly modalController = inject(ModalController);
-  private readonly sanitizer = inject(DomSanitizer);
-  private readonly supportChannel = inject(SupportChannelService);
 
   /**
    * @param fallbackKey translation used when `message` matches no known backend
@@ -115,39 +110,10 @@ export class ToastServiceHandler {
     });
   }
 
-  /**
-   * Sanitizes the translated message (stripping scripts/event handlers/unsafe
-   * URLs but keeping safe markup — DomSanitizer, same primitive as the rest
-   * of this file), then — only if present — swaps SUPPORT_LINK_PLACEHOLDER
-   * for a real anchor. href/target/rel and the anchor's own label translation
-   * are all code-controlled, so the placeholder can only ever resolve to the
-   * tenant-resolved support destination (SupportChannelService.supportUrl,
-   * EC-07/AD-4 — NOT issueTrackerUrl, which is the wallet's own GitHub bug
-   * tracker used by the About section, not a human support channel), never
-   * to whatever a translation string contains. Public so components that
-   * need to render a support-link-bearing message outside an alert (e.g. via
-   * the `supportLink` pipe) reuse this instead of duplicating it.
-   */
-  public renderSupportMessage(translatedMessage: string): string {
-    const sanitized = this.sanitizeHtml(translatedMessage);
-    if (!sanitized.includes(SUPPORT_LINK_PLACEHOLDER)) {
-      return sanitized;
-    }
-
-    const label = this.sanitizeHtml(this.translate.instant('errors.support-team-label'));
-    const url = this.supportChannel.channels().supportUrl;
-    const link = `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`;
-
-    return sanitized.split(SUPPORT_LINK_PLACEHOLDER).join(link);
-  }
-
-  private sanitizeHtml(value: string): string {
-    return this.sanitizer.sanitize(SecurityContext.HTML, String(value ?? '')) ?? '';
-  }
 
   /**
    * The message is passed as text to AlertDialogComponent, which renders the
-   * support link from SUPPORT_LINK_PLACEHOLDER itself: no HTML is built here.
+   * support link from its {{supportLink}} placeholder itself: no HTML is built here.
    */
   private async presentAlert(translatedMessage: string, variant: AlertDialogVariant): Promise<void> {
     const alert = await this.modalController.create({
