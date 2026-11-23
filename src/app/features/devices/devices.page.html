@@ -12,148 +12,73 @@
 
     @if (unavailable()) {
       <div class="unavailable-state">
-        <ion-icon name="information-circle-outline"></ion-icon>
+        <ion-icon name="information-circle-outline" aria-hidden="true"></ion-icon>
         <p>{{ 'devices.unavailable' | translate }}</p>
         <ion-button fill="outline" (click)="backToWallet()">
           {{ 'devices.back-to-wallet' | translate }}
         </ion-button>
       </div>
     } @else if (loading()) {
-      <div class="loading-state">
-        <ion-spinner name="crescent"></ion-spinner>
+      <div class="passkey-list" aria-busy="true" [attr.aria-label]="'devices.loading' | translate">
+        @for (placeholder of [1, 2]; track placeholder) {
+          <article class="device-card device-card--loading">
+            <ion-skeleton-text [animated]="true" style="width: 60%"></ion-skeleton-text>
+            <ion-skeleton-text [animated]="true" style="width: 40%"></ion-skeleton-text>
+            <ion-skeleton-text [animated]="true" style="width: 50%"></ion-skeleton-text>
+          </article>
+        }
       </div>
     } @else if (error()) {
-      <div class="error-state">
-        <ion-icon name="alert-circle-outline"></ion-icon>
+      <div class="error-state" role="alert">
+        <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
         <p>{{ 'devices.load-error' | translate }}</p>
-        <ion-button fill="outline" (click)="loadPasskeys()">
+        <ion-button fill="outline" (click)="load()">
           {{ 'devices.retry' | translate }}
         </ion-button>
       </div>
     } @else {
-      <!-- Current device ------------------------------------------------- -->
-      <h2 class="devices-section-title">{{ 'devices.section-current' | translate }}</h2>
-
-      @if (currentDevice(); as device) {
-        <div class="passkey-list">
-          <article class="device-card device-card--current">
+      <ul class="passkey-list device-list">
+        @for (device of sortedDevices(); track device.id) {
+          <li class="device-card" [class.device-card--current]="device.current">
             <div class="device-card__head">
-              <ion-icon class="device-card__icon" [name]="deviceIcon(device)" aria-hidden="true"></ion-icon>
+              <ion-icon class="device-card__icon" [name]="icon(device)" aria-hidden="true"></ion-icon>
               <div class="passkey-header">
-                <h2>{{ device.displayName }}</h2>
+                <h2 class="device-card__name" [attr.translate]="'no'">{{ device.displayName }}</h2>
+                @if (device.current) {
+                  <span class="this-device-badge">{{ 'devices.this-device' | translate }}</span>
+                }
               </div>
-              <span class="this-device-badge" [attr.aria-label]="'devices.this-device' | translate">
-                {{ 'devices.this-device' | translate }}
-              </span>
+              <button
+                type="button"
+                class="device-action device-menu"
+                (click)="openMenu(device)"
+                [attr.aria-label]="'devices.menu-aria' | translate: { name: device.displayName }"
+              >
+                <ion-icon name="ellipsis-horizontal" aria-hidden="true"></ion-icon>
+              </button>
             </div>
 
             <dl class="device-meta">
               <div class="device-meta__cell">
-                <dt>{{ 'devices.last-active' | translate }}</dt>
-                <dd class="passkey-last-used">
-                  @if (device.lastUsedAt) {
-                    {{ device.lastUsedAt | date: 'mediumDate' }}
+                <dt>{{ 'devices.registered' | translate }}</dt>
+                <dd class="device-registered">{{ device.createdAt | date: 'dd/MM/yyyy' }}</dd>
+              </div>
+              <div class="device-meta__cell">
+                <dt>{{ 'devices.last-used' | translate }}</dt>
+                <dd class="device-last-used">
+                  @if (device.current) {
+                    {{ 'devices.now' | translate }}
+                  } @else if (device.lastUsedAt) {
+                    {{ device.lastUsedAt | date: 'dd/MM/yyyy' }}
                   } @else {
-                    {{ 'devices.last-used-never' | translate }}
+                    {{ device.createdAt | date: 'dd/MM/yyyy' }}
                   }
                 </dd>
               </div>
-              <div class="device-meta__cell">
-                <dt>{{ 'devices.added-on' | translate }}</dt>
-                <dd class="passkey-date">{{ device.createdAt | date: 'mediumDate' }}</dd>
-              </div>
             </dl>
-
-            <div class="device-card__actions">
-              <button
-                type="button"
-                class="device-action"
-                (click)="renamePasskey(device)"
-                [attr.aria-label]="'devices.rename-aria' | translate"
-              >
-                <ion-icon name="pencil-outline" aria-hidden="true"></ion-icon>
-                <span>{{ 'devices.rename-confirm' | translate }}</span>
-              </button>
-            </div>
-          </article>
-        </div>
-      } @else {
-        <div class="empty-state device-empty">
-          <p class="device-empty__title">{{ 'devices.no-current-device-title' | translate }}</p>
-          <p class="device-empty__icons" aria-hidden="true">
-            <ion-icon name="desktop-outline"></ion-icon>
-            <ion-icon name="swap-horizontal-outline"></ion-icon>
-            <ion-icon name="phone-portrait-outline"></ion-icon>
-          </p>
-          <p class="device-empty__hint">{{ 'devices.no-current-device-hint' | translate }}</p>
-        </div>
-      }
-
-      <!-- Other connected devices ------------------------------------------ -->
-      <h2 class="devices-section-title">{{ 'devices.section-others' | translate }}</h2>
-
-      @if (otherDevices().length > 0) {
-        <div class="passkey-list">
-          @for (passkey of otherDevices(); track passkey.id) {
-            <article class="device-card">
-              <div class="device-card__head">
-                <ion-icon class="device-card__icon" [name]="deviceIcon(passkey)" aria-hidden="true"></ion-icon>
-                <div class="passkey-header">
-                  <h2>{{ passkey.displayName }}</h2>
-                </div>
-              </div>
-
-              <dl class="device-meta">
-                <div class="device-meta__cell">
-                  <dt>{{ 'devices.last-active' | translate }}</dt>
-                  <dd class="passkey-last-used">
-                    @if (passkey.lastUsedAt) {
-                      {{ passkey.lastUsedAt | date: 'mediumDate' }}
-                    } @else {
-                      {{ 'devices.last-used-never' | translate }}
-                    }
-                  </dd>
-                </div>
-                <div class="device-meta__cell">
-                  <dt>{{ 'devices.added-on' | translate }}</dt>
-                  <dd class="passkey-date">{{ passkey.createdAt | date: 'mediumDate' }}</dd>
-                </div>
-              </dl>
-
-              <div class="device-card__actions">
-                <button
-                  type="button"
-                  class="device-action"
-                  (click)="renamePasskey(passkey)"
-                  [attr.aria-label]="'devices.rename-aria' | translate"
-                >
-                  <ion-icon name="pencil-outline" aria-hidden="true"></ion-icon>
-                  <span>{{ 'devices.rename-confirm' | translate }}</span>
-                </button>
-                <button
-                  type="button"
-                  class="device-action device-action--danger"
-                  (click)="deletePasskey(passkey)"
-                  [attr.aria-label]="'devices.delete-aria' | translate"
-                >
-                  <ion-icon name="trash-outline" aria-hidden="true"></ion-icon>
-                  <span>{{ 'devices.remove-device' | translate }}</span>
-                </button>
-              </div>
-            </article>
-          }
-        </div>
-      } @else {
-        <div class="empty-state device-empty">
-          <p class="device-empty__title">{{ 'devices.no-other-devices-title' | translate }}</p>
-          <p class="device-empty__icons" aria-hidden="true">
-            <ion-icon name="desktop-outline"></ion-icon>
-            <ion-icon name="swap-horizontal-outline"></ion-icon>
-            <ion-icon name="phone-portrait-outline"></ion-icon>
-          </p>
-          <p class="device-empty__hint">{{ 'devices.no-other-devices-hint' | translate }}</p>
-        </div>
-      }
+          </li>
+        }
+      </ul>
     }
   </div>
 </ion-content>

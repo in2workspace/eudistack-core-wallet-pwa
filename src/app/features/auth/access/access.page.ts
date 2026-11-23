@@ -42,7 +42,6 @@ export type AccessScreen =
 
 const RESEND_COOLDOWN_SECONDS = 180;
 const EMAIL_MAX_LENGTH = 254;
-const DEVICE_NAME_MAX_LENGTH = 100;
 const IOS_INSTALL_STEPS = ['step1', 'step2', 'step3', 'step4'] as const;
 const MAC_INSTALL_STEPS = ['step-1', 'step-2', 'step-3'] as const;
 const INSTALL_HELP_FAQS = [
@@ -144,7 +143,6 @@ export class AccessPage implements OnDestroy {
   readonly email = signal('');
   readonly otpValue = signal('');
   readonly codeState = signal<CodeState>('active');
-  readonly deviceName = signal(defaultDeviceName());
   readonly showIosSteps = signal(false);
   readonly showMacSteps = signal(false);
   readonly showInstallHelp = signal(false);
@@ -163,7 +161,6 @@ export class AccessPage implements OnDestroy {
   readonly macInstallSteps = MAC_INSTALL_STEPS;
   readonly installHelpFaqs = INSTALL_HELP_FAQS;
   readonly emailMaxLength = EMAIL_MAX_LENGTH;
-  readonly deviceNameMaxLength = DEVICE_NAME_MAX_LENGTH;
 
   /** Screen the "Retry" of a rejected sign-in goes back to. */
   private rejectedFrom: 'access' | 'choose-passkey' = 'access';
@@ -472,7 +469,7 @@ export class AccessPage implements OnDestroy {
     this.busy.set(true);
     this.errorMessage.set('');
     try {
-      await this.authService.registerPasskey(this.deviceName());
+      await this.authService.registerPasskey();
       await this.afterRegistration();
     } catch (err: unknown) {
       this.handleRegistrationError(err);
@@ -805,16 +802,4 @@ export class AccessPage implements OnDestroy {
 function retryAfterSeconds(err: HttpErrorResponse): number {
   const seconds = Number(err.headers?.get('Retry-After'));
   return Number.isFinite(seconds) && seconds > 0 ? seconds : RESEND_COOLDOWN_SECONDS;
-}
-
-/** Default name of the new passkey; the user can change it and the service sets one if empty. */
-function defaultDeviceName(): string {
-  const ua = navigator.userAgent;
-  if (/iPhone/.test(ua)) return 'iPhone';
-  if (/iPad/.test(ua)) return 'iPad';
-  if (/Android/.test(ua)) return 'Android';
-  if (/Mac/.test(ua)) return 'Mac';
-  if (/Windows/.test(ua)) return 'Windows PC';
-  if (/Linux/.test(ua)) return 'Linux';
-  return '';
 }

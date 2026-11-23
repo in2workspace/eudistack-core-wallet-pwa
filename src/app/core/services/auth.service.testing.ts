@@ -12,6 +12,7 @@ import { ServerSessionDataService } from './server-session-data.service';
 import { WebAuthnBrowserService } from './webauthn-browser.service';
 import { PasskeyApiService } from './passkey-api.service';
 import { UserActivityService } from './user-activity.service';
+import { WalletInstanceService } from './wallet-instance.service';
 
 /** Test-only helpers for the RemoteAuthService specs (not part of the app bundle). */
 
@@ -77,6 +78,7 @@ export interface AuthHarness {
   sessionData: { sessionStarted: jest.Mock; sessionEnded: jest.Mock };
   webAuthn: { signalAllAcceptedCredentials: jest.Mock; signalCurrentUserDetails: jest.Mock; signalUnknownCredential: jest.Mock };
   passkeyApi: { listPasskeys: jest.Mock };
+  walletInstance: { bindRemembered: jest.Mock };
   activity$: Subject<void>;
 }
 
@@ -102,6 +104,8 @@ export function createAuthHarness(options: { reopened?: boolean } = {}): AuthHar
       signalUnknownCredential: jest.fn().mockResolvedValue(undefined),
     },
     passkeyApi: { listPasskeys: jest.fn().mockReturnValue(of([{ id: 'pk-1', credentialId: 'cred-1' }])) },
+    // EUD-15: by default the Wallet App remembers an active device of the account.
+    walletInstance: { bindRemembered: jest.fn().mockResolvedValue('bound') },
     activity$: new Subject<void>(),
   };
 
@@ -117,6 +121,7 @@ export function createAuthHarness(options: { reopened?: boolean } = {}): AuthHar
       { provide: ServerSessionDataService, useValue: harness.sessionData },
       { provide: WebAuthnBrowserService, useValue: harness.webAuthn },
       { provide: PasskeyApiService, useValue: harness.passkeyApi },
+      { provide: WalletInstanceService, useValue: harness.walletInstance },
       { provide: UserActivityService, useValue: { activity$: harness.activity$.asObservable() } },
     ],
   });

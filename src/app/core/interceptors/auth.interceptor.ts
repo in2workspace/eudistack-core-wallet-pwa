@@ -7,8 +7,16 @@ import { UrlResolverService } from '../services/url-resolver.service';
 import { SessionExpiryMarkerService } from '../services/session-expiry-marker.service';
 import { RegistrationTicketService } from '../services/registration-ticket.service';
 import { WALLET_DISCOVERY_PATH } from '../constants/api.constants';
+import { isInstanceRequired } from '../services/wallet-instance.service';
+import { DOCUMENT } from '@angular/common';
 
 export const AUTH_RETRY_AFTER_REFRESH = new HttpContextToken<boolean>(() => false);
+
+/** Set on the one retry after binding the session to its device (EUD-15). */
+export const INSTANCE_RETRY = new HttpContextToken<boolean>(() => false);
+
+/** Languages the Wallet Unit Service writes emails in (EUD-8 FR-38). */
+const EMAIL_LANGUAGES = ['es', 'ca', 'en'];
 
 /** Header the Wallet Unit Service requires on the endpoints that use the session cookie (CSRF). */
 export const WALLET_REQUEST_HEADER = 'X-Wallet-Request';
@@ -68,6 +76,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   if (!req.url.startsWith(urlResolver.serverUrl())) {
     return next(req);
   }
+
+  // EUD-8 AD-10: the Wallet Unit Service writes the holder's emails in the language of the Wallet App.
+  req = withLanguage(req, inject(DOCUMENT));
 
   const route = authRouteOf(req.url);
   switch (route) {
@@ -138,7 +149,31 @@ interface SessionCall {
 function sendAuthorized(call: SessionCall): Observable<HttpEvent<unknown>> {
   const authorizedReq = withSessionToken(call.req, call.authService.getToken());
   return call.next(authorizedReq).pipe(
-    catchError((err: HttpErrorResponse) => renewAndRetry(call, authorizedReq, err))
+    catchError((err: HttpErrorResponse) => isInstanceRequired(err)
+      ? bindDeviceAndRetry(call, authorizedReq, err)
+      : renewAndRetry(call, authorizedReq, err))
+  );
+}
+
+/**
+ * EUD-15 design §2.2: a 403 `instance_required` binds the session to its device once and retries the call once.
+ * Without an active device of the account, the auth service goes to "Registrar este dispositivo" and the error
+ * is returned.
+ */
+function bindDeviceAndRetry(
+  call: SessionCall,
+  authorizedReq: HttpRequest<unknown>,
+  err: HttpErrorResponse
+): Observable<HttpEvent<unknown>> {
+  if (call.req.context.get(INSTANCE_RETRY)) {
+    return throwError(() => err);
+  }
+  return call.authService.recoverDevice().pipe(
+    switchMap(bound => bound
+      ? call.next(withSessionToken(authorizedReq, call.authService.getToken()).clone({
+        context: authorizedReq.context.set(INSTANCE_RETRY, true),
+      }))
+      : throwError(() => err))
   );
 }
 
@@ -184,6 +219,15 @@ function endExpiredSession(call: SessionCall, err: HttpErrorResponse): Observabl
     call.authService.forceLogout({ sessionExpired: true });
   }
   return throwError(() => err);
+}
+
+/**
+ * `Accept-Language` with the active language of the Wallet App, when it is one the service writes emails in. The
+ * app keeps `<html lang>` in step with the language it shows (UiTextTranslationService).
+ */
+function withLanguage<T>(req: HttpRequest<T>, document: Document): HttpRequest<T> {
+  const language = (document.documentElement.lang || '').split('-')[0].toLowerCase();
+  return EMAIL_LANGUAGES.includes(language) ? req.clone({ setHeaders: { 'Accept-Language': language } }) : req;
 }
 
 function withSessionToken<T>(req: HttpRequest<T>, token: string): HttpRequest<T> {

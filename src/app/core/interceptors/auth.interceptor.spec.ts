@@ -42,6 +42,9 @@ class MockAuthService extends AuthService {
   refreshAccessToken(): Observable<AccessTokenResponse> { return this.refresh(); }
   override recordActivity() { this.activity++; }
   override whenAccessTokenReady() { return this.ready(); }
+  recover: () => Observable<boolean> = () => of(false);
+  recoverCalls = 0;
+  override recoverDevice() { this.recoverCalls++; return this.recover(); }
 }
 
 describe('authInterceptor', () => {
@@ -376,6 +379,84 @@ describe('authInterceptor', () => {
       httpMock.expectOne(`${OWN_BACKEND}/api/v1/credentials`).flush(null, { status: 403, statusText: 'Forbidden' });
 
       expect(refresh).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('device of the session (EUD-15 design §2.2)', () => {
+    const CREDENTIALS = `${OWN_BACKEND}/api/v1/credentials`;
+    const INSTANCE_REQUIRED = { type: 'instance_required', status: 403 };
+    const FORBIDDEN = { status: 403, statusText: 'Forbidden' };
+
+    it('on instance_required binds the session once and retries the call', () => {
+      auth.token = 'session-token';
+      auth.recover = () => of(true);
+      let body: unknown;
+      http.get(CREDENTIALS).subscribe(response => (body = response));
+
+      httpMock.expectOne(CREDENTIALS).flush(INSTANCE_REQUIRED, FORBIDDEN);
+      httpMock.expectOne(CREDENTIALS).flush([{ id: 'c1' }]);
+
+      expect(auth.recoverCalls).toBe(1);
+      expect(body).toEqual([{ id: 'c1' }]);
+    });
+
+    it('does not retry when the device could not be bound (registration needed)', () => {
+      auth.token = 'session-token';
+      let error: HttpErrorResponse | undefined;
+      http.get(CREDENTIALS).subscribe({ error: err => (error = err) });
+
+      httpMock.expectOne(CREDENTIALS).flush(INSTANCE_REQUIRED, FORBIDDEN);
+
+      expect(auth.recoverCalls).toBe(1);
+      expect(error?.status).toBe(403);
+      expect(auth.forceLogoutCalls).toHaveLength(0);
+    });
+
+    it('retries at most once', () => {
+      auth.token = 'session-token';
+      auth.recover = () => of(true);
+      let error: HttpErrorResponse | undefined;
+      http.get(CREDENTIALS).subscribe({ error: err => (error = err) });
+
+      httpMock.expectOne(CREDENTIALS).flush(INSTANCE_REQUIRED, FORBIDDEN);
+      httpMock.expectOne(CREDENTIALS).flush(INSTANCE_REQUIRED, FORBIDDEN);
+
+      expect(auth.recoverCalls).toBe(1);
+      expect(error?.status).toBe(403);
+    });
+
+    it('leaves any other 403 alone', () => {
+      auth.token = 'session-token';
+      http.get(CREDENTIALS).subscribe({ error: () => undefined });
+
+      httpMock.expectOne(CREDENTIALS).flush({ type: 'forbidden', status: 403 }, FORBIDDEN);
+
+      expect(auth.recoverCalls).toBe(0);
+    });
+  });
+
+  describe('language of the emails (EUD-8 AD-10)', () => {
+    afterEach(() => document.documentElement.removeAttribute('lang'));
+
+    it.each(['es', 'ca', 'en'])('sends the active language %s to the Wallet Unit Service', language => {
+      document.documentElement.lang = language;
+      http.post(`${AUTH}/register`, {}).subscribe();
+
+      expect(httpMock.expectOne(`${AUTH}/register`).request.headers.get('Accept-Language')).toBe(language);
+    });
+
+    it('sends no language the service does not write emails in', () => {
+      document.documentElement.lang = 'fr';
+      http.post(`${AUTH}/register`, {}).subscribe();
+
+      expect(httpMock.expectOne(`${AUTH}/register`).request.headers.has('Accept-Language')).toBe(false);
+    });
+
+    it('never sends it to another origin', () => {
+      document.documentElement.lang = 'ca';
+      http.get('https://issuer.example/x').subscribe();
+
+      expect(httpMock.expectOne('https://issuer.example/x').request.headers.has('Accept-Language')).toBe(false);
     });
   });
 });

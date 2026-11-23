@@ -321,6 +321,21 @@ describe('HttpErrorInterceptor with HttpClient', () => {
     expect(toastSpy).not.toHaveBeenCalled();
   });
 
+  it('handles silently the 410 instance_revoked of binding the session to a revoked device (EUD-15)', () => {
+    // The Wallet App forgets the device and shows "Registrar este dispositivo": no generic alert.
+    const testUrl = `${environment.server_url}/business-wallet/api/v1/wallet-instances/current`;
+    const toastSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
+    const labelSpy = jest.spyOn(mockToastServiceHandler, 'showErrorAlertByTranslateLabel');
+
+    let receivedError: unknown;
+    httpClient.put(testUrl, {}).subscribe({ error: (error) => { receivedError = error; } });
+    httpMock.expectOne(testUrl).flush({ type: 'instance_revoked', status: 410 }, { status: 410, statusText: 'Gone' });
+
+    expect(receivedError).toBeTruthy();
+    expect(toastSpy).not.toHaveBeenCalled();
+    expect(labelSpy).not.toHaveBeenCalled();
+  });
+
   it('should show a toast with "PIN expired" on a 408 Request Timeout response', () => {
     const expectedMessage = 'PIN expired';
     const spy = jest.spyOn(mockToastServiceHandler, 'showErrorAlert');
