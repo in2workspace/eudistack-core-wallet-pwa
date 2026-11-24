@@ -1,10 +1,8 @@
-declare const require: (path: string) => unknown;
-
 // The script is a global script of angular.json (not an ES module): load a fresh copy per test,
 // so it runs again against the current window as the browser would run it once per page.
 const runScript = (): void => {
   jest.isolateModules(() => {
-    require('./pwa-install-capture.js');
+    jest.requireActual('./pwa-install-capture.js');
   });
 };
 
