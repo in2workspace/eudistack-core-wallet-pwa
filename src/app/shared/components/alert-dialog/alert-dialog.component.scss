@@ -1,5 +1,5 @@
-// Same look as the ion-alert notices it replaces (customAlert.scss: custom-alert-error,
-// custom-alert-ok-info, custom-alert-ok).
+// Same look as the ion-alert notices it replaced (error, info and success), with the
+// --custom-alert-* colour variables of customAlert.scss.
 :host {
   display: block;
 }
