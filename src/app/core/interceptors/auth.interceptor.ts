@@ -19,7 +19,7 @@ export const INSTANCE_RETRY = new HttpContextToken<boolean>(() => false);
 const WALLET_INSTANCES_PATH = '/api/v1/wallet-instances';
 
 /** Languages the Wallet Unit Service writes emails in (EUD-8 FR-38). */
-const EMAIL_LANGUAGES = ['es', 'ca', 'en'];
+const EMAIL_LANGUAGES = new Set(['es', 'ca', 'en']);
 
 /** Header the Wallet Unit Service requires on the endpoints that use the session cookie (CSRF). */
 export const WALLET_REQUEST_HEADER = 'X-Wallet-Request';
@@ -231,7 +231,7 @@ function endExpiredSession(call: SessionCall, err: HttpErrorResponse): Observabl
  */
 function withLanguage<T>(req: HttpRequest<T>, document: Document): HttpRequest<T> {
   const language = (document.documentElement.lang || '').split('-')[0].toLowerCase();
-  return EMAIL_LANGUAGES.includes(language) ? req.clone({ setHeaders: { 'Accept-Language': language } }) : req;
+  return EMAIL_LANGUAGES.has(language) ? req.clone({ setHeaders: { 'Accept-Language': language } }) : req;
 }
 
 function withSessionToken<T>(req: HttpRequest<T>, token: string): HttpRequest<T> {

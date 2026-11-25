@@ -937,41 +937,52 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       if (this.disposed) return;
       const data = event.data as SessionEndedMessage | string;
       if (typeof data === 'object' && data?.type === SESSION_ENDED_MESSAGE) {
-        if (data.expired) {
-          this.sessionExpiredNotice = true;
-        }
-        this.resumeDeferred = false;
-        if (!this.isLoggedIn()) return;
-        this.endSessionLocally();
-        void this.router.navigateByUrl(ACCESS_ROUTE);
+        this.onOtherTabSessionEnded(data);
       } else if (data === DEVICE_REGISTERED_MESSAGE) {
-        if (this.isLoggedIn()) {
-          this.deviceState = null;
-          if (this.router.url?.startsWith(REGISTER_DEVICE_ROUTE)) {
-            void this.deviceReady().then(state => {
-              if (state === 'bound') {
-                this.sessionData = this.serverSessionData.sessionStarted();
-                void this.router.navigateByUrl(takePendingDeepLink() || WALLET_HOME);
-              }
-            });
-          }
-        }
+        this.onOtherTabDeviceRegistered();
       } else if (data === SESSION_OPENED_MESSAGE) {
-        // Another tab opened a session, maybe of another account: the binding of this one is not valid now.
-        this.deviceState = null;
-        this.resetDeviceRetry();
-        if (!this.isLoggedIn() && !this.resumeDeferred) return;
-        this.epoch++;
-        this.accessToken = null;
-        this.sessionPasskey.clear();
-        this.resumeDeferred = false;
-        this.setServerLogoutPending(false);
-        this.refreshAccessToken({ onAuthFailure: 'force-logout' }).subscribe({
-          next: () => { this.sessionData = this.loadSessionData(true); },
-          error: () => undefined,
-        });
+        this.onOtherTabSessionOpened();
       }
     };
+  }
+
+  private onOtherTabSessionEnded(message: SessionEndedMessage): void {
+    if (message.expired) {
+      this.sessionExpiredNotice = true;
+    }
+    this.resumeDeferred = false;
+    if (!this.isLoggedIn()) return;
+    this.endSessionLocally();
+    void this.router.navigateByUrl(ACCESS_ROUTE);
+  }
+
+  /** Another tab registered the device: this one leaves the registration step once bound to it. */
+  private onOtherTabDeviceRegistered(): void {
+    if (!this.isLoggedIn()) return;
+    this.deviceState = null;
+    if (!this.router.url?.startsWith(REGISTER_DEVICE_ROUTE)) return;
+    void this.deviceReady().then(state => {
+      if (state === 'bound') {
+        this.sessionData = this.serverSessionData.sessionStarted();
+        void this.router.navigateByUrl(takePendingDeepLink() || WALLET_HOME);
+      }
+    });
+  }
+
+  /** Another tab opened a session, maybe of another account: the binding of this one is not valid now. */
+  private onOtherTabSessionOpened(): void {
+    this.deviceState = null;
+    this.resetDeviceRetry();
+    if (!this.isLoggedIn() && !this.resumeDeferred) return;
+    this.epoch++;
+    this.accessToken = null;
+    this.sessionPasskey.clear();
+    this.resumeDeferred = false;
+    this.setServerLogoutPending(false);
+    this.refreshAccessToken({ onAuthFailure: 'force-logout' }).subscribe({
+      next: () => { this.sessionData = this.loadSessionData(true); },
+      error: () => undefined,
+    });
   }
 
   private broadcastSessionEnded(expired: boolean): void {

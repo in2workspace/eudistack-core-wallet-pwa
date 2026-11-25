@@ -181,7 +181,7 @@ export class WalletInstanceService {
           open.result.createObjectStore(STORE_NAME);
         }
       };
-      open.onerror = () => reject(open.error);
+      open.onerror = () => reject(open.error ?? new Error('wallet-instance store could not be opened'));
       // Another connection with an older version: never wait forever (registration holds a cross-tab lock).
       open.onblocked = () => reject(new Error('wallet-instance store blocked'));
       open.onsuccess = () => {
@@ -195,7 +195,7 @@ export class WalletInstanceService {
           };
           tx.onerror = () => {
             db.close();
-            reject(tx.error);
+            reject(tx.error ?? new Error('wallet-instance transaction failed'));
           };
           // A transaction can abort without an error event (QuotaExceededError).
           tx.onabort = () => {
