@@ -2,6 +2,7 @@ import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testin
 import { By } from '@angular/platform-browser';
 import { Router, ActivatedRoute } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { AuthService } from 'src/app/core/services/auth.service';
 import { EMPTY, of, throwError } from 'rxjs';
 import { CredentialOfferExpiredError } from 'src/app/core/models/error/Oid4vciError';
 import { ModalController } from '@ionic/angular';
@@ -38,6 +39,7 @@ const mockModalController = {
 };
 
 describe('CredentialsPage - verifiablePresentationFlow', () => {
+  let mockAuth: { deviceUnavailable: jest.Mock };
   let component: CredentialsPage;
   let fixture: ComponentFixture<CredentialsPage>;
   let mockRouter: { navigate: jest.Mock };
@@ -140,6 +142,8 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       renderSupportMessage: jest.fn().mockImplementation((value: string) => value),
     };
 
+    mockAuth = { deviceUnavailable: jest.fn().mockReturnValue(false) };
+
     TestBed.overrideComponent(CredentialsPage, {
       add: { providers: [{ provide: ModalController, useValue: mockModalController }] },
     });
@@ -173,6 +177,8 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
         { provide: WalletDiscoveryService, useValue: mockDiscovery },
         { provide: Oid4vciEngineService, useValue: { performOid4vciFlow: jest.fn() } },
         { provide: ModalController, useValue: mockModalController },
+        // EUD-15 design §2.2: scanning is off while the session is not bound to its device.
+        { provide: AuthService, useValue: mockAuth },
         // privacyBlur() is only exercised by the translate="no" shielding tests below,
         // which render the card-grid (app-vc-view needs it for [blurred]) — every other
         // test in this spec never renders the template.
@@ -716,6 +722,15 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       // Assert
       expect(mockHaptic.impact).toHaveBeenCalled();
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/tabs/scan']);
+    });
+
+    it('does nothing while the session is not bound to its device (EUD-15 design §2.2)', () => {
+      mockAuth.deviceUnavailable.mockReturnValue(true);
+
+      component.startScan();
+
+      expect(component.scanDisabled()).toBe(true);
+      expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/tabs/scan']);
     });
   });
 

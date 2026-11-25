@@ -65,6 +65,18 @@ describe('device guards (EUD-15 FR-06)', () => {
     expect(await runDeviceGuard('/tabs/credentials')).toBe(true);
   });
 
+  it.each([
+    '/tabs/scan',
+    '/protocol/callback?credential_offer_uri=x',
+    '/tabs/credentials?credential_offer_uri=x',
+    '/tabs/credentials?request_uri=y',
+  ])('postpones %s to the wallet home while the binding is retried (design §2.2)', async url => {
+    auth.deviceReady.mockResolvedValue('unavailable');
+
+    expect(await runDeviceGuard(url)).toEqual({ url: '/tabs/credentials' });
+    expect(sessionStorage.getItem(PENDING_DEEP_LINK_KEY)).toBe(url);
+  });
+
   it('leaves a user without session to authGuard', async () => {
     auth.isLoggedIn.mockReturnValue(false);
 

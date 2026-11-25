@@ -24,14 +24,31 @@ export const deviceRegistrationGuard: CanActivateFn = async (_route, state: Rout
   if (!auth.isLoggedIn()) {
     return true;
   }
-  if ((await auth.deviceReady()) !== 'unregistered') {
+  const device = await auth.deviceReady();
+  if (device === 'bound') {
     return true;
+  }
+  if (device === 'unavailable') {
+    // Temporary failure, retried in the background (design §2.2): the wallet is shown, but an offer or a
+    // presentation request waits until the session is bound, and then resumes.
+    if (!state?.url || !startsAttestationFlow(state.url)) {
+      return true;
+    }
+    sessionStorage.setItem(PENDING_DEEP_LINK_KEY, state.url);
+    return router.parseUrl(WALLET_HOME_ROUTE);
   }
   if (state?.url && state.url !== '/') {
     sessionStorage.setItem(PENDING_DEEP_LINK_KEY, state.url);
   }
   return router.parseUrl(REGISTER_DEVICE_ROUTE);
 };
+
+/** Routes that obtain or present an attestation: scanning, the protocol callback and offer or request links. */
+export function startsAttestationFlow(url: string): boolean {
+  return url.startsWith('/tabs/scan')
+    || url.startsWith('/protocol/callback')
+    || /[?&](credential_offer|credential_offer_uri|request|request_uri)=/.test(url);
+}
 
 /**
  * `/registrar-dispositivo`: only with an open session whose Wallet App has no active device. Without a session it

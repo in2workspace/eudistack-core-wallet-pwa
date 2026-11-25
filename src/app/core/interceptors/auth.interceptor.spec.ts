@@ -425,6 +425,19 @@ describe('authInterceptor', () => {
       expect(error?.status).toBe(403);
     });
 
+    it('never recovers from instance_required on a device route (it would wait on its own binding)', () => {
+      const BIND = `${OWN_BACKEND}/api/v1/wallet-instances/current`;
+      auth.token = 'session-token';
+      auth.recover = () => of(true);
+      let error: HttpErrorResponse | undefined;
+      http.put(BIND, { instanceId: 'i1' }).subscribe({ error: err => (error = err) });
+
+      httpMock.expectOne(BIND).flush(INSTANCE_REQUIRED, FORBIDDEN);
+
+      expect(auth.recoverCalls).toBe(0);
+      expect(error?.status).toBe(403);
+    });
+
     it('leaves any other 403 alone', () => {
       auth.token = 'session-token';
       http.get(CREDENTIALS).subscribe({ error: () => undefined });

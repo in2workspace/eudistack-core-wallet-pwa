@@ -15,6 +15,9 @@ export const AUTH_RETRY_AFTER_REFRESH = new HttpContextToken<boolean>(() => fals
 /** Set on the one retry after binding the session to its device (EUD-15). */
 export const INSTANCE_RETRY = new HttpContextToken<boolean>(() => false);
 
+/** Routes of the Wallet Instances (EUD-15): exempt from `instance_required` on the service. */
+const WALLET_INSTANCES_PATH = '/api/v1/wallet-instances';
+
 /** Languages the Wallet Unit Service writes emails in (EUD-8 FR-38). */
 const EMAIL_LANGUAGES = ['es', 'ca', 'en'];
 
@@ -149,7 +152,8 @@ interface SessionCall {
 function sendAuthorized(call: SessionCall): Observable<HttpEvent<unknown>> {
   const authorizedReq = withSessionToken(call.req, call.authService.getToken());
   return call.next(authorizedReq).pipe(
-    catchError((err: HttpErrorResponse) => isInstanceRequired(err)
+    // The device routes are the way to bind: recovering from one of them would wait on itself.
+    catchError((err: HttpErrorResponse) => isInstanceRequired(err) && !call.req.url.includes(WALLET_INSTANCES_PATH)
       ? bindDeviceAndRetry(call, authorizedReq, err)
       : renewAndRetry(call, authorizedReq, err))
   );

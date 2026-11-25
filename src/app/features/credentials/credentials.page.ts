@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { IonicModule, ViewWillEnter } from '@ionic/angular';
 import { StorageService } from 'src/app/shared/services/storage.service';
 import { WalletService } from 'src/app/core/services/wallet.service';
+import { AuthService } from 'src/app/core/services/auth.service';
 import { VcViewComponent } from '../../shared/components/vc-view/vc-view.component';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -85,6 +86,7 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
   private readonly displayService = inject(CredentialDisplayService);
   private readonly translate = inject(TranslateService);
   private readonly pwaInstallService = inject(PwaInstallService);
+  private readonly authService = inject(AuthService, { optional: true });
 
   public readonly canInstall$ = this.pwaInstallService.installable$;
 
@@ -148,7 +150,13 @@ export class CredentialsPage implements OnInit, ViewWillEnter {
     this.bannerDismissed = true;
   }
 
+  /** EUD-15 design §2.2: no new attestation while the session is not bound to its device (retried meanwhile). */
+  public scanDisabled(): boolean {
+    return this.authService?.deviceUnavailable() ?? false;
+  }
+
   public startScan(): void {
+    if (this.scanDisabled()) return;
     void this.hapticService.impact();
     this.router.navigate(['/tabs/scan'])
       .catch(() => this.toastServiceHandler.showErrorAlertByTranslateLabel('errors.navigation').subscribe());
