@@ -58,6 +58,7 @@ describe('Integration: credential offer expired (HTTP 410 credential_offer_expir
     alertCreate = jest.fn().mockResolvedValue({
       present: jest.fn().mockResolvedValue(undefined),
       onDidDismiss: jest.fn().mockResolvedValue(undefined),
+      querySelector: jest.fn().mockReturnValue(null), // the notice is focused once presented
     });
 
     TestBed.configureTestingModule({

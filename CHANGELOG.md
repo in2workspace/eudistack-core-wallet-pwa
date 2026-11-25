@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The error, info and success notices of `ToastServiceHandler` are an `ion-modal` with the new `AlertDialogComponent` instead of an `ion-alert` built from HTML, with the same look. The new `SupportMessageComponent` renders the `{{supportLink}}` placeholder as the tenant support link from its template; the load-error state of the credentials page uses it too.
+- The notices keep the accessibility of the former `ion-alert`: with a button, the notice is an `alertdialog` (`aria-modal`, described by its message) and the button gets the focus when it opens; without a button, it is an `alert` and gets the focus itself. The `ion-modal` wrapper gets `role="none"` so it is not announced as a second, unnamed dialog.
 - The temporary decision notice (`CredentialDecisionService.showTempMessage`) and the duplicate-tab screen (`SingleInstanceService`) are built with DOM nodes and `textContent`.
 - The credential counter of the VC selector renders the number from the template (new `SplitPlaceholderPipe`); its highlight style (bold, info colour) now applies.
 - Translations carry no HTML: the `<br>` of `vc-selector.server-error-message` becomes a space (ca, en, es).

@@ -1,6 +1,6 @@
 import { flush, flushMicrotasks, TestBed } from '@angular/core/testing';
 import { ToastServiceHandler } from './toast.service';
-import { AlertDialogComponent } from '../components/alert-dialog/alert-dialog.component';
+import { AlertDialogComponent, focusAlertDialog } from '../components/alert-dialog/alert-dialog.component';
 import { ModalController } from '@ionic/angular';
 import { TranslateService, TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { TranslateFakeLoader } from '@ngx-translate/core';
@@ -9,6 +9,12 @@ import { of } from 'rxjs';
 import { SupportChannelService } from 'src/app/core/services/support-channel.service';
 import { SUPPORT_EMAIL, ISSUE_TRACKER_URL, SUPPORT_URL } from 'src/app/core/constants/support.constants';
 const TIME_IN_MS = 5000;
+
+// The modal mocks have no DOM: the focus helper is checked in alert-dialog.component.spec.ts.
+jest.mock('../components/alert-dialog/alert-dialog.component', () => ({
+  ...jest.requireActual('../components/alert-dialog/alert-dialog.component'),
+  focusAlertDialog: jest.fn(),
+}));
 
 jest.useFakeTimers();
 
@@ -383,6 +389,35 @@ describe('ToastServiceHandler', () => {
     setTimeout(() => {
       expect(toast.dismiss).toHaveBeenCalled()
     }, TIME_IN_MS);
+  });
+
+  describe('accessibility of the notices (as the former ion-alert)', () => {
+    beforeEach(() => (focusAlertDialog as jest.Mock).mockClear());
+
+    it('an alert leaves the dialog semantics to the notice and focuses it once presented', async () => {
+      const modal = {
+        present: jest.fn().mockResolvedValue(undefined),
+        dismiss: jest.fn(),
+        onDidDismiss: jest.fn().mockResolvedValue(undefined),
+      };
+      modalCtrl.create.mockResolvedValueOnce(modal);
+
+      service.showErrorAlertByTranslateLabel('errors.default').subscribe();
+      for (let i = 0; i < 10; i++) { await Promise.resolve(); }
+
+      expect(modalCtrl.create).toHaveBeenCalledWith(expect.objectContaining({ htmlAttributes: { role: 'none' } }));
+      expect(modal.present).toHaveBeenCalled();
+      expect(focusAlertDialog).toHaveBeenCalledWith(modal);
+    });
+
+    it('a success toast leaves the dialog semantics to the notice and focuses it once presented', fakeAsync(() => {
+      service.showToast('toast.success');
+      tick();
+
+      expect(modalCtrl.create).toHaveBeenCalledWith(expect.objectContaining({ htmlAttributes: { role: 'none' } }));
+      expect(focusAlertDialog).toHaveBeenCalledTimes(1);
+      tick(2000);
+    }));
   });
 
   describe('messages as text (EUD-332: no HTML built, innerHTMLTemplatesEnabled off)', () => {

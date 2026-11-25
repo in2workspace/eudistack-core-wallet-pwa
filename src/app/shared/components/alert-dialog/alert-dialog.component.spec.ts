@@ -3,7 +3,7 @@ import { IonicModule, ModalController } from '@ionic/angular';
 import { TranslateFakeLoader, TranslateLoader, TranslateModule } from '@ngx-translate/core';
 import { SupportChannelService } from 'src/app/core/services/support-channel.service';
 import { ISSUE_TRACKER_URL, SUPPORT_EMAIL, SUPPORT_URL } from 'src/app/core/constants/support.constants';
-import { AlertDialogComponent, AlertDialogVariant } from './alert-dialog.component';
+import { AlertDialogComponent, AlertDialogVariant, focusAlertDialog } from './alert-dialog.component';
 
 describe('AlertDialogComponent', () => {
   let fixture: ComponentFixture<AlertDialogComponent>;
@@ -82,5 +82,45 @@ describe('AlertDialogComponent', () => {
     const el = render({ message: 'msg', variant: 'success' });
 
     expect(el.querySelector('button')).toBeNull();
+  });
+
+  describe('accessibility (as the former ion-alert)', () => {
+    it('with a button, is a modal alertdialog described by its message', () => {
+      const el = render({ message: 'Something failed', variant: 'error', closeLabel: 'Close' });
+      const dialog = el.querySelector('.alert-dialog') as HTMLElement;
+
+      expect(dialog.getAttribute('role')).toBe('alertdialog');
+      expect(dialog.getAttribute('aria-modal')).toBe('true');
+      const description = el.querySelector(`#${dialog.getAttribute('aria-describedby')}`);
+      expect(description?.textContent).toContain('Something failed');
+    });
+
+    it('without a button, is an alert', () => {
+      const dialog = render({ message: 'Done', variant: 'success' }).querySelector('.alert-dialog') as HTMLElement;
+
+      expect(dialog.getAttribute('role')).toBe('alert');
+      expect(dialog.hasAttribute('aria-modal')).toBe(false);
+      expect(dialog.hasAttribute('aria-describedby')).toBe(false);
+    });
+
+    it('focusAlertDialog focuses the button when there is one', () => {
+      const el = render({ message: 'msg', closeLabel: 'Close' });
+      document.body.appendChild(el);
+
+      focusAlertDialog(el);
+
+      expect(document.activeElement).toBe(el.querySelector('button'));
+      el.remove();
+    });
+
+    it('focusAlertDialog focuses the notice itself when it has no button', () => {
+      const el = render({ message: 'msg', variant: 'success' });
+      document.body.appendChild(el);
+
+      focusAlertDialog(el);
+
+      expect(document.activeElement).toBe(el.querySelector('.alert-dialog'));
+      el.remove();
+    });
   });
 });

@@ -2,7 +2,12 @@ import { Injectable, inject } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { Observable, from, switchMap, take } from 'rxjs';
 import { ModalController } from '@ionic/angular';
-import { AlertDialogComponent, AlertDialogVariant } from '../components/alert-dialog/alert-dialog.component';
+import {
+  ALERT_DIALOG_MODAL_ATTRIBUTES,
+  AlertDialogComponent,
+  AlertDialogVariant,
+  focusAlertDialog,
+} from '../components/alert-dialog/alert-dialog.component';
 
 /** The notices are an ion-modal with this class (size and backdrop in customAlert.scss). */
 const ALERT_MODAL_CSS_CLASS = 'app-alert-modal';
@@ -124,9 +129,11 @@ export class ToastServiceHandler {
         closeLabel: this.translate.instant('vc-selector.close'),
       },
       cssClass: ALERT_MODAL_CSS_CLASS,
+      htmlAttributes: ALERT_DIALOG_MODAL_ATTRIBUTES,
     });
 
     await alert.present();
+    focusAlertDialog(alert);
     await alert.onDidDismiss();
   }
 
@@ -138,8 +145,10 @@ export class ToastServiceHandler {
         variant: 'success',
       },
       cssClass: ALERT_MODAL_CSS_CLASS,
+      htmlAttributes: ALERT_DIALOG_MODAL_ATTRIBUTES,
     })
       .then(alert => alert.present().then(() => {
+        focusAlertDialog(alert);
         setTimeout(() => {
           void alert.dismiss();
         }, duration);

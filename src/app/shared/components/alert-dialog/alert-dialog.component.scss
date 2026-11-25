@@ -5,6 +5,11 @@
 }
 
 .alert-dialog {
+  // Focused only to be announced (notices without a button): it is not interactive.
+  &:focus {
+    outline: none;
+  }
+
   border-radius: var(--radius-md);
   padding: 20px 24px 8px;
   text-align: justify;
