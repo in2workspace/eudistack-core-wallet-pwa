@@ -33,7 +33,14 @@
       <p class="header-subtitle">{{ "vc-selector.select-instruction" | translate }}</p>
     }
     @if (credList.length > 1) {
-      <p class="credential-count" [innerHTML]="('vc-selector.credentials-count' | translate) | highlightPlaceholder: '{{count}}' : credList.length : 'credential-count-value'"></p>
+      @let countText = ('vc-selector.credentials-count' | translate) | splitPlaceholder: countPlaceholder;
+      <p class="credential-count">
+        @if (countText) {
+          {{ countText.before }}<span class="credential-count-value">{{ credList.length }}</span>{{ countText.after }}
+        } @else {
+          {{ 'vc-selector.credentials-count' | translate }}
+        }
+      </p>
     }
     <div class="legal-links">
       @if (clientUri) {

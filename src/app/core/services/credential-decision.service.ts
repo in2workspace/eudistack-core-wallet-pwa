@@ -38,10 +38,12 @@ export class CredentialDecisionService {
     const el = document.createElement('div');
     el.className = 'credential-toast';
     el.setAttribute('data-variant', variant);
-    el.innerHTML = `
-      <ion-icon name="${iconName}"></ion-icon>
-      <span>${this.escapeHtml(text)}</span>
-    `;
+    // Built with DOM nodes and textContent, never innerHTML (EUD-332): the message is text.
+    const icon = document.createElement('ion-icon');
+    icon.setAttribute('name', iconName);
+    const span = document.createElement('span');
+    span.textContent = String(text ?? '');
+    el.append(icon, span);
 
     document.body.appendChild(el);
 
@@ -55,14 +57,5 @@ export class CredentialDecisionService {
       // Fallback removal
       setTimeout(() => el.remove(), 500);
     }, 2500);
-  }
-
-  private escapeHtml(value: string): string {
-    const s = String(value ?? '');
-    return s
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
   }
 }

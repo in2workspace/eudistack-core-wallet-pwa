@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.22.0] - 2026-11-20
+
+### Security
+
+- **Browser security for the Wallet App (EUD-332)**: the app is ready for the strict Content-Security-Policy of SAD §5.5.1 (`script-src 'self'`, no inline script nor inline event handler, foreign content only as text).
+  - The `beforeinstallprompt` capture moves from an inline `<script>` in `index.html` to `src/pwa-install-capture.js`, a global script of the build (`scripts-<hash>.js`, deferred, run before `main`).
+  - The production build uses `subresourceIntegrity` (every script and stylesheet of `index.html` carries `integrity`, except `assets/env.js`) and `inlineCritical: false` (no critical CSS inlined with an `onload="this.media='all'"` handler).
+  - No imperative `innerHTML` and Ionic `innerHTMLTemplatesEnabled: false`: overlays show their message as text. The only `[innerHTML]` left is the legal documents, sanitized by Angular (exception of SAD §5.5.1).
+
+### Changed
+
+- The error, info and success notices of `ToastServiceHandler` are an `ion-modal` with the new `AlertDialogComponent` instead of an `ion-alert` built from HTML, with the same look. The new `SupportMessageComponent` renders the `{{supportLink}}` placeholder as the tenant support link from its template; the load-error state of the credentials page uses it too.
+- The notices keep the accessibility of the former `ion-alert`: with a button, the notice is an `alertdialog` (`aria-modal`, described by its message) and the button gets the focus when it opens; without a button, it is an `alert` and gets the focus itself. The `ion-modal` wrapper gets `role="none"` so it is not announced as a second, unnamed dialog.
+- The temporary decision notice (`CredentialDecisionService.showTempMessage`) and the duplicate-tab screen (`SingleInstanceService`) are built with DOM nodes and `textContent`.
+- The credential counter of the VC selector renders the number from the template (new `SplitPlaceholderPipe`); its highlight style (bold, info colour) now applies.
+- Translations carry no HTML: the `<br>` of `vc-selector.server-error-message` becomes a space (ca, en, es).
+
+### Removed
+
+- `SupportLinkPipe`, `ToastServiceHandler.renderSupportMessage`, `HighlightPlaceholderPipe` and the unused `messageHtml` translation key.
+- The `ion-alert` rules of `customAlert.scss` for the former notices (`custom-alert-error`, `custom-alert-ok`, `custom-alert-ok-info`, `custom-alert-credential`, PIN counter, `alert-button.danger`), no longer used.
+
+### Tests
+
+- Unit tests for the install capture script, `AlertDialogComponent`, `SupportMessageComponent` and `SplitPlaceholderPipe`, and for markup shown as text (`<img src=x onerror=…>`) in every former HTML sink.
+
+## [3.21.0] - 2026-11-17
+
 ### Added
 
 - **Onboarding with a ticket (EUD-315)**: a system authorised by the tenant can hand a user an onboarding address `<wallet URL>/t#<ticket>` (the routes `/t` and `/not-me` under the base path where the Wallet App is served, `/wallet/` on the tenant hosts) (usually as a QR). The ticket and the "it was not me" token go in the fragment, which never reaches the server, and the wallet sends no `Referer` (`<meta name="referrer" content="no-referrer">`).

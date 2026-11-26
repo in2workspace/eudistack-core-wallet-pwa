@@ -1,0 +1,19 @@
+<div
+  class="alert-dialog"
+  [class]="'alert-dialog--' + variant()"
+  [attr.role]="closeLabel() ? 'alertdialog' : 'alert'"
+  [attr.aria-modal]="closeLabel() ? 'true' : null"
+  [attr.aria-describedby]="closeLabel() ? messageId : null"
+  tabindex="-1">
+  <div class="alert-dialog__message" [id]="messageId">
+    @if (variant() === 'success') {
+      <ion-icon name="checkmark-circle" aria-hidden="true"></ion-icon>
+    }
+    <span><app-support-message [message]="message()" /></span>
+  </div>
+  @if (closeLabel()) {
+    <div class="alert-dialog__buttons">
+      <button type="button" class="alert-dialog__button" (click)="close()">{{ closeLabel() }}</button>
+    </div>
+  }
+</div>

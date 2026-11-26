@@ -2,6 +2,7 @@ import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testin
 import { By } from '@angular/platform-browser';
 import { Router, ActivatedRoute } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { SupportChannelService } from 'src/app/core/services/support-channel.service';
 import { EMPTY, of, throwError } from 'rxjs';
 import { CredentialOfferExpiredError } from 'src/app/core/models/error/Oid4vciError';
 import { ModalController } from '@ionic/angular';
@@ -72,7 +73,6 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     showErrorAlertByTranslateLabel: jest.Mock;
     showToast: jest.Mock;
     showErrorAlert: jest.Mock;
-    renderSupportMessage: jest.Mock;
   };
   let mockHaptic: any;
 
@@ -137,7 +137,6 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
       showErrorAlertByTranslateLabel: jest.fn().mockReturnValue(of(undefined)),
       showToast: jest.fn(),
       showErrorAlert: jest.fn().mockReturnValue(of(undefined)),
-      renderSupportMessage: jest.fn().mockImplementation((value: string) => value),
     };
 
     TestBed.overrideComponent(CredentialsPage, {
@@ -173,6 +172,11 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
         { provide: WalletDiscoveryService, useValue: mockDiscovery },
         { provide: Oid4vciEngineService, useValue: { performOid4vciFlow: jest.fn() } },
         { provide: ModalController, useValue: mockModalController },
+        // The load-error empty state renders app-support-message, which reads the support URL.
+        {
+          provide: SupportChannelService,
+          useValue: { channels: () => ({ supportUrl: 'https://issues.example/new' }) },
+        },
         // privacyBlur() is only exercised by the translate="no" shielding tests below,
         // which render the card-grid (app-vc-view needs it for [blurred]) — every other
         // test in this spec never renders the template.
@@ -273,14 +277,18 @@ describe('CredentialsPage - verifiablePresentationFlow', () => {
     }));
 
     it('renders the load-error empty state as a real, clickable support link instead of the raw {{supportLink}} placeholder (regression)', () => {
-      mockToastServiceHandler.renderSupportMessage.mockReturnValue(
-        'There was an error loading credentials. Contact <a href="https://issues.example/new" target="_blank" rel="noopener noreferrer">the support team</a>.'
-      );
+      const translate = TestBed.inject(TranslateService);
+      translate.setTranslation('en', {
+        credentials: { sync: { 'load-error': 'There was an error loading credentials. Contact {{supportLink}}.' } },
+        errors: { 'support-team-label': 'the support team' },
+      });
+      translate.use('en');
 
       fixture.detectChanges();
 
       const subtitle = fixture.nativeElement.querySelector('.empty-state-subtitle');
-      expect(subtitle.querySelector('a[href="https://issues.example/new"]')).toBeTruthy();
+      const link = subtitle.querySelector('a[href="https://issues.example/new"]');
+      expect(link?.textContent).toBe('the support team');
       expect(subtitle.textContent).not.toContain('{{supportLink}}');
     });
   });

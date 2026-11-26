@@ -66,122 +66,13 @@ ion-alert .alert-input::placeholder {
   -webkit-text-fill-color: var(--text-secondary);
 }
 
-ion-alert.custom-alert-error .alert-wrapper {
-  background-color: var(--custom-alert-error-bg) !important;
-  color: var(--custom-alert-error-text);
-  border-radius: var(--radius-md);
-  border: var(--custom-alert-error-border);
-}
-
-ion-alert.custom-alert-error .alert-message {
-  color: var(--custom-alert-error-text) !important;
-}
-
-ion-alert.custom-alert-error .alert-button.sc-ion-alert-md,
-ion-alert.custom-alert-error .alert-button.sc-ion-alert-ios {
-  color: var(--custom-alert-error-text) !important;
-}
-
-ion-alert .alert-button.danger {
-  color: var(--status-error) !important;
-  font-weight: 600;
-  text-transform: none;
-}
-
-ion-alert.custom-alert-error .alert-message ion-icon {
-  width: 55px;
-  font-size: 38px;
-  color: var(--custom-alert-error-text);
-}
-
-ion-alert.custom-alert-ok .alert-wrapper {
-  background-color: var(--custom-alert-ok-bg) !important;
-  color: var(--surface-card) !important;
-  border-radius: var(--radius-md);
-}
-
-ion-alert.custom-alert-ok-info .alert-wrapper {
-  background-color: var(--custom-alert-ok-info-bg) !important;
-  color: var(--surface-card) !important;
-  border-radius: var(--radius-md);
-}
-
-ion-alert.custom-alert-ok .alert-message {
-  color: var(--custom-alert-ok-text) !important;
-}
-
-ion-alert.custom-alert-ok-info .alert-message,
-ion-alert.custom-alert-ok-info .alert-button.sc-ion-alert-md,
-ion-alert.custom-alert-ok-info .alert-button.sc-ion-alert-ios {
-  color: var(--status-info) !important;
-}
-
-ion-alert.custom-alert-ok .alert-message ion-icon {
-  font-size: 38px;
-  color: var(--custom-alert-ok-text);
-}
-
-ion-alert .alert-message div {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-/* Center the button for error and info alerts */
-ion-alert.custom-alert-error .alert-button-group,
-ion-alert.custom-alert-ok-info .alert-button-group {
-  justify-content: center !important;
-}
-
 ion-alert.custom-alert-unsigned .alert-button-group {
   justify-content: center !important;
-}
-
-ion-alert .alert-message span {
-  line-height: 1.2;
 }
 
 // Justify the text for alert
 ion-alert {
   text-align: justify;
-}
-
-// For the PIN counter
-ion-alert small.counter{
-  display: block;
-  padding-top: 0.5em;
-  font-weight: bold;
-}
-
-ion-alert .alert-message div.cred-preview {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-@media (min-width: 768px) {
-  ion-alert .alert-message .cred-preview {
-    align-items: flex-start;
-  }
-}
-
-ion-alert.custom-alert-credential .cred-row {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  column-gap: 8px;
-  align-items: start;
-}
-
-ion-alert.custom-alert-credential .cred-label {
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-ion-alert.custom-alert-credential .cred-value {
-  min-width: 0;
-  word-break: break-word;
-  overflow-wrap: anywhere;
 }
 
 // Credential confirmation modal — transparent wrapper so the component controls its own backdrop
@@ -331,4 +222,24 @@ ion-modal.activity-detail-modal {
 @keyframes toastSlideOut {
   from { opacity: 1; transform: translateX(-50%) translateY(0); }
   to   { opacity: 0; transform: translateX(-50%) translateY(-100%); }
+}
+
+// Notices of ToastServiceHandler (AlertDialogComponent in an ion-modal, EUD-332):
+// a centred box sized by its content, like the ion-alert it replaces. Ionic gives the
+// component host the .ion-page class (absolute, full size), reset here so the height
+// follows the content.
+ion-modal.app-alert-modal {
+  --width: min(300px, calc(100% - 32px));
+  --height: auto;
+  --max-height: 90%;
+  --border-radius: var(--radius-md);
+  --background: transparent;
+  --box-shadow: none;
+
+  .ion-page {
+    position: relative;
+    display: block;
+    contain: content;
+    overflow: auto;
+  }
 }

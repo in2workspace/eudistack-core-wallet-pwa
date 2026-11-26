@@ -5,7 +5,7 @@ import { AlertController, IonContent, IonicModule } from '@ionic/angular';
 import { ActivatedRoute, Params, Router } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { VcViewComponent } from '../../shared/components/vc-view/vc-view.component';
-import { HighlightPlaceholderPipe } from '../../shared/pipes/highlight-placeholder.pipe';
+import { SplitPlaceholderPipe } from '../../shared/pipes/split-placeholder.pipe';
 import { VCReply } from 'src/app/core/models/verifiable-credential-reply';
 import { VerifiableCredential } from 'src/app/core/models/verifiable-credential';
 import { VerifiableCredentialSubjectDataNormalizer } from 'src/app/core/models/verifiable-credential-subject-data-normalizer';
@@ -29,10 +29,12 @@ import {UserPreferencesService} from "../../shared/services/user-preferences.ser
         FormsModule,
         TranslateModule,
         VcViewComponent,
-        HighlightPlaceholderPipe,
+        SplitPlaceholderPipe,
     ]
 })
 export class VcSelectorPage {
+  /** Placeholder of vc-selector.credentials-count, split by the template to highlight the number. */
+  protected readonly countPlaceholder = '{{count}}';
   public isClick: boolean[] = [];
   public selCredList: VerifiableCredential[] = [];
   public credList: VerifiableCredential[] = [];

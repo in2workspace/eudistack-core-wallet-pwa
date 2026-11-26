@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
-import { AlertController } from '@ionic/angular';
+import { ModalController } from '@ionic/angular';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { signal } from '@angular/core';
 import { Oid4vciEngineService } from './oid4vci.engine.service';
@@ -34,7 +34,7 @@ const esTranslations = require('../../../../assets/i18n/es.json');
  * End-to-end through the real stack: HttpClient → HttpErrorInterceptor →
  * WalletService → CredentialOfferService → Oid4vciEngineService →
  * LoaderHandledFlowService → ToastServiceHandler (real, Spanish). Only the
- * network (HttpTestingController) and the Ionic alert are faked.
+ * network (HttpTestingController) and the Ionic modal of the notice are faked.
  */
 describe('Integration: credential offer expired (HTTP 410 credential_offer_expired)', () => {
   const OFFER_URI = 'https://tenant.eudistack.test/issuer/oid4vci/v1/credential-offer/aa7ead92';
@@ -58,6 +58,7 @@ describe('Integration: credential offer expired (HTTP 410 credential_offer_expir
     alertCreate = jest.fn().mockResolvedValue({
       present: jest.fn().mockResolvedValue(undefined),
       onDidDismiss: jest.fn().mockResolvedValue(undefined),
+      querySelector: jest.fn().mockReturnValue(null), // the notice is focused once presented
     });
 
     TestBed.configureTestingModule({
@@ -67,7 +68,7 @@ describe('Integration: credential offer expired (HTTP 410 credential_offer_expir
         provideHttpClientTesting(),
         { provide: HTTP_INTERCEPTORS, useClass: HttpErrorInterceptor, multi: true },
         { provide: AuthService, useValue: { isLoggedIn: () => true } },
-        { provide: AlertController, useValue: { create: alertCreate } },
+        { provide: ModalController, useValue: { create: alertCreate } },
         { provide: SupportChannelService, useValue: { channels: () => ({ supportUrl: 'https://support.test' }) } },
         { provide: LoaderService, useValue: { addLoadingProcess: jest.fn(), removeLoadingProcess: jest.fn() } },
         // WalletService collaborators not involved in fetching the offer
@@ -111,7 +112,7 @@ describe('Integration: credential offer expired (HTTP 410 credential_offer_expir
     const request = await waitForRequest(OFFER_URI);
     request.flush(body, { status, statusText });
     const error = await flow;
-    await settle(); // the alert is presented asynchronously (translate → AlertController)
+    await settle(); // the alert is presented asynchronously (translate → ModalController)
     return error;
   }
 
@@ -130,7 +131,7 @@ describe('Integration: credential offer expired (HTTP 410 credential_offer_expir
   }
 
   function shownAlertText(): string {
-    return alertCreate.mock.calls.map(([opts]) => String(opts.message)).join('\n');
+    return alertCreate.mock.calls.map(([opts]) => String(opts.componentProps.message)).join('\n');
   }
 
   it('captures the error as CredentialOfferExpiredError (no crash)', async () => {
@@ -203,7 +204,8 @@ describe('Integration: credential offer expired (HTTP 410 credential_offer_expir
 
       expect(alertCreate).toHaveBeenCalledTimes(1);
       expect(shownAlertText()).toMatch(/genere una nueva/i);
-      expect(shownAlertText()).toContain('href="https://support.test"');
+      // The notice component renders {{supportLink}} as the tenant support link (alert-dialog / support-message specs)
+      expect(shownAlertText()).toContain('{{supportLink}}');
     });
 
     it('never shows the generic or "cannot download" messages nor the nonce', async () => {
@@ -234,7 +236,8 @@ describe('Integration: credential offer expired (HTTP 410 credential_offer_expir
 
       expect(alertCreate).toHaveBeenCalledTimes(1);
       expect(shownAlertText()).toMatch(/no se encuentra disponible/i);
-      expect(shownAlertText()).toContain('href="https://support.test"');
+      // The notice component renders {{supportLink}} as the tenant support link (alert-dialog / support-message specs)
+      expect(shownAlertText()).toContain('{{supportLink}}');
     });
 
     it('never shows the generic, "cannot download" or "already processed" messages', async () => {
