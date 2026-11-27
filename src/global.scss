@@ -30,6 +30,10 @@
 /* Custom Alert **/
 @import "theme/customAlert.scss";
 
+a {
+  color: var(--action-color);
+}
+
 @font-face {
   font-family: 'Blinker';
   font-weight: 400;
