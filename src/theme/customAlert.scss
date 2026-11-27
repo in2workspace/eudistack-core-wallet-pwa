@@ -141,6 +141,11 @@ ion-alert .alert-message span {
   line-height: 1.2;
 }
 
+ion-alert .alert-message a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 // Justify the text for alert
 ion-alert {
   text-align: justify;
