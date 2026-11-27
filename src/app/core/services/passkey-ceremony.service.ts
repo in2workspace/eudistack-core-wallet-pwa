@@ -108,9 +108,10 @@ export class PasskeyCeremonyService {
   /**
    * Registration of a new passkey for the ticket's account (FR-07, FR-08). With
    * passkey custody, a passkey whose PRF cannot be confirmed is not registered
-   * and the passkey manager is asked to hide it.
+   * and the passkey manager is asked to hide it. No device name: the name is
+   * the device's, asked in its own step after the session (EUD-15 FR-04).
    */
-  async register(displayName?: string): Promise<PasskeySession> {
+  async register(): Promise<PasskeySession> {
     const { ceremonyId, publicKey } =
       await this.requestOptions<PublicKeyCredentialCreationOptionsJSON>('passkeys/registration/options');
     const optionsJSON = this.hasPasskeyCustody() ? withPrfEvaluationAtCreation(publicKey) : publicKey;
@@ -118,7 +119,7 @@ export class PasskeyCeremonyService {
       'create', publicKey.timeout, () => startRegistration({ optionsJSON })
     );
     discardCreationPrfOutput(credential);
-    return this.registerCreated(ceremonyId, publicKey, credential, displayName?.trim(), true);
+    return this.registerCreated(ceremonyId, publicKey, credential, true);
   }
 
   /**
@@ -131,12 +132,11 @@ export class PasskeyCeremonyService {
     ceremonyId: string,
     publicKey: PublicKeyCredentialCreationOptionsJSON,
     credential: RegistrationResponseJSON,
-    name: string | undefined,
     allowGestureRetry: boolean,
   ): Promise<PasskeySession> {
     const rpId = publicKey.rp.id ?? globalThis.location.hostname;
     const prfSupported = await this.confirmPrf(credential, rpId, allowGestureRetry
-      ? () => this.registerCreated(ceremonyId, publicKey, credential, name, false)
+      ? () => this.registerCreated(ceremonyId, publicKey, credential, false)
       : null);
 
     try {
@@ -144,7 +144,6 @@ export class PasskeyCeremonyService {
         ceremonyId,
         credential: withoutPrfOutputs(credential),
         prfSupported,
-        ...(name ? { displayName: name } : {}),
       }));
       return { session, rpId, userId: publicKey.user.id, credentialId: credential.id };
     } catch (err) {

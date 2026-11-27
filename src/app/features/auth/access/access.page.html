@@ -251,21 +251,6 @@
               <span>{{ 'wallet-access.create-passkey.shared-device-tip' | translate }}</span>
             </p>
 
-            <div class="auth-field auth-field--device">
-              <span class="auth-field__label" id="access-device-name-label">{{ 'auth.passkey.device-name-label' | translate }}</span>
-              <ion-input
-                id="access-device-name"
-                aria-labelledby="access-device-name-label"
-                [ngModel]="deviceName()"
-                (ngModelChange)="deviceName.set($event ?? '')"
-                type="text"
-                [maxlength]="deviceNameMaxLength"
-                [placeholder]="'auth.passkey.device-name-placeholder' | translate"
-                class="auth-input"
-                (keyup.enter)="createPasskey()"
-              ></ion-input>
-            </div>
-
             <button type="button" class="auth-button" [disabled]="busy()" (click)="createPasskey()">
               {{ 'auth.passkey.register-button' | translate }}
             </button>

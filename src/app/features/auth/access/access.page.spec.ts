@@ -564,13 +564,14 @@ describe('AccessPage (EUD-8)', () => {
       expect(text()).not.toContain('wallet-access.create-passkey.attestations-warning');
     });
 
-    it('registers the passkey with the device name and opens the wallet for a first passkey', async () => {
+    it('registers the passkey without asking for a device name and opens the wallet for a first passkey', async () => {
+      // EUD-8 prd 1.4.0: the device is named in "Registrar este dispositivo", after the session
       await reachCreate(false);
-      page.deviceName.set('Work Mac');
 
       await page.createPasskey();
 
-      expect(auth.registerPasskey).toHaveBeenCalledWith('Work Mac');
+      expect(auth.registerPasskey).toHaveBeenCalledWith();
+      expect(text()).not.toContain('auth.passkey.device-name-label');
       expect(router.navigateByUrl).toHaveBeenCalledWith('/tabs/credentials');
     });
 

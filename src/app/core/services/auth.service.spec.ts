@@ -405,9 +405,10 @@ describe('RemoteAuthService (EUD-8)', () => {
     it('registers a new passkey and opens the session with it', async () => {
       harness.ceremony.register.mockResolvedValue(passkeySession({ credentialId: 'cred-new' }));
 
-      await service.registerPasskey('Mac');
+      await service.registerPasskey();
 
-      expect(harness.ceremony.register).toHaveBeenCalledWith('Mac');
+      // EUD-15 FR-04: no device name in the passkey; the device has its own step
+      expect(harness.ceremony.register).toHaveBeenCalledWith();
       expect(service.isLoggedIn()).toBe(true);
     });
 
@@ -425,6 +426,229 @@ describe('RemoteAuthService (EUD-8)', () => {
       await ended;
 
       expect(request.request.method).toBe('DELETE');
+    });
+  });
+
+  describe('device of the session (EUD-15)', () => {
+    beforeEach(async () => answerStartupRefresh(harness, 'rejected'));
+
+    it('binds the new session to the remembered device of its account before loading the attestations', async () => {
+      harness.ceremony.signIn.mockResolvedValue(passkeySession());
+
+      await service.signInWithPasskey();
+      await service.sessionDataReady();
+
+      expect(service.accountId()).toBe('u1');
+      expect(harness.walletInstance.bindRemembered).toHaveBeenCalledWith('u1');
+      expect(await service.deviceReady()).toBe('bound');
+      expect(harness.sessionData.sessionStarted).toHaveBeenCalled();
+    });
+
+    it('loads no attestation while the session has no device (FR-06, AC-07)', async () => {
+      harness.walletInstance.bindRemembered.mockResolvedValue('unregistered');
+      harness.ceremony.signIn.mockResolvedValue(passkeySession());
+
+      await service.signInWithPasskey();
+      await service.sessionDataReady();
+
+      expect(await service.deviceReady()).toBe('unregistered');
+      expect(harness.sessionData.sessionStarted).not.toHaveBeenCalled();
+    });
+
+    it('loads the attestations once the device is registered', async () => {
+      harness.walletInstance.bindRemembered.mockResolvedValue('unregistered');
+      harness.ceremony.signIn.mockResolvedValue(passkeySession());
+      await service.signInWithPasskey();
+      await service.sessionDataReady();
+
+      await service.deviceRegistered();
+
+      expect(await service.deviceReady()).toBe('bound');
+      expect(harness.sessionData.sessionStarted).toHaveBeenCalledTimes(1);
+    });
+
+    it('binds once per session, not on every check', async () => {
+      harness.ceremony.signIn.mockResolvedValue(passkeySession());
+      await service.signInWithPasskey();
+
+      await service.deviceReady();
+      await service.deviceReady();
+
+      expect(harness.walletInstance.bindRemembered).toHaveBeenCalledTimes(1);
+    });
+
+    it('on instance_required binds again and lets the call be retried', async () => {
+      harness.ceremony.signIn.mockResolvedValue(passkeySession());
+      await service.signInWithPasskey();
+      await service.deviceReady();
+
+      expect(await firstValueFrom(service.recoverDevice())).toBe(true);
+      expect(harness.walletInstance.bindRemembered).toHaveBeenCalledTimes(2);
+      expect(harness.router.navigateByUrl).not.toHaveBeenCalledWith('/registrar-dispositivo');
+    });
+
+    it('on instance_required without an active device goes to "Registrar este dispositivo"', async () => {
+      harness.ceremony.signIn.mockResolvedValue(passkeySession());
+      await service.signInWithPasskey();
+      harness.walletInstance.bindRemembered.mockResolvedValue('unregistered');
+
+      expect(await firstValueFrom(service.recoverDevice())).toBe(false);
+      expect(harness.router.navigateByUrl).toHaveBeenCalledWith('/registrar-dispositivo');
+    });
+
+    it('shares one recovery between concurrent instance_required and keeps the screen to come back to', async () => {
+      harness.ceremony.signIn.mockResolvedValue(passkeySession());
+      await service.signInWithPasskey();
+      harness.walletInstance.bindRemembered.mockClear();
+      harness.walletInstance.bindRemembered.mockResolvedValue('unregistered');
+      (harness.router as unknown as { url: string }).url = '/tabs/credentials?credential_offer_uri=x';
+
+      const results = await Promise.all([
+        firstValueFrom(service.recoverDevice()),
+        firstValueFrom(service.recoverDevice()),
+        firstValueFrom(service.recoverDevice()),
+      ]);
+
+      expect(results).toEqual([false, false, false]);
+      expect(harness.walletInstance.bindRemembered).toHaveBeenCalledTimes(1);
+      expect(harness.router.navigateByUrl).toHaveBeenCalledTimes(1);
+      expect(sessionStorage.getItem('wallet_pending_deep_link')).toBe('/tabs/credentials?credential_offer_uri=x');
+    });
+
+    it('tells the other tabs that the device of the shared session is registered', async () => {
+      harness.ceremony.signIn.mockResolvedValue(passkeySession());
+      await service.signInWithPasskey();
+      const other = new BroadcastChannelMock('auth');
+      const received: unknown[] = [];
+      other.onmessage = event => received.push(event.data);
+
+      await service.deviceRegistered();
+
+      expect(received).toContain('walletDeviceRegistered');
+      other.close();
+    });
+
+    it('has no account nor device without a session', async () => {
+      expect(service.accountId()).toBeNull();
+      expect(await service.deviceReady()).toBe('unregistered');
+      expect(await firstValueFrom(service.recoverDevice())).toBe(false);
+      expect(harness.walletInstance.bindRemembered).not.toHaveBeenCalled();
+    });
+
+    it('forgets the account and the binding when the session ends', async () => {
+      harness.ceremony.signIn.mockResolvedValue(passkeySession());
+      await service.signInWithPasskey();
+      await service.deviceReady();
+
+      service.forceLogout();
+
+      expect(service.accountId()).toBeNull();
+    });
+
+    describe('temporary failure of the binding (design §2.2)', () => {
+      beforeEach(() => jest.useFakeTimers({ doNotFake: ['queueMicrotask', 'nextTick'] }));
+      afterEach(() => jest.useRealTimers());
+
+      it('marks the device unavailable and binds again in the background, then loads the attestations', async () => {
+        harness.walletInstance.bindRemembered.mockResolvedValueOnce('unavailable').mockResolvedValue('bound');
+        harness.ceremony.signIn.mockResolvedValue(passkeySession());
+        await service.signInWithPasskey();
+        expect(await service.deviceReady()).toBe('unavailable');
+        expect(service.deviceUnavailable()).toBe(true);
+        harness.sessionData.sessionStarted.mockClear();
+
+        jest.advanceTimersByTime(5_000);
+        await settle();
+
+        expect(harness.walletInstance.bindRemembered).toHaveBeenCalledTimes(2);
+        expect(service.deviceUnavailable()).toBe(false);
+        expect(harness.sessionData.sessionStarted).toHaveBeenCalledTimes(1);
+      });
+
+      it('loads no attestation while the binding is unavailable, and keeps the local copy', async () => {
+        harness.walletInstance.bindRemembered.mockResolvedValue('unavailable');
+        harness.ceremony.signIn.mockResolvedValue(passkeySession());
+        harness.sessionData.sessionEnded.mockClear();
+
+        await service.signInWithPasskey();
+        await service.sessionDataReady();
+
+        expect(harness.sessionData.sessionStarted).not.toHaveBeenCalled();
+        expect(harness.sessionData.sessionEnded).not.toHaveBeenCalled();
+      });
+
+      it('loads the attestations when an instance_required recovery binds it before the timer', async () => {
+        harness.walletInstance.bindRemembered.mockResolvedValueOnce('unavailable').mockResolvedValue('bound');
+        harness.ceremony.signIn.mockResolvedValue(passkeySession());
+        await service.signInWithPasskey();
+        await service.deviceReady();
+
+        expect(await firstValueFrom(service.recoverDevice())).toBe(true);
+
+        expect(service.deviceUnavailable()).toBe(false);
+        expect(harness.sessionData.sessionStarted).toHaveBeenCalledTimes(1);
+        jest.advanceTimersByTime(60_000);
+        await settle();
+        expect(harness.walletInstance.bindRemembered).toHaveBeenCalledTimes(2);
+      });
+
+      it('resumes the offer postponed meanwhile once bound', async () => {
+        harness.walletInstance.bindRemembered.mockResolvedValueOnce('unavailable').mockResolvedValue('bound');
+        harness.ceremony.signIn.mockResolvedValue(passkeySession());
+        await service.signInWithPasskey();
+        await service.deviceReady();
+        (harness.router as unknown as { url: string }).url = '/tabs/credentials';
+        sessionStorage.setItem('wallet_pending_deep_link', '/tabs/credentials?credential_offer_uri=x');
+
+        jest.advanceTimersByTime(5_000);
+        await settle();
+
+        expect(harness.router.navigateByUrl).toHaveBeenCalledWith('/tabs/credentials?credential_offer_uri=x');
+      });
+
+      it('backs off between retries', async () => {
+        harness.walletInstance.bindRemembered.mockResolvedValue('unavailable');
+        harness.ceremony.signIn.mockResolvedValue(passkeySession());
+        await service.signInWithPasskey();
+        await service.deviceReady();
+
+        jest.advanceTimersByTime(5_000);
+        await settle();
+        jest.advanceTimersByTime(5_000);
+        await settle();
+
+        expect(harness.walletInstance.bindRemembered).toHaveBeenCalledTimes(2);
+        jest.advanceTimersByTime(5_000);
+        await settle();
+        expect(harness.walletInstance.bindRemembered).toHaveBeenCalledTimes(3);
+      });
+
+      it('goes to "Registrar este dispositivo" if the retry finds the device gone', async () => {
+        harness.walletInstance.bindRemembered.mockResolvedValueOnce('unavailable').mockResolvedValue('unregistered');
+        harness.ceremony.signIn.mockResolvedValue(passkeySession());
+        await service.signInWithPasskey();
+        await service.deviceReady();
+
+        jest.advanceTimersByTime(5_000);
+        await settle();
+
+        expect(service.deviceUnavailable()).toBe(false);
+        expect(harness.router.navigateByUrl).toHaveBeenCalledWith('/registrar-dispositivo');
+      });
+
+      it('stops retrying when the session ends', async () => {
+        harness.walletInstance.bindRemembered.mockResolvedValue('unavailable');
+        harness.ceremony.signIn.mockResolvedValue(passkeySession());
+        await service.signInWithPasskey();
+        await service.deviceReady();
+
+        service.forceLogout();
+        jest.advanceTimersByTime(60_000);
+        await settle();
+
+        expect(service.deviceUnavailable()).toBe(false);
+        expect(harness.walletInstance.bindRemembered).toHaveBeenCalledTimes(1);
+      });
     });
   });
 
@@ -623,6 +847,20 @@ describe('RemoteAuthService (EUD-8)', () => {
 
       expect(service.getToken()).toBe(accessToken('bea@example.com'));
       expect(harness.sessionData.sessionStarted).toHaveBeenCalledTimes(2);
+    });
+
+    it('drops the previous copy and asks to register when the new session has no device here (EUD-15)', async () => {
+      (harness.router as unknown as { url: string }).url = '/tabs/credentials';
+      harness.walletInstance.bindRemembered.mockResolvedValue('unregistered');
+      new BroadcastChannelMock('auth').postMessage('walletSessionOpened');
+
+      await settle();
+      harness.http.expectOne(`${AUTH_BASE}/refresh`).flush(session({ accessToken: accessToken('bea@example.com') }));
+      await settle();
+
+      expect(harness.sessionData.sessionEnded).toHaveBeenCalled();
+      expect(harness.sessionData.sessionStarted).toHaveBeenCalledTimes(1);
+      expect(harness.router.navigateByUrl).toHaveBeenCalledWith('/registrar-dispositivo');
     });
   });
 

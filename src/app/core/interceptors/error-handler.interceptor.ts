@@ -1,4 +1,5 @@
 import { Injectable, Injector, inject } from '@angular/core';
+import { isInstanceRequired } from '../services/wallet-instance.service';
 import {
   HttpInterceptor,
   HttpRequest,
@@ -101,6 +102,11 @@ export class HttpErrorInterceptor implements HttpInterceptor {
           // `${origin}/business-wallet`, so the real path is prefixed
           // (`/business-wallet/api/v1/auth/...`), not a bare `/api/v1/auth/...`.
           pathname.includes('/api/v1/auth/') ||
+          // Devices (EUD-15): binding answers 404/410 when the remembered device is gone, which the Wallet App
+          // resolves by asking to register it; "Registrar este dispositivo" and "Dispositivos" show their own errors.
+          pathname.includes('/api/v1/wallet-instances') ||
+          // A session without device: the auth interceptor binds it again or goes to "Registrar este dispositivo".
+          isInstanceRequired(errorResp) ||
           // passkey custody salt endpoints — the key flow reports its own errors, and a 404 must not say why
           pathname.includes(SERVER_PATH.PASSKEY_PRF_SALTS) ||
           // Background sync the user never triggered directly: activity history

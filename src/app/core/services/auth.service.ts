@@ -13,7 +13,9 @@ import { ServerSessionDataService } from './server-session-data.service';
 import { UserActivityService } from './user-activity.service';
 import { WebAuthnBrowserService } from './webauthn-browser.service';
 import { PasskeyApiService } from './passkey-api.service';
+import { DeviceState, WalletInstanceService } from './wallet-instance.service';
 import { takePendingDeepLink } from 'src/app/shared/helpers/pending-deep-link';
+import { PENDING_DEEP_LINK_KEY } from 'src/app/core/constants/deep-link.constants';
 import { AUTH_PROBLEM_TYPE, authProblemType } from 'src/app/core/models/error/WalletAuthError';
 
 export type AuthFailureMode = 'force-logout' | 'clear-only';
@@ -39,6 +41,13 @@ export const ACCESS_ROUTE = '/auth/access';
 
 /** Wallet home once signed in. */
 const WALLET_HOME = '/tabs/credentials';
+
+/** "Registrar este dispositivo" (EUD-15 design §2.2): its own route, after the passkey, never inside it. */
+export const REGISTER_DEVICE_ROUTE = '/registrar-dispositivo';
+
+/** Backoff of the background binding after a temporary failure (EUD-15 design §2.2). */
+export const DEVICE_RETRY_BASE_MS = 5_000;
+export const DEVICE_RETRY_MAX_MS = 60_000;
 
 /** Renewal margin before the access token expires (design §2.4). */
 export const RENEW_BEFORE_EXPIRY_MS = 30_000;
@@ -74,6 +83,8 @@ export const SESSION_IN_TAB_KEY = 'wallet_session_in_tab';
 const AUTH_CHANNEL = 'auth';
 const SESSION_ENDED_MESSAGE = 'walletSessionEnded';
 const SESSION_OPENED_MESSAGE = 'walletSessionOpened';
+/** Another tab registered the device of the shared session (EUD-15). */
+const DEVICE_REGISTERED_MESSAGE = 'walletDeviceRegistered';
 
 interface SessionEndedMessage {
   type: typeof SESSION_ENDED_MESSAGE;
@@ -120,6 +131,20 @@ export abstract class AuthService {
   /** Completes once a session that let its access token expire has a fresh one (or cannot get it now). */
   whenAccessTokenReady(): Observable<void> {
     return of(undefined);
+  }
+  /**
+   * After a 403 `instance_required` (EUD-15 design §2.2): binds the session to its device once more. Emits
+   * `true` when the call can be retried. Browser mode has no devices.
+   */
+  recoverDevice(): Observable<boolean> {
+    return of(false);
+  }
+  /**
+   * The session could not be bound to its device for a temporary reason (offline, 5xx) and the binding is being
+   * retried (EUD-15 design §2.2): the wallet is shown with the attestation actions disabled. Browser mode: never.
+   */
+  deviceUnavailable(): boolean {
+    return false;
   }
   dispose(): void {}
 }
@@ -173,6 +198,16 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private sessionData: Promise<void> = Promise.resolve();
   private sessionExpiredNotice = false;
   private disposed = false;
+  /** `sub` of the session's account: the key of its device in IndexedDB (never the email). */
+  private accountSub: string | null = null;
+  /** Binding of the session to its device, once per session (epoch). */
+  private deviceState: { epoch: number; account: string; state: Promise<DeviceState> } | null = null;
+  /** One recovery after `instance_required` at a time, shared by the calls that got it. */
+  private deviceRecovery: Promise<boolean> | null = null;
+  /** The binding failed for a temporary reason and is retried in the background (design §2.2). */
+  private readonly _deviceUnavailable = signal(false);
+  private deviceRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  private deviceRetryAttempt = 0;
 
   private readonly name$ = new BehaviorSubject<string>('');
   private readonly authenticated$ = new BehaviorSubject<boolean>(false);
@@ -195,6 +230,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private readonly serverSessionData = inject(ServerSessionDataService);
   private readonly webAuthnBrowser = inject(WebAuthnBrowserService);
   private readonly passkeyApi = inject(PasskeyApiService);
+  private readonly walletInstance = inject(WalletInstanceService);
 
   private get authBase(): string { return `${this.urlResolver.serverUrl()}/api/v1/auth`; }
 
@@ -249,8 +285,8 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   }
 
   /** Registers a new passkey for the ticket's account and opens a session with it. */
-  async registerPasskey(displayName?: string): Promise<void> {
-    this.openSession(await this.ceremony.register(displayName));
+  async registerPasskey(): Promise<void> {
+    this.openSession(await this.ceremony.register());
   }
 
   /** Finishes a registration whose PRF check needed a fresh user gesture, and opens the session. */
@@ -266,6 +302,168 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   /** Resolves once the attestations of the session that just started are in the local store. */
   sessionDataReady(): Promise<void> {
     return this.sessionData;
+  }
+
+  // --- Device of the session (EUD-15) ---
+
+  /** `sub` of the account of the session, or `null` without a session. */
+  accountId(): string | null {
+    return this.isLoggedIn() ? this.accountSub : null;
+  }
+
+  /**
+   * Binds the session to the device this Wallet App remembers, once per session, before anything else uses it
+   * (EUD-15 FR-05, FR-06): `unregistered` means "Registrar este dispositivo" comes next. A reload of the Wallet
+   * App binds the same session to the same device again, with no step for the user.
+   */
+  deviceReady(): Promise<DeviceState> {
+    // A renewal in flight may bring the session of another account (another tab signed in): wait for it.
+    if (!this.accessToken && this.refreshInFlight?.epoch === this.epoch) {
+      return firstValueFrom(this.refreshInFlight.renewal$)
+        .then(() => this.deviceReady(), () => 'unavailable' as DeviceState);
+    }
+    const account = this.accountId();
+    if (!account) {
+      // A session whose token carries no `sub` cannot key its device: never send it to the registration, which
+      // could not register it either (it would bounce between that screen and the access screen).
+      return Promise.resolve(this.isLoggedIn() ? 'unavailable' : 'unregistered');
+    }
+    // Keyed by session and account: another tab may open a session of another account at any time.
+    if (this.deviceState?.epoch !== this.epoch || this.deviceState.account !== account) {
+      const epoch = this.epoch;
+      const state = this.walletInstance.bindRemembered(account)
+        .then(result => this.onDeviceState(result, epoch, account));
+      this.deviceState = { epoch, account, state };
+    }
+    return this.deviceState.state;
+  }
+
+  override deviceUnavailable(): boolean {
+    return this._deviceUnavailable();
+  }
+
+  /**
+   * A temporary failure (offline, 5xx) leaves the wallet visible with the attestation actions disabled and binds
+   * again in the background, with exponential backoff (design §2.2). Once bound, the attestations load; if the
+   * device is gone, "Registrar este dispositivo" comes next.
+   */
+  private onDeviceState(state: DeviceState, epoch: number, account: string): DeviceState {
+    if (epoch !== this.epoch || account !== this.accountSub) {
+      return state;
+    }
+    const wasUnavailable = this._deviceUnavailable();
+    this.clearDeviceRetry();
+    this._deviceUnavailable.set(state === 'unavailable');
+    if (state !== 'unavailable') {
+      this.deviceRetryAttempt = 0;
+      if (state === 'bound' && wasUnavailable) {
+        // Bound at last, by the background retry or by an `instance_required` recovery: the attestations of the
+        // session load now, and an offer or request postponed meanwhile is resumed.
+        this.sessionData = this.serverSessionData.sessionStarted();
+        this.resumePostponedFlow();
+      }
+      return state;
+    }
+    const delay = Math.min(DEVICE_RETRY_BASE_MS * 2 ** this.deviceRetryAttempt, DEVICE_RETRY_MAX_MS);
+    this.deviceRetryAttempt++;
+    this.deviceRetryTimer = setTimeout(() => {
+      this.deviceRetryTimer = null;
+      if (this.disposed || epoch !== this.epoch || !this.isLoggedIn()) return;
+      this.deviceState = null;
+      void this.deviceReady().then(retried => {
+        // 'bound' is handled by onDeviceState itself.
+        if (epoch === this.epoch && retried === 'unregistered') {
+          this.goToDeviceRegistration();
+        }
+      });
+    }, delay);
+    return state;
+  }
+
+  /** An offer or presentation request kept while the device could not be bound (device guard) is opened now. */
+  private resumePostponedFlow(): void {
+    if (!this.router.url?.startsWith('/tabs/')) return;
+    const pending = sessionStorage.getItem(PENDING_DEEP_LINK_KEY);
+    if (pending) {
+      void this.router.navigateByUrl(takePendingDeepLink() || WALLET_HOME);
+    }
+  }
+
+  private resetDeviceRetry(): void {
+    this.clearDeviceRetry();
+    this.deviceRetryAttempt = 0;
+    this._deviceUnavailable.set(false);
+  }
+
+  private clearDeviceRetry(): void {
+    if (this.deviceRetryTimer) {
+      clearTimeout(this.deviceRetryTimer);
+      this.deviceRetryTimer = null;
+    }
+  }
+
+  /**
+   * The device was just registered and the session bound to it: the attestations of the session can be loaded
+   * now (FR-06). Resolves once they are in the local store.
+   */
+  deviceRegistered(): Promise<void> {
+    const account = this.accountId();
+    if (account) {
+      this.deviceState = { epoch: this.epoch, account, state: Promise.resolve('bound') };
+    }
+    this.resetDeviceRetry();
+    // The other tabs share the session: they bind again instead of asking to register it too.
+    this.broadcastChannel.postMessage(DEVICE_REGISTERED_MESSAGE);
+    this.sessionData = this.serverSessionData.sessionStarted();
+    return this.sessionData;
+  }
+
+  /**
+   * A 403 `instance_required` (design §2.2): binds the session once more. If this Wallet App has no active
+   * device of the account any more, it goes to "Registrar este dispositivo" and the call is not retried.
+   */
+  override recoverDevice(): Observable<boolean> {
+    if (!this.isLoggedIn()) {
+      return of(false);
+    }
+    if (!this.deviceRecovery) {
+      this.deviceState = null;
+      this.deviceRecovery = this.deviceReady()
+        .then(state => {
+          if (state === 'unregistered') {
+            this.goToDeviceRegistration();
+          }
+          return state === 'bound';
+        })
+        .finally(() => { this.deviceRecovery = null; });
+    }
+    return from(this.deviceRecovery);
+  }
+
+  /** "Registrar este dispositivo", keeping the screen the user was on to come back to it afterwards. */
+  private goToDeviceRegistration(): void {
+    const current = this.router.url;
+    if (current?.startsWith(REGISTER_DEVICE_ROUTE)) return;
+    if (current && current !== '/') {
+      sessionStorage.setItem(PENDING_DEEP_LINK_KEY, current);
+    }
+    void this.router.navigateByUrl(REGISTER_DEVICE_ROUTE);
+  }
+
+  /** Attestations of the session, once it is bound to its device: never before (FR-06). */
+  private loadSessionData(fromOtherTab = false): Promise<void> {
+    return this.deviceReady().then(state => {
+      if (state === 'bound') {
+        return this.serverSessionData.sessionStarted();
+      }
+      if (state === 'unregistered' && fromOtherTab) {
+        // This tab was in the wallet: the new session has no device here yet.
+        this.goToDeviceRegistration();
+      }
+      // Nothing loads before the device is bound (FR-06); on 'unavailable' it loads once the retry binds it. A
+      // session opened by another tab may be of another account: the copy of the previous one is never shown.
+      return state === 'unregistered' || fromOtherTab ? this.serverSessionData.sessionEnded() : undefined;
+    });
   }
 
   /** True once after the session ended on its own: the access screen shows the notice and clears it. */
@@ -404,6 +602,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     if (this.disposed) return;
     this.disposed = true;
     this.clearTimers();
+    this.clearDeviceRetry();
     this.subscriptions.unsubscribe();
     this.broadcastChannel.close();
   }
@@ -433,7 +632,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
   private async attemptResume(canRetry: boolean): Promise<boolean> {
     try {
       await firstValueFrom(this.refreshAccessToken({ onAuthFailure: 'clear-only' }));
-      this.sessionData = this.serverSessionData.sessionStarted();
+      this.sessionData = this.loadSessionData();
       await this.sessionData;
       return true;
     } catch (err) {
@@ -466,7 +665,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     this.resumeDeferred = false;
     this.refreshAccessToken({ onAuthFailure: 'clear-only' }).subscribe({
       next: () => {
-        this.sessionData = this.serverSessionData.sessionStarted();
+        this.sessionData = this.loadSessionData();
         if (this.router.url?.startsWith(ACCESS_ROUTE)) {
           void this.router.navigateByUrl(takePendingDeepLink() || WALLET_HOME);
         }
@@ -562,7 +761,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     this.resumeDeferred = false;
     this.applySession(result.session, result.credentialId);
     this.broadcastChannel.postMessage(SESSION_OPENED_MESSAGE);
-    this.sessionData = this.serverSessionData.sessionStarted();
+    this.sessionData = this.loadSessionData();
     void this.signalPasskeyState(result);
     void this.preloadIssuerMetadata();
   }
@@ -577,6 +776,7 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     this.renewalBlockedUntil = 0;
     this.sessionPasskey.set(session.passkeyId, credentialId ?? null);
     this.name$.next(readEmailClaim(session.accessToken));
+    this.accountSub = readClaim(session.accessToken, 'sub');
     this.authenticated$.next(true);
     writeSessionInTab(true);
     this.scheduleRenewal();
@@ -653,6 +853,9 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
     this.accessTokenExpiresAt = 0;
     this.lastActivityAt = 0;
     this.name$.next('');
+    this.accountSub = null;
+    this.deviceState = null;
+    this.resetDeviceRetry();
     this.authenticated$.next(false);
     this.registrationTicket.clear();
     this.sessionPasskey.clear();
@@ -734,26 +937,52 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
       if (this.disposed) return;
       const data = event.data as SessionEndedMessage | string;
       if (typeof data === 'object' && data?.type === SESSION_ENDED_MESSAGE) {
-        if (data.expired) {
-          this.sessionExpiredNotice = true;
-        }
-        this.resumeDeferred = false;
-        if (!this.isLoggedIn()) return;
-        this.endSessionLocally();
-        void this.router.navigateByUrl(ACCESS_ROUTE);
+        this.onOtherTabSessionEnded(data);
+      } else if (data === DEVICE_REGISTERED_MESSAGE) {
+        this.onOtherTabDeviceRegistered();
       } else if (data === SESSION_OPENED_MESSAGE) {
-        if (!this.isLoggedIn() && !this.resumeDeferred) return;
-        this.epoch++;
-        this.accessToken = null;
-        this.sessionPasskey.clear();
-        this.resumeDeferred = false;
-        this.setServerLogoutPending(false);
-        this.refreshAccessToken({ onAuthFailure: 'force-logout' }).subscribe({
-          next: () => { this.sessionData = this.serverSessionData.sessionStarted(); },
-          error: () => undefined,
-        });
+        this.onOtherTabSessionOpened();
       }
     };
+  }
+
+  private onOtherTabSessionEnded(message: SessionEndedMessage): void {
+    if (message.expired) {
+      this.sessionExpiredNotice = true;
+    }
+    this.resumeDeferred = false;
+    if (!this.isLoggedIn()) return;
+    this.endSessionLocally();
+    void this.router.navigateByUrl(ACCESS_ROUTE);
+  }
+
+  /** Another tab registered the device: this one leaves the registration step once bound to it. */
+  private onOtherTabDeviceRegistered(): void {
+    if (!this.isLoggedIn()) return;
+    this.deviceState = null;
+    if (!this.router.url?.startsWith(REGISTER_DEVICE_ROUTE)) return;
+    void this.deviceReady().then(state => {
+      if (state === 'bound') {
+        this.sessionData = this.serverSessionData.sessionStarted();
+        void this.router.navigateByUrl(takePendingDeepLink() || WALLET_HOME);
+      }
+    });
+  }
+
+  /** Another tab opened a session, maybe of another account: the binding of this one is not valid now. */
+  private onOtherTabSessionOpened(): void {
+    this.deviceState = null;
+    this.resetDeviceRetry();
+    if (!this.isLoggedIn() && !this.resumeDeferred) return;
+    this.epoch++;
+    this.accessToken = null;
+    this.sessionPasskey.clear();
+    this.resumeDeferred = false;
+    this.setServerLogoutPending(false);
+    this.refreshAccessToken({ onAuthFailure: 'force-logout' }).subscribe({
+      next: () => { this.sessionData = this.loadSessionData(true); },
+      error: () => undefined,
+    });
   }
 
   private broadcastSessionEnded(expired: boolean): void {
@@ -791,11 +1020,17 @@ export class RemoteAuthService extends AuthService implements OnDestroy {
 
 /** The `email` claim of the access token, shown in the menu. The service validates the token, not this app. */
 function readEmailClaim(accessToken: string): string {
+  return readClaim(accessToken, 'email') ?? '';
+}
+
+/** A string claim of the access token, or `null`. The service validates the token, not this app. */
+function readClaim(accessToken: string, claim: 'email' | 'sub'): string | null {
   try {
-    const payload = JSON.parse(base64UrlToText(accessToken.split('.')[1])) as { email?: unknown };
-    return typeof payload.email === 'string' ? payload.email : '';
+    const payload = JSON.parse(base64UrlToText(accessToken.split('.')[1])) as Record<string, unknown>;
+    const value = payload[claim];
+    return typeof value === 'string' ? value : null;
   } catch {
-    return '';
+    return null;
   }
 }
 

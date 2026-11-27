@@ -4,6 +4,7 @@ import { tenantGuard } from './core/guards/tenant.guard';
 import { authLandingGuard, iosInstallGuard, iosInstallRouteGuard } from './core/guards/ios-install.guard';
 import { accessRouteGuard, browserModeAuthRouteGuard } from './core/guards/access.guard';
 import { passkeyPrfOnboardingGuard, passkeyPrfOnboardingRouteGuard } from './core/guards/passkey-prf-onboarding.guard';
+import { deviceRegistrationGuard, registerDeviceRouteGuard } from './core/guards/device.guard';
 
 export const routes: Routes = [
   {
@@ -20,11 +21,18 @@ export const routes: Routes = [
   },
   {
     path: 'passkey-prf-onboarding',
-    canActivate: [tenantGuard, authGuard, passkeyPrfOnboardingRouteGuard],
+    canActivate: [tenantGuard, authGuard, deviceRegistrationGuard, passkeyPrfOnboardingRouteGuard],
     loadComponent: () =>
       import('./features/passkey-prf-onboarding/passkey-prf-onboarding.page').then(
         m => m.PasskeyPrfOnboardingPage
       ),
+  },
+  {
+    // EUD-15: "Registrar este dispositivo", its own step after the passkey and before the wallet.
+    path: 'registrar-dispositivo',
+    canActivate: [tenantGuard, registerDeviceRouteGuard],
+    loadComponent: () =>
+      import('./features/register-device/register-device.page').then(m => m.RegisterDevicePage),
   },
   {
     path: '',
@@ -55,7 +63,7 @@ export const routes: Routes = [
   },
   {
     path: 'protocol/callback',
-    canActivate: [tenantGuard, authGuard],
+    canActivate: [tenantGuard, authGuard, deviceRegistrationGuard],
     loadComponent: () =>
       import('./features/protocol-callback/protocol-callback.page').then(
         m => m.ProtocolCallbackPage
@@ -63,7 +71,8 @@ export const routes: Routes = [
   },
   {
     path: 'tabs',
-    canActivate: [tenantGuard, passkeyPrfOnboardingGuard],
+    // The device first (EUD-15 FR-06): nothing of the wallet runs on a session without one.
+    canActivate: [tenantGuard, deviceRegistrationGuard, passkeyPrfOnboardingGuard],
     loadChildren: () => import('./features/tabs/tabs.routes').then(m => m.default),
   },
   {

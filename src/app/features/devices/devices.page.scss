@@ -282,3 +282,33 @@
   color: var(--text-secondary);
   text-wrap: balance;
 }
+
+// -- Wallet Instances (EUD-15) -------------------------------------------------
+
+.device-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.device-card__name {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.device-menu {
+  margin-left: auto;
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
+
+  ion-icon {
+    font-size: 22px;
+  }
+}
+
+.device-card--loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

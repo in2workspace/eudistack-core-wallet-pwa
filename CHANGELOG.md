@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (EUD-334, version 3.22.0)
+
+- **Device registration after the session (EUD-15)**: once a session is opened (passkey, email recovery or onboarding ticket), the Wallet App binds it to the device it remembers for the account (`PUT /wallet-instances/current`, IndexedDB store `wallet-instance` keyed by the account `sub`, never the email) with no step for the user. Without a remembered device, or with a revoked or unknown one (forgotten then), it shows the new route `/registrar-dispositivo` ("Registrar este dispositivo") with a proposed name (equipment and browser, or "App instalada" for the installed PWA; editable, 1 to 50 characters, with counter) and registers it on Continue, then asks once for persistent storage (`navigator.storage.persist()`).
+  - Nothing of the wallet runs before: the attestations of the session are loaded only once it is bound, and a guard on `/tabs`, `/protocol/callback` and `/passkey-prf-onboarding` sends a session without device to the registration first, keeping the saved offer or presentation request to resume it afterwards. Leaving the screen keeps the session without a device: the screen comes back on the next entry.
+  - A 403 `instance_required` on any call binds the session again once and retries it; without an active device it goes to the registration.
+  - A temporary failure of the binding (offline, 5xx) shows the wallet with scanning disabled (Scan tab and the empty-list button) and binds again in the background with exponential backoff (5 s up to 60 s); once bound, the attestations load (EUD-15 design §2.2).
+- **"Dispositivos" over the Wallet Instances (EUD-15)**: the active devices of the account with their type icon, name, registration date and last use ("ahora" for this one), the current one first and marked "Este dispositivo", then by last use; loading placeholders and an error with Retry. The [...] menu renames (dialog that stays open on an invalid name or a failure) and revokes after a confirmation that says the attestations and passkeys do not change; revoking this device warns that the session ends, forgets it and goes to the access screen.
+- **Language of the emails (EUD-8 AD-10)**: every call to the Wallet Unit Service carries `Accept-Language` with the active language of the Wallet App (es, ca or en).
+- Texts in Spanish, Catalan and English (`device-registration.*`, `devices.*`).
+
+### Fixed (EUD-334, code review)
+
+- No attestation loads while the binding is unavailable (the failed sync used to drop the local copy); they load as soon as the session is bound, by the background retry or by an `instance_required` recovery, and an offer or presentation request opened meanwhile (scan, protocol callback, offer and request links) waits on the wallet home and resumes then.
+- A session opened by another tab for an account without a device here drops the previous account's attestations and goes to "Registrar este dispositivo".
+- `instance_required` on a device route never starts a recovery (it would wait on its own binding); a token without `sub` never loops between the registration and the access screen.
+
+### Changed (EUD-334)
+
+- **Crear passkey no longer asks for the device name** (EUD-8 prd 1.4.0): the name is the device's, in its own step. `PasskeyApiService` only lists the passkeys (Signal API): renaming, deleting a passkey and ending its sessions are gone with their routes (EUD-15 AD-4).
+
+### Tests (EUD-334)
+
+- Unit tests for `WalletInstanceService`, the device proposal, the device guards, `RegisterDevicePage`, the new `DevicesPage`, the device state of `RemoteAuthService` and the interceptor (`instance_required` retry, `Accept-Language`).
+
 ### Added
 
 - **Onboarding with a ticket (EUD-315)**: a system authorised by the tenant can hand a user an onboarding address `<wallet URL>/t#<ticket>` (the routes `/t` and `/not-me` under the base path where the Wallet App is served, `/wallet/` on the tenant hosts) (usually as a QR). The ticket and the "it was not me" token go in the fragment, which never reaches the server, and the wallet sends no `Referer` (`<meta name="referrer" content="no-referrer">`).

@@ -145,8 +145,8 @@ describe('PasskeyCeremonyService (EUD-8)', () => {
   });
 
   describe('register', () => {
-    async function register(answer: (req: ReturnType<HttpTestingController['expectOne']>) => void, displayName?: string) {
-      const result = service.register(displayName);
+    async function register(answer: (req: ReturnType<HttpTestingController['expectOne']>) => void) {
+      const result = service.register();
       http.expectOne(`${AUTH}/passkeys/registration/options`).flush(creationOptions);
       await flush();
       answer(http.expectOne(`${AUTH}/passkeys/registration`));
@@ -155,21 +155,20 @@ describe('PasskeyCeremonyService (EUD-8)', () => {
 
     it('creates the passkey with the service options and registers it', async () => {
       let body: Record<string, unknown> = {};
-      const result = await register(req => { body = req.request.body; req.flush(session, { status: 201, statusText: 'Created' }); }, ' Mac ');
+      const result = await register(req => { body = req.request.body; req.flush(session, { status: 201, statusText: 'Created' }); });
 
       expect(startRegistration).toHaveBeenCalledWith({ optionsJSON: creationOptions.publicKey });
       expect(body).toEqual({
         ceremonyId: 'c-reg',
         credential: registrationResponse({ enabled: true }),
         prfSupported: true,
-        displayName: 'Mac',
       });
       expect(result).toEqual({ session, rpId: RP_ID, userId: 'dXNlcg', credentialId: 'Y3JlZC1uZXc' });
     });
 
-    it('omits an empty display name: the service sets one', async () => {
+    it('sends no device name: the device is named in its own step (EUD-15 FR-04)', async () => {
       let body: Record<string, unknown> = {};
-      await register(req => { body = req.request.body; req.flush(session); }, '  ');
+      await register(req => { body = req.request.body; req.flush(session); });
 
       expect(body).not.toHaveProperty('displayName');
     });
