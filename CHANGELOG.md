@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **The credentials watermark stays behind every block**: `.page-watermark` moves to `z-index: -1`, so the "No credential matches the filters." text is no longer hidden under it and new blocks no longer need their own `z-index` to stay above it.
-- **The support link is readable in alerts**: links inside an alert message take the message color and are underlined; "the support team" was white on the light error alert.
+- **Links use the app's action color instead of the tenant's brand color**: Ionic gave every link `--ion-color-primary`, which is the tenant's header color, so on tenants with a white brand (cgcom) the "support team" link of the error alerts, the one of the credentials load error and the links of the legal documents were white. On the dark error alert, links keep the message color.
 
 ### Tests
 
