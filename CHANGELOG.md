@@ -46,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - A 403 `no_account` from `POST /auth/verify-email` shows the new Sin wallet screen with the masked email and the button to the signup address; the saved offer is discarded (and the screen says so) and the email forgotten.
 - Texts in Spanish, English and Catalan (`wallet-access.ticket.*`, `invalid-ticket.*`, `no-wallet.*`, `not-me.*`, `access.ticket-has-wallet`, `access.restricted-*`).
 
+### Fixed
+
+- **The credentials watermark stays behind every block**: `.page-watermark` moves to `z-index: -1`, so the "No credential matches the filters." text is no longer hidden under it and new blocks no longer need their own `z-index` to stay above it.
+- **Links use the app's action color instead of the tenant's brand color**: Ionic gave every link `--ion-color-primary`, which is the tenant's header color, so on tenants with a white brand (cgcom) the "support team" link of the error alerts, the one of the credentials load error and the links of the legal documents were white. On the dark error alert, links keep the message color.
+
 ### Tests
 
 - Unit tests for the new pages, `OnboardingTicketService`, the interceptor routes, the metadata readers, `noAccountSignupUrl`, and regression tests that standard offers (scanner, `/protocol/callback?credential_offer_uri=`, pending deep link) keep working unchanged.
